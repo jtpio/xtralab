@@ -1,0 +1,162 @@
+name: Build
+
+on:
+  push:
+    branches: main
+  pull_request:
+    branches: '*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+
+      - name: Install dependencies
+        run: python -m pip install -U "jupyterlab>=4.6.0a5,<5"
+
+      - name: Lint the extension
+        run: |
+          set -eux
+          jlpm
+          jlpm run lint:check
+
+      - name: Build the extension
+        run: |
+          set -eux
+          python -m pip install .
+
+          jupyter labextension list
+          jupyter labextension list 2>&1 | grep -ie "xtralab.*OK"
+          python -m jupyterlab.browser_check
+
+      - name: Validate metapackage
+        run: |
+          set -eux
+
+          # The bundled extensions (pulled in transitively via xtralab's
+          # dependencies — including ajlab's own deps) should all be present
+          # and OK in the labextension list. Use a case-sensitive match on
+          # OK to avoid spurious matches against words like "took".
+          jupyter labextension list 2>&1 | tee labextensions.txt
+          for ext in \
+            "xtralab" \
+            "jupyterlab-day" \
+            "jupyterlab-night" \
+            "jupyterlab-cursor-light" \
+            "jupyterlab-cursor-theme" \
+            "jupyterlab-quickopen" \
+            "jupyterlab-commands-toolkit" \
+            "@jupyter/docprovider-extension"; do
+            grep -e "${ext}.*OK" labextensions.txt
+          done
+
+          # @jupyterlab/git is bundled via the jupyterlab-git Python package
+          # but xtralab disables the frontend so the VS Code-style panel
+          # owns the UI. The entry should still appear and be marked
+          # disabled.
+          grep -e "@jupyterlab/git.*disabled" labextensions.txt
+
+          # The labconfig fragment shipped by xtralab disables the
+          # announcements plugin (and a few other panels). Verify the
+          # fragment is installed alongside the package.
+          python - <<'PY'
+          import json
+          import sys
+          import sysconfig
+          from pathlib import Path
+
+          fragment = (
+              Path(sysconfig.get_paths()["data"])
+              / "etc"
+              / "jupyter"
+              / "labconfig"
+              / "page_config.d"
+              / "00-xtralab.json"
+          )
+          if not fragment.is_file():
+              sys.exit(f"missing labconfig fragment: {fragment}")
+
+          data = json.loads(fragment.read_text())
+          disabled = data.get("disabledExtensions", {})
+          required = {
+              "@jupyterlab/apputils-extension:announcements",
+              "@jupyterlab/toc-extension:tracker",
+              "@jupyterlab/debugger-extension:main",
+              "@jupyterlab/notebook-extension:tools",
+          }
+          missing = required - disabled.keys()
+          if missing:
+              sys.exit(f"labconfig fragment is missing entries: {sorted(missing)}")
+          PY
+
+          # Server extensions contributed by xtralab's metapackage — we
+          # rely on jupyterlab-git for the changes panel, and on ajlab's
+          # docprovider/MCP server stack for collaboration.
+          jupyter server extension list 2>&1 | tee server-extensions.txt
+          for ext in \
+            "jupyterlab_git" \
+            "jupyter_server_ydoc" \
+            "jupyter_server_mcp"; do
+            grep -e "${ext}.*OK" server-extensions.txt
+          done
+
+      - name: Package the extension
+        run: |
+          set -eux
+
+          pip install build
+          python -m build
+          pip uninstall -y "xtralab" jupyterlab
+
+      - name: Upload extension packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-artifacts
+          path: dist/xtralab*
+          if-no-files-found: error
+
+  test_isolated:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          architecture: 'x64'
+      - uses: actions/download-artifact@v4
+        with:
+          name: extension-artifacts
+      - name: Install and Test
+        run: |
+          set -eux
+          # Remove NodeJS, twice to take care of system and locally installed node versions.
+          sudo rm -rf $(which node)
+          sudo rm -rf $(which node)
+
+          pip install "jupyterlab>=4.6.0a5,<5" xtralab*.whl
+
+          jupyter labextension list
+          jupyter labextension list 2>&1 | grep -ie "xtralab.*OK"
+          jupyter labextension list 2>&1 | grep -ie "@jupyterlab/git.*disabled"
+          python -m jupyterlab.browser_check --no-browser-test
+
+  check_links:
+    name: Check Links
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+      - uses: jupyterlab/maintainer-tools/.github/actions/check-links@v1
