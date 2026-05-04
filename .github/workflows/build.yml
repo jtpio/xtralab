@@ -1,0 +1,130 @@
+name: Build
+
+on:
+  push:
+    branches: main
+  pull_request:
+    branches: '*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+
+      - name: Install dependencies
+        run: python -m pip install "jupyter-builder>=0.0.8,<0.1.0a0"
+
+      - name: Lint the extension
+        run: |
+          set -eux
+          jlpm
+          jlpm run lint:check
+
+      - name: Build the extension
+        run: |
+          set -eux
+          python -m pip install .
+          python -m jupyterlab.browser_check
+
+      - name: Validate metapackage
+        run: |
+          set -eux
+
+          # The bundled extensions (pulled in transitively via xtralab's
+          # dependencies, including ajlab's) should all be present and OK
+          # in the labextension list. Case-sensitive OK avoids spurious
+          # matches against words like "took".
+          jupyter labextension list 2>&1 | tee labextensions.txt
+          for ext in \
+            "xtralab" \
+            "jupyterlab-day" \
+            "jupyterlab-night" \
+            "jupyterlab-cursor-light" \
+            "jupyterlab-cursor-theme" \
+            "jupyterlab-quickopen" \
+            "jupyterlab-commands-toolkit" \
+            "@jupyter/docprovider-extension"; do
+            grep -e "${ext}.*OK" labextensions.txt
+          done
+
+          # xtralab disables the @jupyterlab/git frontend so the VS
+          # Code-style panel owns the UI; the entry should still appear,
+          # marked disabled.
+          grep -e "@jupyterlab/git.*disabled" labextensions.txt
+
+          # xtralab ships a labconfig fragment that disables the
+          # announcements plugin and a few other panels. Verify it lands
+          # at the install prefix.
+          PREFIX=$(python -c 'import sysconfig; print(sysconfig.get_paths()["data"])')
+          test -f "$PREFIX/etc/jupyter/labconfig/page_config.d/00-xtralab.json"
+
+          # Server extensions: jupyterlab-git for the changes panel, plus
+          # ajlab's docprovider/MCP stack for collaboration.
+          jupyter server extension list 2>&1 | tee server-extensions.txt
+          for ext in \
+            "jupyterlab_git" \
+            "jupyter_server_ydoc" \
+            "jupyter_server_mcp"; do
+            grep -e "${ext}.*OK" server-extensions.txt
+          done
+
+      - name: Package the extension
+        run: |
+          set -eux
+
+          pip install build
+          python -m build
+          pip uninstall -y "xtralab" jupyterlab
+
+      - name: Upload extension packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-artifacts
+          path: dist/xtralab*
+          if-no-files-found: error
+
+  test_isolated:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          architecture: 'x64'
+      - uses: actions/download-artifact@v4
+        with:
+          name: extension-artifacts
+      - name: Install and Test
+        run: |
+          set -eux
+          # Remove NodeJS, twice to take care of system and locally installed node versions.
+          sudo rm -rf $(which node)
+          sudo rm -rf $(which node)
+
+          pip install "jupyterlab>=4.6.0a5,<5" xtralab*.whl
+
+          jupyter labextension list 2>&1 | tee labextensions.txt
+          grep -e "xtralab.*OK" labextensions.txt
+          grep -e "@jupyterlab/git.*disabled" labextensions.txt
+          python -m jupyterlab.browser_check --no-browser-test
+
+  check_links:
+    name: Check Links
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+      - uses: jupyterlab/maintainer-tools/.github/actions/check-links@v1

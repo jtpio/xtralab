@@ -107,6 +107,7 @@ version_cmd = "hatch version"
 
 [tool.jupyter-releaser.hooks]
 before-build-npm = [
+    "python -m pip install 'jupyter-builder>=0.0.8,<0.1.0a0'",
     "jlpm",
     "jlpm build:prod"
 ]

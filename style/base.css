@@ -80,9 +80,7 @@
   height: unset;
 }
 
-.jp-xtralab-FileBrowser-toolbar
-  > .jp-Toolbar-item
-  .jp-ToolbarButtonComponent {
+.jp-xtralab-FileBrowser-toolbar > .jp-Toolbar-item .jp-ToolbarButtonComponent {
   width: 28px;
 }
 

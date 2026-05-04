@@ -142,8 +142,7 @@
   visibility: hidden;
 }
 
-.jp-xtralab-GitPanel-sectionHeader:hover
-  .jp-xtralab-GitPanel-sectionActions {
+.jp-xtralab-GitPanel-sectionHeader:hover .jp-xtralab-GitPanel-sectionActions {
   visibility: visible;
 }
 

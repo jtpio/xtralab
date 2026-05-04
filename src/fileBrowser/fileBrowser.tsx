@@ -247,10 +247,7 @@ export function FileBrowserComponent(
         try {
           model.add(canonicalPath);
         } catch (err) {
-          console.error(
-            `xtralab: failed to add path "${canonicalPath}"`,
-            err
-          );
+          console.error(`xtralab: failed to add path "${canonicalPath}"`, err);
           return;
         }
       }
