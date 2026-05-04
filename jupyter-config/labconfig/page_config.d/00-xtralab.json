@@ -1,12 +1,12 @@
 {
-    "disabledExtensions": {
-        "@jupyterlab/application-extension:property-inspector": true,
-        "@jupyterlab/apputils-extension:announcements": true,
-        "@jupyterlab/extensionmanager-extension:plugin": true,
-        "@jupyterlab/toc-extension:tracker": true,
-        "@jupyterlab/notebook-extension:tools": true,
-        "@jupyterlab/notebook-extension:update-raw-mimetype": true,
-        "@jupyterlab/metadataform-extension:metadataforms": true,
-        "@jupyterlab/debugger-extension:main": true
-    }
+  "disabledExtensions": {
+    "@jupyterlab/application-extension:property-inspector": true,
+    "@jupyterlab/apputils-extension:announcements": true,
+    "@jupyterlab/extensionmanager-extension:plugin": true,
+    "@jupyterlab/toc-extension:tracker": true,
+    "@jupyterlab/notebook-extension:tools": true,
+    "@jupyterlab/notebook-extension:update-raw-mimetype": true,
+    "@jupyterlab/metadataform-extension:metadataforms": true,
+    "@jupyterlab/debugger-extension:main": true
+  }
 }

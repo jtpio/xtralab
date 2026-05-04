@@ -99,8 +99,7 @@ function writeStoredSplitRatio(ratio: number): void {
  */
 type NotebookDiffViewMode = 'notebook' | 'json';
 
-const NOTEBOOK_DIFF_VIEW_MODE_STORAGE_KEY =
-  'xtralab:notebook-diff-view-mode';
+const NOTEBOOK_DIFF_VIEW_MODE_STORAGE_KEY = 'xtralab:notebook-diff-view-mode';
 
 function readStoredNotebookViewMode(): NotebookDiffViewMode {
   try {
@@ -720,9 +719,7 @@ function DiffViewer(
   }, []);
 
   if (state.loading) {
-    return (
-      <div className="jp-xtralab-DiffWidget-status">Loading diff…</div>
-    );
+    return <div className="jp-xtralab-DiffWidget-status">Loading diff…</div>;
   }
   if (state.error !== null) {
     return (
@@ -748,9 +745,7 @@ function DiffViewer(
 
   if (!showNotebookView && !showFileDiff) {
     return (
-      <div className="jp-xtralab-DiffWidget-status">
-        No content to diff.
-      </div>
+      <div className="jp-xtralab-DiffWidget-status">No content to diff.</div>
     );
   }
 

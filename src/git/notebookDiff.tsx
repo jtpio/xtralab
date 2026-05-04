@@ -623,10 +623,7 @@ function LuminoWidget(props: {
             MessageLoop.sendMessage(widget, Widget.Msg.BeforeDetach);
             MessageLoop.sendMessage(widget, Widget.Msg.AfterDetach);
           } catch (err) {
-            console.warn(
-              'xtralab: Widget detach messaging failed',
-              err
-            );
+            console.warn('xtralab: Widget detach messaging failed', err);
           }
         }
       }

@@ -367,10 +367,7 @@ function PanelHeader(props: {
       <div className="jp-xtralab-GitPanel-headerInfo">
         <div className="jp-xtralab-GitPanel-title">Source Control</div>
         {repoName !== null ? (
-          <div
-            className="jp-xtralab-GitPanel-repo"
-            title={topLevel ?? ''}
-          >
+          <div className="jp-xtralab-GitPanel-repo" title={topLevel ?? ''}>
             {repoName}
           </div>
         ) : null}
@@ -414,9 +411,7 @@ function ChangeSection(props: {
         <span className="jp-xtralab-GitPanel-sectionChevron">
           {collapsed ? '▸' : '▾'}
         </span>
-        <span className="jp-xtralab-GitPanel-sectionLabel">
-          {label}
-        </span>
+        <span className="jp-xtralab-GitPanel-sectionLabel">{label}</span>
         {actions !== undefined ? (
           <span className="jp-xtralab-GitPanel-sectionActions">
             {actions.map(action => (
@@ -435,14 +430,10 @@ function ChangeSection(props: {
             ))}
           </span>
         ) : null}
-        <span className="jp-xtralab-GitPanel-sectionCount">
-          {count}
-        </span>
+        <span className="jp-xtralab-GitPanel-sectionCount">{count}</span>
       </div>
       {!collapsed ? (
-        <div className="jp-xtralab-GitPanel-sectionBody">
-          {children}
-        </div>
+        <div className="jp-xtralab-GitPanel-sectionBody">{children}</div>
       ) : null}
     </div>
   );

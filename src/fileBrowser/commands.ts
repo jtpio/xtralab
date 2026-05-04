@@ -123,7 +123,10 @@ function getOpenPaths(
 }
 
 /** True iff there is an actionable target for a command on the right-click. */
-function hasTarget(app: JupyterFrontEnd, browser: IXtralabFileBrowser): boolean {
+function hasTarget(
+  app: JupyterFrontEnd,
+  browser: IXtralabFileBrowser
+): boolean {
   return getTargetPath(app, browser) !== undefined;
 }
 
