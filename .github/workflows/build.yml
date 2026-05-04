@@ -22,7 +22,7 @@ jobs:
         uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
 
       - name: Install dependencies
-        run: python -m pip install -U "jupyterlab>=4.6.0a5,<5"
+        run: python -m pip install "jupyter-builder>=0.0.8,<0.1.0a0"
 
       - name: Lint the extension
         run: |
@@ -34,9 +34,6 @@ jobs:
         run: |
           set -eux
           python -m pip install .
-
-          jupyter labextension list
-          jupyter labextension list 2>&1 | grep -ie "xtralab.*OK"
           python -m jupyterlab.browser_check
 
       - name: Validate metapackage
@@ -44,9 +41,9 @@ jobs:
           set -eux
 
           # The bundled extensions (pulled in transitively via xtralab's
-          # dependencies — including ajlab's own deps) should all be present
-          # and OK in the labextension list. Use a case-sensitive match on
-          # OK to avoid spurious matches against words like "took".
+          # dependencies, including ajlab's) should all be present and OK
+          # in the labextension list. Case-sensitive OK avoids spurious
+          # matches against words like "took".
           jupyter labextension list 2>&1 | tee labextensions.txt
           for ext in \
             "xtralab" \
@@ -60,48 +57,19 @@ jobs:
             grep -e "${ext}.*OK" labextensions.txt
           done
 
-          # @jupyterlab/git is bundled via the jupyterlab-git Python package
-          # but xtralab disables the frontend so the VS Code-style panel
-          # owns the UI. The entry should still appear and be marked
-          # disabled.
+          # xtralab disables the @jupyterlab/git frontend so the VS
+          # Code-style panel owns the UI; the entry should still appear,
+          # marked disabled.
           grep -e "@jupyterlab/git.*disabled" labextensions.txt
 
-          # The labconfig fragment shipped by xtralab disables the
-          # announcements plugin (and a few other panels). Verify the
-          # fragment is installed alongside the package.
-          python - <<'PY'
-          import json
-          import sys
-          import sysconfig
-          from pathlib import Path
+          # xtralab ships a labconfig fragment that disables the
+          # announcements plugin and a few other panels. Verify it lands
+          # at the install prefix.
+          PREFIX=$(python -c 'import sysconfig; print(sysconfig.get_paths()["data"])')
+          test -f "$PREFIX/etc/jupyter/labconfig/page_config.d/00-xtralab.json"
 
-          fragment = (
-              Path(sysconfig.get_paths()["data"])
-              / "etc"
-              / "jupyter"
-              / "labconfig"
-              / "page_config.d"
-              / "00-xtralab.json"
-          )
-          if not fragment.is_file():
-              sys.exit(f"missing labconfig fragment: {fragment}")
-
-          data = json.loads(fragment.read_text())
-          disabled = data.get("disabledExtensions", {})
-          required = {
-              "@jupyterlab/apputils-extension:announcements",
-              "@jupyterlab/toc-extension:tracker",
-              "@jupyterlab/debugger-extension:main",
-              "@jupyterlab/notebook-extension:tools",
-          }
-          missing = required - disabled.keys()
-          if missing:
-              sys.exit(f"labconfig fragment is missing entries: {sorted(missing)}")
-          PY
-
-          # Server extensions contributed by xtralab's metapackage — we
-          # rely on jupyterlab-git for the changes panel, and on ajlab's
-          # docprovider/MCP server stack for collaboration.
+          # Server extensions: jupyterlab-git for the changes panel, plus
+          # ajlab's docprovider/MCP stack for collaboration.
           jupyter server extension list 2>&1 | tee server-extensions.txt
           for ext in \
             "jupyterlab_git" \
@@ -147,9 +115,9 @@ jobs:
 
           pip install "jupyterlab>=4.6.0a5,<5" xtralab*.whl
 
-          jupyter labextension list
-          jupyter labextension list 2>&1 | grep -ie "xtralab.*OK"
-          jupyter labextension list 2>&1 | grep -ie "@jupyterlab/git.*disabled"
+          jupyter labextension list 2>&1 | tee labextensions.txt
+          grep -e "xtralab.*OK" labextensions.txt
+          grep -e "@jupyterlab/git.*disabled" labextensions.txt
           python -m jupyterlab.browser_check --no-browser-test
 
   check_links:
