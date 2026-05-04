@@ -1,0 +1,770 @@
+/*
+ * Styles for the git changes panel and the diff viewer. The panel mirrors
+ * the visual rhythm of the default JupyterLab side panels so it does not
+ * stand out from the rest of the UI.
+ */
+
+.jp-xtralab-GitPanel {
+  display: flex;
+  flex-direction: column;
+  min-width: 240px;
+  background-color: var(--jp-layout-color1);
+  color: var(--jp-ui-font-color1);
+  font-family: var(--jp-ui-font-family);
+  font-size: var(--jp-ui-font-size1);
+  overflow: hidden;
+}
+
+.jp-xtralab-GitPanel-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.jp-xtralab-GitPanel-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--jp-border-color2);
+}
+
+.jp-xtralab-GitPanel-headerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.jp-xtralab-GitPanel-title {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: var(--jp-ui-font-size0);
+  letter-spacing: 0.04em;
+  color: var(--jp-ui-font-color2);
+}
+
+.jp-xtralab-GitPanel-repo {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jp-xtralab-GitPanel-branch {
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size0);
+}
+
+.jp-xtralab-GitPanel-error {
+  margin: 12px;
+  padding: 8px;
+  border-radius: 4px;
+  background-color: var(
+    --jp-error-color3,
+    var(--jp-rendermime-error-background)
+  );
+  color: var(--jp-ui-font-color1);
+  font-size: var(--jp-ui-font-size1);
+  white-space: pre-wrap;
+}
+
+.jp-xtralab-GitPanel-empty {
+  margin: 12px;
+  color: var(--jp-ui-font-color2);
+  font-style: italic;
+  text-align: center;
+}
+
+.jp-xtralab-GitPanel-section {
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * Section headers and rows place their hover actions between the label
+ * and the trailing count/badge, so the count stays pinned to the right
+ * edge regardless of whether the section has any bulk actions. Reserving
+ * the action width via `visibility: hidden` keeps the layout from
+ * shifting when the cursor enters and leaves.
+ */
+.jp-xtralab-GitPanel-sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 12px;
+  cursor: pointer;
+  user-select: none;
+  text-transform: uppercase;
+  font-size: var(--jp-ui-font-size0);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--jp-ui-font-color2);
+}
+
+.jp-xtralab-GitPanel-sectionHeader:hover {
+  background-color: var(--jp-layout-color2);
+}
+
+.jp-xtralab-GitPanel-sectionChevron {
+  width: 12px;
+  text-align: center;
+  font-size: 10px;
+}
+
+.jp-xtralab-GitPanel-sectionLabel {
+  flex: 1 1 auto;
+}
+
+.jp-xtralab-GitPanel-sectionCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 4px;
+  background-color: var(--jp-layout-color3);
+  color: var(--jp-ui-font-color1);
+  border-radius: 8px;
+  font-size: var(--jp-ui-font-size0);
+  font-weight: 500;
+  line-height: 1;
+}
+
+.jp-xtralab-GitPanel-sectionActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  visibility: hidden;
+}
+
+.jp-xtralab-GitPanel-sectionHeader:hover
+  .jp-xtralab-GitPanel-sectionActions {
+  visibility: visible;
+}
+
+.jp-xtralab-GitPanel-sectionBody {
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * Three-column row layout: the label group on the left grows, the actions
+ * column has a fixed reserved width that fits the worst-case button count,
+ * and the badge column is auto-sized on the right edge. Reserving the
+ * action column keeps the badge horizontally pinned regardless of the
+ * row's hover state.
+ */
+.jp-xtralab-GitPanel-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.jp-xtralab-GitPanel-row:hover {
+  background-color: var(--jp-layout-color2);
+}
+
+.jp-xtralab-GitPanel-rowLabel {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.jp-xtralab-GitPanel-rowName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+}
+
+.jp-xtralab-GitPanel-rowPath {
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+}
+
+.jp-xtralab-GitPanel-rowActions {
+  /*
+   * Reserved width matches the worst case of two 20px buttons + a 2px
+   * gap. Staged rows only host the unstage button, but pinning the
+   * column width keeps the trailing badge horizontally aligned across
+   * the staged and unstaged sections.
+   */
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  flex: 0 0 42px;
+  visibility: hidden;
+}
+
+.jp-xtralab-GitPanel-row:hover .jp-xtralab-GitPanel-rowActions,
+.jp-xtralab-GitPanel-rowActions[data-pending='true'] {
+  visibility: visible;
+}
+
+.jp-xtralab-GitPanel-rowBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  font-size: var(--jp-ui-font-size0);
+  font-weight: 600;
+  font-family: var(--jp-code-font-family);
+}
+
+.jp-xtralab-GitPanel-rowBadge[data-status='modified'] {
+  color: var(--jp-warn-color1);
+}
+
+.jp-xtralab-GitPanel-rowBadge[data-status='added'],
+.jp-xtralab-GitPanel-rowBadge[data-status='untracked'] {
+  color: var(--jp-success-color1);
+}
+
+.jp-xtralab-GitPanel-rowBadge[data-status='deleted'] {
+  color: var(--jp-error-color1);
+}
+
+.jp-xtralab-GitPanel-rowBadge[data-status='renamed'] {
+  color: var(--jp-info-color1, var(--jp-brand-color1));
+}
+
+.jp-xtralab-GitPanel-rowBadge[data-status='unmerged'] {
+  color: var(--jp-error-color1);
+}
+
+.jp-xtralab-GitPanel-iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--jp-ui-font-color1);
+  cursor: pointer;
+  border-radius: 2px;
+  font-size: var(--jp-ui-font-size1);
+  line-height: 1;
+}
+
+.jp-xtralab-GitPanel-iconButton:hover {
+  background-color: var(--jp-layout-color3);
+}
+
+.jp-xtralab-GitPanel-iconButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/*
+ * Diff viewer (main area). The `MainAreaWidget` holding the React content
+ * gets sized by JupyterLab's box layout; the inner content div fills it
+ * and provides vertical scroll. Horizontal scrolling within each code
+ * block is owned by `@pierre/diffs` via its internal `data-code` rules.
+ *
+ * The block also forwards JupyterLab's theme variables onto the
+ * `--diffs-*-override` properties the library exposes, so the diff
+ * recolors with the active theme.
+ */
+.jp-xtralab-DiffWidget {
+  background-color: var(--jp-layout-color1);
+  color: var(--jp-ui-font-color1);
+}
+
+/*
+ * Flex-column container: an optional toolbar at the top (notebook view
+ * mode toggle) plus a body that hosts the scrollable diff and the
+ * column resize handle. Splitting these responsibilities keeps the
+ * resize handle pinned to the visible viewport while the diff content
+ * scrolls underneath, and keeps the toolbar always visible.
+ */
+.jp-xtralab-DiffWidget-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background-color: var(--jp-layout-color1);
+  color: var(--jp-ui-font-color1);
+
+  /*
+   * Map JupyterLab's theme variables onto the `--diffs-*-override`
+   * properties the library exposes. The `*-override` variants take
+   * precedence over the library's defaults, so these values track the
+   * JupyterLab theme automatically — no JS needed when the theme
+   * switches. Theme-dependent colors (insertion green, deletion red, …)
+   * still come from the active Shiki theme passed via `options.theme`.
+   */
+  --diffs-bg-override: var(--jp-layout-color1);
+  --diffs-bg-buffer-override: var(--jp-layout-color1);
+  --diffs-bg-context-override: var(--jp-layout-color1);
+  --diffs-bg-separator-override: var(--jp-layout-color2);
+  --diffs-bg-hover-override: var(--jp-layout-color2);
+  --diffs-bg-selection-override: var(--jp-layout-color3);
+  --diffs-bg-selection-number-override: var(--jp-layout-color3);
+  --diffs-fg-override: var(--jp-ui-font-color1);
+  --diffs-fg-number-override: var(--jp-ui-font-color3);
+  --diffs-fg-conflict-marker-override: var(--jp-warn-color1);
+  --diffs-modified-color-override: var(--jp-warn-color1);
+}
+
+/*
+ * Body wrapping the scrollable diff + the column resize handle. Owns
+ * its own positioning context so the resizer can be absolutely placed
+ * within the body's bounds (and therefore aligned with the visible
+ * scroll area, not the toolbar above it).
+ */
+.jp-xtralab-DiffWidget-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.jp-xtralab-DiffWidget-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+}
+
+/*
+ * Notebook/JSON view-mode selector that lives in the `MainAreaWidget`
+ * toolbar for `.ipynb` diffs. The host toolbar provides its own
+ * background and border, so this is just the segmented control itself.
+ */
+.jp-xtralab-DiffWidget-viewModeToolbarItem {
+  display: flex;
+  align-items: center;
+  font-size: var(--jp-ui-font-size0);
+}
+
+.jp-xtralab-DiffWidget-segmented {
+  display: inline-flex;
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 3px;
+  overflow: hidden;
+  background-color: var(--jp-layout-color1);
+}
+
+.jp-xtralab-DiffWidget-segmentedButton {
+  padding: 2px 10px;
+  border: none;
+  background: transparent;
+  color: var(--jp-ui-font-color1);
+  font-size: var(--jp-ui-font-size0);
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.jp-xtralab-DiffWidget-segmentedButton:hover {
+  background-color: var(--jp-layout-color2);
+}
+
+.jp-xtralab-DiffWidget-segmentedButton[data-active='true'] {
+  background-color: var(--jp-brand-color1);
+  color: var(--jp-ui-inverse-font-color1);
+}
+
+.jp-xtralab-DiffWidget-segmentedButton[data-active='true']:hover {
+  background-color: var(--jp-brand-color1);
+}
+
+/*
+ * Draggable column splitter. Sits on top of the diff (z-index above the
+ * content) but stays a thin strip so it doesn't visually intrude. The
+ * `transform: translateX(-50%)` centers the strip on the column boundary
+ * the inline `left` percentage points to.
+ */
+.jp-xtralab-DiffWidget-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  transform: translateX(-50%);
+  cursor: col-resize;
+  z-index: 2;
+  background-color: transparent;
+  transition: background-color 0.1s ease;
+  user-select: none;
+  touch-action: none;
+}
+
+.jp-xtralab-DiffWidget-resizer:hover,
+.jp-xtralab-DiffWidget-resizer[data-dragging='true'] {
+  background-color: var(--jp-brand-color1);
+}
+
+.jp-xtralab-DiffWidget-status {
+  margin: 12px;
+  padding: 12px;
+  border-radius: 4px;
+  background-color: var(--jp-layout-color2);
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size1);
+  white-space: pre-wrap;
+}
+
+.jp-xtralab-DiffWidget-status[data-error='true'] {
+  background-color: var(
+    --jp-error-color3,
+    var(--jp-rendermime-error-background)
+  );
+  color: var(--jp-ui-font-color1);
+}
+
+/*
+ * Per-hunk action overlay. The diff library injects a row at the
+ * annotation's anchor line and renders this content inside it; we keep the
+ * row visually unobtrusive — a single small icon button that fades in on
+ * row hover — so the annotation does not compete with the diff content.
+ */
+.jp-xtralab-DiffWidget-hunkAnnotation {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 8px;
+  opacity: 0.4;
+  transition: opacity 0.1s ease;
+}
+
+.jp-xtralab-DiffWidget-hunkAnnotation:hover {
+  opacity: 1;
+}
+
+.jp-xtralab-DiffWidget-hunkButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--jp-ui-font-color1);
+  cursor: pointer;
+}
+
+.jp-xtralab-DiffWidget-hunkButton:hover {
+  background-color: var(--jp-layout-color3);
+}
+
+.jp-xtralab-DiffWidget-hunkButton-icon {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+}
+
+/*
+ * Notebook diff. Renders one block per cell stacked vertically, plus an
+ * optional notebook-level metadata block at the bottom. Each cell carries
+ * its own header (kind badge + cell index + cell type) and a body with the
+ * source / outputs / metadata sub-diffs the @pierre/diffs library produces.
+ *
+ * The sticky header keeps the scope visible while the user scrolls through
+ * a long cell, and the data-kind attributes drive the colored badges and
+ * left borders that distinguish added / removed / modified / unchanged.
+ */
+.jp-xtralab-NotebookDiff {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 8px;
+}
+
+/*
+ * The cell entry grid. Two equal columns mirror the old / new mental model
+ * the column header bar establishes; each cell entry below either spans
+ * both columns (modified / unchanged) or sits in a single column with an
+ * empty placeholder on the other side (added / removed). Auto rows let
+ * each cell pick its own height naturally.
+ */
+.jp-xtralab-NotebookDiff-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 8px;
+  align-items: stretch;
+}
+
+.jp-xtralab-NotebookDiff-cell[data-placement='full'] {
+  grid-column: 1 / -1;
+}
+
+.jp-xtralab-NotebookDiff-cell[data-placement='left'] {
+  grid-column: 1;
+}
+
+.jp-xtralab-NotebookDiff-cell[data-placement='right'] {
+  grid-column: 2;
+}
+
+/*
+ * Empty placeholder rendered in the column opposite an added or removed
+ * cell. Visible (dashed outline) so the user can see the alignment gap
+ * the missing cell creates between old and new. Sized roughly like a
+ * minimal cell card so the row height is consistent.
+ */
+.jp-xtralab-NotebookDiff-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  padding: 12px;
+  border: 1px dashed var(--jp-border-color2);
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.jp-xtralab-NotebookDiff-emptyLabel {
+  color: var(--jp-ui-font-color3);
+  font-size: var(--jp-ui-font-size0);
+  font-style: italic;
+}
+
+.jp-xtralab-NotebookDiff-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--jp-border-color2);
+  font-size: var(--jp-ui-font-size1);
+  color: var(--jp-ui-font-color1);
+}
+
+.jp-xtralab-NotebookDiff-headerCount {
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size0);
+}
+
+.jp-xtralab-NotebookDiff-stat {
+  font-size: var(--jp-ui-font-size0);
+  color: var(--jp-ui-font-color2);
+}
+
+.jp-xtralab-NotebookDiff-stat[data-kind='modified'] {
+  color: var(--jp-warn-color1);
+}
+
+.jp-xtralab-NotebookDiff-stat[data-kind='added'] {
+  color: var(--jp-success-color1);
+}
+
+.jp-xtralab-NotebookDiff-stat[data-kind='removed'] {
+  color: var(--jp-error-color1);
+}
+
+.jp-xtralab-NotebookDiff-cell {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 4px;
+  background-color: var(--jp-layout-color1);
+  overflow: hidden;
+}
+
+.jp-xtralab-NotebookDiff-cellHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background-color: var(--jp-layout-color2);
+  cursor: pointer;
+  user-select: none;
+  font-size: var(--jp-ui-font-size1);
+}
+
+.jp-xtralab-NotebookDiff-cellHeader:hover {
+  background-color: var(--jp-layout-color3);
+}
+
+.jp-xtralab-NotebookDiff-cellChevron {
+  width: 12px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--jp-ui-font-color2);
+}
+
+.jp-xtralab-NotebookDiff-cellBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  font-size: var(--jp-ui-font-size0);
+  font-weight: 600;
+  font-family: var(--jp-code-font-family);
+  background-color: var(--jp-layout-color1);
+}
+
+.jp-xtralab-NotebookDiff-cellBadge[data-kind='added'] {
+  color: var(--jp-success-color1);
+}
+
+.jp-xtralab-NotebookDiff-cellBadge[data-kind='removed'] {
+  color: var(--jp-error-color1);
+}
+
+.jp-xtralab-NotebookDiff-cellBadge[data-kind='modified'] {
+  color: var(--jp-warn-color1);
+}
+
+.jp-xtralab-NotebookDiff-cellBadge[data-kind='unchanged'] {
+  color: var(--jp-ui-font-color3);
+}
+
+.jp-xtralab-NotebookDiff-cellLabel {
+  flex: 1 1 auto;
+  font-weight: 500;
+  color: var(--jp-ui-font-color1);
+}
+
+.jp-xtralab-NotebookDiff-cellHint {
+  color: var(--jp-ui-font-color3);
+  font-size: var(--jp-ui-font-size0);
+  font-style: italic;
+}
+
+.jp-xtralab-NotebookDiff-cellBody {
+  display: flex;
+  flex-direction: column;
+}
+
+.jp-xtralab-NotebookDiff-cellEmpty {
+  padding: 8px 12px;
+  color: var(--jp-ui-font-color3);
+  font-style: italic;
+  font-size: var(--jp-ui-font-size0);
+}
+
+.jp-xtralab-NotebookDiff-subdiff {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--jp-border-color2);
+}
+
+.jp-xtralab-NotebookDiff-subdiff:first-child {
+  border-top: none;
+}
+
+.jp-xtralab-NotebookDiff-subdiffLabel {
+  padding: 4px 12px;
+  background-color: var(--jp-layout-color1);
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size0);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  border-bottom: 1px solid var(--jp-border-color3);
+}
+
+/*
+ * The verbatim source listing rendered when the user expands an unchanged
+ * cell. We don't pass it through @pierre/diffs because there is no diff —
+ * just the cell contents — but match the diff library's monospace rhythm
+ * so the surrounding cells still look uniform.
+ */
+.jp-xtralab-NotebookDiff-unchangedSource {
+  margin: 0;
+  padding: 8px 12px;
+  font-family: var(--jp-code-font-family);
+  font-size: var(--jp-code-font-size);
+  color: var(--jp-content-font-color1, var(--jp-ui-font-color1));
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.jp-xtralab-NotebookDiff-unchangedRendered,
+.jp-xtralab-NotebookDiff-unchangedOutputs {
+  padding: 8px 12px;
+  background-color: var(--jp-layout-color1);
+}
+
+.jp-xtralab-NotebookDiff-unchangedOutputs {
+  border-top: 1px solid var(--jp-border-color3);
+}
+
+/*
+ * Side-by-side panes used by both OutputsSection and MarkdownPreviewSection.
+ * The grid columns mirror the split-mode FileDiff above so the two halves
+ * read as the same left=old / right=new mental model the user is already
+ * tracking on the source diff.
+ */
+.jp-xtralab-NotebookDiff-sideBySide {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--jp-border-color2);
+}
+
+.jp-xtralab-NotebookDiff-sideBySideGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background-color: var(--jp-layout-color1);
+}
+
+.jp-xtralab-NotebookDiff-sideBySide[data-layout='single']
+  .jp-xtralab-NotebookDiff-sideBySideGrid {
+  grid-template-columns: 1fr;
+}
+
+/*
+ * Each pane takes one column. The data-side colored bar on the left edge
+ * matches the cell-block kind colors so the pane's role (old vs new) is
+ * clear even in dark theme where the diff library's column-tint is subtle.
+ */
+.jp-xtralab-NotebookDiff-sidePane {
+  padding: 8px 12px;
+  min-width: 0;
+  overflow-x: auto;
+  background-color: var(--jp-layout-color1);
+}
+
+.jp-xtralab-NotebookDiff-sidePane[data-side='old'] {
+  border-right: 1px solid var(--jp-border-color3);
+  background-color: var(--jp-layout-color0, var(--jp-layout-color1));
+}
+
+.jp-xtralab-NotebookDiff-sidePane[data-side='new'] {
+  background-color: var(--jp-layout-color1);
+}
+
+/*
+ * Rendermime widgets bring their own padding/margin defaults; we constrain
+ * them to the pane width so a wide HTML output (table, image) doesn't push
+ * the grid out of shape.
+ */
+.jp-xtralab-NotebookDiff-sidePane .jp-RenderedHTMLCommon,
+.jp-xtralab-NotebookDiff-sidePane .jp-OutputArea {
+  max-width: 100%;
+}
+
+.jp-xtralab-NotebookDiff-sidePane .jp-OutputArea-output img {
+  max-width: 100%;
+  height: auto;
+}
+
+.jp-xtralab-NotebookDiff-fallbackText {
+  margin: 0;
+  font-family: var(--jp-code-font-family);
+  font-size: var(--jp-code-font-size);
+  color: var(--jp-content-font-color1, var(--jp-ui-font-color1));
+  white-space: pre-wrap;
+  word-break: break-word;
+}

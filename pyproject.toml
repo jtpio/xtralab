@@ -1,0 +1,116 @@
+[build-system]
+requires = [
+    "hatchling>=1.5.0",
+    "hatch-jupyter-builder>=0.5",
+    "jupyter-builder>=0.0.8,<0.1.0a0",
+    "hatch-nodejs-version>=0.3.2",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "xtralab"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+    { name = "Jeremy Tuloup" },
+]
+keywords = ["jupyter", "jupyterlab", "meta-package"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Jupyter",
+    "Framework :: Jupyter :: JupyterLab",
+    "Framework :: Jupyter :: JupyterLab :: 4",
+    "Framework :: Jupyter :: JupyterLab :: Extensions",
+    "Framework :: Jupyter :: JupyterLab :: Extensions :: Prebuilt",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "ajlab>=0.1.4",
+    "jupyterlab>=4.6.0a5",
+    "jupyterlab-cursor-light>=1.0.2",
+    "jupyterlab-cursor-theme>=1.0.1",
+    "jupyterlab-day>=0.2.0",
+    "jupyterlab-git>=0.53.0,<1",
+    "jupyterlab-night>=0.5.2",
+    "jupyterlab-quickopen>=2.1.0",
+]
+dynamic = ["version", "description", "urls"]
+
+[tool.hatch.version]
+source = "nodejs"
+
+[tool.hatch.metadata.hooks.nodejs]
+fields = ["description", "urls"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["xtralab"]
+
+[tool.hatch.build.targets.wheel.shared-data]
+"xtralab/labextension" = "share/jupyter/labextensions/xtralab"
+"install.json" = "share/jupyter/labextensions/xtralab/install.json"
+"jupyter-config/labconfig" = "etc/jupyter/labconfig"
+
+[tool.hatch.build.targets.sdist]
+artifacts = ["xtralab/labextension"]
+include = [
+    "/xtralab",
+    "/src",
+    "/style",
+    "/schema",
+    "/jupyter-config",
+    "/package.json",
+    "/tsconfig.json",
+    "/install.json",
+    "/.yarnrc.yml",
+    "/LICENSE",
+    "/pyproject.toml",
+]
+exclude = [".github"]
+
+[tool.hatch.build.hooks.version]
+path = "xtralab/_version.py"
+
+[tool.hatch.build.hooks.jupyter-builder]
+dependencies = ["hatch-jupyter-builder>=0.5"]
+build-function = "hatch_jupyter_builder.npm_builder"
+ensured-targets = [
+    "xtralab/labextension/static/style.js",
+    "xtralab/labextension/package.json",
+]
+skip-if-exists = ["xtralab/labextension/static/style.js"]
+
+[tool.hatch.build.hooks.jupyter-builder.build-kwargs]
+build_cmd = "build:prod"
+npm = ["jlpm"]
+
+[tool.hatch.build.hooks.jupyter-builder.editable-build-kwargs]
+build_cmd = "install:extension"
+npm = ["jlpm"]
+source_dir = "src"
+build_dir = "xtralab/labextension"
+
+[tool.uv]
+prerelease = "allow"
+
+[tool.jupyter-releaser.options]
+version_cmd = "hatch version"
+
+[tool.jupyter-releaser.hooks]
+before-build-npm = [
+    "jlpm",
+    "jlpm build:prod"
+]
+before-build-python = ["jlpm clean:all"]
+
+[tool.check-wheel-contents]
+ignore = ["W002"]

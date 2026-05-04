@@ -1,0 +1,67 @@
+{
+  "title": "xtralab",
+  "description": "xtralab settings.",
+  "jupyter.lab.shortcuts": [],
+  "jupyter.lab.menus": {
+    "context": [
+      {
+        "command": "xtralab:open",
+        "selector": ".jp-xtralab-FileBrowser [data-type=\"item\"][data-item-type=\"file\"]",
+        "rank": 1
+      },
+      {
+        "type": "submenu",
+        "selector": ".jp-xtralab-FileBrowser [data-type=\"item\"][data-item-type=\"file\"]",
+        "rank": 2,
+        "submenu": {
+          "id": "jp-contextmenu-xtralab-open-with",
+          "label": "Open With",
+          "items": []
+        }
+      },
+      {
+        "command": "xtralab:open-browser-tab",
+        "selector": ".jp-xtralab-FileBrowser [data-type=\"item\"][data-item-type=\"file\"]",
+        "rank": 3
+      },
+      {
+        "type": "separator",
+        "selector": ".jp-xtralab-FileBrowser [data-type=\"item\"]",
+        "rank": 4
+      },
+      {
+        "command": "xtralab:rename",
+        "selector": ".jp-xtralab-FileBrowser [data-type=\"item\"]",
+        "rank": 5
+      },
+      {
+        "command": "xtralab:delete",
+        "selector": ".jp-xtralab-FileBrowser [data-type=\"item\"]",
+        "rank": 6
+      },
+      {
+        "command": "xtralab:duplicate",
+        "selector": ".jp-xtralab-FileBrowser [data-type=\"item\"][data-item-type=\"file\"]",
+        "rank": 7
+      },
+      {
+        "type": "separator",
+        "selector": ".jp-xtralab-FileBrowser [data-type=\"item\"]",
+        "rank": 8
+      },
+      {
+        "command": "xtralab:copy-path",
+        "selector": ".jp-xtralab-FileBrowser [data-type=\"item\"]",
+        "rank": 9
+      },
+      {
+        "command": "xtralab:download",
+        "selector": ".jp-xtralab-FileBrowser [data-type=\"item\"][data-item-type=\"file\"]",
+        "rank": 10
+      }
+    ]
+  },
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}

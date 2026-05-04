@@ -1,0 +1,55 @@
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+*.so
+*.bundle.*
+
+# JS
+lib/
+node_modules/
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+
+# Yarn
+.yarn/cache
+.yarn/install-state.gz
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# uv
+.uv/
+uv.lock
+
+# Tools
+.hatch/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Built labextension and generated version file
+xtralab/labextension/
+xtralab/_version.py
+
+# Jupyter
+.ipynb_checkpoints/
+.virtual_documents/
+*.nbconvert.ipynb
+.jupyter/
+.jupyter_ystore.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
