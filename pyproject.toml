@@ -46,6 +46,9 @@ dependencies = [
 ]
 dynamic = ["version", "description", "urls"]
 
+[project.scripts]
+xtralab = "xtralab.app:main"
+
 [tool.hatch.version]
 source = "nodejs"
 

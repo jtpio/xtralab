@@ -57,6 +57,31 @@ fragments without replacing `xtralab`'s files.
 pip install xtralab
 ```
 
+## Run as a desktop app
+
+`xtralab` ships a tiny launcher that opens JupyterLab in a dedicated Chrome
+window (via Chrome's `--app` mode), with an isolated user-data directory so it
+does not share cookies, extensions, or history with your normal browser.
+
+Requires Chrome or Chromium installed. macOS only for now; other platforms will be added later.
+
+The simplest way, no install needed:
+
+```bash
+uvx xtralab
+```
+
+Or, after `pip install xtralab` into an environment:
+
+```bash
+xtralab
+```
+
+The launcher starts a local Jupyter server on a random port with a fresh
+token, waits for it to come up, opens the app window, and shuts the server
+down when you close the window. `Ctrl-C` in the launching terminal also
+shuts everything down cleanly.
+
 ## Development
 
 ```bash
