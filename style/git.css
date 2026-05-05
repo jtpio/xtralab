@@ -39,14 +39,6 @@
   min-width: 0;
 }
 
-.jp-xtralab-GitPanel-title {
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: var(--jp-ui-font-size0);
-  letter-spacing: 0.04em;
-  color: var(--jp-ui-font-color2);
-}
-
 .jp-xtralab-GitPanel-repo {
   font-weight: 600;
   white-space: nowrap;
