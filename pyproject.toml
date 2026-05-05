@@ -35,7 +35,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "ajlab>=0.1.4",
+    "ajlab>=0.1.5",
     "jupyterlab>=4.6.0a5",
     "jupyterlab-cursor-light>=1.0.2",
     "jupyterlab-cursor-theme>=1.0.1",

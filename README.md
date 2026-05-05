@@ -44,6 +44,8 @@ override versions and Jupyter configuration in the usual ways.
   news from the Jupyter news feed and does not check for application updates.
 - The Table of Contents, Debugger, and Notebook Tools panels are disabled so
   they do not show up in the right sidebar by default.
+- `dockPanelPadding` is off, so the main dock area is flush with the
+  surrounding chrome.
 
 The JupyterLab frontend defaults are shipped as `labconfig/*.d/00-xtralab.json`
 fragments so downstream meta-packages can add their own Lab configuration
