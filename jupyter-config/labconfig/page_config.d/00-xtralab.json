@@ -2,6 +2,7 @@
   "disabledExtensions": {
     "@jupyterlab/application-extension:property-inspector": true,
     "@jupyterlab/apputils-extension:announcements": true,
+    "@jupyterlab/apputils-extension:running-sessions-status": true,
     "@jupyterlab/extensionmanager-extension:plugin": true,
     "@jupyterlab/toc-extension:tracker": true,
     "@jupyterlab/notebook-extension:tools": true,

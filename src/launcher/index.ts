@@ -68,7 +68,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     commands.addCommand(CREATE_LAUNCHER_COMMAND, {
       label: trans.__('New Launcher'),
       execute: (args: ReadonlyPartialJSONObject) => {
-        const id = `launcher-${Private.id++}`;
+        const id = Private.nextId();
         const callback = (item: Widget): void => {
           // When an agent command returns a Widget that ends up in the main
           // area, slot it where this launcher used to sit so opening an
@@ -146,10 +146,14 @@ const plugin: JupyterFrontEndPlugin<void> = {
 };
 
 namespace Private {
+  let counter = 0;
+
   /**
-   * Incrementing id used to generate unique launcher widget ids.
+   * Returns the next unique launcher widget id.
    */
-  export const id = 0;
+  export function nextId(): string {
+    return `launcher-${counter++}`;
+  }
 }
 
 export default plugin;
