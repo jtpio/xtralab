@@ -97,7 +97,9 @@ function hasKernelWidget(labShell: ILabShell): boolean {
 
 function hasSessionContext(widget: Widget): boolean {
   const candidate = widget as unknown as { sessionContext?: unknown };
-  return candidate.sessionContext != null;
+  return (
+    candidate.sessionContext !== null && candidate.sessionContext !== undefined
+  );
 }
 
 /**

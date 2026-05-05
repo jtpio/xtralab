@@ -4918,6 +4918,7 @@ __metadata:
     "@jupyterlab/rendermime": ^4.6.0-alpha.5
     "@jupyterlab/services": ^7.6.0-alpha.5
     "@jupyterlab/settingregistry": ^4.6.0-alpha.5
+    "@jupyterlab/statusbar": ^4.6.0-alpha.5
     "@jupyterlab/terminal": ^4.6.0-alpha.5
     "@jupyterlab/translation": ^4.6.0-alpha.5
     "@jupyterlab/ui-components": ^4.6.0-alpha.5

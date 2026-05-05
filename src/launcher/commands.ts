@@ -58,6 +58,23 @@ export function registerAgentCommands(
             type: 'stdin',
             content: [invocation + '\r']
           });
+          // Give the tab and the status-bar list a meaningful default
+          // label. The XTerm widget's `_initialConnection` listener
+          // overwrites the title with `Terminal {N}` when the WebSocket
+          // first reports `connected`; we connect *after* that listener
+          // (and call `applyAgentLabel` after `sendCommand`), so by the
+          // time we run the upstream listener has already had its turn.
+          // Programs that publish a real xterm title escape sequence
+          // still win — `XTerm.onTitleChange` resets the label whenever
+          // it fires.
+          applyAgentLabel();
+        };
+
+        const applyAgentLabel = (): void => {
+          if (main.isDisposed || main.content.isDisposed) {
+            return;
+          }
+          main.content.title.label = agent.label;
         };
 
         // Match how the Terminal widget itself sends its `initialCommand`:
