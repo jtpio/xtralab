@@ -37,7 +37,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         void app.commands.execute('docmanager:open', { path: serverPath });
       }
     });
-    app.shell.add(browser, 'left', { rank: 700 });
+    app.shell.add(browser, 'left', { rank: 50 });
     if (restorer) {
       restorer.add(browser, browser.id);
     }

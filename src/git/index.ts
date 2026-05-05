@@ -87,7 +87,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       showError: showErrorMessage
     });
 
-    app.shell.add(panel, 'left', { rank: 800 });
+    app.shell.add(panel, 'left', { rank: 60 });
     if (restorer !== null) {
       restorer.add(panel, panel.id);
     }
