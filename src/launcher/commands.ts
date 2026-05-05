@@ -1,9 +1,9 @@
 import type { JupyterFrontEnd } from '@jupyterlab/application';
 import type { MainAreaWidget } from '@jupyterlab/apputils';
 import type { ITerminal } from '@jupyterlab/terminal';
-import type { LabIcon } from '@jupyterlab/ui-components';
+import { DisposableSet, type IDisposable } from '@lumino/disposable';
 
-import { claudeIcon, codexIcon, geminiIcon } from './icons';
+import type { IAgent } from './agents';
 
 /**
  * The command id for opening the launcher.
@@ -11,66 +11,29 @@ import { claudeIcon, codexIcon, geminiIcon } from './icons';
 export const CREATE_LAUNCHER_COMMAND = 'launcher:create';
 
 /**
- * Description of a single agent shown as a launcher card. The `command` is
- * the shell command typed into the new terminal; the `commandId` is the
- * JupyterLab command registered to drive that terminal.
- */
-export interface IAgent {
-  id: string;
-  label: string;
-  caption: string;
-  command: string;
-  icon: LabIcon;
-  rank: number;
-}
-
-/**
- * Build a JupyterLab command id for a given agent. Centralised so the plugin
- * and the launcher both use the same names.
+ * Build a JupyterLab command id for a given agent. Centralised so the
+ * plugin and the launcher both use the same names.
  */
 export function agentCommandId(agentId: string): string {
   return `xtralab:start-agent:${agentId}`;
 }
 
 /**
- * The agents the launcher exposes. Order in this array also seeds the rank
- * so the cards render in the order declared here.
+ * Register a JupyterLab command per agent. Each command opens a new
+ * terminal via `terminal:create-new` and feeds the agent's shell command
+ * into the fresh session as if the user had typed it.
+ *
+ * Returns a single disposable that tears down every registered command —
+ * the launcher disposes the previous set before re-registering on settings
+ * changes so the command palette stays in sync with the configured agents.
  */
-export const AGENTS: IAgent[] = [
-  {
-    id: 'claude',
-    label: 'Claude',
-    caption: 'Start Claude Code in a new terminal.',
-    command: 'claude',
-    icon: claudeIcon,
-    rank: 0
-  },
-  {
-    id: 'codex',
-    label: 'Codex',
-    caption: 'Start the Codex CLI in a new terminal.',
-    command: 'codex',
-    icon: codexIcon,
-    rank: 1
-  },
-  {
-    id: 'gemini',
-    label: 'Gemini',
-    caption: 'Start the Gemini CLI in a new terminal.',
-    command: 'gemini',
-    icon: geminiIcon,
-    rank: 2
-  }
-];
-
-/**
- * Register a JupyterLab command per agent. Each command opens a new terminal
- * via `terminal:create-new` and feeds the agent's shell command into the
- * fresh session as if the user had typed it.
- */
-export function registerAgentCommands(app: JupyterFrontEnd): void {
-  for (const agent of AGENTS) {
-    app.commands.addCommand(agentCommandId(agent.id), {
+export function registerAgentCommands(
+  app: JupyterFrontEnd,
+  agents: IAgent[]
+): IDisposable {
+  const disposables = new DisposableSet();
+  for (const agent of agents) {
+    const disposable = app.commands.addCommand(agentCommandId(agent.id), {
       label: agent.label,
       caption: agent.caption,
       icon: agent.icon,
@@ -113,5 +76,7 @@ export function registerAgentCommands(app: JupyterFrontEnd): void {
         return main;
       }
     });
+    disposables.add(disposable);
   }
+  return disposables;
 }

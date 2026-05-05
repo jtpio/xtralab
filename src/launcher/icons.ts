@@ -3,15 +3,19 @@ import { LabIcon } from '@jupyterlab/ui-components';
 /**
  * Brand icons for the agent launcher cards. The artwork is taken verbatim
  * from `jupyter-ai-contrib/jupyter-ai-acp-client`
- * (`jupyter_ai_acp_client/static/*.svg`, BSD-3-Clause), with two small
+ * (`jupyter_ai_acp_client/static/*.svg`, BSD-3-Clause), with small
  * adjustments to play nicely with JupyterLab themes:
- *   - The Codex glyph hard-coded `stroke="#000"`, which disappears on the
- *     dark theme. We swap it for `currentColor` so it inherits the
- *     surrounding launcher card's text color.
- *   - The Gemini gradient id was renamed from the upstream
- *     `prefix__paint0_radial_…` to `xtralab-gemini-radial` so two SVGs
- *     mounted on the same page can't collide if another extension ever
- *     ships the same artwork.
+ *   - Monochrome marks (Codex, Copilot, Goose) use `currentColor` so they
+ *     inherit the surrounding launcher card's text color rather than
+ *     hard-coding black, which disappears on the dark theme.
+ *   - The Goose mark upstream is rendered on a white rounded rect; we drop
+ *     the rect so the silhouette can sit on the launcher card directly.
+ *   - SVG ids that would collide if two copies of the same artwork ended up
+ *     on the page (gradient/mask defs) are namespaced under `xtralab-…`.
+ *
+ * Brand-colored icons (Claude, Gemini, Kiro, Mistral Vibe, OpenCode) keep
+ * their upstream colors; the dark/light contrast of the launcher card behind
+ * them is the same as on `jupyter-ai-acp-client`.
  */
 
 export const claudeIcon = new LabIcon({
@@ -28,6 +32,14 @@ export const codexIcon = new LabIcon({
 </svg>`
 });
 
+export const copilotIcon = new LabIcon({
+  name: 'xtralab:agent-copilot',
+  svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
+  <path d="M7.998 15.035c-4.562 0-7.873-2.914-7.998-3.749V9.338c.085-.628.677-1.686 1.588-2.065.013-.07.024-.143.036-.218.029-.183.06-.384.126-.612-.201-.508-.254-1.084-.254-1.656 0-.87.128-1.769.693-2.484.579-.733 1.494-1.124 2.724-1.261 1.206-.134 2.262.034 2.944.765.05.053.096.108.139.165.044-.057.094-.112.143-.165.682-.731 1.738-.899 2.944-.765 1.23.137 2.145.528 2.724 1.261.566.715.693 1.614.693 2.484 0 .572-.053 1.148-.254 1.656.066.228.098.429.126.612.012.076.024.148.037.218.924.385 1.522 1.471 1.591 2.095v1.872c0 .766-3.351 3.795-8.002 3.795Zm0-1.485c2.28 0 4.584-1.11 5.002-1.433V7.862l-.023-.116c-.49.21-1.075.291-1.727.291-1.146 0-2.059-.327-2.71-.991A3.222 3.222 0 0 1 8 6.303a3.24 3.24 0 0 1-.544.743c-.65.664-1.563.991-2.71.991-.652 0-1.236-.081-1.727-.291l-.023.116v4.255c.419.323 2.722 1.433 5.002 1.433ZM6.762 2.83c-.193-.206-.637-.413-1.682-.297-1.019.113-1.479.404-1.713.7-.247.312-.369.789-.369 1.554 0 .793.129 1.171.308 1.371.162.181.519.379 1.442.379.853 0 1.339-.235 1.638-.54.315-.322.527-.827.617-1.553.117-.935-.037-1.395-.241-1.614Zm4.155-.297c-1.044-.116-1.488.091-1.681.297-.204.219-.359.679-.242 1.614.091.726.303 1.231.618 1.553.299.305.784.54 1.638.54.922 0 1.28-.198 1.442-.379.179-.2.308-.578.308-1.371 0-.765-.123-1.242-.37-1.554-.233-.296-.693-.587-1.713-.7Z"/>
+  <path d="M6.25 9.037a.75.75 0 0 1 .75.75v1.501a.75.75 0 0 1-1.5 0V9.787a.75.75 0 0 1 .75-.75Zm4.25.75v1.501a.75.75 0 0 1-1.5 0V9.787a.75.75 0 0 1 1.5 0Z"/>
+</svg>`
+});
+
 export const geminiIcon = new LabIcon({
   name: 'xtralab:agent-gemini',
   svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none">
@@ -41,3 +53,71 @@ export const geminiIcon = new LabIcon({
   </defs>
 </svg>`
 });
+
+export const gooseIcon = new LabIcon({
+  name: 'xtralab:agent-goose',
+  svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2048 2048">
+  <g transform="translate(128, 94) scale(3)" fill="currentColor">
+    <path d="M455.145 485.687C473.786 481.639 493.559 470.622 493.559 470.622L458.952 442.115C441.844 428.034 427.282 411.116 415.898 392.108C400.167 365.845 378.431 343.683 352.485 327.445L339.813 320.066C335.471 317.048 332.444 312.344 332.013 307.037C331.737 303.615 332.557 300.556 334.47 297.864C341.068 288.564 375.172 248.097 381.422 242.926C389.471 236.273 398.44 230.739 406.761 224.403C407.944 223.501 409.131 222.604 410.3 221.689C410.341 221.648 410.4 221.616 410.436 221.58C413.106 219.472 415.626 217.233 417.629 214.578C424.862 206.202 426.62 198.797 427.051 195.52C426.072 192.366 423.153 185.314 415.018 177.179C420.117 177.492 426.29 181.525 431.887 186.27C435.644 180.265 439.578 173.92 443.507 167.562C446.131 163.315 442.238 160.138 442.129 160.039L442.107 160.034C442.107 160.034 442.107 160.016 442.102 160.012C442.002 159.903 438.825 156.01 434.588 158.634C425.528 164.24 416.473 169.851 408.42 174.949C408.42 174.949 398.875 174.75 387.572 184.512C384.912 186.52 382.673 189.039 380.57 191.704C380.529 191.745 380.493 191.799 380.461 191.84C379.541 193.005 378.644 194.192 377.747 195.38C371.406 203.705 365.877 212.67 359.224 220.719C354.057 226.973 313.586 261.072 304.286 267.671C301.594 269.584 298.539 270.408 295.113 270.127C289.811 269.701 285.102 266.669 282.083 262.328L274.705 249.656C258.467 223.701 236.305 201.974 210.042 186.243C191.034 174.859 174.12 160.292 160.035 143.188L131.519 108.581C131.519 108.581 120.497 128.35 116.454 146.995C122.078 153.834 136.749 170.807 153.826 183.769C135.466 175.135 121.893 168.459 111.188 162.876C109.538 175.085 110.182 193.549 111.881 207.848C123.47 212.919 143.202 220.732 163.289 224.884C147.222 228.641 129.597 229.325 115.987 229.058C118.385 237.909 121.72 246.937 126.207 256.019C128.115 260.22 130.204 264.322 132.461 268.337C139.663 270.318 167.939 274.437 182.985 271.056C168.016 276.4 142.885 285.378 142.885 285.378C162.187 309.393 183.52 328.931 183.52 328.931C215.969 311.483 223.366 309.099 247.703 293.182C208.292 325.251 198.063 338.344 187 351.8L179.291 362.618C175.285 368.238 171.809 374.207 168.904 380.465C159.183 401.381 145.423 445.949 145.423 445.949C142.967 453.717 148.659 459.41 156.2 456.727C156.2 456.727 200.76 442.967 221.684 433.246C227.939 430.336 233.917 426.86 239.532 422.858L250.35 415.149C253.98 412.163 257.588 409.235 261.549 405.782C261.549 405.782 288.782 438.045 316.776 459.269C316.776 459.269 325.755 434.139 331.098 419.169C327.712 434.22 331.832 462.496 333.817 469.693C337.823 471.95 341.934 474.039 346.135 475.947C355.222 480.438 364.245 483.77 373.097 486.167C372.834 472.553 373.514 454.932 377.271 438.866C381.422 458.952 389.231 478.689 394.307 490.273C408.605 491.973 427.069 492.616 439.279 490.966C433.695 480.262 427.019 466.679 418.386 448.329C431.347 465.406 448.32 480.076 455.159 485.7L455.145 485.687Z"/>
+  </g>
+</svg>`
+});
+
+export const kiroIcon = new LabIcon({
+  name: 'xtralab:agent-kiro',
+  svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" fill="none">
+  <rect width="1200" height="1200" rx="260" fill="#9046FF"/>
+  <mask id="xtralab-kiro-mask" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="272" y="202" width="655" height="796">
+    <path d="M926.578 202.793H272.637V997.857H926.578V202.793Z" fill="white"/>
+  </mask>
+  <g mask="url(#xtralab-kiro-mask)">
+    <path d="M398.554 818.914C316.315 1001.03 491.477 1046.74 620.672 940.156C658.687 1059.66 801.052 970.473 852.234 877.795C964.787 673.567 919.318 465.357 907.64 422.374C827.637 129.443 427.623 128.946 358.8 423.865C342.651 475.544 342.402 534.18 333.458 595.051C328.986 625.86 325.507 645.488 313.83 677.785C306.873 696.424 297.68 712.819 282.773 740.645C259.915 783.881 269.604 867.113 387.87 823.883L399.051 818.914H398.554Z" fill="white"/>
+    <path d="M636.123 549.353C603.328 549.353 598.359 510.097 598.359 486.742C598.359 465.623 602.086 448.977 609.293 438.293C615.504 428.852 624.697 424.131 636.123 424.131C647.555 424.131 657.492 428.852 664.447 438.541C672.398 449.474 676.623 466.12 676.623 486.742C676.623 525.998 661.471 549.353 636.375 549.353H636.123Z" fill="black"/>
+    <path d="M771.24 549.353C738.445 549.353 733.477 510.097 733.477 486.742C733.477 465.623 737.203 448.977 744.41 438.293C750.621 428.852 759.814 424.131 771.24 424.131C782.672 424.131 792.609 428.852 799.564 438.541C807.516 449.474 811.74 466.12 811.74 486.742C811.74 525.998 796.588 549.353 771.492 549.353H771.24Z" fill="black"/>
+  </g>
+</svg>`
+});
+
+export const mistralVibeIcon = new LabIcon({
+  name: 'xtralab:agent-mistral-vibe',
+  svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <g transform="translate(48 71) scale(0.84)">
+    <path d="M54.3221 0H27.1531V27.0892H54.3221V0Z" fill="#FFD800"/>
+    <path d="M162.984 0H135.815V27.0892H162.984V0Z" fill="#FFD800"/>
+    <path d="M81.4823 27.0913H27.1531V54.1805H81.4823V27.0913Z" fill="#FFAF00"/>
+    <path d="M162.99 27.0913H108.661V54.1805H162.99V27.0913Z" fill="#FFAF00"/>
+    <path d="M162.972 54.168H27.1531V81.2572H162.972V54.168Z" fill="#FF8205"/>
+    <path d="M54.3221 81.2593H27.1531V108.349H54.3221V81.2593Z" fill="#FA500F"/>
+    <path d="M108.661 81.2593H81.4917V108.349H108.661V81.2593Z" fill="#FA500F"/>
+    <path d="M162.984 81.2593H135.815V108.349H162.984V81.2593Z" fill="#FA500F"/>
+    <path d="M81.4879 108.339H-0.00146484V135.429H81.4879V108.339Z" fill="#E10500"/>
+    <path d="M190.159 108.339H108.661V135.429H190.159V108.339Z" fill="#E10500"/>
+  </g>
+</svg>`
+});
+
+export const opencodeIcon = new LabIcon({
+  name: 'xtralab:agent-opencode',
+  svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" fill="#131010"/>
+  <path d="M320 224V352H192V224H320Z" fill="#5A5858"/>
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M384 416H128V96H384V416ZM320 160H192V352H320V160Z" fill="white"/>
+</svg>`
+});
+
+/**
+ * Built-in icons keyed by the agent's id, used to resolve the icon for an
+ * agent declared without an inline `iconSvg` override (i.e. one of xtralab's
+ * defaults). Custom agents added via settings can either supply their own
+ * `iconSvg` or fall back to the generic terminal icon.
+ */
+export const BUILTIN_AGENT_ICONS: Record<string, LabIcon> = {
+  claude: claudeIcon,
+  codex: codexIcon,
+  copilot: copilotIcon,
+  gemini: geminiIcon,
+  goose: gooseIcon,
+  kiro: kiroIcon,
+  'mistral-vibe': mistralVibeIcon,
+  opencode: opencodeIcon
+};

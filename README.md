@@ -35,6 +35,54 @@ override versions and Jupyter configuration in the usual ways.
   `jupyterlab-git` server REST API and `@pierre/diffs`. The bundled
   `@jupyterlab/git` frontend is disabled automatically so the two panels do
   not coexist.
+- An agent-focused launcher that replaces the stock JupyterLab launcher.
+  Each card opens a fresh terminal and runs a coding-agent CLI. xtralab
+  ships defaults for Claude, Codex, Gemini, Copilot, Goose, OpenCode, Kiro,
+  and Mistral Vibe; cards are filtered by a `which`-based availability
+  check at activation, so only agents actually installed on the machine
+  show up.
+
+### Customizing the launcher
+
+The launcher reads `xtralab:launcher` settings from the JupyterLab settings
+registry. Open the Settings Editor (`Settings → Settings Editor → xtralab
+launcher`) and edit the `agents` array; xtralab merges your entries with
+the defaults by `id`.
+
+```jsonc
+{
+  "agents": [
+    // Hide an agent you never want to see, even if it's installed:
+    { "id": "kiro", "enabled": false },
+
+    // Override an agent's command — e.g. point Claude at a shell alias.
+    // `requireAvailable: false` keeps the card visible even though
+    // `which cl` returns nothing (interactive shells expand the alias).
+    { "id": "claude", "command": "cl", "requireAvailable": false },
+
+    // Add a brand-new agent. `iconSvg` is optional; without it the card
+    // falls back to a generic terminal icon.
+    {
+      "id": "aider",
+      "label": "Aider",
+      "command": "aider"
+    }
+  ]
+}
+```
+
+Field reference (every field except `id` is optional):
+
+| Field              | Effect                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| `id`               | Built-in id to override, or a new id to define a new card.                                         |
+| `label`            | Card title.                                                                                        |
+| `caption`          | Subtitle shown beneath the title.                                                                  |
+| `command`          | Literal text typed into the new terminal.                                                          |
+| `iconSvg`          | Inline SVG for the card icon (only needed for new agents).                                         |
+| `rank`             | Sort order on the launcher; lower comes first.                                                     |
+| `enabled`          | `false` hides the card from the launcher and palette.                                              |
+| `requireAvailable` | `false` skips the `which` check (use for shell aliases that aren't on PATH but expand at runtime). |
 
 ## Default settings
 
