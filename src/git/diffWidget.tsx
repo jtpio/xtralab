@@ -4,7 +4,12 @@ import { IThemeManager, MainAreaWidget } from '@jupyterlab/apputils';
 import { PathExt } from '@jupyterlab/coreutils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { Contents } from '@jupyterlab/services';
-import { ReactWidget, undoIcon } from '@jupyterlab/ui-components';
+import {
+  ReactWidget,
+  ToolbarButton,
+  launchIcon,
+  undoIcon
+} from '@jupyterlab/ui-components';
 import { ISignal, Signal } from '@lumino/signaling';
 import { FileDiff } from '@pierre/diffs/react';
 import {
@@ -29,6 +34,12 @@ import { GitReference, IFileChange } from './tokens';
  * style the embedded `@pierre/diffs` viewer hang off this class.
  */
 export const DIFF_WIDGET_CSS_CLASS = 'jp-xtralab-DiffWidget';
+
+export const PREVIEW_DIFF_WIDGET_ID = 'xtralab:diff:preview';
+
+export function pinnedDiffWidgetId(change: IFileChange): string {
+  return `xtralab:diff:pinned:${change.group}:${change.path}`;
+}
 
 /**
  * `localStorage` key for the user's last-chosen split ratio. Persisted so
@@ -143,6 +154,10 @@ export function diffWidgetId(change: IFileChange): string {
   return `xtralab:diff:${change.group}:${change.path}`;
 }
 
+function toServerPath(repoPath: string, filePath: string): string {
+  return repoPath.length > 0 ? PathExt.join(repoPath, filePath) : filePath;
+}
+
 /**
  * Resolve the pair of git references whose `content` should appear on the
  * left and right side of the diff for a given file change. Mirrors VS
@@ -190,6 +205,8 @@ export interface IGitDiffWidgetOptions {
    * would just be visual noise.
    */
   onEmpty?: () => void;
+  onPinned?: (widget: MainAreaWidget<DiffContentWidget>) => void;
+  pinned?: boolean;
 }
 
 /**
@@ -216,42 +233,86 @@ export function createGitDiffWidget(
     }
   });
   widget = new MainAreaWidget<DiffContentWidget>({ content });
-  widget.id = diffWidgetId(options.change);
+  widget.id =
+    options.pinned === true
+      ? pinnedDiffWidgetId(options.change)
+      : PREVIEW_DIFF_WIDGET_ID;
   widget.title.label = formatTitle(options.change);
   widget.title.caption = options.change.path;
   widget.title.closable = true;
   widget.title.icon = getTreeIcon(options.change.path);
+  widget.title.className = options.pinned === true ? '' : 'jp-mod-preview';
+  const onPinned = options.onPinned ?? (() => {});
   widget.addClass(DIFF_WIDGET_CSS_CLASS);
   // Wire the notebook view-mode selector into the `MainAreaWidget` toolbar
   // — the proper home for document chrome controls. The toolbar starts
   // hidden and becomes visible once the React content reports a parsed
   // notebook diff via `setHasNotebookView`. Plain text / code diffs never
-  // flip that flag, so their toolbar bar stays collapsed and the
-  // resulting layout matches what other read-only main-area documents
-  // look like in JupyterLab.
+  // flip that flag, and pin state can hide the toolbar again, so the host
+  // chrome tracks the active mode.
+  const pinButton = new ToolbarButton({
+    icon: launchIcon,
+    tooltip: 'Pin tab',
+    onClick: () => content.pin()
+  });
+  if (content.pinned) {
+    pinButton.hide();
+  }
+  widget.toolbar.addItem('pin', pinButton);
   widget.toolbar.addItem(
     'notebook-view-mode',
     new NotebookViewModeToolbarItem(content)
   );
-  widget.toolbar.hide();
-  const onHasNotebookViewChanged = (
-    _sender: DiffContentWidget,
-    value: boolean
-  ): void => {
+  const syncToolbarVisibility = (): void => {
     if (widget === null || widget.isDisposed) {
       return;
     }
-    if (value) {
+    if (!content.pinned || content.hasNotebookView) {
       widget.toolbar.show();
     } else {
       widget.toolbar.hide();
     }
   };
+  const onHasNotebookViewChanged = (): void => {
+    if (widget === null || widget.isDisposed) {
+      return;
+    }
+    syncToolbarVisibility();
+  };
+  const onPinnedChanged = (sender: DiffContentWidget, value: boolean): void => {
+    if (widget === null || widget.isDisposed) {
+      return;
+    }
+    void sender;
+    if (value) {
+      pinButton.hide();
+      // Keep toolbar state and title styling consistent for promoted tabs.
+      onPinned(widget);
+      if (widget.isDisposed) {
+        return;
+      }
+      widget.title.className = '';
+    }
+    syncToolbarVisibility();
+  };
   content.hasNotebookViewChanged.connect(onHasNotebookViewChanged);
+  content.pinnedChanged.connect(onPinnedChanged);
+  syncToolbarVisibility();
   widget.disposed.connect(() => {
     content.hasNotebookViewChanged.disconnect(onHasNotebookViewChanged);
+    content.pinnedChanged.disconnect(onPinnedChanged);
   });
   return widget;
+}
+
+export function updateGitDiffWidget(
+  widget: MainAreaWidget<DiffContentWidget>,
+  change: IFileChange
+): void {
+  widget.content.setChange(change);
+  widget.title.label = formatTitle(change);
+  widget.title.caption = change.path;
+  widget.title.icon = getTreeIcon(change.path);
 }
 
 /**
@@ -270,6 +331,7 @@ export class DiffContentWidget extends ReactWidget {
   constructor(options: IGitDiffWidgetOptions) {
     super();
     this._options = options;
+    this._pinned = options.pinned === true;
     this._notebookViewMode = readStoredNotebookViewMode();
   }
 
@@ -320,6 +382,27 @@ export class DiffContentWidget extends ReactWidget {
     return this._hasNotebookViewChanged;
   }
 
+  get pinned(): boolean {
+    return this._pinned;
+  }
+
+  pin(): void {
+    if (this._pinned) {
+      return;
+    }
+    this._pinned = true;
+    this._pinnedChanged.emit(true);
+  }
+
+  get pinnedChanged(): ISignal<this, boolean> {
+    return this._pinnedChanged;
+  }
+
+  setChange(change: IFileChange): void {
+    this._options = { ...this._options, change };
+    this.update();
+  }
+
   protected render(): React.ReactElement {
     return <DiffViewer {...this._options} widget={this} />;
   }
@@ -331,6 +414,8 @@ export class DiffContentWidget extends ReactWidget {
   );
   private _hasNotebookView = false;
   private _hasNotebookViewChanged = new Signal<this, boolean>(this);
+  private _pinned: boolean;
+  private _pinnedChanged = new Signal<this, boolean>(this);
 }
 
 interface IDiffState {
@@ -505,9 +590,16 @@ function DiffViewer(
 
   React.useEffect(() => {
     let cancelled = false;
+    const serverPath = toServerPath(repoPath, change.path);
+    setState({
+      loading: true,
+      metadata: null,
+      notebookDiff: null,
+      serverPath,
+      isBinary: false,
+      error: null
+    });
     const { oldRef, newRef } = resolveReferences(change);
-    const serverPath =
-      repoPath.length > 0 ? PathExt.join(repoPath, change.path) : change.path;
     void (async () => {
       try {
         if (change.isBinary === true) {
@@ -861,6 +953,10 @@ function NotebookViewModeControl(props: {
       content.notebookViewModeChanged.disconnect(handler);
     };
   }, [content]);
+  if (!content.hasNotebookView) {
+    return <></>;
+  }
+
   return (
     <div
       className="jp-xtralab-DiffWidget-segmented"

@@ -38,13 +38,16 @@ dependencies = [
     "ajlab>=0.1.5",
     "jupyterlab>=4.6.0a5",
     "jupyterlab-cursor-light>=1.0.2",
-    "jupyterlab-cursor-theme>=1.0.1",
+    "jupyterlab-cursor-dark>=1.0.2",
     "jupyterlab-day>=0.2.0",
     "jupyterlab-git>=0.53.0,<1",
     "jupyterlab-night>=0.5.2",
     "jupyterlab-quickopen>=2.1.0",
 ]
 dynamic = ["version", "description", "urls"]
+
+[project.scripts]
+xtralab = "xtralab.app:main"
 
 [tool.hatch.version]
 source = "nodejs"
@@ -59,6 +62,7 @@ packages = ["xtralab"]
 "xtralab/labextension" = "share/jupyter/labextensions/xtralab"
 "install.json" = "share/jupyter/labextensions/xtralab/install.json"
 "jupyter-config/labconfig" = "etc/jupyter/labconfig"
+"jupyter-config/jupyter_server_config.d" = "etc/jupyter/jupyter_server_config.d"
 
 [tool.hatch.build.targets.sdist]
 artifacts = ["xtralab/labextension"]

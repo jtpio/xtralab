@@ -290,6 +290,10 @@
   color: var(--jp-ui-font-color1);
 }
 
+.lm-TabBar-tab.jp-mod-preview .lm-TabBar-tabLabel {
+  font-style: italic;
+}
+
 /*
  * Flex-column container: an optional toolbar at the top (notebook view
  * mode toggle) plus a body that hosts the scrollable diff and the

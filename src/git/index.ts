@@ -16,7 +16,11 @@ import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 
 import { CommandArguments, CommandIDs, registerGitCommands } from './commands';
-import { DiffContentWidget, diffWidgetId } from './diffWidget';
+import {
+  DiffContentWidget,
+  PREVIEW_DIFF_WIDGET_ID,
+  pinnedDiffWidgetId
+} from './diffWidget';
 import type { MainAreaWidget } from '@jupyterlab/apputils';
 import { GitPanel } from './panel';
 import { IFileChange } from './tokens';
@@ -62,15 +66,22 @@ const plugin: JupyterFrontEndPlugin<void> = {
     });
 
     const findDiff = (
-      change: IFileChange
+      change: IFileChange,
+      pin = false
     ): MainAreaWidget<DiffContentWidget> | undefined => {
-      const id = diffWidgetId(change);
-      return tracker.find(widget => widget.id === id) ?? undefined;
+      const id = pin ? pinnedDiffWidgetId(change) : PREVIEW_DIFF_WIDGET_ID;
+      const existing = tracker.find(
+        widget => !widget.isDisposed && widget.id === id
+      );
+      return existing ?? undefined;
     };
 
     const panel = new GitPanel({
-      openDiff: change => {
+      openDiff: (change, options) => {
         const args: CommandArguments.IOpenDiff = { repoPath, change };
+        if (options?.pin === true) {
+          args.pin = true;
+        }
         void app.commands.execute(
           CommandIDs.openDiff,
           args as unknown as ReadonlyPartialJSONObject
@@ -101,6 +112,21 @@ const plugin: JupyterFrontEndPlugin<void> = {
       rendermime,
       onChanged: () => panel.refresh(),
       trackDiff: widget => tracker.add(widget),
+      onPinned: current => {
+        const existing = findDiff(current.content.change, true);
+        if (
+          existing !== undefined &&
+          existing !== current &&
+          !existing.isDisposed
+        ) {
+          app.shell.activateById(existing.id);
+          current.close();
+          return;
+        }
+        current.id = pinnedDiffWidgetId(current.content.change);
+        current.title.className = '';
+        app.shell.activateById(current.id);
+      },
       findDiff
     });
   }

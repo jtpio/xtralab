@@ -5,7 +5,11 @@ import { Contents } from '@jupyterlab/services';
 import { refreshIcon } from '@jupyterlab/ui-components';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 
-import { createGitDiffWidget, diffWidgetId } from './diffWidget';
+import {
+  createGitDiffWidget,
+  diffWidgetId,
+  updateGitDiffWidget
+} from './diffWidget';
 import { GitPanel } from './panel';
 import { IFileChange } from './tokens';
 
@@ -29,6 +33,7 @@ export namespace CommandArguments {
   export interface IOpenDiff {
     repoPath: string;
     change: IFileChange;
+    pin?: boolean;
   }
 }
 
@@ -65,8 +70,10 @@ export interface IRegisterGitCommandsOptions {
    * `undefined` when none is open.
    */
   findDiff(
-    change: IFileChange
+    change: IFileChange,
+    pin?: boolean
   ): ReturnType<typeof createGitDiffWidget> | undefined;
+  onPinned(widget: ReturnType<typeof createGitDiffWidget>): void;
 }
 
 /**
@@ -86,7 +93,8 @@ export function registerGitCommands(
     rendermime,
     onChanged,
     trackDiff,
-    findDiff
+    findDiff,
+    onPinned
   } = options;
   const { commands } = app;
 
@@ -107,8 +115,12 @@ export function registerGitCommands(
       if (typed?.change === undefined) {
         return;
       }
-      const existing = findDiff(typed.change);
+      const pin = typed.pin === true;
+      const existing = findDiff(typed.change, pin);
       if (existing !== undefined && !existing.isDisposed) {
+        if (!pin) {
+          updateGitDiffWidget(existing, typed.change);
+        }
         app.shell.activateById(existing.id);
         return;
       }
@@ -118,7 +130,9 @@ export function registerGitCommands(
         themeManager,
         contentsManager,
         rendermime,
-        onChanged
+        onChanged,
+        pinned: pin,
+        onPinned
       });
       await trackDiff(widget);
       app.shell.add(widget, 'main', { mode: 'tab-after' });
