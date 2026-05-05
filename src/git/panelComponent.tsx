@@ -21,7 +21,12 @@ import { FileChangeStatus, IFileChange, IGitStatusResult } from './tokens';
  */
 export interface IGitPanelHandlers {
   /** Open a diff viewer for the given file in the main area. */
-  openDiff(change: IFileChange): void;
+  openDiff(
+    change: IFileChange,
+    options?: {
+      pin?: boolean;
+    }
+  ): void;
   /** Show a confirmation dialog. Returns true when the user accepted. */
   confirm(title: string, body: string, accept: string): Promise<boolean>;
   /** Show an error dialog. */
@@ -281,7 +286,11 @@ export function GitPanelComponent(props: {
                 key={`${change.group}:${change.path}`}
                 change={change}
                 pendingAction={pendingActions[`${change.group}:${change.path}`]}
-                onClick={() => handlers.openDiff(change)}
+                onClick={event =>
+                  handlers.openDiff(change, {
+                    pin: event.ctrlKey || event.metaKey
+                  })
+                }
                 actions={[
                   {
                     label: 'Unstage changes',
@@ -314,7 +323,11 @@ export function GitPanelComponent(props: {
                 key={`${change.group}:${change.path}`}
                 change={change}
                 pendingAction={pendingActions[`${change.group}:${change.path}`]}
-                onClick={() => handlers.openDiff(change)}
+                onClick={event =>
+                  handlers.openDiff(change, {
+                    pin: event.ctrlKey || event.metaKey
+                  })
+                }
                 actions={[
                   {
                     label: 'Discard changes',
@@ -442,7 +455,7 @@ function ChangeSection(props: {
 function ChangeRow(props: {
   change: IFileChange;
   pendingAction: string | undefined;
-  onClick: () => void;
+  onClick: (event: React.MouseEvent<HTMLDivElement>) => void;
   actions: IRowAction[];
 }): React.ReactElement {
   const { change, pendingAction, onClick, actions } = props;
