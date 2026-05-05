@@ -4,35 +4,32 @@ import {
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
 import { ICommandPalette, MainAreaWidget } from '@jupyterlab/apputils';
-import { Launcher, LauncherModel } from '@jupyterlab/launcher';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { launcherIcon } from '@jupyterlab/ui-components';
 import { find } from '@lumino/algorithm';
 import type { ReadonlyPartialJSONObject } from '@lumino/coreutils';
-import { DisposableSet, type IDisposable } from '@lumino/disposable';
+import type { IDisposable } from '@lumino/disposable';
 import type { Widget } from '@lumino/widgets';
 
 import { mergeAgents, type IAgent, type IAgentSettings } from './agents';
 import { fetchAvailableCommands } from './availability';
-import {
-  CREATE_LAUNCHER_COMMAND,
-  agentCommandId,
-  registerAgentCommands
-} from './commands';
+import { CREATE_LAUNCHER_COMMAND, registerAgentCommands } from './commands';
+import { LauncherDashboard } from './dashboard';
 
 const PLUGIN_ID = 'xtralab:launcher';
-
-const AGENT_CATEGORY = 'Agents';
 
 /**
  * The xtralab launcher plugin. Replaces the stock JupyterLab launcher
  * (which is disabled via `package.json`'s `jupyterlab.disabledExtensions`)
- * with a pared-down launcher whose only cards are CLI agents (Claude,
- * Codex, Gemini, …). Clicking a card opens a fresh terminal in the main
- * area and pipes the agent's shell command into it.
+ * with an agent-focused dashboard: an optional initial prompt, a row of
+ * agent buttons (Claude, Codex, Gemini, …), and a collapsible list of
+ * changed files (clickable into the diff viewer) below them. Clicking an
+ * agent opens a fresh terminal and pipes the agent's command into it; if
+ * the prompt textarea is non-empty, the prompt is shell-quoted and
+ * spliced into the launch line per the agent's `promptArgs` recipe.
  *
- * The card list is the merge of xtralab's defaults with the user's
+ * The agent list is the merge of xtralab's defaults with the user's
  * `xtralab:launcher` settings, then filtered by a server-side `which`
  * check so users only see agents that are actually installed. Agents with
  * `requireAvailable: false` (e.g. shell aliases) skip the filter.
@@ -58,13 +55,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const { commands, shell } = app;
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
-    // Single shared launcher model so re-opening the launcher tab is cheap
-    // and items added later show up in every existing launcher view.
-    const model = new LauncherModel();
+    // The currently active agent list. Updated whenever settings change so
+    // every freshly-created launcher widget renders the latest list.
+    let currentAgents: IAgent[] = [];
 
-    // Track everything we register from `applyAgents` so a settings change
-    // can wipe the slate clean before reapplying — without this the
-    // command palette and launcher model would accumulate stale entries.
+    // Track command registrations so a settings change can wipe them
+    // before re-registering — without this the command palette would
+    // accumulate stale entries when the agent list shrinks.
     let registered: IDisposable | null = null;
 
     const applyAgents = async (overrides: IAgentSettings[]): Promise<void> => {
@@ -72,20 +69,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
       const filtered = await filterByAvailability(agents);
 
       registered?.dispose();
-
-      const disposables = new DisposableSet();
-      disposables.add(registerAgentCommands(app, filtered));
-      for (const agent of filtered) {
-        disposables.add(
-          model.add({
-            command: agentCommandId(agent.id),
-            category: AGENT_CATEGORY,
-            rank: agent.rank,
-            categoryRank: 0
-          })
-        );
-      }
-      registered = disposables;
+      registered = registerAgentCommands(app, filtered);
+      currentAgents = filtered;
     };
 
     const readOverrides = (
@@ -123,21 +108,26 @@ const plugin: JupyterFrontEndPlugin<void> = {
       label: trans.__('New Launcher'),
       execute: (args: ReadonlyPartialJSONObject) => {
         const id = Private.nextId();
-        const callback = (item: Widget): void => {
+        const onAgentLaunch = (item: Widget): void => {
           // When an agent command returns a Widget that ends up in the main
           // area, slot it where this launcher used to sit so opening an
           // agent feels like the launcher transformed into the terminal.
+          // Disposing the inner ReactWidget cascades to the MainAreaWidget
+          // host via its `content.disposed` connection.
           if (find(shell.widgets('main'), w => w === item)) {
             shell.add(item, 'main', { ref: id });
             launcher.dispose();
           }
         };
-        const launcher = new Launcher({
-          model,
-          cwd: '',
-          callback,
+        const launcher = new LauncherDashboard({
           commands,
-          translator: translator ?? nullTranslator
+          agents: currentAgents,
+          onAgentLaunch,
+          // Empty repoPath/cwd matches the JupyterLab convention used by
+          // the git panel and the stock launcher: let the server resolve
+          // the working tree from its root directory.
+          repoPath: '',
+          cwd: ''
         });
         launcher.title.icon = launcherIcon;
         launcher.title.label = trans.__('Launcher');

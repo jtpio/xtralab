@@ -378,7 +378,6 @@ function PanelHeader(props: {
   return (
     <div className="jp-xtralab-GitPanel-header">
       <div className="jp-xtralab-GitPanel-headerInfo">
-        <div className="jp-xtralab-GitPanel-title">Source Control</div>
         {repoName !== null ? (
           <div className="jp-xtralab-GitPanel-repo" title={topLevel ?? ''}>
             {repoName}

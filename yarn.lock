@@ -416,6 +416,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@jupyterlab/mainmenu@npm:^4.6.0-alpha.5":
+  version: 4.6.0-alpha.5
+  resolution: "@jupyterlab/mainmenu@npm:4.6.0-alpha.5"
+  dependencies:
+    "@jupyterlab/apputils": ^4.7.0-alpha.5
+    "@jupyterlab/translation": ^4.6.0-alpha.5
+    "@jupyterlab/ui-components": ^4.6.0-alpha.5
+    "@lumino/algorithm": ^2.0.4
+    "@lumino/commands": ^2.3.3
+    "@lumino/coreutils": ^2.2.2
+    "@lumino/widgets": ^2.7.5
+  checksum: 491fa585f641cd19162adac7afb1472a0f989a0da143d8fce542522c949c07db732496687acbf8c5b0dd47cc98131897ba2f661025e5bc66da5661f2de48ea3a
+  languageName: node
+  linkType: hard
+
 "@jupyterlab/nbformat@npm:^3.0.0 || ^4.0.0-alpha.21 || ^4.0.0":
   version: 4.5.7
   resolution: "@jupyterlab/nbformat@npm:4.5.7"
@@ -4897,11 +4912,13 @@ __metadata:
     "@jupyterlab/docmanager": ^4.6.0-alpha.5
     "@jupyterlab/docregistry": ^4.6.0-alpha.5
     "@jupyterlab/launcher": ^4.6.0-alpha.5
+    "@jupyterlab/mainmenu": ^4.6.0-alpha.5
     "@jupyterlab/nbformat": ^4.6.0-alpha.5
     "@jupyterlab/outputarea": ^4.6.0-alpha.5
     "@jupyterlab/rendermime": ^4.6.0-alpha.5
     "@jupyterlab/services": ^7.6.0-alpha.5
     "@jupyterlab/settingregistry": ^4.6.0-alpha.5
+    "@jupyterlab/statusbar": ^4.6.0-alpha.5
     "@jupyterlab/terminal": ^4.6.0-alpha.5
     "@jupyterlab/translation": ^4.6.0-alpha.5
     "@jupyterlab/ui-components": ^4.6.0-alpha.5

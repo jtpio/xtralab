@@ -3,6 +3,9 @@ import { JupyterFrontEndPlugin } from '@jupyterlab/application';
 import fileBrowserPlugin from './fileBrowser';
 import gitPlugin from './git';
 import launcherPlugin from './launcher';
+import menusPlugin from './menus';
+import sidebarPlugin from './sidebar';
+import statusBarPlugin from './statusBar';
 
 /**
  * Every plugin contributed by `xtralab`. The entry point of the
@@ -14,7 +17,10 @@ import launcherPlugin from './launcher';
 const plugins: JupyterFrontEndPlugin<unknown>[] = [
   fileBrowserPlugin,
   gitPlugin,
-  launcherPlugin
+  launcherPlugin,
+  menusPlugin,
+  sidebarPlugin,
+  statusBarPlugin
 ];
 
 export default plugins;

@@ -21,6 +21,23 @@ export interface IAgent {
    * but still resolve when typed in a real terminal. Defaults to true.
    */
   requireAvailable: boolean;
+  /**
+   * Argv tokens spliced between `command` and a shell-quoted prompt when
+   * the user types one into the launcher's prompt box. The semantics:
+   *
+   *   - `[]` → prompt is appended as a positional argument:
+   *     `<command> 'PROMPT'`. (Used by claude, codex, gemini, vibe.)
+   *   - `['-i']` / `['--prompt']` → the prompt is preceded by a flag:
+   *     `<command> -i 'PROMPT'`. (Used by copilot, opencode.)
+   *   - `undefined` → the agent does not accept an initial prompt. The
+   *     launcher dims the agent's button while the prompt textarea is
+   *     non-empty, so the user gets a clear signal rather than a silently
+   *     dropped prompt.
+   *
+   * The prompt itself is always single-quoted with embedded single quotes
+   * escaped, so multi-line prompts and shell metacharacters are safe.
+   */
+  promptArgs?: string[];
 }
 
 /**
@@ -48,6 +65,13 @@ export interface IAgentSettings {
   enabled?: boolean;
   /** See `IAgent.requireAvailable`. */
   requireAvailable?: boolean;
+  /**
+   * See `IAgent.promptArgs`. Pass an empty array to mark the agent as
+   * accepting a positional prompt; pass an array like `["-p"]` to use a
+   * flag. Pass `null` to explicitly turn off prompt support for an agent
+   * that has it on by default.
+   */
+  promptArgs?: string[] | null;
 }
 
 /**
@@ -66,7 +90,8 @@ const DEFAULTS: IAgent[] = [
     command: 'claude',
     icon: BUILTIN_AGENT_ICONS.claude,
     rank: 0,
-    requireAvailable: true
+    requireAvailable: true,
+    promptArgs: []
   },
   {
     id: 'codex',
@@ -75,7 +100,8 @@ const DEFAULTS: IAgent[] = [
     command: 'codex',
     icon: BUILTIN_AGENT_ICONS.codex,
     rank: 1,
-    requireAvailable: true
+    requireAvailable: true,
+    promptArgs: []
   },
   {
     id: 'gemini',
@@ -84,7 +110,8 @@ const DEFAULTS: IAgent[] = [
     command: 'gemini',
     icon: BUILTIN_AGENT_ICONS.gemini,
     rank: 2,
-    requireAvailable: true
+    requireAvailable: true,
+    promptArgs: []
   },
   {
     id: 'copilot',
@@ -93,7 +120,10 @@ const DEFAULTS: IAgent[] = [
     command: 'copilot',
     icon: BUILTIN_AGENT_ICONS.copilot,
     rank: 3,
-    requireAvailable: true
+    requireAvailable: true,
+    // `-i "PROMPT"` is the documented way to start interactive mode and
+    // auto-execute the prompt; `-p` exits after responding (non-interactive).
+    promptArgs: ['-i']
   },
   {
     id: 'goose',
@@ -103,6 +133,8 @@ const DEFAULTS: IAgent[] = [
     icon: BUILTIN_AGENT_ICONS.goose,
     rank: 4,
     requireAvailable: true
+    // `goose` does not accept an inline interactive prompt; users would
+    // need to type the prompt after `goose session` starts.
   },
   {
     id: 'opencode',
@@ -111,7 +143,8 @@ const DEFAULTS: IAgent[] = [
     command: 'opencode',
     icon: BUILTIN_AGENT_ICONS.opencode,
     rank: 5,
-    requireAvailable: true
+    requireAvailable: true,
+    promptArgs: ['--prompt']
   },
   {
     id: 'kiro',
@@ -121,6 +154,8 @@ const DEFAULTS: IAgent[] = [
     icon: BUILTIN_AGENT_ICONS.kiro,
     rank: 6,
     requireAvailable: true
+    // The Kiro chat session only takes initial prompts via the in-session
+    // `/chat new <prompt>` slash command, not a CLI argument.
   },
   {
     id: 'mistral-vibe',
@@ -129,7 +164,8 @@ const DEFAULTS: IAgent[] = [
     command: 'vibe',
     icon: BUILTIN_AGENT_ICONS['mistral-vibe'],
     rank: 7,
-    requireAvailable: true
+    requireAvailable: true,
+    promptArgs: []
   }
 ];
 
@@ -169,7 +205,14 @@ export function mergeAgents(overrides: IAgentSettings[]): IAgent[] {
         ? resolveIcon(base.id, override.iconSvg)
         : base.icon,
       rank: override.rank ?? base.rank,
-      requireAvailable: override.requireAvailable ?? base.requireAvailable
+      requireAvailable: override.requireAvailable ?? base.requireAvailable,
+      // `null` is the explicit way to opt out of an agent's default prompt
+      // support; an absent key keeps the default. `undefined` from `??` is
+      // pruned below.
+      promptArgs:
+        override.promptArgs === null
+          ? undefined
+          : (override.promptArgs ?? base.promptArgs)
     });
   }
 
@@ -192,7 +235,11 @@ export function mergeAgents(overrides: IAgentSettings[]): IAgent[] {
       command,
       icon: resolveIcon(entry.id, entry.iconSvg),
       rank: entry.rank ?? nextRank++,
-      requireAvailable: entry.requireAvailable ?? true
+      requireAvailable: entry.requireAvailable ?? true,
+      promptArgs:
+        entry.promptArgs === null || entry.promptArgs === undefined
+          ? undefined
+          : entry.promptArgs
     });
   }
 

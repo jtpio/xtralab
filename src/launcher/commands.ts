@@ -4,6 +4,7 @@ import type { ITerminal } from '@jupyterlab/terminal';
 import { DisposableSet, type IDisposable } from '@lumino/disposable';
 
 import type { IAgent } from './agents';
+import { buildAgentInvocation } from './invocation';
 
 /**
  * The command id for opening the launcher.
@@ -39,6 +40,9 @@ export function registerAgentCommands(
       icon: agent.icon,
       execute: async args => {
         const cwd = args['cwd'] as string | undefined;
+        const promptArg = args['prompt'];
+        const prompt = typeof promptArg === 'string' ? promptArg : '';
+        const invocation = buildAgentInvocation(agent, prompt);
         const main = (await app.commands.execute('terminal:create-new', {
           cwd
         })) as MainAreaWidget<ITerminal.ITerminal>;
@@ -52,8 +56,25 @@ export function registerAgentCommands(
         const sendCommand = (): void => {
           session.send({
             type: 'stdin',
-            content: [agent.command + '\r']
+            content: [invocation + '\r']
           });
+          // Give the tab and the status-bar list a meaningful default
+          // label. The XTerm widget's `_initialConnection` listener
+          // overwrites the title with `Terminal {N}` when the WebSocket
+          // first reports `connected`; we connect *after* that listener
+          // (and call `applyAgentLabel` after `sendCommand`), so by the
+          // time we run the upstream listener has already had its turn.
+          // Programs that publish a real xterm title escape sequence
+          // still win — `XTerm.onTitleChange` resets the label whenever
+          // it fires.
+          applyAgentLabel();
+        };
+
+        const applyAgentLabel = (): void => {
+          if (main.isDisposed || main.content.isDisposed) {
+            return;
+          }
+          main.content.title.label = agent.label;
         };
 
         // Match how the Terminal widget itself sends its `initialCommand`:

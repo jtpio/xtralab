@@ -1,0 +1,57 @@
+{
+  "title": "xtralab sidebar",
+  "description": "Visibility of selected JupyterLab sidebar tabs.",
+  "jupyter.lab.shortcuts": [],
+  "jupyter.lab.menus": {
+    "main": [
+      {
+        "id": "jp-mainmenu-view",
+        "items": [
+          {
+            "type": "submenu",
+            "rank": 1,
+            "submenu": {
+              "id": "jp-mainmenu-view-appearance",
+              "items": [
+                {
+                  "type": "submenu",
+                  "rank": 12.5,
+                  "submenu": {
+                    "id": "jp-mainmenu-view-appearance-left-sidebar",
+                    "label": "Left Sidebar",
+                    "items": [
+                      {
+                        "command": "xtralab:toggle-default-filebrowser",
+                        "rank": 1
+                      },
+                      {
+                        "command": "xtralab:toggle-running-sessions",
+                        "rank": 2
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "type": "object",
+  "properties": {
+    "showDefaultFileBrowser": {
+      "type": "boolean",
+      "title": "Show the default JupyterLab file browser",
+      "description": "When false, hides the default `filebrowser` tab from the left sidebar. The xtralab file browser is unaffected.",
+      "default": true
+    },
+    "showRunningSessions": {
+      "type": "boolean",
+      "title": "Show running terminals and kernels",
+      "description": "When false, hides the `jp-running-sessions` (Running Terminals and Kernels) tab from the left sidebar.",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}
