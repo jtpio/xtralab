@@ -149,7 +149,7 @@ namespace Private {
   /**
    * Incrementing id used to generate unique launcher widget ids.
    */
-  export let id = 0;
+  export const id = 0;
 }
 
 export default plugin;

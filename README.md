@@ -46,6 +46,10 @@ override versions and Jupyter configuration in the usual ways.
   they do not show up in the right sidebar by default.
 - `dockPanelPadding` is off, so the main dock area is flush with the
   surrounding chrome.
+- The terminal `fontFamily` defaults to `MesloLGS NF, ui-monospace, monospace`
+  so Powerline / Nerd Font glyphs (used by Oh My Zsh themes such as
+  `powerlevel10k`) render correctly when the font is installed; the
+  `ui-monospace, monospace` fallback keeps things readable when it is not.
 
 The JupyterLab frontend defaults are shipped as `labconfig/*.d/00-xtralab.json`
 fragments so downstream meta-packages can add their own Lab configuration

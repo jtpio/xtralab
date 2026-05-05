@@ -1,5 +1,8 @@
 {
-    "@jupyterlab/application-extension:shell": {
-        "dockPanelPadding": false
-    }
+  "@jupyterlab/application-extension:shell": {
+    "dockPanelPadding": false
+  },
+  "@jupyterlab/terminal-extension:plugin": {
+    "fontFamily": "MesloLGS NF, ui-monospace, monospace"
+  }
 }
