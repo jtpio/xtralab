@@ -2,6 +2,7 @@ import { JupyterFrontEndPlugin } from '@jupyterlab/application';
 
 import fileBrowserPlugin from './fileBrowser';
 import gitPlugin from './git';
+import launcherPlugin from './launcher';
 
 /**
  * Every plugin contributed by `xtralab`. The entry point of the
@@ -12,7 +13,8 @@ import gitPlugin from './git';
  */
 const plugins: JupyterFrontEndPlugin<unknown>[] = [
   fileBrowserPlugin,
-  gitPlugin
+  gitPlugin,
+  launcherPlugin
 ];
 
 export default plugins;
