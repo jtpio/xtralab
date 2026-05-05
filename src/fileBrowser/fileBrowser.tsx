@@ -12,7 +12,10 @@ import type {
   FileTreeDirectoryHandle
 } from '@pierre/trees';
 
+import type { Ignore } from 'ignore';
+
 import { ROOT_LOAD_KEY, listDirectory, toServerPath } from './contents';
+import { buildIgnoredEntries, loadGitignoreMatcher } from './gitignore';
 import { FILE_BROWSER_ICONS } from './icons';
 import type { XtralabFileBrowser } from './widget';
 
@@ -81,7 +84,50 @@ export function FileBrowserComponent(
 
   React.useEffect(() => {
     const knownDirs = new Map<string, LoadState>();
+    // Mirror of the canonical paths currently loaded into the tree. Kept in
+    // sync with `model.resetPaths`/`model.batch`/`model.add` so we can
+    // re-test every loaded path against the gitignore matcher whenever
+    // either side changes — the model itself does not expose a
+    // path-iteration API.
+    const loadedPaths = new Set<string>();
+    let gitignoreMatcher: Ignore | null = null;
     let cancelled = false;
+
+    /**
+     * Recompute the `ignored` git status entries from the current
+     * gitignore matcher and the set of loaded paths, and push them into
+     * the tree. Safe to call at any time: when the matcher is `null`
+     * (no `.gitignore` or it failed to load) we send an empty list, which
+     * also clears any statuses that may have been applied previously.
+     */
+    const syncGitStatus = (): void => {
+      if (gitignoreMatcher === null) {
+        model.setGitStatus([]);
+        return;
+      }
+      const entries = buildIgnoredEntries(gitignoreMatcher, loadedPaths);
+      model.setGitStatus(entries);
+    };
+
+    /**
+     * Reload the workspace `.gitignore`, then re-apply the resulting
+     * ignored statuses. Called on initial mount and whenever the user
+     * triggers a refresh — the file may have been edited or created in
+     * between.
+     */
+    const refreshGitignoreMatcher = async (): Promise<void> => {
+      let next: Ignore | null = null;
+      try {
+        next = await loadGitignoreMatcher(contentsManager);
+      } catch (err) {
+        console.error('xtralab: failed to load .gitignore', err);
+      }
+      if (cancelled) {
+        return;
+      }
+      gitignoreMatcher = next;
+      syncGitStatus();
+    };
 
     const fetchDirectory = async (canonicalPath: string): Promise<void> => {
       const current = knownDirs.get(canonicalPath);
@@ -100,6 +146,10 @@ export function FileBrowserComponent(
         }
         if (canonicalPath === ROOT_LOAD_KEY) {
           model.resetPaths(paths);
+          loadedPaths.clear();
+          for (const path of paths) {
+            loadedPaths.add(path);
+          }
         } else {
           // Filter out paths already in the model. The path-store throws
           // when an explicit directory is added a second time, so any
@@ -111,6 +161,14 @@ export function FileBrowserComponent(
           if (operations.length > 0) {
             model.batch(operations);
           }
+          // Mirror every directory child into `loadedPaths` regardless of
+          // whether it was just added or skipped above — paths skipped by
+          // the filter are already in the model from a prior add and so
+          // belong in the mirror too. `Set.add` is idempotent, so the
+          // duplicate adds are a no-op.
+          for (const path of paths) {
+            loadedPaths.add(path);
+          }
         }
         for (const subdir of subdirectories) {
           if (!knownDirs.has(subdir)) {
@@ -118,6 +176,7 @@ export function FileBrowserComponent(
           }
         }
         knownDirs.set(canonicalPath, 'loaded');
+        syncGitStatus();
       } catch (err) {
         console.error(
           `xtralab: failed to load directory "${canonicalPath}"`,
@@ -216,6 +275,10 @@ export function FileBrowserComponent(
       // Reset the tree contents and restore the load-state map so future
       // expansions know which directories still need fetching.
       model.resetPaths(allPaths);
+      loadedPaths.clear();
+      for (const path of allPaths) {
+        loadedPaths.add(path);
+      }
       knownDirs.set(ROOT_LOAD_KEY, 'loaded');
       subdirsByParent.forEach(subdirs => {
         for (const subdir of subdirs) {
@@ -225,6 +288,13 @@ export function FileBrowserComponent(
           );
         }
       });
+
+      // Refresh the `.gitignore` matcher in case the file was edited
+      // since the last load, then re-apply the resulting statuses to the
+      // newly-loaded paths. The reload runs in parallel with the rest of
+      // the refresh — `refreshGitignoreMatcher` calls `syncGitStatus`
+      // itself when it completes.
+      void refreshGitignoreMatcher();
 
       // Re-expand the directories that were expanded before the refresh.
       // We have to do this after `resetPaths` because the reset starts
@@ -251,12 +321,14 @@ export function FileBrowserComponent(
           return;
         }
       }
+      loadedPaths.add(canonicalPath);
       if (canonicalPath.endsWith('/') && !knownDirs.has(canonicalPath)) {
         // The new directory has no children yet, so mark it as already
         // loaded — there's nothing to fetch and we don't want a stale
         // "unloaded" entry to trigger a fetch on the next expand.
         knownDirs.set(canonicalPath, 'loaded');
       }
+      syncGitStatus();
       const parent = parentOf(canonicalPath);
       if (parent === ROOT_LOAD_KEY) {
         return;
@@ -273,6 +345,7 @@ export function FileBrowserComponent(
 
     knownDirs.set(ROOT_LOAD_KEY, 'unloaded');
     void fetchDirectory(ROOT_LOAD_KEY);
+    void refreshGitignoreMatcher();
 
     const unsubscribe = model.subscribe(() => {
       knownDirs.forEach((state, canonicalPath) => {
