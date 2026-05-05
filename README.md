@@ -23,8 +23,11 @@ Or launch as a desktop app — opens in a dedicated Chrome window with an
 isolated profile, on a local server that shuts down when the window closes:
 
 ```bash
-uvx xtralab
+uvx --prerelease=allow xtralab
 ```
+
+The `--prerelease=allow` flag is needed while `xtralab` depends on a
+pre-release of JupyterLab 4.6; it can be dropped once 4.6 ships stable.
 
 Or, after `pip install xtralab` into an environment:
 
