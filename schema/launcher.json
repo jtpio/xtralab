@@ -56,6 +56,12 @@
             "description": "When false, the launcher skips the availability check for this entry (useful for shell aliases that aren't on PATH but resolve in an interactive shell).",
             "type": "boolean",
             "default": true
+          },
+          "promptArgs": {
+            "title": "Prompt arguments",
+            "description": "How to splice an initial prompt from the launcher textarea into the agent's command line. Empty array (`[]`) appends the prompt as a positional argument. An array like `[\"-i\"]` or `[\"--prompt\"]` prefixes the prompt with that flag. Set to `null` to opt out of prompt support entirely (the agent's button is dimmed when the prompt textarea is non-empty).",
+            "type": ["array", "null"],
+            "items": { "type": "string" }
           }
         }
       }

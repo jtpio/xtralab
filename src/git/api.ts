@@ -146,6 +146,26 @@ export async function checkout(
 }
 
 /**
+ * Expand the porcelain `files` array into one entry per logical change.
+ * A single porcelain row may map to two `IFileChange` rows (a file that's
+ * both staged and modified again in the worktree); callers that just want
+ * a flat list of all changes — without any staged-vs-unstaged grouping —
+ * can use this helper.
+ *
+ * Provided as a manual concat rather than `Array.prototype.flatMap` so we
+ * don't pin our `tsconfig.lib` to ES2019.
+ */
+export function expandStatusFiles(files: IGitStatusFile[]): IFileChange[] {
+  const result: IFileChange[] = [];
+  for (const file of files) {
+    for (const change of porcelainToFileChanges(file)) {
+      result.push(change);
+    }
+  }
+  return result;
+}
+
+/**
  * Translate one entry in the porcelain `files` array into the panel's
  * preferred shape. A single porcelain entry may represent up to two changes
  * (one in the index, one in the worktree); we emit one {@link IFileChange}

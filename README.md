@@ -36,11 +36,15 @@ override versions and Jupyter configuration in the usual ways.
   `@jupyterlab/git` frontend is disabled automatically so the two panels do
   not coexist.
 - An agent-focused launcher that replaces the stock JupyterLab launcher.
-  Each card opens a fresh terminal and runs a coding-agent CLI. xtralab
-  ships defaults for Claude, Codex, Gemini, Copilot, Goose, OpenCode, Kiro,
-  and Mistral Vibe; cards are filtered by a `which`-based availability
-  check at activation, so only agents actually installed on the machine
-  show up.
+  The launcher tab shows an optional initial-prompt textarea, a row of
+  agent buttons (Claude, Codex, Gemini, Copilot, Goose, OpenCode, Kiro,
+  and Mistral Vibe), and a collapsible list of changed files (each
+  clickable into the diff viewer) below them. Clicking an agent opens a
+  fresh terminal and runs the agent's CLI; if the prompt textarea is
+  non-empty, the prompt is shell-quoted and spliced into the launch line
+  for agents that accept one. Agents are filtered by a `which`-based
+  availability check at activation, so only the ones actually installed
+  on the machine show up.
 
 ### Customizing the launcher
 
@@ -61,11 +65,13 @@ the defaults by `id`.
     { "id": "claude", "command": "cl", "requireAvailable": false },
 
     // Add a brand-new agent. `iconSvg` is optional; without it the card
-    // falls back to a generic terminal icon.
+    // falls back to a generic terminal icon. `promptArgs: []` means the
+    // launcher's prompt textarea is appended as a positional argument.
     {
       "id": "aider",
       "label": "Aider",
-      "command": "aider"
+      "command": "aider",
+      "promptArgs": []
     }
   ]
 }
@@ -73,16 +79,17 @@ the defaults by `id`.
 
 Field reference (every field except `id` is optional):
 
-| Field              | Effect                                                                                             |
-| ------------------ | -------------------------------------------------------------------------------------------------- |
-| `id`               | Built-in id to override, or a new id to define a new card.                                         |
-| `label`            | Card title.                                                                                        |
-| `caption`          | Subtitle shown beneath the title.                                                                  |
-| `command`          | Literal text typed into the new terminal.                                                          |
-| `iconSvg`          | Inline SVG for the card icon (only needed for new agents).                                         |
-| `rank`             | Sort order on the launcher; lower comes first.                                                     |
-| `enabled`          | `false` hides the card from the launcher and palette.                                              |
-| `requireAvailable` | `false` skips the `which` check (use for shell aliases that aren't on PATH but expand at runtime). |
+| Field              | Effect                                                                                                                                                                                                                                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`               | Built-in id to override, or a new id to define a new card.                                                                                                                                                                                                                                                                                         |
+| `label`            | Card title.                                                                                                                                                                                                                                                                                                                                        |
+| `caption`          | Subtitle shown beneath the title.                                                                                                                                                                                                                                                                                                                  |
+| `command`          | Literal text typed into the new terminal.                                                                                                                                                                                                                                                                                                          |
+| `iconSvg`          | Inline SVG for the card icon (only needed for new agents).                                                                                                                                                                                                                                                                                         |
+| `rank`             | Sort order on the launcher; lower comes first.                                                                                                                                                                                                                                                                                                     |
+| `enabled`          | `false` hides the card from the launcher and palette.                                                                                                                                                                                                                                                                                              |
+| `requireAvailable` | `false` skips the `which` check (use for shell aliases that aren't on PATH but expand at runtime).                                                                                                                                                                                                                                                 |
+| `promptArgs`       | How to splice the launcher's optional prompt into the command. `[]` appends it as a positional argument (`<command> 'PROMPT'`); `["-i"]` or `["--prompt"]` puts it after a flag. Set to `null` to opt out — the agent button is dimmed when the prompt textarea is non-empty so a typed prompt is never silently dropped. Defaults vary per agent. |
 
 ## Default settings
 

@@ -4,6 +4,7 @@ import type { ITerminal } from '@jupyterlab/terminal';
 import { DisposableSet, type IDisposable } from '@lumino/disposable';
 
 import type { IAgent } from './agents';
+import { buildAgentInvocation } from './invocation';
 
 /**
  * The command id for opening the launcher.
@@ -39,6 +40,9 @@ export function registerAgentCommands(
       icon: agent.icon,
       execute: async args => {
         const cwd = args['cwd'] as string | undefined;
+        const promptArg = args['prompt'];
+        const prompt = typeof promptArg === 'string' ? promptArg : '';
+        const invocation = buildAgentInvocation(agent, prompt);
         const main = (await app.commands.execute('terminal:create-new', {
           cwd
         })) as MainAreaWidget<ITerminal.ITerminal>;
@@ -52,7 +56,7 @@ export function registerAgentCommands(
         const sendCommand = (): void => {
           session.send({
             type: 'stdin',
-            content: [agent.command + '\r']
+            content: [invocation + '\r']
           });
         };
 

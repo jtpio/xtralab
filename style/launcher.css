@@ -1,0 +1,323 @@
+/*
+ * Styling for the launcher dashboard widget. The widget replaces
+ * JupyterLab's stock `jp-Launcher`, so we don't piggy-back on the
+ * `jp-Launcher-*` classes — every selector is scoped under
+ * `jp-xtralab-Launcher` to keep the rules from leaking elsewhere.
+ *
+ * Colors and spacing pull from the active JupyterLab theme via the
+ * standard `--jp-*` custom properties so the launcher tracks dark/light
+ * mode automatically.
+ */
+
+.jp-xtralab-Launcher {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: var(--jp-layout-color1);
+  color: var(--jp-ui-font-color1);
+  font-family: var(--jp-ui-font-family);
+  font-size: var(--jp-ui-font-size1);
+}
+
+.jp-xtralab-Launcher-body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 24px 48px;
+  box-sizing: border-box;
+}
+
+/*
+ * Sections — grouped content blocks. The agent picker uses a regular
+ * `<section>`; the changes panel uses a `<details>` so the user can
+ * collapse it. Both share the same gap + alignment so the page reads
+ * uniformly regardless of which element type is underneath.
+ */
+.jp-xtralab-Launcher-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jp-xtralab-Launcher-section-title {
+  margin: 0;
+  font-size: var(--jp-ui-font-size1);
+  font-weight: 600;
+  color: var(--jp-ui-font-color2);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/*
+ * Collapsible changes section. The native `<summary>` is a flex row
+ * that hosts the title, count badge, and refresh action; the disclosure
+ * triangle is the browser default — it rotates when the section opens.
+ */
+.jp-xtralab-Launcher-changes-section {
+  /* Reset the default `<details>` block so its contents inherit the
+     section's gap-aligned column layout instead of stacking flush. */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jp-xtralab-Launcher-section-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style-position: outside;
+  cursor: pointer;
+  user-select: none;
+  padding: 2px 0;
+  border-radius: 4px;
+}
+
+.jp-xtralab-Launcher-section-summary:hover {
+  color: var(--jp-ui-font-color1);
+}
+
+.jp-xtralab-Launcher-section-summary:focus-visible {
+  outline: 1px solid var(--jp-brand-color1);
+  outline-offset: 1px;
+}
+
+.jp-xtralab-Launcher-section-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  background-color: var(--jp-layout-color2);
+  color: var(--jp-ui-font-color2);
+  border-radius: 9px;
+  font-size: var(--jp-ui-font-size0);
+  font-variant-numeric: tabular-nums;
+}
+
+.jp-xtralab-Launcher-section-action {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--jp-ui-font-color2);
+  cursor: pointer;
+}
+
+.jp-xtralab-Launcher-section-action:hover {
+  background-color: var(--jp-layout-color2);
+  color: var(--jp-ui-font-color1);
+}
+
+.jp-xtralab-Launcher-section-action:focus-visible {
+  outline: 1px solid var(--jp-brand-color1);
+  outline-offset: 1px;
+}
+
+.jp-xtralab-Launcher-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jp-xtralab-Launcher-empty {
+  margin: 0;
+  padding: 8px 0;
+  color: var(--jp-ui-font-color3);
+  font-size: var(--jp-ui-font-size1);
+}
+
+/*
+ * Changed files list. Each row is a button so click + keyboard activate
+ * both work; the badge on the left mirrors the single-letter status
+ * indicator the git panel uses, kept in sync via FileChangeStatus.
+ */
+.jp-xtralab-Launcher-changes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.jp-xtralab-Launcher-changes > li + li {
+  border-top: 1px solid var(--jp-border-color3);
+}
+
+.jp-xtralab-Launcher-change {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.jp-xtralab-Launcher-change:hover {
+  background-color: var(--jp-layout-color2);
+}
+
+.jp-xtralab-Launcher-change:focus-visible {
+  outline: 1px solid var(--jp-brand-color1);
+  outline-offset: -1px;
+}
+
+.jp-xtralab-Launcher-change-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 3px;
+  font-family: var(--jp-code-font-family);
+  background-color: var(--jp-layout-color2);
+  color: var(--jp-ui-font-color2);
+  flex: 0 0 auto;
+}
+
+.jp-xtralab-Launcher-change-modified {
+  background-color: var(--jp-warn-color3, var(--jp-layout-color2));
+  color: var(--jp-warn-color1, var(--jp-ui-font-color1));
+}
+
+.jp-xtralab-Launcher-change-added,
+.jp-xtralab-Launcher-change-untracked {
+  background-color: var(--jp-success-color3, var(--jp-layout-color2));
+  color: var(--jp-success-color1, var(--jp-ui-font-color1));
+}
+
+.jp-xtralab-Launcher-change-deleted {
+  background-color: var(--jp-error-color3, var(--jp-layout-color2));
+  color: var(--jp-error-color1, var(--jp-ui-font-color1));
+}
+
+.jp-xtralab-Launcher-change-path {
+  flex: 1 1 auto;
+  font-family: var(--jp-code-font-family);
+  font-size: var(--jp-code-font-size);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jp-xtralab-Launcher-change-group {
+  flex: 0 0 auto;
+  color: var(--jp-ui-font-color3);
+  font-size: var(--jp-ui-font-size0);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/*
+ * Prompt textarea + agent grid. The textarea is full-width and resizable
+ * vertically; the grid renders agent buttons as compact, icon-led tiles.
+ */
+.jp-xtralab-Launcher-prompt {
+  width: 100%;
+  min-height: 72px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  resize: vertical;
+  background-color: var(--jp-input-background, var(--jp-layout-color1));
+  color: var(--jp-ui-font-color1);
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 4px;
+  font: inherit;
+  font-family: var(--jp-ui-font-family);
+  line-height: 1.4;
+}
+
+.jp-xtralab-Launcher-prompt:focus {
+  outline: none;
+  border-color: var(--jp-brand-color1);
+  box-shadow: 0 0 0 1px var(--jp-brand-color1);
+}
+
+.jp-xtralab-Launcher-agent-hint {
+  margin: 0 0 4px;
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size0);
+  line-height: 1.4;
+}
+
+.jp-xtralab-Launcher-agents {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 12px;
+}
+
+.jp-xtralab-Launcher-agent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 8px;
+  background-color: var(--jp-layout-color1);
+  color: var(--jp-ui-font-color1);
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  transition:
+    background-color 80ms ease,
+    border-color 80ms ease;
+}
+
+.jp-xtralab-Launcher-agent:focus-visible {
+  outline: 1px solid var(--jp-brand-color1);
+  outline-offset: 1px;
+}
+
+.jp-xtralab-Launcher-agent:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.jp-xtralab-Launcher-agent-primary {
+  border-color: var(--jp-brand-color2);
+  box-shadow: 0 0 0 1px var(--jp-brand-color2);
+}
+
+.jp-xtralab-Launcher-agent:hover:not(:disabled) {
+  background-color: var(--jp-layout-color2);
+  border-color: var(--jp-border-color1);
+}
+
+.jp-xtralab-Launcher-agent-icon {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+}
+
+.jp-xtralab-Launcher-agent-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.jp-xtralab-Launcher-agent-label {
+  font-size: var(--jp-ui-font-size1);
+  font-weight: 500;
+  text-align: center;
+}
