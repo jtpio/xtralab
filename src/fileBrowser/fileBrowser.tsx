@@ -79,7 +79,8 @@ export function FileBrowserComponent(
     paths: [],
     initialExpansion: 'closed',
     search: true,
-    icons: FILE_BROWSER_ICONS
+    icons: FILE_BROWSER_ICONS,
+    itemHeight: 24
   });
 
   React.useEffect(() => {
