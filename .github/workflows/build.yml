@@ -50,7 +50,7 @@ jobs:
             "jupyterlab-day" \
             "jupyterlab-night" \
             "jupyterlab-cursor-light" \
-            "jupyterlab-cursor-theme" \
+            "jupyterlab-cursor-dark" \
             "jupyterlab-quickopen" \
             "jupyterlab-commands-toolkit" \
             "@jupyter/docprovider-extension"; do
