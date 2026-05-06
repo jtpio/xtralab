@@ -24,6 +24,29 @@
         Open Folder
       </button>
 
+      <section class="project" id="project-section" aria-label="Project" hidden>
+        <div class="section-title">Project</div>
+        <div class="project-folder">
+          <span class="folder-name" id="project-folder-name"></span>
+          <span class="folder-path" id="project-folder-path"></span>
+        </div>
+
+        <label class="field-label" for="environment-select">
+          Python Environment
+        </label>
+        <select class="environment-select" id="environment-select"></select>
+        <p class="environment-detail" id="environment-detail"></p>
+
+        <div class="project-actions">
+          <button class="secondary-action" id="choose-interpreter" type="button">
+            Choose Interpreter
+          </button>
+          <button class="primary-action launch-action" id="launch-folder" type="button">
+            Open in Xtralab
+          </button>
+        </div>
+      </section>
+
       <section class="recent" id="recent-section" aria-label="Recent folders">
         <div class="section-title">Recent Folders</div>
         <div class="recent-list" id="recent-list"></div>

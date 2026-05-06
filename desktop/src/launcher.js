@@ -1,17 +1,38 @@
 const openFolderButton = document.getElementById('open-folder');
+const projectSection = document.getElementById('project-section');
+const projectFolderName = document.getElementById('project-folder-name');
+const projectFolderPath = document.getElementById('project-folder-path');
+const environmentSelect = document.getElementById('environment-select');
+const environmentDetail = document.getElementById('environment-detail');
+const chooseInterpreterButton = document.getElementById('choose-interpreter');
+const launchFolderButton = document.getElementById('launch-folder');
 const recentSection = document.getElementById('recent-section');
 const recentList = document.getElementById('recent-list');
 const statusElement = document.getElementById('status');
 
+let preparedFolder = null;
+
 function setBusy(isBusy, label = 'Opening...') {
   openFolderButton.disabled = isBusy;
+  chooseInterpreterButton.disabled = isBusy || preparedFolder === null;
+  launchFolderButton.disabled = isBusy || preparedFolder === null;
+  for (const button of recentList.querySelectorAll('button')) {
+    button.disabled = isBusy;
+  }
   if (isBusy) {
     statusElement.classList.remove('error');
     statusElement.textContent = label;
   }
 }
 
+function setReady(message = '') {
+  setBusy(false);
+  statusElement.classList.remove('error');
+  statusElement.textContent = message;
+}
+
 function setError(message) {
+  setBusy(false);
   statusElement.classList.add('error');
   statusElement.textContent = message;
 }
@@ -20,6 +41,91 @@ function folderName(folderPath) {
   const normalized = folderPath.replace(/\/+$/, '');
   const parts = normalized.split(/[\\/]/);
   return parts[parts.length - 1] || folderPath;
+}
+
+function environmentValue(option) {
+  return option.pythonPath || '';
+}
+
+function selectedEnvironment() {
+  if (preparedFolder === null) {
+    return null;
+  }
+  return (
+    preparedFolder.environments.find(
+      option => environmentValue(option) === environmentSelect.value
+    ) || null
+  );
+}
+
+function optionLabel(option) {
+  if (option.kind === 'managed') {
+    return option.label;
+  }
+  const suffixes = [];
+  if (option.hasIpykernel) {
+    suffixes.push('Python kernel');
+  }
+  if (option.hasKernels) {
+    suffixes.push('kernels');
+  }
+  if (option.hasLabExtensions) {
+    suffixes.push('Lab extensions');
+  }
+  return suffixes.length ? `${option.label} (${suffixes.join(', ')})` : option.label;
+}
+
+function renderEnvironmentDetail() {
+  const option = selectedEnvironment();
+  if (option === null) {
+    environmentDetail.textContent = '';
+    launchFolderButton.disabled = true;
+    return;
+  }
+
+  const details = [option.detail];
+  if (option.hasIpykernel) {
+    details.push('Python 3 kernel will use this environment');
+  } else if (option.kind !== 'managed') {
+    details.push('No Python ipykernel detected');
+  }
+  if (option.hasKernels) {
+    details.push('Installed kernels detected');
+  }
+  if (option.hasLabExtensions) {
+    details.push('JupyterLab extensions detected');
+  }
+  environmentDetail.textContent = details.join(' · ');
+  launchFolderButton.disabled = false;
+}
+
+function renderPreparedFolder(result) {
+  if (!result.ok) {
+    setError(result.error || 'Unable to inspect folder');
+    return;
+  }
+
+  preparedFolder = {
+    folderPath: result.folderPath,
+    environments: result.environments || [],
+    selectedPythonPath: result.selectedPythonPath ?? null
+  };
+
+  projectFolderName.textContent = folderName(preparedFolder.folderPath);
+  projectFolderPath.textContent = preparedFolder.folderPath;
+  environmentSelect.replaceChildren();
+
+  for (const option of preparedFolder.environments) {
+    const element = document.createElement('option');
+    element.value = environmentValue(option);
+    element.textContent = optionLabel(option);
+    environmentSelect.append(element);
+  }
+
+  environmentSelect.value = preparedFolder.selectedPythonPath || '';
+  projectSection.hidden = false;
+  setReady();
+  renderEnvironmentDetail();
 }
 
 function createRecentButton(folderPath) {
@@ -37,12 +143,9 @@ function createRecentButton(folderPath) {
 
   button.append(name, path);
   button.addEventListener('click', async () => {
-    setBusy(true, `Opening ${folderName(folderPath)}...`);
+    setBusy(true, `Inspecting ${folderName(folderPath)}...`);
     const result = await window.xtralab.openRecentFolder(folderPath);
-    if (!result.ok) {
-      openFolderButton.disabled = false;
-      setError(result.error || 'Unable to open folder');
-    }
+    renderPreparedFolder(result);
   });
 
   return button;
@@ -64,14 +167,43 @@ async function renderRecentFolders() {
 }
 
 openFolderButton.addEventListener('click', async () => {
-  setBusy(true);
-  const result = await window.xtralab.openFolder();
+  setBusy(true, 'Selecting folder...');
+  const result = await window.xtralab.openFolderDialog();
+  if (!result.ok && !result.error) {
+    setReady();
+    return;
+  }
+  renderPreparedFolder(result);
+  await renderRecentFolders();
+});
+
+environmentSelect.addEventListener('change', () => {
+  renderEnvironmentDetail();
+});
+
+chooseInterpreterButton.addEventListener('click', async () => {
+  if (preparedFolder === null) {
+    return;
+  }
+  setBusy(true, 'Selecting interpreter...');
+  const result = await window.xtralab.selectPythonInterpreter(
+    preparedFolder.folderPath
+  );
+  renderPreparedFolder(result);
+});
+
+launchFolderButton.addEventListener('click', async () => {
+  const option = selectedEnvironment();
+  if (preparedFolder === null || option === null) {
+    return;
+  }
+  setBusy(true, `Opening ${folderName(preparedFolder.folderPath)}...`);
+  const result = await window.xtralab.openFolder(
+    preparedFolder.folderPath,
+    option.pythonPath
+  );
   if (!result.ok) {
-    openFolderButton.disabled = false;
-    statusElement.textContent = '';
-    if (result.error) {
-      setError(result.error);
-    }
+    setError(result.error || 'Unable to open folder');
     await renderRecentFolders();
   }
 });

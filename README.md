@@ -88,6 +88,20 @@ that folder from an app-managed Python environment, waits for the ready URL,
 and loads it into a hardened Electron `BrowserWindow`. Each opened folder gets
 its own Jupyter server and window.
 
+The launcher also detects common project Python environments such as `.venv`,
+`venv`, `env`, `.conda`, and pixi environments. Selecting one creates a
+folder-local `python3` kernelspec under Xtralab's app data so notebooks execute
+with the project interpreter while the JupyterLab server continues to run from
+the isolated Xtralab environment. If the selected interpreter is missing
+`ipykernel`, Xtralab does not modify the environment; installed kernelspecs in
+that environment can still be used if they are present.
+
+When a selected project environment has kernelspecs or prebuilt JupyterLab
+extensions under `<env>/share/jupyter`, the app adds that environment's
+`share/jupyter` directory to `JUPYTER_PATH` before starting the server. This
+lets compatible kernels and frontend extensions be discovered without running
+the server from the project environment.
+
 ```bash
 cd desktop
 npm install

@@ -6,12 +6,47 @@ interface OpenFolderResult {
   error?: string;
 }
 
+interface PythonEnvironmentOption {
+  id: string;
+  label: string;
+  detail: string;
+  kind: 'managed' | 'project' | 'custom';
+  pythonPath: string | null;
+  environmentRoot: string | null;
+  dataPath: string | null;
+  labExtensionsPath: string | null;
+  kernelsPath: string | null;
+  hasIpykernel: boolean;
+  hasLabExtensions: boolean;
+  hasKernels: boolean;
+  isDefault: boolean;
+}
+
+interface FolderEnvironmentResult {
+  ok: boolean;
+  folderPath?: string;
+  environments?: PythonEnvironmentOption[];
+  selectedPythonPath?: string | null;
+  error?: string;
+}
+
 contextBridge.exposeInMainWorld('xtralab', {
   getRecentFolders: (): Promise<string[]> =>
     ipcRenderer.invoke('xtralab:get-recent-folders'),
-  openFolder: (): Promise<OpenFolderResult> =>
+  openFolderDialog: (): Promise<FolderEnvironmentResult> =>
     ipcRenderer.invoke('xtralab:open-folder-dialog'),
-  openRecentFolder: (folderPath: string): Promise<OpenFolderResult> =>
+  prepareFolder: (folderPath: string): Promise<FolderEnvironmentResult> =>
+    ipcRenderer.invoke('xtralab:prepare-folder', folderPath),
+  openRecentFolder: (folderPath: string): Promise<FolderEnvironmentResult> =>
     ipcRenderer.invoke('xtralab:open-recent-folder', folderPath),
+  selectPythonInterpreter: (
+    folderPath: string
+  ): Promise<FolderEnvironmentResult> =>
+    ipcRenderer.invoke('xtralab:select-python-interpreter', folderPath),
+  openFolder: (
+    folderPath: string,
+    pythonPath: string | null
+  ): Promise<OpenFolderResult> =>
+    ipcRenderer.invoke('xtralab:open-folder', folderPath, pythonPath),
   showLogs: (): Promise<void> => ipcRenderer.invoke('xtralab:show-logs')
 });

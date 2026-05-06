@@ -16,6 +16,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -79,7 +83,9 @@ h1 {
 }
 
 .primary-action:focus-visible,
-.recent-button:focus-visible {
+.secondary-action:focus-visible,
+.recent-button:focus-visible,
+.environment-select:focus-visible {
   outline: 3px solid rgba(243, 119, 38, 0.32);
   outline-offset: 2px;
 }
@@ -87,6 +93,80 @@ h1 {
 .primary-action:disabled {
   cursor: default;
   opacity: 0.72;
+}
+
+.project {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+  padding: 16px;
+  border: 1px solid #d7d5cf;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.project-folder {
+  display: grid;
+  gap: 3px;
+}
+
+.field-label {
+  margin-top: 4px;
+  color: #5f6368;
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.environment-select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #c9c5bd;
+  border-radius: 8px;
+  background: #fff;
+  color: #202124;
+  font: inherit;
+}
+
+.environment-detail {
+  min-height: 18px;
+  margin: -4px 0 0;
+  overflow-wrap: anywhere;
+  color: #6f7378;
+  font-size: 12px;
+  white-space: normal;
+}
+
+.project-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.secondary-action {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #c9c5bd;
+  border-radius: 8px;
+  background: #fff;
+  color: #202124;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.secondary-action:hover {
+  border-color: #a9a49a;
+}
+
+.secondary-action:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
+.launch-action {
+  grid-column: 1 / -1;
+  min-height: 46px;
 }
 
 .recent {
