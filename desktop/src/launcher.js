@@ -72,7 +72,9 @@ function optionLabel(option) {
   if (option.hasLabExtensions) {
     suffixes.push('Lab extensions');
   }
-  return suffixes.length ? `${option.label} (${suffixes.join(', ')})` : option.label;
+  return suffixes.length
+    ? `${option.label} (${suffixes.join(', ')})`
+    : option.label;
 }
 
 function renderEnvironmentDetail() {

@@ -378,9 +378,7 @@ function getActivePythonEnvironmentBins(): Set<string> {
   return bins;
 }
 
-function clearInheritedPythonEnvironment(
-  environment: NodeJS.ProcessEnv
-): void {
+function clearInheritedPythonEnvironment(environment: NodeJS.ProcessEnv): void {
   delete environment.CONDA_DEFAULT_ENV;
   delete environment.CONDA_PREFIX;
   delete environment.CONDA_PROMPT_MODIFIER;
@@ -708,7 +706,9 @@ function discoverFolderPythonEnvironments(
     try {
       options.push(inspectPythonEnvironment(folderPath, candidatePath, kind));
     } catch (error) {
-      log(`Skipping Python interpreter ${candidatePath}: ${formatError(error)}`);
+      log(
+        `Skipping Python interpreter ${candidatePath}: ${formatError(error)}`
+      );
     }
   }
 
@@ -816,7 +816,9 @@ function inspectPythonEnvironment(
   try {
     inspection = JSON.parse(result.stdout.trim());
   } catch (error) {
-    throw new Error(`Python inspection returned invalid JSON: ${formatError(error)}`);
+    throw new Error(
+      `Python inspection returned invalid JSON: ${formatError(error)}`
+    );
   }
 
   const resolvedPythonPath = path.resolve(inspection.executable || pythonPath);
@@ -838,9 +840,7 @@ function inspectPythonEnvironment(
   };
 }
 
-function getPythonInspectionEnvironment(
-  pythonPath: string
-): NodeJS.ProcessEnv {
+function getPythonInspectionEnvironment(pythonPath: string): NodeJS.ProcessEnv {
   const environment: NodeJS.ProcessEnv = {
     ...process.env,
     PATH: mergePathSegments([
@@ -860,7 +860,9 @@ function getPythonEnvironmentLabel(
   kind: 'project' | 'custom'
 ): string {
   if (isPathInside(folderPath, environmentRoot)) {
-    return path.relative(folderPath, environmentRoot) || path.basename(folderPath);
+    return (
+      path.relative(folderPath, environmentRoot) || path.basename(folderPath)
+    );
   }
 
   const baseName = path.basename(environmentRoot);
@@ -914,7 +916,10 @@ function prepareProjectRuntimeEnvironment(
     option = inspectPythonEnvironment(folderPath, selectedPythonPath, 'custom');
   }
 
-  if (path.resolve(option.pythonPath ?? '') === path.resolve(managedEnvironment.pythonPath)) {
+  if (
+    path.resolve(option.pythonPath ?? '') ===
+    path.resolve(managedEnvironment.pythonPath)
+  ) {
     return null;
   }
 
@@ -1136,14 +1141,17 @@ function isManagedEnvironmentCurrent(
   markerPath: string,
   wheelFingerprint: WheelFingerprint
 ): boolean {
-  if (!existsSync(environment.pythonPath) || !existsSync(environment.xtralabPath)) {
+  if (
+    !existsSync(environment.pythonPath) ||
+    !existsSync(environment.xtralabPath)
+  ) {
     return false;
   }
 
   try {
-    const marker = JSON.parse(readFileSync(markerPath, 'utf8')) as Partial<
-      WheelFingerprint
-    >;
+    const marker = JSON.parse(
+      readFileSync(markerPath, 'utf8')
+    ) as Partial<WheelFingerprint>;
     return (
       marker.wheelName === wheelFingerprint.wheelName &&
       marker.wheelSize === wheelFingerprint.wheelSize &&
@@ -1197,8 +1205,9 @@ function getSupervisorEnvironment(
     VIRTUAL_ENV: managedEnvironment.envDir
   };
   const projectDataPath =
-    projectEnvironment !== null && hasJupyterDataFiles(projectEnvironment.option)
-      ? projectEnvironment.option.dataPath ?? undefined
+    projectEnvironment !== null &&
+    hasJupyterDataFiles(projectEnvironment.option)
+      ? (projectEnvironment.option.dataPath ?? undefined)
       : undefined;
   environment.JUPYTER_PATH = mergePathSegments([
     projectEnvironment?.kernelDataPath ?? undefined,
@@ -1357,14 +1366,7 @@ function startSupervisor(
   projectEnvironment: ProjectRuntimeEnvironment | null
 ): SupervisorHandle {
   const command = managedEnvironment.xtralabPath;
-  const args = [
-    'serve',
-    '--json',
-    '--timeout',
-    '120',
-    '--cwd',
-    folderPath
-  ];
+  const args = ['serve', '--json', '--timeout', '120', '--cwd', folderPath];
 
   log(`Starting supervisor: ${command} ${args.join(' ')}`);
   log(`Supervisor cwd: ${folderPath}`);
@@ -1759,7 +1761,11 @@ function loadFolderEnvironmentPreferences(): void {
   try {
     const raw = readFileSync(getFolderEnvironmentPreferencesPath(), 'utf8');
     const parsed = JSON.parse(raw);
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
       folderEnvironmentPreferences = {};
       return;
     }
@@ -1849,10 +1855,7 @@ function getManagedEnvironmentExecutablePath(
 ): string {
   const platformExecutableName =
     process.platform === 'win32' ? `${executableName}.exe` : executableName;
-  return path.join(
-    getManagedEnvironmentBinDir(envDir),
-    platformExecutableName
-  );
+  return path.join(getManagedEnvironmentBinDir(envDir), platformExecutableName);
 }
 
 function getManagedEnvironmentMarkerPath(envDir: string): string {
@@ -1860,12 +1863,18 @@ function getManagedEnvironmentMarkerPath(envDir: string): string {
 }
 
 function getProjectKernelDataPath(folderPath: string): string {
-  const hash = createHash('sha256').update(folderPath).digest('hex').slice(0, 16);
+  const hash = createHash('sha256')
+    .update(folderPath)
+    .digest('hex')
+    .slice(0, 16);
   return path.join(app.getPath('userData'), 'project-kernels', hash);
 }
 
 function isPathInside(parentPath: string, childPath: string): boolean {
-  const relativePath = path.relative(path.resolve(parentPath), path.resolve(childPath));
+  const relativePath = path.relative(
+    path.resolve(parentPath),
+    path.resolve(childPath)
+  );
   return (
     relativePath.length === 0 ||
     (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
