@@ -80,6 +80,42 @@ Fields: `id` (required), `label`, `caption`, `command`, `promptArgs` (how to
 splice the prompt — `[]` for positional, `["--flag"]` for flagged, `null` to
 opt out), `iconSvg`, `rank`, `enabled`, `requireAvailable`.
 
+### Electron development shell
+
+The first Electron prototype lives in `desktop/`. It opens a lightweight
+launcher window, lets you pick a local folder, starts a JupyterLab server for
+that folder from an app-managed Python environment, waits for the ready URL,
+and loads it into a hardened Electron `BrowserWindow`. Each opened folder gets
+its own Jupyter server and window.
+
+```bash
+cd desktop
+npm install
+npm run dev
+```
+
+For an unsigned local macOS app bundle:
+
+```bash
+cd desktop
+npm run package
+```
+
+`npm run dev` and `npm run package` both build a local Xtralab wheel under
+`desktop/python/wheels/`. The generated app is written under `desktop/out/`,
+uses the Jupyter icon, and installs that bundled wheel into an isolated
+environment under the app data directory on first folder open:
+
+```text
+~/Library/Application Support/Xtralab/envs/default
+```
+
+The Electron app does not run from the repo `.venv` or require the repo checkout
+at runtime. It expects `uv` to be available from a normal system or user tool
+location such as `/opt/homebrew/bin`, `/usr/local/bin`, or `~/.local/bin`.
+External agent CLIs are discovered from the same deterministic tool path plus
+`XTRALAB_EXTRA_PATH` when that environment variable is present.
+
 ## Development
 
 ```bash

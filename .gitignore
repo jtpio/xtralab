@@ -12,6 +12,9 @@ node_modules/
 *.tsbuildinfo
 .eslintcache
 .stylelintcache
+desktop/dist/
+desktop/out/
+desktop/python/wheels/
 
 # Yarn
 .yarn/cache

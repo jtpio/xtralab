@@ -1,0 +1,155 @@
+:root {
+  color-scheme: light;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  background: #f2f1ee;
+  color: #202124;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    linear-gradient(160deg, rgba(243, 119, 38, 0.12), transparent 44%), #f2f1ee;
+}
+
+button {
+  font: inherit;
+}
+
+.shell {
+  width: min(100%, 680px);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 56px 52px 36px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 34px;
+}
+
+.brand-icon {
+  width: 58px;
+  height: 76px;
+  flex: 0 0 auto;
+}
+
+h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.05;
+  font-weight: 720;
+  letter-spacing: 0;
+}
+
+.subtitle {
+  margin: 7px 0 0;
+  color: #5f6368;
+  font-size: 15px;
+}
+
+.primary-action {
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  border-radius: 8px;
+  background: #f37726;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.primary-action:hover {
+  background: #df681f;
+}
+
+.primary-action:focus-visible,
+.recent-button:focus-visible {
+  outline: 3px solid rgba(243, 119, 38, 0.32);
+  outline-offset: 2px;
+}
+
+.primary-action:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.recent {
+  margin-top: 34px;
+}
+
+.section-title {
+  color: #5f6368;
+  font-size: 12px;
+  font-weight: 720;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.recent-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.recent-button {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 14px;
+  border: 1px solid #d7d5cf;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.recent-button:hover {
+  border-color: #b9b5ad;
+  background: #fff;
+}
+
+.folder-name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-path {
+  overflow: hidden;
+  color: #6f7378;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  min-height: 20px;
+  margin: 22px 0 0;
+  color: #5f6368;
+  font-size: 13px;
+}
+
+.status.error {
+  color: #a43f16;
+}

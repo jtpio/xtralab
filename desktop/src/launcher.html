@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self'; script-src 'self'; style-src 'self';"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Xtralab</title>
+    <link rel="stylesheet" href="./launcher.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="header" aria-label="Xtralab">
+        <img class="brand-icon" src="../assets/jupyter.svg" alt="" />
+        <div>
+          <h1>Xtralab</h1>
+          <p class="subtitle">JupyterLab for local projects</p>
+        </div>
+      </section>
+
+      <button class="primary-action" id="open-folder" type="button">
+        Open Folder
+      </button>
+
+      <section class="recent" id="recent-section" aria-label="Recent folders">
+        <div class="section-title">Recent Folders</div>
+        <div class="recent-list" id="recent-list"></div>
+      </section>
+
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </main>
+    <script src="./launcher.js"></script>
+  </body>
+</html>

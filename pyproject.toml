@@ -60,7 +60,6 @@ packages = ["xtralab"]
 
 [tool.hatch.build.targets.wheel.shared-data]
 "xtralab/labextension" = "share/jupyter/labextensions/xtralab"
-"install.json" = "share/jupyter/labextensions/xtralab/install.json"
 "jupyter-config/labconfig" = "etc/jupyter/labconfig"
 "jupyter-config/jupyter_server_config.d" = "etc/jupyter/jupyter_server_config.d"
 
