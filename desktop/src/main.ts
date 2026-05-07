@@ -49,19 +49,15 @@ interface ManagedEnvironment {
 }
 
 interface PythonEnvironmentOption {
-  id: string;
   label: string;
   detail: string;
   kind: 'managed' | 'project' | 'custom';
   pythonPath: string | null;
   environmentRoot: string | null;
   dataPath: string | null;
-  labExtensionsPath: string | null;
-  kernelsPath: string | null;
   hasIpykernel: boolean;
   hasLabExtensions: boolean;
   hasKernels: boolean;
-  isDefault: boolean;
 }
 
 interface FolderEnvironmentResult {
@@ -123,13 +119,20 @@ let managedEnvironmentPromise: Promise<ManagedEnvironment> | null = null;
 
 app.setName('Xtralab');
 
-app
-  .whenReady()
-  .then(startApplication)
-  .catch(error => {
-    showStartupError(error);
-    app.quit();
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    showLauncherWindow();
   });
+  app
+    .whenReady()
+    .then(startApplication)
+    .catch(error => {
+      showStartupError(error);
+      app.quit();
+    });
+}
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
@@ -211,10 +214,17 @@ function configureApplicationMenu(): void {
       label: 'File',
       submenu: [
         {
+          label: 'New Window',
+          accelerator: 'CmdOrCtrl+Shift+N',
+          click: () => {
+            showLauncherWindow();
+          }
+        },
+        {
           label: 'Open Folder...',
           accelerator: 'CmdOrCtrl+O',
           click: () => {
-            void openFolderFromDialog();
+            showLauncherWindow();
           }
         },
         { type: 'separator' },
@@ -523,7 +533,7 @@ function showLauncherWindow(): void {
       preload: getPreloadPath(),
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: false,
+      sandbox: true,
       webviewTag: false
     }
   });
@@ -550,25 +560,6 @@ function showLauncherWindow(): void {
   });
 
   void window.loadFile(getLauncherHtmlPath());
-}
-
-async function openFolderFromDialog(
-  parentWindow: BrowserWindow | null = launcherWindow
-): Promise<OpenFolderResult> {
-  const dialogOptions: Electron.OpenDialogOptions = {
-    title: 'Open Folder',
-    properties: ['openDirectory', 'createDirectory']
-  };
-  const result =
-    parentWindow === null
-      ? await dialog.showOpenDialog(dialogOptions)
-      : await dialog.showOpenDialog(parentWindow, dialogOptions);
-
-  if (result.canceled || result.filePaths.length === 0) {
-    return { ok: false };
-  }
-
-  return openFolder(result.filePaths[0], parentWindow, undefined);
 }
 
 async function prepareFolderFromDialog(
@@ -717,19 +708,15 @@ function discoverFolderPythonEnvironments(
 
 function createManagedEnvironmentOption(): PythonEnvironmentOption {
   return {
-    id: 'managed',
     label: 'Xtralab managed Python',
     detail: 'Bundled JupyterLab runtime',
     kind: 'managed',
     pythonPath: null,
     environmentRoot: getManagedEnvironmentDir(),
     dataPath: null,
-    labExtensionsPath: null,
-    kernelsPath: null,
     hasIpykernel: true,
     hasLabExtensions: false,
-    hasKernels: false,
-    isDefault: false
+    hasKernels: false
   };
 }
 
@@ -781,8 +768,6 @@ function inspectPythonEnvironment(
     '"version": ".".join(str(part) for part in sys.version_info[:3]),',
     '"hasIpykernel": importlib.util.find_spec("ipykernel") is not None,',
     '"dataPath": data_path if os.path.isdir(data_path) else None,',
-    '"labExtensionsPath": labextensions_path if os.path.isdir(labextensions_path) else None,',
-    '"kernelsPath": kernels_path if os.path.isdir(kernels_path) else None,',
     '"hasLabExtensions": bool(has_labextensions),',
     '"hasKernels": bool(has_kernels),',
     '}))'
@@ -808,8 +793,6 @@ function inspectPythonEnvironment(
     version: string;
     hasIpykernel: boolean;
     dataPath: string | null;
-    labExtensionsPath: string | null;
-    kernelsPath: string | null;
     hasLabExtensions: boolean;
     hasKernels: boolean;
   };
@@ -824,19 +807,15 @@ function inspectPythonEnvironment(
   const resolvedPythonPath = path.resolve(inspection.executable || pythonPath);
   const environmentRoot = path.resolve(inspection.prefix);
   return {
-    id: resolvedPythonPath,
     label: getPythonEnvironmentLabel(folderPath, environmentRoot, kind),
     detail: `Python ${inspection.version} - ${resolvedPythonPath}`,
     kind,
     pythonPath: resolvedPythonPath,
     environmentRoot,
     dataPath: inspection.dataPath,
-    labExtensionsPath: inspection.labExtensionsPath,
-    kernelsPath: inspection.kernelsPath,
     hasIpykernel: inspection.hasIpykernel,
     hasLabExtensions: inspection.hasLabExtensions,
-    hasKernels: inspection.hasKernels,
-    isDefault: false
+    hasKernels: inspection.hasKernels
   };
 }
 
@@ -899,30 +878,30 @@ function prepareProjectRuntimeEnvironment(
   pythonPath: string | null | undefined,
   managedEnvironment: ManagedEnvironment
 ): ProjectRuntimeEnvironment | null {
-  const environments = discoverFolderPythonEnvironments(folderPath);
-  const selectedPythonPath =
-    pythonPath === undefined
-      ? choosePreferredPythonPath(folderPath, environments)
-      : pythonPath;
+  let selectedPythonPath: string | null;
+  if (pythonPath === undefined) {
+    const environments = discoverFolderPythonEnvironments(folderPath);
+    selectedPythonPath = choosePreferredPythonPath(folderPath, environments);
+  } else {
+    selectedPythonPath = pythonPath;
+  }
 
   if (selectedPythonPath === null) {
     return null;
   }
 
-  let option = environments.find(
-    candidate => candidate.pythonPath === selectedPythonPath
-  );
-  if (option === undefined) {
-    option = inspectPythonEnvironment(folderPath, selectedPythonPath, 'custom');
-  }
-
   if (
-    path.resolve(option.pythonPath ?? '') ===
+    path.resolve(selectedPythonPath) ===
     path.resolve(managedEnvironment.pythonPath)
   ) {
     return null;
   }
 
+  const option = inspectPythonEnvironment(
+    folderPath,
+    selectedPythonPath,
+    'custom'
+  );
   const kernelDataPath = option.hasIpykernel
     ? writeProjectKernelSpec(folderPath, option)
     : null;
@@ -1201,9 +1180,11 @@ function getSupervisorEnvironment(
       removeActivePythonEnvironmentPath(process.env.PATH),
       getExternalCommandPath()
     ]),
-    PYTHONNOUSERSITE: '1',
-    VIRTUAL_ENV: managedEnvironment.envDir
+    PYTHONNOUSERSITE: '1'
   };
+  clearInheritedPythonEnvironment(environment);
+  environment.VIRTUAL_ENV = managedEnvironment.envDir;
+
   const projectDataPath =
     projectEnvironment !== null &&
     hasJupyterDataFiles(projectEnvironment.option)
@@ -1214,14 +1195,6 @@ function getSupervisorEnvironment(
     projectDataPath,
     process.env.JUPYTER_PATH
   ]);
-
-  delete environment.CONDA_DEFAULT_ENV;
-  delete environment.CONDA_PREFIX;
-  delete environment.CONDA_PROMPT_MODIFIER;
-  delete environment.PYTHONHOME;
-  delete environment.PYTHONPATH;
-  delete environment.UV_PROJECT_ENVIRONMENT;
-  delete environment.VIRTUAL_ENV_PROMPT;
 
   return environment;
 }

@@ -7,19 +7,15 @@ interface OpenFolderResult {
 }
 
 interface PythonEnvironmentOption {
-  id: string;
   label: string;
   detail: string;
   kind: 'managed' | 'project' | 'custom';
   pythonPath: string | null;
   environmentRoot: string | null;
   dataPath: string | null;
-  labExtensionsPath: string | null;
-  kernelsPath: string | null;
   hasIpykernel: boolean;
   hasLabExtensions: boolean;
   hasKernels: boolean;
-  isDefault: boolean;
 }
 
 interface FolderEnvironmentResult {
