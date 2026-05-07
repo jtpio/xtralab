@@ -321,27 +321,3 @@
   font-weight: 500;
   text-align: center;
 }
-
-/*
- * The "Open" row hosts non-agent launch tiles (plain terminal, new
- * notebook). It's a flex row rather than the agents' auto-fill grid so
- * a small handful of tiles stay compact at any width instead of
- * stretching to fill the page. Tiles share the agent-tile shape, but a
- * dashed border cues "these aren't AI agents".
- */
-.jp-xtralab-Launcher-open {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.jp-xtralab-Launcher-open-tile {
-  width: 120px;
-  border-style: dashed;
-  color: var(--jp-ui-font-color2);
-}
-
-.jp-xtralab-Launcher-open-tile:hover:not(:disabled) {
-  border-style: solid;
-  color: var(--jp-ui-font-color1);
-}

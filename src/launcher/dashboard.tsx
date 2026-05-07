@@ -400,10 +400,10 @@ function OpenSection(props: {
   return (
     <section className="jp-xtralab-Launcher-section">
       <h2 className="jp-xtralab-Launcher-section-title">Open</h2>
-      <div className="jp-xtralab-Launcher-open">
+      <div className="jp-xtralab-Launcher-agents">
         <button
           type="button"
-          className="jp-xtralab-Launcher-agent jp-xtralab-Launcher-open-tile"
+          className="jp-xtralab-Launcher-agent"
           title="Open a new terminal."
           aria-label="Open a new terminal"
           onClick={onLaunchTerminal}
@@ -417,7 +417,7 @@ function OpenSection(props: {
         </button>
         <button
           type="button"
-          className="jp-xtralab-Launcher-agent jp-xtralab-Launcher-open-tile"
+          className="jp-xtralab-Launcher-agent"
           title="Create a new notebook."
           aria-label="Create a new notebook"
           onClick={onLaunchNotebook}
