@@ -210,4 +210,17 @@ launchFolderButton.addEventListener('click', async () => {
   }
 });
 
+const shell = document.querySelector('.shell');
+if (shell !== null) {
+  let lastReported = 0;
+  const observer = new ResizeObserver(() => {
+    const height = shell.offsetHeight;
+    if (height > 0 && Math.abs(height - lastReported) >= 1) {
+      lastReported = height;
+      void window.xtralab.setLauncherContentHeight(height);
+    }
+  });
+  observer.observe(shell);
+}
+
 void renderRecentFolders();

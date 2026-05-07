@@ -33,16 +33,15 @@ button {
 
 .shell {
   width: min(100%, 680px);
-  min-height: 100vh;
   margin: 0 auto;
-  padding: 56px 52px 36px;
+  padding: 36px 44px 28px;
 }
 
 .header {
   display: flex;
   align-items: center;
-  gap: 18px;
-  margin-bottom: 34px;
+  gap: 16px;
+  margin-bottom: 22px;
 }
 
 .brand-icon {
@@ -97,9 +96,9 @@ h1 {
 
 .project {
   display: grid;
-  gap: 12px;
-  margin-top: 22px;
-  padding: 16px;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 14px 16px;
   border: 1px solid #d7d5cf;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.72);
@@ -170,7 +169,7 @@ h1 {
 }
 
 .recent {
-  margin-top: 34px;
+  margin-top: 22px;
 }
 
 .section-title {
@@ -184,7 +183,7 @@ h1 {
 .recent-list {
   display: grid;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 .recent-button {
@@ -192,8 +191,8 @@ h1 {
   grid-template-columns: 1fr;
   gap: 3px;
   width: 100%;
-  min-height: 58px;
-  padding: 10px 14px;
+  min-height: 52px;
+  padding: 8px 14px;
   border: 1px solid #d7d5cf;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.72);
@@ -225,7 +224,7 @@ h1 {
 
 .status {
   min-height: 20px;
-  margin: 22px 0 0;
+  margin: 16px 0 0;
   color: #5f6368;
   font-size: 13px;
 }

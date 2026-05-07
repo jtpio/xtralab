@@ -44,5 +44,7 @@ contextBridge.exposeInMainWorld('xtralab', {
     pythonPath: string | null
   ): Promise<OpenFolderResult> =>
     ipcRenderer.invoke('xtralab:open-folder', folderPath, pythonPath),
+  setLauncherContentHeight: (height: number): Promise<void> =>
+    ipcRenderer.invoke('xtralab:set-launcher-content-height', height),
   showLogs: (): Promise<void> => ipcRenderer.invoke('xtralab:show-logs')
 });

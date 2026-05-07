@@ -105,6 +105,8 @@ interface OpenFolderResult {
 }
 
 const recentFoldersLimit = 8;
+const launcherMinContentHeight = 240;
+const launcherMaxContentHeight = 900;
 const labSessions = new Map<number, LabSession>();
 const pendingSupervisors = new Set<SupervisorHandle>();
 
@@ -514,6 +516,24 @@ function registerIpcHandlers(): void {
       );
     }
   );
+  ipcMain.handle(
+    'xtralab:set-launcher-content-height',
+    (event: IpcMainInvokeEvent, rawHeight: unknown) => {
+      if (typeof rawHeight !== 'number' || !Number.isFinite(rawHeight)) {
+        return;
+      }
+      const sourceWindow = BrowserWindow.fromWebContents(event.sender);
+      if (sourceWindow === null || sourceWindow.isDestroyed()) {
+        return;
+      }
+      const [width] = sourceWindow.getContentSize();
+      const height = Math.max(
+        launcherMinContentHeight,
+        Math.min(launcherMaxContentHeight, Math.ceil(rawHeight))
+      );
+      sourceWindow.setContentSize(width, height, false);
+    }
+  );
 }
 
 function showLauncherWindow(): void {
@@ -526,9 +546,9 @@ function showLauncherWindow(): void {
   const window = new BrowserWindow({
     title: app.getName(),
     width: 680,
-    height: 560,
+    height: 280,
     minWidth: 560,
-    minHeight: 440,
+    minHeight: launcherMinContentHeight,
     show: false,
     backgroundColor: '#f6f6f4',
     icon: getPngIconPath(),
