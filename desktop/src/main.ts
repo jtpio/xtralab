@@ -111,6 +111,14 @@ interface OpenFolderResult {
   error?: string;
 }
 
+type BootstrapState =
+  | { kind: 'idle' }
+  | { kind: 'preparing' }
+  | { kind: 'installing-deps' }
+  | { kind: 'installing-xtralab' }
+  | { kind: 'ready' }
+  | { kind: 'error'; message: string };
+
 const recentFoldersLimit = 8;
 const launcherMinContentHeight = 240;
 const launcherMaxContentHeight = 900;
@@ -125,6 +133,7 @@ let folderEnvironmentPreferences: Record<string, FolderEnvironmentPreference> =
 let quitInProgress = false;
 let ipcRegistered = false;
 let managedEnvironmentPromise: Promise<ManagedEnvironment> | null = null;
+let bootstrapState: BootstrapState = { kind: 'idle' };
 
 if (!app.isPackaged) {
   app.setName('xtralab dev');
@@ -184,6 +193,7 @@ async function startApplication(): Promise<void> {
   loadFolderEnvironmentPreferences();
   registerIpcHandlers();
   showLauncherWindow();
+  startEagerBootstrap();
 }
 
 function initializeLogging(): void {
@@ -455,6 +465,21 @@ function registerIpcHandlers(): void {
   ipcRegistered = true;
 
   ipcMain.handle('xtralab:get-recent-folders', () => getRecentFolders());
+  ipcMain.handle(
+    'xtralab:get-bootstrap-state',
+    (): BootstrapState => bootstrapState
+  );
+  ipcMain.handle('xtralab:retry-bootstrap', () => {
+    if (
+      bootstrapState.kind !== 'error' &&
+      managedEnvironmentPromise !== null
+    ) {
+      return;
+    }
+    managedEnvironmentPromise = null;
+    setBootstrapState({ kind: 'idle' });
+    startEagerBootstrap();
+  });
   ipcMain.handle('xtralab:show-logs', async () => {
     await shell.openPath(getLogsDir());
   });
@@ -1054,13 +1079,40 @@ async function selectPythonInterpreter(
 
 async function getManagedEnvironment(): Promise<ManagedEnvironment> {
   if (managedEnvironmentPromise === null) {
-    managedEnvironmentPromise = bootstrapManagedEnvironment().catch(error => {
-      managedEnvironmentPromise = null;
-      throw error;
-    });
+    managedEnvironmentPromise = bootstrapManagedEnvironment()
+      .then(env => {
+        setBootstrapState({ kind: 'ready' });
+        return env;
+      })
+      .catch(error => {
+        setBootstrapState({
+          kind: 'error',
+          message: formatError(error)
+        });
+        managedEnvironmentPromise = null;
+        throw error;
+      });
   }
 
   return managedEnvironmentPromise;
+}
+
+function setBootstrapState(state: BootstrapState): void {
+  bootstrapState = state;
+  log(
+    `Bootstrap state: ${state.kind}${
+      state.kind === 'error' ? ` — ${state.message}` : ''
+    }`
+  );
+  if (launcherWindow !== null && !launcherWindow.isDestroyed()) {
+    launcherWindow.webContents.send('xtralab:bootstrap-state', state);
+  }
+}
+
+function startEagerBootstrap(): void {
+  void getManagedEnvironment().catch(() => {
+    // Error state is already set by the getManagedEnvironment wrapper.
+  });
 }
 
 async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
@@ -1100,6 +1152,7 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
   }
 
   log(`Preparing managed Python environment at ${envDir}`);
+  setBootstrapState({ kind: 'preparing' });
   mkdirSync(path.dirname(envDir), { recursive: true });
 
   // Recreate from scratch on any drift (lock or wheel) so packages dropped from
@@ -1119,6 +1172,7 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
     throw new Error(`Managed Python executable was not created: ${pythonPath}`);
   }
 
+  setBootstrapState({ kind: 'installing-deps' });
   await runCommand(
     getUvCommand(),
     [
@@ -1139,6 +1193,7 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
     }
   );
 
+  setBootstrapState({ kind: 'installing-xtralab' });
   await runCommand(
     getUvCommand(),
     [

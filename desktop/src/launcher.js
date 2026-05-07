@@ -9,17 +9,37 @@ const launchFolderButton = document.getElementById('launch-folder');
 const recentSection = document.getElementById('recent-section');
 const recentList = document.getElementById('recent-list');
 const statusElement = document.getElementById('status');
+const bootstrapBanner = document.getElementById('bootstrap-banner');
+const bootstrapTitle = document.getElementById('bootstrap-title');
+const bootstrapDetail = document.getElementById('bootstrap-detail');
+const bootstrapRetryButton = document.getElementById('bootstrap-retry');
+
+const BOOTSTRAP_LABELS = {
+  idle: 'Preparing runtime…',
+  preparing: 'Setting up Python environment…',
+  'installing-deps': 'Installing JupyterLab and dependencies…',
+  'installing-xtralab': 'Finalizing xtralab…'
+};
 
 let preparedFolder = null;
+let isBusy = false;
+let bootstrapReady = false;
 
-function setBusy(isBusy, label = 'Opening...') {
-  openFolderButton.disabled = isBusy;
-  chooseInterpreterButton.disabled = isBusy || preparedFolder === null;
-  launchFolderButton.disabled = isBusy || preparedFolder === null;
+function updateActionAvailability() {
+  const blocked = isBusy || !bootstrapReady;
+  openFolderButton.disabled = blocked;
+  chooseInterpreterButton.disabled = blocked || preparedFolder === null;
+  launchFolderButton.disabled =
+    blocked || preparedFolder === null || selectedEnvironment() === null;
   for (const button of recentList.querySelectorAll('button')) {
-    button.disabled = isBusy;
+    button.disabled = blocked;
   }
-  if (isBusy) {
+}
+
+function setBusy(busy, label = 'Opening...') {
+  isBusy = busy;
+  updateActionAvailability();
+  if (busy) {
     statusElement.classList.remove('error');
     statusElement.textContent = label;
   }
@@ -35,6 +55,33 @@ function setError(message) {
   setBusy(false);
   statusElement.classList.add('error');
   statusElement.textContent = message;
+}
+
+function applyBootstrapState(state) {
+  bootstrapReady = state.kind === 'ready';
+
+  if (state.kind === 'ready') {
+    bootstrapBanner.hidden = true;
+    bootstrapBanner.classList.remove('error');
+    bootstrapDetail.hidden = true;
+    bootstrapRetryButton.hidden = true;
+  } else if (state.kind === 'error') {
+    bootstrapBanner.hidden = false;
+    bootstrapBanner.classList.add('error');
+    bootstrapTitle.textContent = 'Could not set up the Python runtime.';
+    bootstrapDetail.hidden = false;
+    bootstrapDetail.textContent = state.message;
+    bootstrapRetryButton.hidden = false;
+  } else {
+    bootstrapBanner.hidden = false;
+    bootstrapBanner.classList.remove('error');
+    bootstrapTitle.textContent =
+      BOOTSTRAP_LABELS[state.kind] || BOOTSTRAP_LABELS.idle;
+    bootstrapDetail.hidden = true;
+    bootstrapRetryButton.hidden = true;
+  }
+
+  updateActionAvailability();
 }
 
 function folderName(folderPath) {
@@ -81,7 +128,7 @@ function renderEnvironmentDetail() {
   const option = selectedEnvironment();
   if (option === null) {
     environmentDetail.textContent = '';
-    launchFolderButton.disabled = true;
+    updateActionAvailability();
     return;
   }
 
@@ -98,7 +145,7 @@ function renderEnvironmentDetail() {
     details.push('JupyterLab extensions detected');
   }
   environmentDetail.textContent = details.join(' · ');
-  launchFolderButton.disabled = false;
+  updateActionAvailability();
 }
 
 function renderPreparedFolder(result) {
@@ -222,5 +269,20 @@ if (shell !== null) {
   });
   observer.observe(shell);
 }
+
+bootstrapRetryButton.addEventListener('click', () => {
+  void window.xtralab.retryBootstrap();
+});
+
+let bootstrapStateInitialized = false;
+window.xtralab.onBootstrapState(state => {
+  bootstrapStateInitialized = true;
+  applyBootstrapState(state);
+});
+void window.xtralab.getBootstrapState().then(state => {
+  if (!bootstrapStateInitialized) {
+    applyBootstrapState(state);
+  }
+});
 
 void renderRecentFolders();

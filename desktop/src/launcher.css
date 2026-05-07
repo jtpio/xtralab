@@ -232,3 +232,80 @@ h1 {
 .status.error {
   color: #a43f16;
 }
+
+.bootstrap-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border: 1px solid rgba(243, 119, 38, 0.25);
+  border-radius: 8px;
+  background: rgba(243, 119, 38, 0.08);
+  color: #5a3416;
+  font-size: 13px;
+}
+
+.bootstrap-banner.error {
+  border-color: rgba(164, 63, 22, 0.32);
+  background: rgba(164, 63, 22, 0.08);
+  color: #6a2a10;
+}
+
+.bootstrap-spinner {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  border: 2px solid rgba(243, 119, 38, 0.3);
+  border-top-color: #f37726;
+  border-radius: 50%;
+  animation: bootstrap-spin 0.9s linear infinite;
+}
+
+.bootstrap-banner.error .bootstrap-spinner {
+  display: none;
+}
+
+.bootstrap-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.bootstrap-title {
+  font-weight: 650;
+  font-size: 13px;
+}
+
+.bootstrap-detail {
+  margin-top: 2px;
+  color: #6a4424;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.bootstrap-banner.error .bootstrap-detail {
+  color: #6a2a10;
+}
+
+.bootstrap-retry {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(164, 63, 22, 0.32);
+  border-radius: 6px;
+  background: #fff;
+  color: #6a2a10;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.bootstrap-retry:hover {
+  border-color: rgba(164, 63, 22, 0.55);
+}
+
+@keyframes bootstrap-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
