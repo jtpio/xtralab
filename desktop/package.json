@@ -27,5 +27,9 @@
     "@types/node": "25.6.0",
     "electron": "42.0.0",
     "typescript": "5.9.3"
+  },
+  "overrides": {
+    "tar": "^7.5.14",
+    "@tootallnate/once": "^3.0.1"
   }
 }

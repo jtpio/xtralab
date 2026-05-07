@@ -147,7 +147,8 @@
         "parserOptions": {
             "project": [
                 "tsconfig.json",
-                "desktop/tsconfig.json"
+                "desktop/tsconfig.json",
+                "desktop/tsconfig.forge.json"
             ],
             "sourceType": "module"
         },
