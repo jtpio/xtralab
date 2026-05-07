@@ -10,12 +10,20 @@
     "build": "tsc -p tsconfig.json",
     "build:python": "uv build --wheel --out-dir python/wheels ..",
     "dev": "npm run build && npm run build:python && electron .",
-    "start": "npm run dev",
-    "package": "npm run build && npm run build:python && electron-packager . Xtralab --out=out --overwrite --app-bundle-id=io.github.jtpio.xtralab --icon=assets/jupyter --ignore='^/out($|/)|^/python/wheels/\\.gitignore$'",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "start": "npm run build && npm run build:python && electron-forge start",
+    "package": "npm run build && npm run build:python && electron-forge package",
+    "make": "npm run build && npm run build:python && electron-forge make",
+    "publish": "npm run build && npm run build:python && electron-forge publish",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.forge.json"
   },
   "devDependencies": {
-    "@electron/packager": "^20.0.0",
+    "@electron-forge/cli": "^7.11.0",
+    "@electron-forge/maker-dmg": "^7.11.0",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.11.0",
+    "@electron-forge/plugin-fuses": "^7.11.0",
+    "@electron-forge/shared-types": "^7.11.0",
+    "@electron/fuses": "^1.8.0",
+    "@reforged/maker-appimage": "^5.1.0",
     "@types/node": "25.6.0",
     "electron": "42.0.0",
     "typescript": "5.9.3"

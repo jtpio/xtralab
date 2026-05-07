@@ -108,21 +108,55 @@ npm install
 npm run dev
 ```
 
-For an unsigned local macOS app bundle:
+To produce an unsigned, distributable installer (DMG on macOS, AppImage on
+Linux) using [Electron Forge](https://www.electronforge.io/):
 
 ```bash
 cd desktop
-npm run package
+npm run make
 ```
 
-`npm run dev` and `npm run package` both build a local Xtralab wheel under
-`desktop/python/wheels/`. The generated app is written under `desktop/out/`,
-uses the Jupyter icon, and installs that bundled wheel into an isolated
-environment under the app data directory on first folder open:
+The output is written under `desktop/out/make/`. To produce an unpacked
+`.app` folder without an installer wrapper, use `npm run package` instead.
+
+`npm run dev`, `npm run package`, and `npm run make` all build a local
+Xtralab wheel under `desktop/python/wheels/`. The packaged app uses the
+Jupyter icon and installs that bundled wheel into an isolated environment
+under the app data directory on first folder open:
 
 ```text
 ~/Library/Application Support/Xtralab/envs/default
 ```
+
+Because the build is unsigned, macOS Gatekeeper will block the first launch
+with "Apple cannot check it for malicious software." Right-click the app and
+choose **Open** (or run `xattr -d com.apple.quarantine /path/to/Xtralab.app`)
+to dismiss the warning once.
+
+#### Dev vs release variants
+
+Local builds — both `npm run dev` and `npm run make` — are tagged as
+**Xtralab Dev** (bundle id `io.github.jtpio.xtralab.dev`, app data under
+`~/Library/Application Support/Xtralab Dev/`) so they coexist with a CI-built
+`Xtralab.app` (bundle id `io.github.jtpio.xtralab`) without sharing dock
+entries, app data, or kernels. The toggle is controlled by `process.env.CI`
+in `desktop/forge.config.ts`; GitHub Actions sets that to `true` automatically,
+so CI builds come out as the release variant.
+
+To produce a release-tagged build locally (e.g. to test exactly what CI would
+ship), set the variant explicitly:
+
+```bash
+cd desktop
+XTRALAB_BUILD_VARIANT=release npm run make
+```
+
+### Continuous integration builds
+
+Every push to `main` and every pull request also runs the desktop build on
+GitHub Actions for macOS (Apple Silicon) and Linux (x64). The resulting DMG
+and AppImage are uploaded as workflow artifacts and can be downloaded from
+the run page on the repository's Actions tab.
 
 The Electron app does not run from the repo `.venv` or require the repo checkout
 at runtime. It expects `uv` to be available from a normal system or user tool

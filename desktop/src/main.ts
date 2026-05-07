@@ -117,7 +117,9 @@ let quitInProgress = false;
 let ipcRegistered = false;
 let managedEnvironmentPromise: Promise<ManagedEnvironment> | null = null;
 
-app.setName('Xtralab');
+if (!app.isPackaged) {
+  app.setName('Xtralab Dev');
+}
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -191,21 +193,22 @@ function log(message: string): void {
 }
 
 function configureApplicationMenu(): void {
+  const appName = app.getName();
   const template: MenuItemConstructorOptions[] = [
     ...(process.platform === 'darwin'
       ? [
           {
-            label: 'Xtralab',
+            label: appName,
             submenu: [
-              { role: 'about', label: 'About Xtralab' },
+              { role: 'about', label: `About ${appName}` },
               { type: 'separator' },
               { role: 'services' },
               { type: 'separator' },
-              { role: 'hide', label: 'Hide Xtralab' },
+              { role: 'hide', label: `Hide ${appName}` },
               { role: 'hideOthers' },
               { role: 'unhide' },
               { type: 'separator' },
-              { role: 'quit', label: 'Quit Xtralab' }
+              { role: 'quit', label: `Quit ${appName}` }
             ]
           } satisfies MenuItemConstructorOptions
         ]
@@ -521,7 +524,7 @@ function showLauncherWindow(): void {
   }
 
   const window = new BrowserWindow({
-    title: 'Xtralab',
+    title: app.getName(),
     width: 680,
     height: 560,
     minWidth: 560,
@@ -548,7 +551,7 @@ function showLauncherWindow(): void {
   });
   window.webContents.on('page-title-updated', event => {
     event.preventDefault();
-    window.setTitle('Xtralab');
+    window.setTitle(app.getName());
   });
   window.once('ready-to-show', () => {
     window.show();
@@ -1811,7 +1814,7 @@ function isDirectory(folderPath: string): boolean {
 
 function getLabWindowTitle(folderPath: string): string {
   const folderName = path.basename(folderPath) || folderPath;
-  return `${folderName} - Xtralab`;
+  return `${folderName} - ${app.getName()}`;
 }
 
 function getManagedEnvironmentDir(): string {
@@ -1883,7 +1886,7 @@ function getFolderEnvironmentPreferencesPath(): string {
 }
 
 function showStartupError(error: unknown): void {
-  dialog.showErrorBox('Xtralab failed to start', formatError(error));
+  dialog.showErrorBox(`${app.getName()} failed to start`, formatError(error));
 }
 
 function formatError(error: unknown): string {
