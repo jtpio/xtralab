@@ -10,6 +10,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   statSync,
   writeFileSync,
   type WriteStream
@@ -82,6 +83,12 @@ interface WheelFingerprint {
   wheelName: string;
   wheelSize: number;
   wheelSha256: string;
+}
+
+interface RequirementsFingerprint {
+  requirementsName: string;
+  requirementsSize: number;
+  requirementsSha256: string;
 }
 
 interface RunCommandOptions {
@@ -1061,9 +1068,14 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
   const binDir = getManagedEnvironmentBinDir(envDir);
   const pythonPath = getManagedEnvironmentExecutablePath(envDir, 'python');
   const xtralabPath = getManagedEnvironmentExecutablePath(envDir, 'xtralab');
+
   const bundledWheelPath = getBundledWheelSourcePath();
-  const wheelPath = copyBundledWheelToPackageCache(bundledWheelPath);
+  const bundledRequirementsPath = getBundledRequirementsSourcePath();
+  const wheelPath = copyBundledFileToPackageCache(bundledWheelPath);
+  const requirementsPath = copyBundledFileToPackageCache(bundledRequirementsPath);
   const wheelFingerprint = getWheelFingerprint(wheelPath);
+  const requirementsFingerprint = getRequirementsFingerprint(requirementsPath);
+
   const markerPath = getManagedEnvironmentMarkerPath(envDir);
   const environment: ManagedEnvironment = {
     envDir,
@@ -1073,9 +1085,16 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
     wheelName: wheelFingerprint.wheelName
   };
 
-  if (isManagedEnvironmentCurrent(environment, markerPath, wheelFingerprint)) {
+  if (
+    isManagedEnvironmentCurrent(
+      environment,
+      markerPath,
+      wheelFingerprint,
+      requirementsFingerprint
+    )
+  ) {
     log(
-      `Using managed Python environment ${envDir} with ${wheelFingerprint.wheelName}`
+      `Using managed Python environment ${envDir} with ${wheelFingerprint.wheelName} and ${requirementsFingerprint.requirementsName}`
     );
     return environment;
   }
@@ -1083,13 +1102,18 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
   log(`Preparing managed Python environment at ${envDir}`);
   mkdirSync(path.dirname(envDir), { recursive: true });
 
-  if (!existsSync(pythonPath)) {
-    await runCommand(getUvCommand(), getUvVenvArgs(envDir), {
-      label: 'uv venv',
-      env: getBootstrapEnvironment(),
-      timeoutMs: 600000
-    });
+  // Recreate from scratch on any drift (lock or wheel) so packages dropped from
+  // the lock disappear with the env and we never reuse a partial install.
+  if (existsSync(envDir)) {
+    log(`Removing previous managed environment at ${envDir}`);
+    rmSync(envDir, { recursive: true, force: true });
   }
+
+  await runCommand(getUvCommand(), getUvVenvArgs(envDir), {
+    label: 'uv venv',
+    env: getBootstrapEnvironment(),
+    timeoutMs: 600000
+  });
 
   if (!existsSync(pythonPath)) {
     throw new Error(`Managed Python executable was not created: ${pythonPath}`);
@@ -1102,16 +1126,36 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
       'install',
       '--python',
       pythonPath,
-      '--upgrade',
+      '--require-hashes',
+      '--only-binary',
+      ':all:',
+      '-r',
+      requirementsPath
+    ],
+    {
+      label: 'uv pip install (deps)',
+      env: getBootstrapEnvironment(),
+      timeoutMs: 900000
+    }
+  );
+
+  await runCommand(
+    getUvCommand(),
+    [
+      'pip',
+      'install',
+      '--python',
+      pythonPath,
+      '--no-deps',
       '--reinstall',
-      '--prerelease',
-      'allow',
+      '--only-binary',
+      ':all:',
       wheelPath
     ],
     {
-      label: 'uv pip install',
+      label: 'uv pip install (xtralab)',
       env: getBootstrapEnvironment(),
-      timeoutMs: 900000
+      timeoutMs: 300000
     }
   );
 
@@ -1124,6 +1168,7 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
     `${JSON.stringify(
       {
         ...wheelFingerprint,
+        ...requirementsFingerprint,
         installedAt: new Date().toISOString()
       },
       null,
@@ -1132,7 +1177,7 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
     'utf8'
   );
   log(
-    `Managed Python environment is ready at ${envDir} with ${wheelFingerprint.wheelName}`
+    `Managed Python environment is ready at ${envDir} with ${wheelFingerprint.wheelName} and ${requirementsFingerprint.requirementsName}`
   );
 
   return environment;
@@ -1141,7 +1186,8 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
 function isManagedEnvironmentCurrent(
   environment: ManagedEnvironment,
   markerPath: string,
-  wheelFingerprint: WheelFingerprint
+  wheelFingerprint: WheelFingerprint,
+  requirementsFingerprint: RequirementsFingerprint
 ): boolean {
   if (
     !existsSync(environment.pythonPath) ||
@@ -1151,13 +1197,16 @@ function isManagedEnvironmentCurrent(
   }
 
   try {
-    const marker = JSON.parse(
-      readFileSync(markerPath, 'utf8')
-    ) as Partial<WheelFingerprint>;
+    const marker = JSON.parse(readFileSync(markerPath, 'utf8')) as Partial<
+      WheelFingerprint & RequirementsFingerprint
+    >;
     return (
       marker.wheelName === wheelFingerprint.wheelName &&
       marker.wheelSize === wheelFingerprint.wheelSize &&
-      marker.wheelSha256 === wheelFingerprint.wheelSha256
+      marker.wheelSha256 === wheelFingerprint.wheelSha256 &&
+      marker.requirementsName === requirementsFingerprint.requirementsName &&
+      marker.requirementsSize === requirementsFingerprint.requirementsSize &&
+      marker.requirementsSha256 === requirementsFingerprint.requirementsSha256
     );
   } catch {
     return false;
@@ -1259,7 +1308,7 @@ function getBundledWheelSourcePath(): string {
   return wheels[0].path;
 }
 
-function copyBundledWheelToPackageCache(sourcePath: string): string {
+function copyBundledFileToPackageCache(sourcePath: string): string {
   const packagesDir = path.join(app.getPath('userData'), 'packages');
   const targetPath = path.join(packagesDir, path.basename(sourcePath));
   const sourceContents = readFileSync(sourcePath);
@@ -1277,6 +1326,32 @@ function getWheelFingerprint(wheelPath: string): WheelFingerprint {
     wheelSize: contents.byteLength,
     wheelSha256: createHash('sha256').update(contents).digest('hex')
   };
+}
+
+function getRequirementsFingerprint(
+  requirementsPath: string
+): RequirementsFingerprint {
+  const contents = readFileSync(requirementsPath);
+  return {
+    requirementsName: path.basename(requirementsPath),
+    requirementsSize: contents.byteLength,
+    requirementsSha256: createHash('sha256').update(contents).digest('hex')
+  };
+}
+
+function getBundledRequirementsSourcePath(): string {
+  const requirementsPath = path.join(
+    getDesktopRoot(),
+    'python',
+    'wheels',
+    'requirements.txt'
+  );
+  if (!existsSync(requirementsPath)) {
+    throw new Error(
+      `Bundled requirements.txt not found at ${requirementsPath}. Run "npm run build:lock" in desktop before launching.`
+    );
+  }
+  return requirementsPath;
 }
 
 function runCommand(

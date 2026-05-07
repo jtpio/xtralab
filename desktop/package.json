@@ -9,11 +9,12 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "build:python": "uv build --wheel --out-dir python/wheels ..",
-    "dev": "npm run build && npm run build:python && electron .",
-    "start": "npm run build && npm run build:python && electron-forge start",
-    "package": "npm run build && npm run build:python && electron-forge package",
-    "make": "npm run build && npm run build:python && electron-forge make",
-    "publish": "npm run build && npm run build:python && electron-forge publish",
+    "build:lock": "uv export --project .. --frozen --no-dev --no-emit-project --format requirements.txt --output-file python/wheels/requirements.txt",
+    "dev": "npm run build && npm run build:lock && npm run build:python && electron .",
+    "start": "npm run build && npm run build:lock && npm run build:python && electron-forge start",
+    "package": "npm run build && npm run build:lock && npm run build:python && electron-forge package",
+    "make": "npm run build && npm run build:lock && npm run build:python && electron-forge make",
+    "publish": "npm run build && npm run build:lock && npm run build:python && electron-forge publish",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.forge.json"
   },
   "devDependencies": {
