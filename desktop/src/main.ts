@@ -10,11 +10,13 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   statSync,
   writeFileSync,
   type WriteStream
 } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import * as path from 'node:path';
 
 import {
@@ -1117,6 +1119,11 @@ function startEagerBootstrap(): void {
 
 async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
   const envDir = getManagedEnvironmentDir();
+  const stagedEnvDir = getStagedManagedEnvironmentDir(envDir);
+  const oldEnvDir = getOldManagedEnvironmentDir(envDir);
+
+  recoverManagedEnvironmentDirs(envDir, stagedEnvDir, oldEnvDir);
+
   const binDir = getManagedEnvironmentBinDir(envDir);
   const pythonPath = getManagedEnvironmentExecutablePath(envDir, 'python');
   const xtralabPath = getManagedEnvironmentExecutablePath(envDir, 'xtralab');
@@ -1155,87 +1162,184 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
   setBootstrapState({ kind: 'preparing' });
   mkdirSync(path.dirname(envDir), { recursive: true });
 
-  // Recreate from scratch on any drift (lock or wheel) so packages dropped from
-  // the lock disappear with the env and we never reuse a partial install.
-  if (existsSync(envDir)) {
-    log(`Removing previous managed environment at ${envDir}`);
-    rmSync(envDir, { recursive: true, force: true });
-  }
-
-  await runCommand(getUvCommand(), getUvVenvArgs(envDir), {
-    label: 'uv venv',
-    env: getBootstrapEnvironment(),
-    timeoutMs: 600000
-  });
-
-  if (!existsSync(pythonPath)) {
-    throw new Error(`Managed Python executable was not created: ${pythonPath}`);
-  }
-
-  setBootstrapState({ kind: 'installing-deps' });
-  await runCommand(
-    getUvCommand(),
-    [
-      'pip',
-      'install',
-      '--python',
-      pythonPath,
-      '--require-hashes',
-      '--only-binary',
-      ':all:',
-      '-r',
-      requirementsPath
-    ],
-    {
-      label: 'uv pip install (deps)',
-      env: getBootstrapEnvironment(),
-      timeoutMs: 900000
-    }
+  // Build the new environment in a sibling staging directory; only swap it
+  // into place once every install step has succeeded. If anything fails, the
+  // existing envDir is left untouched and the user still has a usable runtime.
+  const stagedPythonPath = getManagedEnvironmentExecutablePath(
+    stagedEnvDir,
+    'python'
   );
-
-  setBootstrapState({ kind: 'installing-xtralab' });
-  await runCommand(
-    getUvCommand(),
-    [
-      'pip',
-      'install',
-      '--python',
-      pythonPath,
-      '--no-deps',
-      '--reinstall',
-      '--only-binary',
-      ':all:',
-      wheelPath
-    ],
-    {
-      label: 'uv pip install (xtralab)',
-      env: getBootstrapEnvironment(),
-      timeoutMs: 300000
-    }
+  const stagedXtralabPath = getManagedEnvironmentExecutablePath(
+    stagedEnvDir,
+    'xtralab'
   );
+  const stagedMarkerPath = getManagedEnvironmentMarkerPath(stagedEnvDir);
 
-  if (!existsSync(xtralabPath)) {
-    throw new Error(`xtralab executable was not installed: ${xtralabPath}`);
-  }
+  try {
+    await runCommand(getUvCommand(), getUvVenvArgs(stagedEnvDir), {
+      label: 'uv venv',
+      env: getBootstrapEnvironment(),
+      timeoutMs: 600000
+    });
 
-  writeFileSync(
-    markerPath,
-    `${JSON.stringify(
+    if (!existsSync(stagedPythonPath)) {
+      throw new Error(
+        `Managed Python executable was not created: ${stagedPythonPath}`
+      );
+    }
+
+    setBootstrapState({ kind: 'installing-deps' });
+    await runCommand(
+      getUvCommand(),
+      [
+        'pip',
+        'install',
+        '--python',
+        stagedPythonPath,
+        '--require-hashes',
+        '--only-binary',
+        ':all:',
+        '-r',
+        requirementsPath
+      ],
       {
-        ...wheelFingerprint,
-        ...requirementsFingerprint,
-        installedAt: new Date().toISOString()
-      },
-      null,
-      2
-    )}\n`,
-    'utf8'
-  );
+        label: 'uv pip install (deps)',
+        env: getBootstrapEnvironment(),
+        timeoutMs: 900000
+      }
+    );
+
+    setBootstrapState({ kind: 'installing-xtralab' });
+    await runCommand(
+      getUvCommand(),
+      [
+        'pip',
+        'install',
+        '--python',
+        stagedPythonPath,
+        '--no-deps',
+        '--reinstall',
+        '--only-binary',
+        ':all:',
+        wheelPath
+      ],
+      {
+        label: 'uv pip install (xtralab)',
+        env: getBootstrapEnvironment(),
+        timeoutMs: 300000
+      }
+    );
+
+    if (!existsSync(stagedXtralabPath)) {
+      throw new Error(
+        `xtralab executable was not installed: ${stagedXtralabPath}`
+      );
+    }
+
+    writeFileSync(
+      stagedMarkerPath,
+      `${JSON.stringify(
+        {
+          ...wheelFingerprint,
+          ...requirementsFingerprint,
+          installedAt: new Date().toISOString()
+        },
+        null,
+        2
+      )}\n`,
+      'utf8'
+    );
+  } catch (error) {
+    log(
+      `Bootstrap failed; discarding staged environment at ${stagedEnvDir}`
+    );
+    if (existsSync(stagedEnvDir)) {
+      try {
+        rmSync(stagedEnvDir, { recursive: true, force: true });
+      } catch (cleanupError) {
+        log(
+          `Unable to remove staged environment ${stagedEnvDir}: ${formatError(cleanupError)}`
+        );
+      }
+    }
+    throw error;
+  }
+
+  if (existsSync(envDir)) {
+    log(`Archiving previous environment ${envDir} → ${oldEnvDir}`);
+    renameSync(envDir, oldEnvDir);
+  }
+  log(`Promoting staged environment ${stagedEnvDir} → ${envDir}`);
+  renameSync(stagedEnvDir, envDir);
+
+  if (existsSync(oldEnvDir)) {
+    scheduleOldEnvironmentCleanup(oldEnvDir);
+  }
+
   log(
     `Managed Python environment is ready at ${envDir} with ${wheelFingerprint.wheelName} and ${requirementsFingerprint.requirementsName}`
   );
 
   return environment;
+}
+
+function recoverManagedEnvironmentDirs(
+  envDir: string,
+  stagedEnvDir: string,
+  oldEnvDir: string
+): void {
+  if (existsSync(oldEnvDir)) {
+    if (!existsSync(envDir)) {
+      log(
+        `Restoring managed environment from ${oldEnvDir} after interrupted swap`
+      );
+      try {
+        renameSync(oldEnvDir, envDir);
+      } catch (error) {
+        log(
+          `Unable to restore environment from ${oldEnvDir}: ${formatError(error)}`
+        );
+      }
+    } else {
+      log(`Removing leftover ${oldEnvDir}`);
+      try {
+        rmSync(oldEnvDir, { recursive: true, force: true });
+      } catch (error) {
+        log(
+          `Unable to remove leftover ${oldEnvDir}: ${formatError(error)}`
+        );
+      }
+    }
+  }
+
+  if (existsSync(stagedEnvDir)) {
+    log(`Removing leftover ${stagedEnvDir} from prior partial install`);
+    try {
+      rmSync(stagedEnvDir, { recursive: true, force: true });
+    } catch (error) {
+      log(
+        `Unable to remove leftover ${stagedEnvDir}: ${formatError(error)}`
+      );
+    }
+  }
+}
+
+function scheduleOldEnvironmentCleanup(oldEnvDir: string): void {
+  void rm(oldEnvDir, { recursive: true, force: true })
+    .then(() => log(`Removed prior environment at ${oldEnvDir}`))
+    .catch(error =>
+      log(
+        `Unable to remove prior environment at ${oldEnvDir}: ${formatError(error)}`
+      )
+    );
+}
+
+function getStagedManagedEnvironmentDir(envDir: string): string {
+  return `${envDir}.staged`;
+}
+
+function getOldManagedEnvironmentDir(envDir: string): string {
+  return `${envDir}.old`;
 }
 
 function isManagedEnvironmentCurrent(
