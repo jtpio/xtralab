@@ -1,4 +1,4 @@
-"""Reusable JupyterLab server supervisor for Xtralab desktop shells."""
+"""Reusable JupyterLab server supervisor for xtralab desktop shells."""
 
 from __future__ import annotations
 

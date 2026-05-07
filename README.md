@@ -90,10 +90,10 @@ its own Jupyter server and window.
 
 The launcher also detects common project Python environments such as `.venv`,
 `venv`, `env`, `.conda`, and pixi environments. Selecting one creates a
-folder-local `python3` kernelspec under Xtralab's app data so notebooks execute
+folder-local `python3` kernelspec under xtralab's app data so notebooks execute
 with the project interpreter while the JupyterLab server continues to run from
-the isolated Xtralab environment. If the selected interpreter is missing
-`ipykernel`, Xtralab does not modify the environment; installed kernelspecs in
+the isolated xtralab environment. If the selected interpreter is missing
+`ipykernel`, xtralab does not modify the environment; installed kernelspecs in
 that environment can still be used if they are present.
 
 When a selected project environment has kernelspecs or prebuilt JupyterLab
@@ -120,25 +120,25 @@ The output is written under `desktop/out/make/`. To produce an unpacked
 `.app` folder without an installer wrapper, use `npm run package` instead.
 
 `npm run dev`, `npm run package`, and `npm run make` all build a local
-Xtralab wheel under `desktop/python/wheels/`. The packaged app uses the
+xtralab wheel under `desktop/python/wheels/`. The packaged app uses the
 Jupyter icon and installs that bundled wheel into an isolated environment
 under the app data directory on first folder open:
 
 ```text
-~/Library/Application Support/Xtralab/envs/default
+~/Library/Application Support/xtralab/envs/default
 ```
 
 Because the build is unsigned, macOS Gatekeeper will block the first launch
 with "Apple cannot check it for malicious software." Right-click the app and
-choose **Open** (or run `xattr -d com.apple.quarantine /path/to/Xtralab.app`)
+choose **Open** (or run `xattr -d com.apple.quarantine /path/to/xtralab.app`)
 to dismiss the warning once.
 
 #### Dev vs release variants
 
 Local builds — both `npm run dev` and `npm run make` — are tagged as
-**Xtralab Dev** (bundle id `io.github.jtpio.xtralab.dev`, app data under
-`~/Library/Application Support/Xtralab Dev/`) so they coexist with a CI-built
-`Xtralab.app` (bundle id `io.github.jtpio.xtralab`) without sharing dock
+**xtralab dev** (bundle id `io.github.jtpio.xtralab.dev`, app data under
+`~/Library/Application Support/xtralab dev/`) so they coexist with a CI-built
+`xtralab.app` (bundle id `io.github.jtpio.xtralab`) without sharing dock
 entries, app data, or kernels. The toggle is controlled by `process.env.CI`
 in `desktop/forge.config.ts`; GitHub Actions sets that to `true` automatically,
 so CI builds come out as the release variant.

@@ -1,8 +1,8 @@
 {
   "name": "@xtralab/desktop",
-  "productName": "Xtralab",
+  "productName": "xtralab",
   "version": "0.2.0",
-  "description": "Electron desktop shell for Xtralab.",
+  "description": "Electron desktop shell for xtralab.",
   "private": true,
   "license": "BSD-3-Clause",
   "main": "dist/main.js",

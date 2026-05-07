@@ -118,7 +118,7 @@ let ipcRegistered = false;
 let managedEnvironmentPromise: Promise<ManagedEnvironment> | null = null;
 
 if (!app.isPackaged) {
-  app.setName('Xtralab Dev');
+  app.setName('xtralab dev');
 }
 
 if (!app.requestSingleInstanceLock()) {
@@ -183,7 +183,7 @@ function initializeLogging(): void {
   logStream = createWriteStream(path.join(logsDir, 'main.log'), {
     flags: 'a'
   });
-  log('Starting Xtralab desktop');
+  log('Starting xtralab desktop');
 }
 
 function log(message: string): void {
@@ -711,7 +711,7 @@ function discoverFolderPythonEnvironments(
 
 function createManagedEnvironmentOption(): PythonEnvironmentOption {
   return {
-    label: 'Xtralab managed Python',
+    label: 'xtralab managed Python',
     detail: 'Bundled JupyterLab runtime',
     kind: 'managed',
     pythonPath: null,
@@ -1096,7 +1096,7 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
   );
 
   if (!existsSync(xtralabPath)) {
-    throw new Error(`Xtralab executable was not installed: ${xtralabPath}`);
+    throw new Error(`xtralab executable was not installed: ${xtralabPath}`);
   }
 
   writeFileSync(
@@ -1232,7 +1232,7 @@ function getBundledWheelSourcePath(): string {
 
   if (wheels.length === 0) {
     throw new Error(
-      `No bundled Xtralab wheel found in ${wheelsDir}. Run "npm run build:python" in desktop before launching.`
+      `No bundled xtralab wheel found in ${wheelsDir}. Run "npm run build:python" in desktop before launching.`
     );
   }
 

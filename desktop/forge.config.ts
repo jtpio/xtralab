@@ -10,7 +10,7 @@ const variant =
   (process.env.CI === 'true' ? 'release' : 'dev');
 const isDev = variant === 'dev';
 
-const productName = isDev ? 'Xtralab Dev' : 'Xtralab';
+const productName = isDev ? 'xtralab dev' : 'xtralab';
 const executableName = isDev ? 'xtralab-dev' : 'xtralab';
 const appBundleId = isDev
   ? 'io.github.jtpio.xtralab.dev'

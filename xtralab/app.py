@@ -36,7 +36,7 @@ def _find_chrome() -> str | None:
 
 def _profile_dir() -> Path:
     profile = (
-        Path.home() / "Library" / "Application Support" / "Xtralab" / "chrome-profile"
+        Path.home() / "Library" / "Application Support" / "xtralab" / "chrome-profile"
     )
     profile.mkdir(parents=True, exist_ok=True)
     return profile

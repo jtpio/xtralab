@@ -12,7 +12,7 @@ import { xtralabFileBrowserIcon } from './icons';
 export const FILE_BROWSER_ID = 'xtralab:file-browser';
 
 /**
- * The CSS class added to the Xtralab file browser widget. The selectors that
+ * The CSS class added to the xtralab file browser widget. The selectors that
  * bind application context menu items hang off this class, so it must remain
  * specific enough not to clash with other browsers (such as the default
  * `jp-FileBrowser`).
@@ -29,7 +29,7 @@ export interface IXtralabFileBrowserOptions {
 }
 
 /**
- * Public API of the Xtralab file browser used by command handlers and other
+ * Public API of the xtralab file browser used by command handlers and other
  * collaborators. Kept narrow on purpose so the React component stays free to
  * evolve the underlying tree integration.
  */
@@ -100,7 +100,7 @@ export class XtralabFileBrowser extends Widget implements IXtralabFileBrowser {
     this._onOpenFile = options.onOpenFile;
     this.id = FILE_BROWSER_ID;
     this.title.icon = xtralabFileBrowserIcon;
-    this.title.caption = 'Xtralab File Browser';
+    this.title.caption = 'xtralab File Browser';
     this.addClass(FILE_BROWSER_CSS_CLASS);
 
     this._toolbar = new Toolbar();

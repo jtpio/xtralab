@@ -27,7 +27,7 @@ import { toCanonicalPath, toServerPath } from './contents';
 import { IXtralabFileBrowser } from './widget';
 
 /**
- * Command identifiers exposed by the Xtralab browser. We deliberately namespace
+ * Command identifiers exposed by the xtralab browser. We deliberately namespace
  * these under `xtralab:` rather than reusing the `filebrowser:` ids
  * because the core `filebrowser:*` commands look up a `FileBrowser` instance
  * via `IFileBrowserFactory.tracker` — our widget is not a `FileBrowser`, so
@@ -198,7 +198,7 @@ function makeOpenWithUpdater(
 }
 
 /**
- * Register every Xtralab command on the application command registry, attach
+ * Register every xtralab command on the application command registry, attach
  * the items to the application context menu, and wire up the dynamic
  * "Open With" submenu populator.
  *

@@ -32,7 +32,7 @@ type LoadState = 'unloaded' | 'loading' | 'loaded';
  * synchronous function that returns a Widget. The contents MIME types
  * mirror what the default file browser sends so other drop targets that
  * understand them (the file browser itself, custom drop zones) keep
- * working when the user drags out of Xtralab.
+ * working when the user drags out of xtralab.
  */
 const FACTORY_MIME = 'application/vnd.lumino.widget-factory';
 const CONTENTS_MIME = 'application/x-jupyter-icontents';
