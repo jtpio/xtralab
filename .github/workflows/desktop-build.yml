@@ -58,6 +58,9 @@ jobs:
         working-directory: desktop
         run: npm run build
 
+      - name: Lock Python dependencies
+        run: uv lock
+
       - name: Export requirements lock
         working-directory: desktop
         run: npm run build:lock
