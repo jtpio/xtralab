@@ -58,9 +58,21 @@ jobs:
         working-directory: desktop
         run: npm run build
 
+      - name: Export requirements lock
+        working-directory: desktop
+        run: npm run build:lock
+
+      - name: Build wheelhouse
+        working-directory: desktop
+        run: npm run build:wheelhouse
+
       - name: Build Python wheel
         working-directory: desktop
         run: npm run build:python
+
+      - name: Build Python runtime
+        working-directory: desktop
+        run: npm run build:runtime
 
       - name: Make distribution
         working-directory: desktop
