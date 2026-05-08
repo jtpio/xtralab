@@ -19,7 +19,7 @@ const desktopRoot = resolve(__dirname, '..');
 const wheelsDir = join(desktopRoot, 'python', 'wheels');
 const requirementsPath = join(wheelsDir, 'requirements.txt');
 const markerPath = join(wheelsDir, '.wheelhouse-state.json');
-const pythonVersion = process.env.XTRALAB_PYTHON ?? '3.13';
+const pythonVersion = process.env.XTRALAB_PYTHON ?? '3.14';
 const markerSchema = 1;
 
 function run(command, args) {

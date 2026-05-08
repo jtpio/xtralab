@@ -22,7 +22,7 @@ const requirementsPath = join(wheelsDir, 'requirements.txt');
 const runtimeDir = join(desktopRoot, 'python', 'runtime');
 const stagingDir = `${runtimeDir}.staging`;
 const markerPath = join(runtimeDir, '.runtime-state.json');
-const pythonVersion = process.env.XTRALAB_PYTHON ?? '3.13';
+const pythonVersion = process.env.XTRALAB_PYTHON ?? '3.14';
 const markerSchema = 1;
 
 function run(command, args) {
