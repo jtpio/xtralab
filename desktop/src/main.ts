@@ -48,7 +48,6 @@ interface ManagedEnvironment {
   binDir: string;
   pythonPath: string;
   xtralabPath: string;
-  wheelName: string;
 }
 
 interface PythonEnvironmentOption {
@@ -79,18 +78,6 @@ interface ProjectRuntimeEnvironment {
 interface FolderEnvironmentPreference {
   pythonPath: string | null;
   updatedAt: string;
-}
-
-interface WheelFingerprint {
-  wheelName: string;
-  wheelSize: number;
-  wheelSha256: string;
-}
-
-interface RequirementsFingerprint {
-  requirementsName: string;
-  requirementsSize: number;
-  requirementsSha256: string;
 }
 
 interface RunCommandOptions {
@@ -307,7 +294,6 @@ function configureApplicationMenu(): void {
 function prepareProcessEnvironment(): void {
   const pathCandidates = [
     removeActivePythonEnvironmentPath(process.env.PATH),
-    process.env.XTRALAB_EXTRA_PATH,
     getExternalCommandPath()
   ];
 
@@ -434,23 +420,31 @@ function logAgentCommandAvailability(): void {
     'kiro',
     'vibe'
   ];
-  const result = spawnSync(
+  const child = spawn(
     '/bin/sh',
     ['-c', commands.map(command => `command -v ${command} || true`).join('\n')],
     {
-      encoding: 'utf8',
       env: process.env,
-      timeout: 5000
+      stdio: ['ignore', 'pipe', 'pipe']
     }
   );
 
-  const resolved = result.stdout
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(line => line.length > 0);
-  log(
-    `Agent command PATH probe: ${resolved.length ? resolved.join(', ') : 'none'}`
-  );
+  let stdout = '';
+  child.stdout?.on('data', (chunk: Buffer) => {
+    stdout += chunk.toString('utf8');
+  });
+  child.on('exit', () => {
+    const resolved = stdout
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+    log(
+      `Agent command PATH probe: ${resolved.length ? resolved.join(', ') : 'none'}`
+    );
+  });
+  child.on('error', error => {
+    log(`Agent command PATH probe failed: ${error.message}`);
+  });
 }
 
 function setApplicationIcon(): void {
@@ -1122,39 +1116,25 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
   const stagedEnvDir = getStagedManagedEnvironmentDir(envDir);
   const oldEnvDir = getOldManagedEnvironmentDir(envDir);
 
-  recoverManagedEnvironmentDirs(envDir, stagedEnvDir, oldEnvDir);
+  cleanupLeftoverEnvironmentDirs(stagedEnvDir, oldEnvDir);
 
   const binDir = getManagedEnvironmentBinDir(envDir);
   const pythonPath = getManagedEnvironmentExecutablePath(envDir, 'python');
   const xtralabPath = getManagedEnvironmentExecutablePath(envDir, 'xtralab');
-
-  const bundledWheelPath = getBundledWheelSourcePath();
-  const bundledRequirementsPath = getBundledRequirementsSourcePath();
-  const wheelPath = copyBundledFileToPackageCache(bundledWheelPath);
-  const requirementsPath = copyBundledFileToPackageCache(bundledRequirementsPath);
-  const wheelFingerprint = getWheelFingerprint(wheelPath);
-  const requirementsFingerprint = getRequirementsFingerprint(requirementsPath);
-
   const markerPath = getManagedEnvironmentMarkerPath(envDir);
+
+  const wheelPath = getBundledWheelSourcePath();
+  const requirementsPath = getBundledRequirementsSourcePath();
+
   const environment: ManagedEnvironment = {
     envDir,
     binDir,
     pythonPath,
-    xtralabPath,
-    wheelName: wheelFingerprint.wheelName
+    xtralabPath
   };
 
-  if (
-    isManagedEnvironmentCurrent(
-      environment,
-      markerPath,
-      wheelFingerprint,
-      requirementsFingerprint
-    )
-  ) {
-    log(
-      `Using managed Python environment ${envDir} with ${wheelFingerprint.wheelName} and ${requirementsFingerprint.requirementsName}`
-    );
+  if (isManagedEnvironmentCurrent(environment, markerPath, wheelPath, requirementsPath)) {
+    log(`Using managed Python environment ${envDir} with ${path.basename(wheelPath)}`);
     return environment;
   }
 
@@ -1162,17 +1142,8 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
   setBootstrapState({ kind: 'preparing' });
   mkdirSync(path.dirname(envDir), { recursive: true });
 
-  // Build the new environment in a sibling staging directory; only swap it
-  // into place once every install step has succeeded. If anything fails, the
-  // existing envDir is left untouched and the user still has a usable runtime.
-  const stagedPythonPath = getManagedEnvironmentExecutablePath(
-    stagedEnvDir,
-    'python'
-  );
-  const stagedXtralabPath = getManagedEnvironmentExecutablePath(
-    stagedEnvDir,
-    'xtralab'
-  );
+  const stagedPythonPath = getManagedEnvironmentExecutablePath(stagedEnvDir, 'python');
+  const stagedXtralabPath = getManagedEnvironmentExecutablePath(stagedEnvDir, 'xtralab');
   const stagedMarkerPath = getManagedEnvironmentMarkerPath(stagedEnvDir);
 
   try {
@@ -1182,12 +1153,6 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
       timeoutMs: 600000
     });
 
-    if (!existsSync(stagedPythonPath)) {
-      throw new Error(
-        `Managed Python executable was not created: ${stagedPythonPath}`
-      );
-    }
-
     setBootstrapState({ kind: 'installing-deps' });
     await runCommand(
       getUvCommand(),
@@ -1196,6 +1161,9 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
         'install',
         '--python',
         stagedPythonPath,
+        '--no-index',
+        '--find-links',
+        getBundledWheelhouseDir(),
         '--require-hashes',
         '--only-binary',
         ':all:',
@@ -1231,95 +1199,64 @@ async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
     );
 
     if (!existsSync(stagedXtralabPath)) {
-      throw new Error(
-        `xtralab executable was not installed: ${stagedXtralabPath}`
-      );
+      throw new Error(`xtralab executable was not installed: ${stagedXtralabPath}`);
     }
 
-    writeFileSync(
-      stagedMarkerPath,
-      `${JSON.stringify(
-        {
-          ...wheelFingerprint,
-          ...requirementsFingerprint,
-          installedAt: new Date().toISOString()
-        },
-        null,
-        2
-      )}\n`,
-      'utf8'
-    );
+    writeMarker(stagedMarkerPath, wheelPath, requirementsPath);
   } catch (error) {
-    log(
-      `Bootstrap failed; discarding staged environment at ${stagedEnvDir}`
-    );
-    if (existsSync(stagedEnvDir)) {
-      try {
-        rmSync(stagedEnvDir, { recursive: true, force: true });
-      } catch (cleanupError) {
-        log(
-          `Unable to remove staged environment ${stagedEnvDir}: ${formatError(cleanupError)}`
-        );
-      }
-    }
+    log(`Bootstrap failed; discarding staged environment at ${stagedEnvDir}`);
+    rmSync(stagedEnvDir, { recursive: true, force: true });
     throw error;
   }
 
+  // Atomic swap: rename old envDir aside, promote staged in. The old dir is
+  // deleted asynchronously so the boot path doesn't block on rmSync of a
+  // multi-hundred-MB tree.
   if (existsSync(envDir)) {
-    log(`Archiving previous environment ${envDir} → ${oldEnvDir}`);
     renameSync(envDir, oldEnvDir);
   }
-  log(`Promoting staged environment ${stagedEnvDir} → ${envDir}`);
   renameSync(stagedEnvDir, envDir);
-
   if (existsSync(oldEnvDir)) {
     scheduleOldEnvironmentCleanup(oldEnvDir);
   }
 
-  log(
-    `Managed Python environment is ready at ${envDir} with ${wheelFingerprint.wheelName} and ${requirementsFingerprint.requirementsName}`
-  );
-
+  log(`Managed Python environment is ready at ${envDir} with ${path.basename(wheelPath)}`);
   return environment;
 }
 
-function recoverManagedEnvironmentDirs(
-  envDir: string,
+function writeMarker(
+  markerPath: string,
+  wheelPath: string,
+  requirementsPath: string
+): void {
+  const wheelStat = statSync(wheelPath);
+  const requirementsStat = statSync(requirementsPath);
+  writeFileSync(
+    markerPath,
+    `${JSON.stringify(
+      {
+        wheelName: path.basename(wheelPath),
+        wheelSize: wheelStat.size,
+        requirementsName: path.basename(requirementsPath),
+        requirementsSize: requirementsStat.size,
+        pythonVersion: getManagedPythonVersion(),
+        installedAt: new Date().toISOString()
+      },
+      null,
+      2
+    )}\n`,
+    'utf8'
+  );
+}
+
+function cleanupLeftoverEnvironmentDirs(
   stagedEnvDir: string,
   oldEnvDir: string
 ): void {
-  if (existsSync(oldEnvDir)) {
-    if (!existsSync(envDir)) {
-      log(
-        `Restoring managed environment from ${oldEnvDir} after interrupted swap`
-      );
-      try {
-        renameSync(oldEnvDir, envDir);
-      } catch (error) {
-        log(
-          `Unable to restore environment from ${oldEnvDir}: ${formatError(error)}`
-        );
-      }
-    } else {
-      log(`Removing leftover ${oldEnvDir}`);
-      try {
-        rmSync(oldEnvDir, { recursive: true, force: true });
-      } catch (error) {
-        log(
-          `Unable to remove leftover ${oldEnvDir}: ${formatError(error)}`
-        );
-      }
-    }
-  }
-
-  if (existsSync(stagedEnvDir)) {
-    log(`Removing leftover ${stagedEnvDir} from prior partial install`);
-    try {
-      rmSync(stagedEnvDir, { recursive: true, force: true });
-    } catch (error) {
-      log(
-        `Unable to remove leftover ${stagedEnvDir}: ${formatError(error)}`
-      );
+  for (const dir of [stagedEnvDir, oldEnvDir]) {
+    if (existsSync(dir)) {
+      log(`Removing leftover ${dir}`);
+      rmSync(dir, { recursive: true, force: true });
     }
   }
 }
@@ -1345,31 +1282,35 @@ function getOldManagedEnvironmentDir(envDir: string): string {
 function isManagedEnvironmentCurrent(
   environment: ManagedEnvironment,
   markerPath: string,
-  wheelFingerprint: WheelFingerprint,
-  requirementsFingerprint: RequirementsFingerprint
+  wheelPath: string,
+  requirementsPath: string
 ): boolean {
-  if (
-    !existsSync(environment.pythonPath) ||
-    !existsSync(environment.xtralabPath)
-  ) {
+  if (!existsSync(environment.pythonPath) || !existsSync(environment.xtralabPath)) {
     return false;
   }
 
+  let marker: {
+    wheelName?: string;
+    wheelSize?: number;
+    requirementsName?: string;
+    requirementsSize?: number;
+    pythonVersion?: string;
+  };
   try {
-    const marker = JSON.parse(readFileSync(markerPath, 'utf8')) as Partial<
-      WheelFingerprint & RequirementsFingerprint
-    >;
-    return (
-      marker.wheelName === wheelFingerprint.wheelName &&
-      marker.wheelSize === wheelFingerprint.wheelSize &&
-      marker.wheelSha256 === wheelFingerprint.wheelSha256 &&
-      marker.requirementsName === requirementsFingerprint.requirementsName &&
-      marker.requirementsSize === requirementsFingerprint.requirementsSize &&
-      marker.requirementsSha256 === requirementsFingerprint.requirementsSha256
-    );
+    marker = JSON.parse(readFileSync(markerPath, 'utf8'));
   } catch {
     return false;
   }
+
+  const wheelStat = statSync(wheelPath);
+  const requirementsStat = statSync(requirementsPath);
+  return (
+    marker.pythonVersion === getManagedPythonVersion() &&
+    marker.wheelName === path.basename(wheelPath) &&
+    marker.wheelSize === wheelStat.size &&
+    marker.requirementsName === path.basename(requirementsPath) &&
+    marker.requirementsSize === requirementsStat.size
+  );
 }
 
 function getUvCommand(): string {
@@ -1377,12 +1318,28 @@ function getUvCommand(): string {
 }
 
 function getUvVenvArgs(envDir: string): string[] {
-  const args = ['venv'];
-  if (process.env.XTRALAB_PYTHON !== undefined) {
-    args.push('--python', process.env.XTRALAB_PYTHON);
+  return [
+    'venv',
+    '--python',
+    getManagedPythonVersion(),
+    '--relocatable',
+    envDir
+  ];
+}
+
+function getManagedPythonVersion(): string {
+  return process.env.XTRALAB_PYTHON ?? '3.13';
+}
+
+function getBundledWheelhouseDir(): string {
+  const baseDir = path.join(getDesktopRoot(), 'python', 'wheels');
+  if (!app.isPackaged) {
+    return baseDir;
   }
-  args.push(envDir);
-  return args;
+  return baseDir.replace(
+    /([\\\/])app\.asar([\\\/])/g,
+    '$1app.asar.unpacked$2'
+  );
 }
 
 function getBootstrapEnvironment(): NodeJS.ProcessEnv {
@@ -1465,37 +1422,6 @@ function getBundledWheelSourcePath(): string {
   }
 
   return wheels[0].path;
-}
-
-function copyBundledFileToPackageCache(sourcePath: string): string {
-  const packagesDir = path.join(app.getPath('userData'), 'packages');
-  const targetPath = path.join(packagesDir, path.basename(sourcePath));
-  const sourceContents = readFileSync(sourcePath);
-
-  mkdirSync(packagesDir, { recursive: true });
-  writeFileSync(targetPath, sourceContents);
-
-  return targetPath;
-}
-
-function getWheelFingerprint(wheelPath: string): WheelFingerprint {
-  const contents = readFileSync(wheelPath);
-  return {
-    wheelName: path.basename(wheelPath),
-    wheelSize: contents.byteLength,
-    wheelSha256: createHash('sha256').update(contents).digest('hex')
-  };
-}
-
-function getRequirementsFingerprint(
-  requirementsPath: string
-): RequirementsFingerprint {
-  const contents = readFileSync(requirementsPath);
-  return {
-    requirementsName: path.basename(requirementsPath),
-    requirementsSize: contents.byteLength,
-    requirementsSha256: createHash('sha256').update(contents).digest('hex')
-  };
 }
 
 function getBundledRequirementsSourcePath(): string {

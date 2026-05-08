@@ -23,13 +23,16 @@ const config: ForgeConfig = {
     appBundleId,
     appCategoryType: 'public.app-category.developer-tools',
     icon: './assets/jupyter',
-    asar: true,
+    asar: {
+      unpack: 'python/wheels/*.whl'
+    },
     ignore: [
       /^\/out($|\/)/,
       /^\/forge\.config\.(ts|js)$/,
       /^\/tsconfig.*\.json$/,
       /^\/.+\.tsbuildinfo$/,
       /^\/src\/.*\.ts$/,
+      /^\/scripts\/.*$/,
       /\.map$/,
       /^\/python\/wheels\/\.gitignore$/,
       /^\/\.gitignore$/,
