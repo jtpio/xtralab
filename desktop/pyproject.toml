@@ -1,0 +1,12 @@
+[project]
+name = "xtralab-desktop-bundle"
+version = "0"
+description = "Lockfile target for the xtralab desktop bundle. Not a published package."
+requires-python = ">=3.13"
+dependencies = ["xtralab"]
+
+[tool.uv.sources]
+xtralab = { path = "..", editable = false }
+
+[tool.uv]
+prerelease = "allow"

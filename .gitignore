@@ -34,7 +34,7 @@ env/
 
 # uv
 .uv/
-uv.lock
+/uv.lock
 
 # Tools
 .hatch/

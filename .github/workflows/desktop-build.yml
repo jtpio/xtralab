@@ -58,8 +58,9 @@ jobs:
         working-directory: desktop
         run: npm run build
 
-      - name: Lock Python dependencies
-        run: uv lock
+      - name: Verify desktop lockfile is in sync
+        working-directory: desktop
+        run: uv lock --check
 
       - name: Export requirements lock
         working-directory: desktop
