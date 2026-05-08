@@ -53,10 +53,7 @@ interface PythonEnvironmentOption {
   kind: 'managed' | 'project' | 'custom';
   pythonPath: string | null;
   environmentRoot: string | null;
-  dataPath: string | null;
   hasIpykernel: boolean;
-  hasLabExtensions: boolean;
-  hasKernels: boolean;
 }
 
 interface FolderEnvironmentResult {
@@ -69,7 +66,7 @@ interface FolderEnvironmentResult {
 
 interface ProjectRuntimeEnvironment {
   option: PythonEnvironmentOption;
-  kernelDataPath: string | null;
+  kernelDataPath: string;
 }
 
 interface FolderEnvironmentPreference {
@@ -272,8 +269,9 @@ function configureApplicationMenu(): void {
 
 function prepareProcessEnvironment(): void {
   const pathCandidates = [
+    getConfiguredExtraPath(),
     removeActivePythonEnvironmentPath(process.env.PATH),
-    getExternalCommandPath()
+    getDefaultExternalCommandPath()
   ];
 
   const mergedPath = mergePathSegments(pathCandidates);
@@ -287,7 +285,11 @@ function prepareProcessEnvironment(): void {
   logAgentCommandAvailability();
 }
 
-function getExternalCommandPath(): string {
+function getConfiguredExtraPath(): string | undefined {
+  return process.env.XTRALAB_EXTRA_PATH;
+}
+
+function getDefaultExternalCommandPath(): string {
   const home = app.getPath('home');
   const candidates = [
     path.join(home, '.local', 'bin'),
@@ -685,8 +687,7 @@ async function createLabSession(
 }
 
 function discoverFolderPythonEnvironments(
-  folderPath: string,
-  extraPythonPath?: string
+  folderPath: string
 ): PythonEnvironmentOption[] {
   const options: PythonEnvironmentOption[] = [createManagedEnvironmentOption()];
   const candidates = new Map<string, 'project' | 'custom'>();
@@ -698,10 +699,6 @@ function discoverFolderPythonEnvironments(
   const preference = folderEnvironmentPreferences[folderPath];
   if (preference?.pythonPath !== null && preference?.pythonPath !== undefined) {
     candidates.set(path.resolve(preference.pythonPath), 'custom');
-  }
-
-  if (extraPythonPath !== undefined) {
-    candidates.set(path.resolve(extraPythonPath), 'custom');
   }
 
   for (const [candidatePath, kind] of candidates.entries()) {
@@ -728,10 +725,7 @@ function createManagedEnvironmentOption(): PythonEnvironmentOption {
     kind: 'managed',
     pythonPath: null,
     environmentRoot: getManagedEnvironmentDir(),
-    dataPath: null,
-    hasIpykernel: true,
-    hasLabExtensions: false,
-    hasKernels: false
+    hasIpykernel: true
   };
 }
 
@@ -772,22 +766,14 @@ function inspectPythonEnvironment(
 ): PythonEnvironmentOption {
   const script = [
     'import importlib.util, json, os, sys',
-    'data_path = os.path.join(sys.prefix, "share", "jupyter")',
-    'labextensions_path = os.path.join(data_path, "labextensions")',
-    'kernels_path = os.path.join(data_path, "kernels")',
-    'has_labextensions = os.path.isdir(labextensions_path) and any(not name.startswith(".") for name in os.listdir(labextensions_path))',
-    'has_kernels = os.path.isdir(kernels_path) and any(not name.startswith(".") for name in os.listdir(kernels_path))',
     'print(json.dumps({',
     '"executable": sys.executable,',
     '"prefix": sys.prefix,',
     '"version": ".".join(str(part) for part in sys.version_info[:3]),',
     '"hasIpykernel": importlib.util.find_spec("ipykernel") is not None,',
-    '"dataPath": data_path if os.path.isdir(data_path) else None,',
-    '"hasLabExtensions": bool(has_labextensions),',
-    '"hasKernels": bool(has_kernels),',
     '}))'
   ].join('\n');
-  const result = spawnSync(pythonPath, ['-c', script], {
+  const result = spawnSync(pythonPath, ['-I', '-c', script], {
     cwd: folderPath,
     encoding: 'utf8',
     env: getPythonInspectionEnvironment(pythonPath),
@@ -807,9 +793,6 @@ function inspectPythonEnvironment(
     prefix: string;
     version: string;
     hasIpykernel: boolean;
-    dataPath: string | null;
-    hasLabExtensions: boolean;
-    hasKernels: boolean;
   };
   try {
     inspection = JSON.parse(result.stdout.trim());
@@ -827,10 +810,7 @@ function inspectPythonEnvironment(
     kind,
     pythonPath: resolvedPythonPath,
     environmentRoot,
-    dataPath: inspection.dataPath,
-    hasIpykernel: inspection.hasIpykernel,
-    hasLabExtensions: inspection.hasLabExtensions,
-    hasKernels: inspection.hasKernels
+    hasIpykernel: inspection.hasIpykernel
   };
 }
 
@@ -839,8 +819,9 @@ function getPythonInspectionEnvironment(pythonPath: string): NodeJS.ProcessEnv {
     ...process.env,
     PATH: mergePathSegments([
       path.dirname(pythonPath),
+      getConfiguredExtraPath(),
       removeActivePythonEnvironmentPath(process.env.PATH),
-      getExternalCommandPath()
+      getDefaultExternalCommandPath()
     ]),
     PYTHONNOUSERSITE: '1'
   };
@@ -870,7 +851,11 @@ function choosePreferredPythonPath(
   const preference = folderEnvironmentPreferences[folderPath];
   if (
     preference !== undefined &&
-    environments.some(option => option.pythonPath === preference.pythonPath)
+    environments.some(
+      option =>
+        option.pythonPath === preference.pythonPath &&
+        (option.pythonPath === null || option.hasIpykernel)
+    )
   ) {
     return preference.pythonPath;
   }
@@ -882,10 +867,7 @@ function choosePreferredPythonPath(
     return readyProjectEnvironment.pythonPath;
   }
 
-  const projectEnvironment = environments.find(
-    option => option.pythonPath !== null
-  );
-  return projectEnvironment?.pythonPath ?? null;
+  return null;
 }
 
 function prepareProjectRuntimeEnvironment(
@@ -917,15 +899,15 @@ function prepareProjectRuntimeEnvironment(
     selectedPythonPath,
     'custom'
   );
-  const kernelDataPath = option.hasIpykernel
-    ? writeProjectKernelSpec(folderPath, option)
-    : null;
+  if (!option.hasIpykernel) {
+    log(`Project Python environment ${option.pythonPath} has no ipykernel`);
+    return null;
+  }
+
+  const kernelDataPath = writeProjectKernelSpec(folderPath, option);
   log(
     `Using project Python environment ${option.pythonPath} for ${folderPath}`
   );
-  if (option.dataPath !== null && hasJupyterDataFiles(option)) {
-    log(`Adding project Jupyter data path ${option.dataPath}`);
-  }
 
   return {
     option,
@@ -976,10 +958,6 @@ function writeProjectKernelSpec(
   return dataPath;
 }
 
-function hasJupyterDataFiles(option: PythonEnvironmentOption): boolean {
-  return option.hasKernels || option.hasLabExtensions;
-}
-
 function getProjectKernelDisplayName(option: PythonEnvironmentOption): string {
   return `Python 3 (${option.label})`;
 }
@@ -1011,22 +989,27 @@ async function selectPythonInterpreter(
 
   try {
     const pythonPath = path.resolve(result.filePaths[0]);
-    const environments = discoverFolderPythonEnvironments(
+    const inspectedOption = inspectPythonEnvironment(
       resolvedFolder,
-      pythonPath
+      pythonPath,
+      'custom'
     );
+    const discoveredEnvironments =
+      discoverFolderPythonEnvironments(resolvedFolder);
     const selectedOption =
-      environments.find(option => option.pythonPath === pythonPath) ??
-      environments.find(
-        option =>
-          option.pythonPath !== null &&
-          path.resolve(option.pythonPath) === pythonPath
-      );
+      discoveredEnvironments.find(
+        option => option.pythonPath === inspectedOption.pythonPath
+      ) ?? inspectedOption;
+    const environments =
+      selectedOption === inspectedOption
+        ? [...discoveredEnvironments, inspectedOption]
+        : discoveredEnvironments;
+
     return {
       ok: true,
       folderPath: resolvedFolder,
       environments,
-      selectedPythonPath: selectedOption?.pythonPath ?? pythonPath
+      selectedPythonPath: selectedOption.pythonPath
     };
   } catch (error) {
     return {
@@ -1060,8 +1043,9 @@ function getSupervisorEnvironment(
     ...process.env,
     PATH: mergePathSegments([
       managedEnvironment.binDir,
+      getConfiguredExtraPath(),
       removeActivePythonEnvironmentPath(process.env.PATH),
-      getExternalCommandPath()
+      getDefaultExternalCommandPath()
     ]),
     PYTHONNOUSERSITE: '1'
   };
@@ -1079,16 +1063,10 @@ function getSupervisorEnvironment(
   environment.JUPYTER_CONFIG_DIR = jupyterConfigDir;
   environment.JUPYTER_RUNTIME_DIR = jupyterRuntimeDir;
 
-  const projectDataPath =
-    projectEnvironment !== null &&
-    hasJupyterDataFiles(projectEnvironment.option)
-      ? (projectEnvironment.option.dataPath ?? undefined)
-      : undefined;
-  environment.JUPYTER_PATH = mergePathSegments([
-    projectEnvironment?.kernelDataPath ?? undefined,
-    projectDataPath,
-    process.env.JUPYTER_PATH
-  ]);
+  delete environment.JUPYTER_PATH;
+  if (projectEnvironment !== null) {
+    environment.JUPYTER_PATH = projectEnvironment.kernelDataPath;
+  }
 
   return environment;
 }

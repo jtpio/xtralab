@@ -12,10 +12,7 @@ interface PythonEnvironmentOption {
   kind: 'managed' | 'project' | 'custom';
   pythonPath: string | null;
   environmentRoot: string | null;
-  dataPath: string | null;
   hasIpykernel: boolean;
-  hasLabExtensions: boolean;
-  hasKernels: boolean;
 }
 
 interface FolderEnvironmentResult {

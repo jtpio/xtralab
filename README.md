@@ -80,9 +80,9 @@ Fields: `id` (required), `label`, `caption`, `command`, `promptArgs` (how to
 splice the prompt — `[]` for positional, `["--flag"]` for flagged, `null` to
 opt out), `iconSvg`, `rank`, `enabled`, `requireAvailable`.
 
-### Electron development shell
+## Run as an Electron desktop app
 
-The first Electron prototype lives in `desktop/`. It opens a lightweight
+The Electron app lives in `desktop/`. It opens a lightweight
 launcher window, lets you pick a local folder, starts a JupyterLab server for
 that folder from an app-managed Python environment, waits for the ready URL,
 and loads it into a hardened Electron `BrowserWindow`. Each opened folder gets
@@ -93,20 +93,17 @@ The launcher also detects common project Python environments such as `.venv`,
 folder-local `python3` kernelspec under xtralab's app data so notebooks execute
 with the project interpreter while the JupyterLab server continues to run from
 the isolated xtralab environment. If the selected interpreter is missing
-`ipykernel`, xtralab does not modify the environment; installed kernelspecs in
-that environment can still be used if they are present.
-
-When a selected project environment has kernelspecs or prebuilt JupyterLab
-extensions under `<env>/share/jupyter`, the app adds that environment's
-`share/jupyter` directory to `JUPYTER_PATH` before starting the server. This
-lets compatible kernels and frontend extensions be discovered without running
-the server from the project environment.
+`ipykernel`, xtralab leaves it alone and does not expose it as a kernel.
 
 ```bash
 cd desktop
 npm install
 npm run dev
 ```
+
+The Python package exposes `xtralab serve` as the small server helper used by
+Electron. It is useful for debugging the bundled server path directly, but it
+does not launch a browser by itself.
 
 To produce an unsigned, distributable installer (DMG on macOS, AppImage on
 Linux) using [Electron Forge](https://www.electronforge.io/):
@@ -119,14 +116,22 @@ npm run make
 The output is written under `desktop/out/make/`. To produce an unpacked
 `.app` folder without an installer wrapper, use `npm run package` instead.
 
-`npm run dev`, `npm run package`, and `npm run make` all build a local
-xtralab wheel under `desktop/python/wheels/`. The packaged app uses the
-Jupyter icon and installs that bundled wheel into an isolated environment
-under the app data directory on first folder open:
+`npm run dev`, `npm run package`, and `npm run make` all build a locked,
+offline Python bundle before launching or packaging Electron:
 
-```text
-~/Library/Application Support/xtralab/envs/default
-```
+- `npm run build:lock` exports the resolved Python dependencies from
+  `desktop/uv.lock` to `desktop/python/wheels/requirements.txt` with hashes.
+- `npm run build:wheelhouse` downloads the matching wheels into
+  `desktop/python/wheels/`.
+- `npm run build:python` builds the local `xtralab` wheel into that wheelhouse.
+- `npm run build:runtime` prepares `desktop/python/runtime/` and installs the
+  wheelhouse into it with `--no-index`.
+
+Electron Forge copies `desktop/python/runtime/` into the packaged app's
+resources directory. At runtime the desktop app starts `xtralab serve` from
+that bundled runtime directly; it does not create a Python environment under
+app data and does not require `uv`, `pip`, or network access on the user's
+machine.
 
 Because the build is unsigned, macOS Gatekeeper will block the first launch
 with "Apple cannot check it for malicious software." Right-click the app and
@@ -159,10 +164,12 @@ and AppImage are uploaded as workflow artifacts and can be downloaded from
 the run page on the repository's Actions tab.
 
 The Electron app does not run from the repo `.venv` or require the repo checkout
-at runtime. It expects `uv` to be available from a normal system or user tool
-location such as `/opt/homebrew/bin`, `/usr/local/bin`, or `~/.local/bin`.
-External agent CLIs are discovered from the same deterministic tool path plus
-`XTRALAB_EXTRA_PATH` when that environment variable is present.
+at runtime. It clears inherited Python environment variables before starting
+the server, points Jupyter state at xtralab's app data directory, and prepends
+the bundled runtime's `bin/` directory to `PATH`. External agent CLIs are
+discovered from the inherited non-Python `PATH`, `XTRALAB_EXTRA_PATH` when that
+environment variable is present, and common user/system tool locations such as
+`~/.local/bin`, `/opt/homebrew/bin`, and `/usr/local/bin`.
 
 ## Development
 

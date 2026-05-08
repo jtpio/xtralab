@@ -14,10 +14,14 @@ let preparedFolder = null;
 let isBusy = false;
 
 function updateActionAvailability() {
+  const option = selectedEnvironment();
   openFolderButton.disabled = isBusy;
   chooseInterpreterButton.disabled = isBusy || preparedFolder === null;
   launchFolderButton.disabled =
-    isBusy || preparedFolder === null || selectedEnvironment() === null;
+    isBusy ||
+    preparedFolder === null ||
+    option === null ||
+    (option.kind !== 'managed' && !option.hasIpykernel);
   for (const button of recentList.querySelectorAll('button')) {
     button.disabled = isBusy;
   }
@@ -66,22 +70,7 @@ function selectedEnvironment() {
 }
 
 function optionLabel(option) {
-  if (option.kind === 'managed') {
-    return option.label;
-  }
-  const suffixes = [];
-  if (option.hasIpykernel) {
-    suffixes.push('Python kernel');
-  }
-  if (option.hasKernels) {
-    suffixes.push('kernels');
-  }
-  if (option.hasLabExtensions) {
-    suffixes.push('Lab extensions');
-  }
-  return suffixes.length
-    ? `${option.label} (${suffixes.join(', ')})`
-    : option.label;
+  return option.label;
 }
 
 function renderEnvironmentDetail() {
@@ -96,13 +85,7 @@ function renderEnvironmentDetail() {
   if (option.hasIpykernel) {
     details.push('Python 3 kernel will use this environment');
   } else if (option.kind !== 'managed') {
-    details.push('No Python ipykernel detected');
-  }
-  if (option.hasKernels) {
-    details.push('Installed kernels detected');
-  }
-  if (option.hasLabExtensions) {
-    details.push('JupyterLab extensions detected');
+    details.push('Install ipykernel to use this environment');
   }
   environmentDetail.textContent = details.join(' · ');
   updateActionAvailability();
