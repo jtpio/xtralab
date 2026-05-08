@@ -10,13 +10,10 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
-  renameSync,
-  rmSync,
   statSync,
   writeFileSync,
   type WriteStream
 } from 'node:fs';
-import { rm } from 'node:fs/promises';
 import * as path from 'node:path';
 
 import {
@@ -80,13 +77,6 @@ interface FolderEnvironmentPreference {
   updatedAt: string;
 }
 
-interface RunCommandOptions {
-  label: string;
-  cwd?: string;
-  env?: NodeJS.ProcessEnv;
-  timeoutMs: number;
-}
-
 interface LabSession {
   folderPath: string;
   projectEnvironment: ProjectRuntimeEnvironment | null;
@@ -99,14 +89,6 @@ interface OpenFolderResult {
   folderPath?: string;
   error?: string;
 }
-
-type BootstrapState =
-  | { kind: 'idle' }
-  | { kind: 'preparing' }
-  | { kind: 'installing-deps' }
-  | { kind: 'installing-xtralab' }
-  | { kind: 'ready' }
-  | { kind: 'error'; message: string };
 
 const recentFoldersLimit = 8;
 const launcherMinContentHeight = 240;
@@ -121,8 +103,6 @@ let folderEnvironmentPreferences: Record<string, FolderEnvironmentPreference> =
   {};
 let quitInProgress = false;
 let ipcRegistered = false;
-let managedEnvironmentPromise: Promise<ManagedEnvironment> | null = null;
-let bootstrapState: BootstrapState = { kind: 'idle' };
 
 if (!app.isPackaged) {
   app.setName('xtralab dev');
@@ -173,7 +153,7 @@ app.on('web-contents-created', (_event, contents) => {
   });
 });
 
-async function startApplication(): Promise<void> {
+function startApplication(): void {
   initializeLogging();
   configureApplicationMenu();
   prepareProcessEnvironment();
@@ -182,7 +162,6 @@ async function startApplication(): Promise<void> {
   loadFolderEnvironmentPreferences();
   registerIpcHandlers();
   showLauncherWindow();
-  startEagerBootstrap();
 }
 
 function initializeLogging(): void {
@@ -461,21 +440,6 @@ function registerIpcHandlers(): void {
   ipcRegistered = true;
 
   ipcMain.handle('xtralab:get-recent-folders', () => getRecentFolders());
-  ipcMain.handle(
-    'xtralab:get-bootstrap-state',
-    (): BootstrapState => bootstrapState
-  );
-  ipcMain.handle('xtralab:retry-bootstrap', () => {
-    if (
-      bootstrapState.kind !== 'error' &&
-      managedEnvironmentPromise !== null
-    ) {
-      return;
-    }
-    managedEnvironmentPromise = null;
-    setBootstrapState({ kind: 'idle' });
-    startEagerBootstrap();
-  });
   ipcMain.handle('xtralab:show-logs', async () => {
     await shell.openPath(getLogsDir());
   });
@@ -694,7 +658,7 @@ async function createLabSession(
   folderPath: string,
   pythonPath: string | null | undefined
 ): Promise<void> {
-  const managedEnvironment = await getManagedEnvironment();
+  const managedEnvironment = getManagedEnvironment();
   const projectEnvironment = prepareProjectRuntimeEnvironment(
     folderPath,
     pythonPath,
@@ -1073,288 +1037,19 @@ async function selectPythonInterpreter(
   }
 }
 
-async function getManagedEnvironment(): Promise<ManagedEnvironment> {
-  if (managedEnvironmentPromise === null) {
-    managedEnvironmentPromise = bootstrapManagedEnvironment()
-      .then(env => {
-        setBootstrapState({ kind: 'ready' });
-        return env;
-      })
-      .catch(error => {
-        setBootstrapState({
-          kind: 'error',
-          message: formatError(error)
-        });
-        managedEnvironmentPromise = null;
-        throw error;
-      });
-  }
-
-  return managedEnvironmentPromise;
-}
-
-function setBootstrapState(state: BootstrapState): void {
-  bootstrapState = state;
-  log(
-    `Bootstrap state: ${state.kind}${
-      state.kind === 'error' ? ` — ${state.message}` : ''
-    }`
-  );
-  if (launcherWindow !== null && !launcherWindow.isDestroyed()) {
-    launcherWindow.webContents.send('xtralab:bootstrap-state', state);
-  }
-}
-
-function startEagerBootstrap(): void {
-  void getManagedEnvironment().catch(() => {
-    // Error state is already set by the getManagedEnvironment wrapper.
-  });
-}
-
-async function bootstrapManagedEnvironment(): Promise<ManagedEnvironment> {
+function getManagedEnvironment(): ManagedEnvironment {
   const envDir = getManagedEnvironmentDir();
-  const stagedEnvDir = getStagedManagedEnvironmentDir(envDir);
-  const oldEnvDir = getOldManagedEnvironmentDir(envDir);
-
-  cleanupLeftoverEnvironmentDirs(stagedEnvDir, oldEnvDir);
-
   const binDir = getManagedEnvironmentBinDir(envDir);
   const pythonPath = getManagedEnvironmentExecutablePath(envDir, 'python');
   const xtralabPath = getManagedEnvironmentExecutablePath(envDir, 'xtralab');
-  const markerPath = getManagedEnvironmentMarkerPath(envDir);
 
-  const wheelPath = getBundledWheelSourcePath();
-  const requirementsPath = getBundledRequirementsSourcePath();
-
-  const environment: ManagedEnvironment = {
-    envDir,
-    binDir,
-    pythonPath,
-    xtralabPath
-  };
-
-  if (isManagedEnvironmentCurrent(environment, markerPath, wheelPath, requirementsPath)) {
-    log(`Using managed Python environment ${envDir} with ${path.basename(wheelPath)}`);
-    return environment;
-  }
-
-  log(`Preparing managed Python environment at ${envDir}`);
-  setBootstrapState({ kind: 'preparing' });
-  mkdirSync(path.dirname(envDir), { recursive: true });
-
-  const stagedPythonPath = getManagedEnvironmentExecutablePath(stagedEnvDir, 'python');
-  const stagedXtralabPath = getManagedEnvironmentExecutablePath(stagedEnvDir, 'xtralab');
-  const stagedMarkerPath = getManagedEnvironmentMarkerPath(stagedEnvDir);
-
-  try {
-    await runCommand(getUvCommand(), getUvVenvArgs(stagedEnvDir), {
-      label: 'uv venv',
-      env: getBootstrapEnvironment(),
-      timeoutMs: 600000
-    });
-
-    setBootstrapState({ kind: 'installing-deps' });
-    await runCommand(
-      getUvCommand(),
-      [
-        'pip',
-        'install',
-        '--python',
-        stagedPythonPath,
-        '--no-index',
-        '--find-links',
-        getBundledWheelhouseDir(),
-        '--require-hashes',
-        '--only-binary',
-        ':all:',
-        '-r',
-        requirementsPath
-      ],
-      {
-        label: 'uv pip install (deps)',
-        env: getBootstrapEnvironment(),
-        timeoutMs: 900000
-      }
+  if (!existsSync(xtralabPath)) {
+    throw new Error(
+      `Bundled Python runtime is missing at ${envDir}. Run "npm run build:runtime" before launching.`
     );
-
-    setBootstrapState({ kind: 'installing-xtralab' });
-    await runCommand(
-      getUvCommand(),
-      [
-        'pip',
-        'install',
-        '--python',
-        stagedPythonPath,
-        '--no-deps',
-        '--reinstall',
-        '--only-binary',
-        ':all:',
-        wheelPath
-      ],
-      {
-        label: 'uv pip install (xtralab)',
-        env: getBootstrapEnvironment(),
-        timeoutMs: 300000
-      }
-    );
-
-    if (!existsSync(stagedXtralabPath)) {
-      throw new Error(`xtralab executable was not installed: ${stagedXtralabPath}`);
-    }
-
-    writeMarker(stagedMarkerPath, wheelPath, requirementsPath);
-  } catch (error) {
-    log(`Bootstrap failed; discarding staged environment at ${stagedEnvDir}`);
-    rmSync(stagedEnvDir, { recursive: true, force: true });
-    throw error;
   }
 
-  // Atomic swap: rename old envDir aside, promote staged in. The old dir is
-  // deleted asynchronously so the boot path doesn't block on rmSync of a
-  // multi-hundred-MB tree.
-  if (existsSync(envDir)) {
-    renameSync(envDir, oldEnvDir);
-  }
-  renameSync(stagedEnvDir, envDir);
-  if (existsSync(oldEnvDir)) {
-    scheduleOldEnvironmentCleanup(oldEnvDir);
-  }
-
-  log(`Managed Python environment is ready at ${envDir} with ${path.basename(wheelPath)}`);
-  return environment;
-}
-
-function writeMarker(
-  markerPath: string,
-  wheelPath: string,
-  requirementsPath: string
-): void {
-  const wheelStat = statSync(wheelPath);
-  const requirementsStat = statSync(requirementsPath);
-  writeFileSync(
-    markerPath,
-    `${JSON.stringify(
-      {
-        wheelName: path.basename(wheelPath),
-        wheelSize: wheelStat.size,
-        requirementsName: path.basename(requirementsPath),
-        requirementsSize: requirementsStat.size,
-        pythonVersion: getManagedPythonVersion(),
-        installedAt: new Date().toISOString()
-      },
-      null,
-      2
-    )}\n`,
-    'utf8'
-  );
-}
-
-function cleanupLeftoverEnvironmentDirs(
-  stagedEnvDir: string,
-  oldEnvDir: string
-): void {
-  for (const dir of [stagedEnvDir, oldEnvDir]) {
-    if (existsSync(dir)) {
-      log(`Removing leftover ${dir}`);
-      rmSync(dir, { recursive: true, force: true });
-    }
-  }
-}
-
-function scheduleOldEnvironmentCleanup(oldEnvDir: string): void {
-  void rm(oldEnvDir, { recursive: true, force: true })
-    .then(() => log(`Removed prior environment at ${oldEnvDir}`))
-    .catch(error =>
-      log(
-        `Unable to remove prior environment at ${oldEnvDir}: ${formatError(error)}`
-      )
-    );
-}
-
-function getStagedManagedEnvironmentDir(envDir: string): string {
-  return `${envDir}.staged`;
-}
-
-function getOldManagedEnvironmentDir(envDir: string): string {
-  return `${envDir}.old`;
-}
-
-function isManagedEnvironmentCurrent(
-  environment: ManagedEnvironment,
-  markerPath: string,
-  wheelPath: string,
-  requirementsPath: string
-): boolean {
-  if (!existsSync(environment.pythonPath) || !existsSync(environment.xtralabPath)) {
-    return false;
-  }
-
-  let marker: {
-    wheelName?: string;
-    wheelSize?: number;
-    requirementsName?: string;
-    requirementsSize?: number;
-    pythonVersion?: string;
-  };
-  try {
-    marker = JSON.parse(readFileSync(markerPath, 'utf8'));
-  } catch {
-    return false;
-  }
-
-  const wheelStat = statSync(wheelPath);
-  const requirementsStat = statSync(requirementsPath);
-  return (
-    marker.pythonVersion === getManagedPythonVersion() &&
-    marker.wheelName === path.basename(wheelPath) &&
-    marker.wheelSize === wheelStat.size &&
-    marker.requirementsName === path.basename(requirementsPath) &&
-    marker.requirementsSize === requirementsStat.size
-  );
-}
-
-function getUvCommand(): string {
-  return process.env.XTRALAB_UV_PATH || 'uv';
-}
-
-function getUvVenvArgs(envDir: string): string[] {
-  return [
-    'venv',
-    '--python',
-    getManagedPythonVersion(),
-    '--relocatable',
-    envDir
-  ];
-}
-
-function getManagedPythonVersion(): string {
-  return process.env.XTRALAB_PYTHON ?? '3.13';
-}
-
-function getBundledWheelhouseDir(): string {
-  const baseDir = path.join(getDesktopRoot(), 'python', 'wheels');
-  if (!app.isPackaged) {
-    return baseDir;
-  }
-  return baseDir.replace(
-    /([\\\/])app\.asar([\\\/])/g,
-    '$1app.asar.unpacked$2'
-  );
-}
-
-function getBootstrapEnvironment(): NodeJS.ProcessEnv {
-  const environment: NodeJS.ProcessEnv = {
-    ...process.env,
-    PATH: mergePathSegments([
-      removeActivePythonEnvironmentPath(process.env.PATH),
-      getExternalCommandPath()
-    ]),
-    PYTHONNOUSERSITE: '1'
-  };
-
-  clearInheritedPythonEnvironment(environment);
-
-  return environment;
+  return { envDir, binDir, pythonPath, xtralabPath };
 }
 
 function getSupervisorEnvironment(
@@ -1373,6 +1068,17 @@ function getSupervisorEnvironment(
   clearInheritedPythonEnvironment(environment);
   environment.VIRTUAL_ENV = managedEnvironment.envDir;
 
+  const jupyterStateRoot = path.join(app.getPath('userData'), 'jupyter');
+  const jupyterDataDir = path.join(jupyterStateRoot, 'data');
+  const jupyterConfigDir = path.join(jupyterStateRoot, 'config');
+  const jupyterRuntimeDir = path.join(jupyterStateRoot, 'runtime');
+  mkdirSync(jupyterDataDir, { recursive: true });
+  mkdirSync(jupyterConfigDir, { recursive: true });
+  mkdirSync(jupyterRuntimeDir, { recursive: true });
+  environment.JUPYTER_DATA_DIR = jupyterDataDir;
+  environment.JUPYTER_CONFIG_DIR = jupyterConfigDir;
+  environment.JUPYTER_RUNTIME_DIR = jupyterRuntimeDir;
+
   const projectDataPath =
     projectEnvironment !== null &&
     hasJupyterDataFiles(projectEnvironment.option)
@@ -1385,135 +1091,6 @@ function getSupervisorEnvironment(
   ]);
 
   return environment;
-}
-
-function getBundledWheelSourcePath(): string {
-  const wheelsDir = path.join(getDesktopRoot(), 'python', 'wheels');
-  let wheels: Array<{ name: string; path: string; mtimeMs: number }>;
-
-  try {
-    wheels = readdirSync(wheelsDir)
-      .filter(name => name.startsWith('xtralab-') && name.endsWith('.whl'))
-      .map(name => {
-        const wheelPath = path.join(wheelsDir, name);
-        return {
-          name,
-          path: wheelPath,
-          mtimeMs: statSync(wheelPath).mtimeMs
-        };
-      });
-  } catch (error) {
-    throw new Error(
-      `Unable to read bundled Python wheels from ${wheelsDir}. Run "npm run build:python" in desktop before launching. ${formatError(error)}`
-    );
-  }
-
-  wheels.sort((left, right) => {
-    if (right.mtimeMs !== left.mtimeMs) {
-      return right.mtimeMs - left.mtimeMs;
-    }
-    return right.name.localeCompare(left.name);
-  });
-
-  if (wheels.length === 0) {
-    throw new Error(
-      `No bundled xtralab wheel found in ${wheelsDir}. Run "npm run build:python" in desktop before launching.`
-    );
-  }
-
-  return wheels[0].path;
-}
-
-function getBundledRequirementsSourcePath(): string {
-  const requirementsPath = path.join(
-    getDesktopRoot(),
-    'python',
-    'wheels',
-    'requirements.txt'
-  );
-  if (!existsSync(requirementsPath)) {
-    throw new Error(
-      `Bundled requirements.txt not found at ${requirementsPath}. Run "npm run build:lock" in desktop before launching.`
-    );
-  }
-  return requirementsPath;
-}
-
-function runCommand(
-  command: string,
-  args: string[],
-  options: RunCommandOptions
-): Promise<void> {
-  log(`${options.label}: ${command} ${args.join(' ')}`);
-
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    let outputTail = '';
-    let timer: NodeJS.Timeout | null = null;
-
-    const child = spawn(command, args, {
-      cwd: options.cwd,
-      env: options.env ?? process.env,
-      stdio: ['ignore', 'pipe', 'pipe']
-    });
-
-    const finish = (error?: Error): void => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      if (timer !== null) {
-        clearTimeout(timer);
-      }
-      if (error !== undefined) {
-        reject(error);
-      } else {
-        resolve();
-      }
-    };
-
-    const appendOutput = (streamName: string, chunk: Buffer): void => {
-      const text = chunk.toString('utf8');
-      outputTail = `${outputTail}${text}`.slice(-8000);
-      for (const line of text.split(/\r?\n/)) {
-        if (line.trim().length > 0) {
-          log(`${options.label} ${streamName}: ${line}`);
-        }
-      }
-    };
-
-    child.stdout.on('data', (chunk: Buffer) => {
-      appendOutput('stdout', chunk);
-    });
-    child.stderr.on('data', (chunk: Buffer) => {
-      appendOutput('stderr', chunk);
-    });
-    child.on('error', error => {
-      finish(
-        new Error(
-          `Unable to start ${options.label} command "${command}": ${error.message}`
-        )
-      );
-    });
-    child.on('exit', (code, signal) => {
-      if (code === 0) {
-        finish();
-        return;
-      }
-      finish(
-        new Error(
-          `${options.label} failed with code ${code ?? 'null'} and signal ${signal ?? 'null'}. ${outputTail.trim()}`
-        )
-      );
-    });
-
-    timer = setTimeout(() => {
-      child.kill('SIGTERM');
-      finish(
-        new Error(`${options.label} timed out after ${options.timeoutMs}ms`)
-      );
-    }, options.timeoutMs);
-  });
 }
 
 function startSupervisor(
@@ -1998,7 +1575,9 @@ function getLabWindowTitle(folderPath: string): string {
 }
 
 function getManagedEnvironmentDir(): string {
-  return path.join(app.getPath('userData'), 'envs', 'default');
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'runtime')
+    : path.join(getDesktopRoot(), 'python', 'runtime');
 }
 
 function getManagedEnvironmentBinDir(envDir: string): string {
@@ -2012,10 +1591,6 @@ function getManagedEnvironmentExecutablePath(
   const platformExecutableName =
     process.platform === 'win32' ? `${executableName}.exe` : executableName;
   return path.join(getManagedEnvironmentBinDir(envDir), platformExecutableName);
-}
-
-function getManagedEnvironmentMarkerPath(envDir: string): string {
-  return path.join(envDir, 'xtralab-install.json');
 }
 
 function getProjectKernelDataPath(folderPath: string): string {

@@ -23,9 +23,8 @@ const config: ForgeConfig = {
     appBundleId,
     appCategoryType: 'public.app-category.developer-tools',
     icon: './assets/jupyter',
-    asar: {
-      unpack: 'python/wheels/*.whl'
-    },
+    asar: true,
+    extraResource: ['python/runtime'],
     ignore: [
       /^\/out($|\/)/,
       /^\/forge\.config\.(ts|js)$/,
@@ -34,7 +33,7 @@ const config: ForgeConfig = {
       /^\/src\/.*\.ts$/,
       /^\/scripts\/.*$/,
       /\.map$/,
-      /^\/python\/wheels\/\.gitignore$/,
+      /^\/python($|\/)/,
       /^\/\.gitignore$/,
       /^\/.*\.DS_Store$/
     ]

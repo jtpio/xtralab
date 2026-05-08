@@ -11,11 +11,13 @@
     "build:python": "uv build --wheel --out-dir python/wheels ..",
     "build:lock": "uv export --project .. --frozen --no-dev --no-emit-project --format requirements.txt --output-file python/wheels/requirements.txt",
     "build:wheelhouse": "node scripts/build-wheelhouse.mjs",
-    "dev": "npm run build && npm run build:lock && npm run build:wheelhouse && npm run build:python && electron .",
-    "start": "npm run build && npm run build:lock && npm run build:wheelhouse && npm run build:python && electron-forge start",
-    "package": "npm run build && npm run build:lock && npm run build:wheelhouse && npm run build:python && electron-forge package",
-    "make": "npm run build && npm run build:lock && npm run build:wheelhouse && npm run build:python && electron-forge make",
-    "publish": "npm run build && npm run build:lock && npm run build:wheelhouse && npm run build:python && electron-forge publish",
+    "build:runtime": "node scripts/build-runtime.mjs",
+    "build:all": "npm run build && npm run build:lock && npm run build:wheelhouse && npm run build:python && npm run build:runtime",
+    "dev": "npm run build:all && electron .",
+    "start": "npm run build:all && electron-forge start",
+    "package": "npm run build:all && electron-forge package",
+    "make": "npm run build:all && electron-forge make",
+    "publish": "npm run build:all && electron-forge publish",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.forge.json"
   },
   "devDependencies": {
