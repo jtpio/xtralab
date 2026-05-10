@@ -38,6 +38,7 @@ const config: ForgeConfig = {
       /^\/scripts($|\/)/,
       /\.map$/,
       /^\/python($|\/)/,
+      /^\/xtralab_desktop($|\/)/,
       /^\/\.gitignore$/,
       /^\/.*\.DS_Store$/
     ]

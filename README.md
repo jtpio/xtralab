@@ -101,9 +101,11 @@ npm install
 npm run dev
 ```
 
-The Python package exposes `xtralab serve` as the small server helper used by
-Electron. It is useful for debugging the bundled server path directly, but it
-does not launch a browser by itself.
+The companion `xtralab-desktop` package (under `desktop/`, not published to PyPI)
+exposes `xtralab serve` as the small server helper used by Electron. It is
+useful for debugging the bundled server path directly, but it does not launch a
+browser by itself. The base `xtralab` package on PyPI stays a minimal meta
+package and does not include this helper.
 
 To produce an unsigned, distributable installer (DMG on macOS, AppImage on
 Linux) using [Electron Forge](https://www.electronforge.io/):
@@ -123,7 +125,8 @@ offline Python bundle before launching or packaging Electron:
   `desktop/uv.lock` to `desktop/python/wheels/requirements.txt` with hashes.
 - `npm run build:wheelhouse` downloads the matching wheels into
   `desktop/python/wheels/`.
-- `npm run build:python` builds the local `xtralab` wheel into that wheelhouse.
+- `npm run build:python` builds the local `xtralab` and `xtralab-desktop`
+  wheels into that wheelhouse.
 - `npm run build:runtime` prepares `desktop/python/runtime/` and installs the
   wheelhouse into it with `--no-index`.
 

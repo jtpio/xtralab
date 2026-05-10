@@ -8,7 +8,7 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "build:python": "uv build --wheel --out-dir python/wheels ..",
+    "build:python": "uv build --wheel --out-dir python/wheels .. && uv build --wheel --out-dir python/wheels .",
     "build:lock": "uv export --frozen --no-dev --no-emit-project --no-emit-package xtralab --format requirements.txt --output-file python/wheels/requirements.txt",
     "build:wheelhouse": "node scripts/build-wheelhouse.mjs",
     "build:runtime": "node scripts/build-runtime.mjs",

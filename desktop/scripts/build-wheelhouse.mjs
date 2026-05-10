@@ -44,6 +44,8 @@ const requirementsBytes = readFileSync(requirementsPath);
 const fingerprint = {
   schema: markerSchema,
   pythonVersion,
+  platform: process.platform,
+  arch: process.arch,
   requirementsSize: requirementsBytes.byteLength,
   requirementsSha256: createHash('sha256')
     .update(requirementsBytes)
@@ -60,6 +62,8 @@ if (existsSync(markerPath)) {
       wheelCount > 0 &&
       previous.schema === fingerprint.schema &&
       previous.pythonVersion === fingerprint.pythonVersion &&
+      previous.platform === fingerprint.platform &&
+      previous.arch === fingerprint.arch &&
       previous.requirementsSize === fingerprint.requirementsSize &&
       previous.requirementsSha256 === fingerprint.requirementsSha256
     ) {

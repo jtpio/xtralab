@@ -2552,9 +2552,9 @@ requires-dist = [
 ]
 
 [[package]]
-name = "xtralab-desktop-bundle"
-version = "0"
-source = { virtual = "." }
+name = "xtralab-desktop"
+version = "0.2.0"
+source = { editable = "." }
 dependencies = [
     { name = "xtralab" },
 ]

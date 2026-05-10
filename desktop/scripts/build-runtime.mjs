@@ -41,16 +41,16 @@ function run(command, args) {
   });
 }
 
-function findXtralabWheel() {
+function findLatestWheel(prefix, label) {
   const candidates = readdirSync(wheelsDir)
-    .filter(name => name.startsWith('xtralab-') && name.endsWith('.whl'))
+    .filter(name => name.startsWith(prefix) && name.endsWith('.whl'))
     .map(name => {
       const wheelPath = join(wheelsDir, name);
       return { name, path: wheelPath, mtimeMs: statSync(wheelPath).mtimeMs };
     });
   if (candidates.length === 0) {
     throw new Error(
-      `No xtralab wheel found in ${wheelsDir}. Run "npm run build:python" first.`
+      `No ${label} wheel found in ${wheelsDir}. Run "npm run build:python" first.`
     );
   }
   candidates.sort((left, right) => {
@@ -68,19 +68,26 @@ if (!existsSync(requirementsPath)) {
   );
 }
 
-const wheel = findXtralabWheel();
+const xtralabWheel = findLatestWheel('xtralab-', 'xtralab');
+const desktopWheel = findLatestWheel('xtralab_desktop-', 'xtralab-desktop');
 const requirementsBytes = readFileSync(requirementsPath);
-const wheelBytes = readFileSync(wheel.path);
+const xtralabWheelBytes = readFileSync(xtralabWheel.path);
+const desktopWheelBytes = readFileSync(desktopWheel.path);
 const fingerprint = {
   schema: markerSchema,
   pythonVersion,
+  platform: process.platform,
+  arch: process.arch,
   requirementsSize: requirementsBytes.byteLength,
   requirementsSha256: createHash('sha256')
     .update(requirementsBytes)
     .digest('hex'),
-  wheelName: wheel.name,
-  wheelSize: wheelBytes.byteLength,
-  wheelSha256: createHash('sha256').update(wheelBytes).digest('hex')
+  xtralabWheelName: xtralabWheel.name,
+  xtralabWheelSize: xtralabWheelBytes.byteLength,
+  xtralabWheelSha256: createHash('sha256').update(xtralabWheelBytes).digest('hex'),
+  desktopWheelName: desktopWheel.name,
+  desktopWheelSize: desktopWheelBytes.byteLength,
+  desktopWheelSha256: createHash('sha256').update(desktopWheelBytes).digest('hex')
 };
 
 const pythonExecutable = join(runtimeDir, 'bin', 'python');
@@ -90,14 +97,19 @@ if (existsSync(markerPath) && existsSync(pythonExecutable)) {
     if (
       previous.schema === fingerprint.schema &&
       previous.pythonVersion === fingerprint.pythonVersion &&
+      previous.platform === fingerprint.platform &&
+      previous.arch === fingerprint.arch &&
       previous.requirementsSize === fingerprint.requirementsSize &&
       previous.requirementsSha256 === fingerprint.requirementsSha256 &&
-      previous.wheelName === fingerprint.wheelName &&
-      previous.wheelSize === fingerprint.wheelSize &&
-      previous.wheelSha256 === fingerprint.wheelSha256
+      previous.xtralabWheelName === fingerprint.xtralabWheelName &&
+      previous.xtralabWheelSize === fingerprint.xtralabWheelSize &&
+      previous.xtralabWheelSha256 === fingerprint.xtralabWheelSha256 &&
+      previous.desktopWheelName === fingerprint.desktopWheelName &&
+      previous.desktopWheelSize === fingerprint.desktopWheelSize &&
+      previous.desktopWheelSha256 === fingerprint.desktopWheelSha256
     ) {
       console.log(
-        `Runtime up to date for Python ${pythonVersion} (${wheel.name}, sha=${fingerprint.requirementsSha256.slice(0, 12)})`
+        `Runtime up to date for Python ${pythonVersion} (${xtralabWheel.name} + ${desktopWheel.name}, sha=${fingerprint.requirementsSha256.slice(0, 12)})`
       );
       process.exit(0);
     }
@@ -156,7 +168,7 @@ await run('uv', [
   requirementsPath
 ]);
 
-console.log(`Installing xtralab wheel ${wheel.name}`);
+console.log(`Installing xtralab wheel ${xtralabWheel.name}`);
 await run('uv', [
   'pip',
   'install',
@@ -167,7 +179,21 @@ await run('uv', [
   '--reinstall',
   '--only-binary',
   ':all:',
-  wheel.path
+  xtralabWheel.path
+]);
+
+console.log(`Installing xtralab-desktop wheel ${desktopWheel.name}`);
+await run('uv', [
+  'pip',
+  'install',
+  '--python',
+  pythonExecutable,
+  '--break-system-packages',
+  '--no-deps',
+  '--reinstall',
+  '--only-binary',
+  ':all:',
+  desktopWheel.path
 ]);
 
 console.log('Rewriting absolute shebangs in bin/');
