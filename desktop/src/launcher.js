@@ -1,27 +1,70 @@
-const openFolderButton = document.getElementById('open-folder');
-const projectSection = document.getElementById('project-section');
+const themeToggle = document.getElementById('theme-toggle');
+const themeIconUse = themeToggle.querySelector('use');
+const themeOrder = ['auto', 'light', 'dark'];
+const themeIcons = {
+  auto: '#icon-circle-half',
+  light: '#icon-sun',
+  dark: '#icon-moon'
+};
+const themeLabels = {
+  auto: 'System',
+  light: 'Light',
+  dark: 'Dark'
+};
+
+function getStoredTheme() {
+  const stored = localStorage.getItem('xtralab.theme');
+  return themeOrder.includes(stored) ? stored : 'auto';
+}
+
+function applyTheme(theme) {
+  if (theme === 'auto') {
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.removeItem('xtralab.theme');
+  } else {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('xtralab.theme', theme);
+  }
+  themeIconUse.setAttribute('href', themeIcons[theme]);
+  themeToggle.title = `Theme: ${themeLabels[theme]} — click to change`;
+}
+
+themeToggle.addEventListener('click', () => {
+  const current = getStoredTheme();
+  const next = themeOrder[(themeOrder.indexOf(current) + 1) % themeOrder.length];
+  applyTheme(next);
+});
+
+applyTheme(getStoredTheme());
+
+const welcomeView = document.getElementById('welcome-view');
+const projectView = document.getElementById('project-view');
+const openFolderLink = document.getElementById('open-folder');
+const backLink = document.getElementById('back-to-welcome');
+const recentSection = document.getElementById('recent-section');
+const recentList = document.getElementById('recent-list');
 const projectFolderName = document.getElementById('project-folder-name');
 const projectFolderPath = document.getElementById('project-folder-path');
 const environmentSelect = document.getElementById('environment-select');
 const environmentDetail = document.getElementById('environment-detail');
 const chooseInterpreterButton = document.getElementById('choose-interpreter');
 const launchFolderButton = document.getElementById('launch-folder');
-const recentSection = document.getElementById('recent-section');
-const recentList = document.getElementById('recent-list');
 const statusElement = document.getElementById('status');
 
+let homeDir = '';
 let preparedFolder = null;
 let isBusy = false;
 
 function updateActionAvailability() {
   const option = selectedEnvironment();
-  openFolderButton.disabled = isBusy;
+  openFolderLink.disabled = isBusy;
   chooseInterpreterButton.disabled = isBusy || preparedFolder === null;
   launchFolderButton.disabled =
     isBusy ||
     preparedFolder === null ||
     option === null ||
     (option.kind !== 'managed' && !option.hasIpykernel);
+  backLink.disabled = isBusy;
   for (const button of recentList.querySelectorAll('button')) {
     button.disabled = isBusy;
   }
@@ -48,10 +91,56 @@ function setError(message) {
   statusElement.textContent = message;
 }
 
+function showWelcome() {
+  preparedFolder = null;
+  projectView.classList.add('is-inactive');
+  welcomeView.classList.remove('is-inactive');
+  setReady();
+  updateActionAvailability();
+}
+
+function showProject() {
+  welcomeView.classList.add('is-inactive');
+  projectView.classList.remove('is-inactive');
+  updateActionAvailability();
+}
+
 function folderName(folderPath) {
   const normalized = folderPath.replace(/\/+$/, '');
   const parts = normalized.split(/[\\/]/);
   return parts[parts.length - 1] || folderPath;
+}
+
+function abbreviateHome(folderPath) {
+  if (homeDir !== '' && folderPath === homeDir) {
+    return '~';
+  }
+  if (homeDir !== '' && folderPath.startsWith(homeDir + '/')) {
+    return '~/' + folderPath.slice(homeDir.length + 1);
+  }
+  if (homeDir !== '' && folderPath.startsWith(homeDir + '\\')) {
+    return '~\\' + folderPath.slice(homeDir.length + 1);
+  }
+  return folderPath;
+}
+
+function parentDirOf(folderPath) {
+  const normalized = folderPath.replace(/[\\/]+$/, '');
+  const parts = normalized.split(/[\\/]/);
+  if (parts.length <= 1) {
+    return '';
+  }
+  parts.pop();
+  const parent = parts.join('/');
+  return parent === '' ? '/' : parent;
+}
+
+function recentDetailFor(folderPath) {
+  const parent = parentDirOf(folderPath);
+  if (parent === '') {
+    return '';
+  }
+  return abbreviateHome(parent);
 }
 
 function environmentValue(option) {
@@ -67,10 +156,6 @@ function selectedEnvironment() {
       option => environmentValue(option) === environmentSelect.value
     ) || null
   );
-}
-
-function optionLabel(option) {
-  return option.label;
 }
 
 function renderEnvironmentDetail() {
@@ -110,37 +195,38 @@ function renderPreparedFolder(result) {
   for (const option of preparedFolder.environments) {
     const element = document.createElement('option');
     element.value = environmentValue(option);
-    element.textContent = optionLabel(option);
+    element.textContent = option.label;
     environmentSelect.append(element);
   }
 
   environmentSelect.value = preparedFolder.selectedPythonPath || '';
-  projectSection.hidden = false;
+  showProject();
   setReady();
   renderEnvironmentDetail();
 }
 
-function createRecentButton(folderPath) {
-  const button = document.createElement('button');
-  button.className = 'recent-button';
-  button.type = 'button';
+function createRecentRow(folderPath) {
+  const row = document.createElement('button');
+  row.className = 'recent-row';
+  row.type = 'button';
+  row.title = folderPath;
 
   const name = document.createElement('span');
-  name.className = 'folder-name';
+  name.className = 'recent-name';
   name.textContent = folderName(folderPath);
 
-  const path = document.createElement('span');
-  path.className = 'folder-path';
-  path.textContent = folderPath;
+  const detail = document.createElement('span');
+  detail.className = 'recent-detail';
+  detail.textContent = recentDetailFor(folderPath);
 
-  button.append(name, path);
-  button.addEventListener('click', async () => {
+  row.append(name, detail);
+  row.addEventListener('click', async () => {
     setBusy(true, `Inspecting ${folderName(folderPath)}...`);
     const result = await window.xtralab.openRecentFolder(folderPath);
     renderPreparedFolder(result);
   });
 
-  return button;
+  return row;
 }
 
 async function renderRecentFolders() {
@@ -154,11 +240,11 @@ async function renderRecentFolders() {
 
   recentSection.hidden = false;
   for (const folderPath of recentFolders) {
-    recentList.append(createRecentButton(folderPath));
+    recentList.append(createRecentRow(folderPath));
   }
 }
 
-openFolderButton.addEventListener('click', async () => {
+openFolderLink.addEventListener('click', async () => {
   setBusy(true, 'Selecting folder...');
   const result = await window.xtralab.openFolderDialog();
   if (!result.ok && !result.error) {
@@ -167,6 +253,10 @@ openFolderButton.addEventListener('click', async () => {
   }
   renderPreparedFolder(result);
   await renderRecentFolders();
+});
+
+backLink.addEventListener('click', () => {
+  showWelcome();
 });
 
 environmentSelect.addEventListener('change', () => {
@@ -200,18 +290,12 @@ launchFolderButton.addEventListener('click', async () => {
   }
 });
 
-const shell = document.querySelector('.shell');
-if (shell !== null) {
-  let lastReported = 0;
-  const observer = new ResizeObserver(() => {
-    const height = shell.offsetHeight;
-    if (height > 0 && Math.abs(height - lastReported) >= 1) {
-      lastReported = height;
-      void window.xtralab.setLauncherContentHeight(height);
-    }
-  });
-  observer.observe(shell);
-}
-
-updateActionAvailability();
-void renderRecentFolders();
+(async () => {
+  try {
+    homeDir = await window.xtralab.getHomeDir();
+  } catch {
+    homeDir = '';
+  }
+  updateActionAvailability();
+  await renderRecentFolders();
+})();

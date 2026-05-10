@@ -24,6 +24,7 @@ interface FolderEnvironmentResult {
 }
 
 contextBridge.exposeInMainWorld('xtralab', {
+  getHomeDir: (): Promise<string> => ipcRenderer.invoke('xtralab:get-home-dir'),
   getRecentFolders: (): Promise<string[]> =>
     ipcRenderer.invoke('xtralab:get-recent-folders'),
   openFolderDialog: (): Promise<FolderEnvironmentResult> =>
@@ -41,7 +42,5 @@ contextBridge.exposeInMainWorld('xtralab', {
     pythonPath: string | null
   ): Promise<OpenFolderResult> =>
     ipcRenderer.invoke('xtralab:open-folder', folderPath, pythonPath),
-  setLauncherContentHeight: (height: number): Promise<void> =>
-    ipcRenderer.invoke('xtralab:set-launcher-content-height', height),
   showLogs: (): Promise<void> => ipcRenderer.invoke('xtralab:show-logs')
 });
