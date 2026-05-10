@@ -10,6 +10,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   statSync,
   writeFileSync,
   type WriteStream
@@ -35,9 +36,16 @@ interface ServerInfo {
   token: string;
 }
 
+interface SupervisorExitInfo {
+  code: number | null;
+  signal: NodeJS.Signals | null;
+  stderrTail: string;
+}
+
 interface SupervisorHandle {
   process: ChildProcessWithoutNullStreams;
   ready: Promise<ServerInfo>;
+  exited: Promise<SupervisorExitInfo>;
   stop: () => Promise<void>;
 }
 
@@ -158,6 +166,7 @@ function startApplication(): void {
   configureApplicationMenu();
   prepareProcessEnvironment();
   setApplicationIcon();
+  cleanupStaleJupyterServers();
   loadRecentFolders();
   loadFolderEnvironmentPreferences();
   registerIpcHandlers();
@@ -1042,7 +1051,7 @@ function getSupervisorEnvironment(
   const jupyterStateRoot = path.join(app.getPath('userData'), 'jupyter');
   const jupyterDataDir = path.join(jupyterStateRoot, 'data');
   const jupyterConfigDir = path.join(jupyterStateRoot, 'config');
-  const jupyterRuntimeDir = path.join(jupyterStateRoot, 'runtime');
+  const jupyterRuntimeDir = getJupyterRuntimeDir();
   mkdirSync(jupyterDataDir, { recursive: true });
   mkdirSync(jupyterConfigDir, { recursive: true });
   mkdirSync(jupyterRuntimeDir, { recursive: true });
@@ -1083,6 +1092,15 @@ function startSupervisor(
   let stderrTail = '';
   let readySettled = false;
   let readyTimer: NodeJS.Timeout;
+
+  const exited = new Promise<SupervisorExitInfo>(resolve => {
+    child.once('exit', (code, signal) => {
+      log(
+        `Supervisor exited with code ${code ?? 'null'} and signal ${signal ?? 'null'}`
+      );
+      resolve({ code, signal, stderrTail });
+    });
+  });
 
   const ready = new Promise<ServerInfo>((resolve, reject) => {
     const fail = (error: Error): void => {
@@ -1148,14 +1166,11 @@ function startSupervisor(
       );
     });
 
-    child.on('exit', (code, signal) => {
-      log(
-        `Supervisor exited with code ${code ?? 'null'} and signal ${signal ?? 'null'}`
-      );
+    void exited.then(info => {
       if (!readySettled) {
         fail(
           new Error(
-            `Supervisor exited before it was ready. ${stderrTail.trim() || 'No stderr output was captured.'}`
+            `Supervisor exited before it was ready. ${info.stderrTail.trim() || 'No stderr output was captured.'}`
           )
         );
       }
@@ -1165,6 +1180,7 @@ function startSupervisor(
   return {
     process: child,
     ready,
+    exited,
     stop: () => stopSupervisor(child)
   };
 }
@@ -1202,6 +1218,36 @@ function createLabWindow(
     window
   });
 
+  let windowEverShown = false;
+  let sessionAborted = false;
+
+  const abortSession = (reason: string): void => {
+    if (sessionAborted) {
+      return;
+    }
+    sessionAborted = true;
+    log(`Aborting lab session for ${folderPath}: ${reason}`);
+
+    const wasShown = windowEverShown;
+    if (!window.isDestroyed()) {
+      window.destroy();
+    }
+    labSessions.delete(window.id);
+
+    if (!quitInProgress) {
+      void supervisor.stop();
+    }
+
+    if (!wasShown && !quitInProgress) {
+      const folderName = path.basename(folderPath) || folderPath;
+      dialog.showErrorBox(
+        `${app.getName()} - ${folderName}`,
+        `${reason}\n\nCheck Help → Show Logs for details.`
+      );
+      showLauncherWindow();
+    }
+  };
+
   window.webContents.session.setPermissionRequestHandler(
     (_contents, _permission, callback) => {
       callback(false);
@@ -1227,7 +1273,15 @@ function createLabWindow(
   });
 
   window.webContents.on('did-fail-load', (_event, code, description, url) => {
+    if (code === -3) {
+      return;
+    }
     log(`Window failed to load ${url}: ${code} ${description}`);
+    if (!windowEverShown) {
+      abortSession(
+        `Unable to load the Jupyter lab page: ${description || `error ${code}`}.`
+      );
+    }
   });
 
   window.webContents.on('page-title-updated', event => {
@@ -1236,15 +1290,26 @@ function createLabWindow(
   });
 
   window.once('ready-to-show', () => {
+    windowEverShown = true;
     window.show();
   });
 
   window.on('closed', () => {
+    sessionAborted = true;
     const session = labSessions.get(window.id);
     labSessions.delete(window.id);
     if (session !== undefined && !quitInProgress) {
       void session.supervisor.stop();
     }
+  });
+
+  void supervisor.exited.then(info => {
+    if (sessionAborted) {
+      return;
+    }
+    abortSession(
+      `The Jupyter server stopped unexpectedly (code=${info.code ?? 'null'}, signal=${info.signal ?? 'null'}).`
+    );
   });
 
   void window.loadURL(serverInfo.url);
@@ -1595,6 +1660,78 @@ function getPngIconPath(): string {
 
 function getLogsDir(): string {
   return path.join(app.getPath('userData'), 'logs');
+}
+
+function getJupyterRuntimeDir(): string {
+  return path.join(app.getPath('userData'), 'jupyter', 'runtime');
+}
+
+function cleanupStaleJupyterServers(): void {
+  const runtimeDir = getJupyterRuntimeDir();
+  let entries: string[];
+  try {
+    entries = readdirSync(runtimeDir);
+  } catch {
+    return;
+  }
+
+  for (const entry of entries) {
+    if (!entry.startsWith('jpserver-') || !entry.endsWith('.json')) {
+      continue;
+    }
+    const entryPath = path.join(runtimeDir, entry);
+
+    let pid: number | null = null;
+    try {
+      const parsed: unknown = JSON.parse(readFileSync(entryPath, 'utf8'));
+      if (
+        typeof parsed === 'object' &&
+        parsed !== null &&
+        typeof (parsed as { pid?: unknown }).pid === 'number'
+      ) {
+        pid = (parsed as { pid: number }).pid;
+      }
+    } catch {
+      // Unreadable or corrupt file - just delete it below.
+    }
+
+    if (pid !== null && pid > 0 && looksLikeOurJupyterProcess(pid)) {
+      log(`Terminating orphaned Jupyter server pid ${pid} from ${entry}`);
+      try {
+        process.kill(pid, 'SIGTERM');
+      } catch (error) {
+        log(`Unable to SIGTERM pid ${pid}: ${formatError(error)}`);
+      }
+    }
+
+    try {
+      rmSync(entryPath, { force: true });
+    } catch (error) {
+      log(`Unable to remove stale ${entry}: ${formatError(error)}`);
+    }
+  }
+}
+
+function looksLikeOurJupyterProcess(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+  } catch {
+    return false;
+  }
+
+  if (process.platform === 'win32') {
+    return false;
+  }
+
+  const result = spawnSync('ps', ['-p', String(pid), '-o', 'command='], {
+    encoding: 'utf8',
+    timeout: 1000
+  });
+  if (result.status !== 0 || typeof result.stdout !== 'string') {
+    return false;
+  }
+
+  return /jupyter|xtralab/i.test(result.stdout);
 }
 
 function getRecentFoldersPath(): string {
