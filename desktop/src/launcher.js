@@ -31,7 +31,8 @@ function applyTheme(theme) {
 
 themeToggle.addEventListener('click', () => {
   const current = getStoredTheme();
-  const next = themeOrder[(themeOrder.indexOf(current) + 1) % themeOrder.length];
+  const next =
+    themeOrder[(themeOrder.indexOf(current) + 1) % themeOrder.length];
   applyTheme(next);
 });
 
