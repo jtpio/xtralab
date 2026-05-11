@@ -280,21 +280,14 @@ function configureApplicationMenu(): void {
 }
 
 function prepareProcessEnvironment(): void {
-  const pathCandidates = [
-    getConfiguredExtraPath(),
-    removeActivePythonEnvironmentPath(process.env.PATH),
-    getDefaultExternalCommandPath()
-  ];
-
-  const mergedPath = mergePathSegments(pathCandidates);
+  const mergedPath = composeRuntimePath();
   if (mergedPath.length === 0) {
     log('Unable to prepare a usable process PATH');
     return;
   }
 
   process.env.PATH = mergedPath;
-  log('Prepared process PATH for app-managed Python and external tools');
-  logAgentCommandAvailability();
+  log(`Prepared process PATH: ${mergedPath}`);
 }
 
 function getConfiguredExtraPath(): string | undefined {
@@ -328,6 +321,15 @@ function getDefaultExternalCommandPath(): string {
   return candidates
     .filter(candidate => existsSync(candidate))
     .join(path.delimiter);
+}
+
+function composeRuntimePath(prefix?: string): string {
+  return mergePathSegments([
+    prefix,
+    getConfiguredExtraPath(),
+    removeActivePythonEnvironmentPath(process.env.PATH),
+    getDefaultExternalCommandPath()
+  ]);
 }
 
 function mergePathSegments(paths: Array<string | undefined>): string {
@@ -400,44 +402,6 @@ function clearInheritedPythonEnvironment(environment: NodeJS.ProcessEnv): void {
   delete environment.UV_PROJECT_ENVIRONMENT;
   delete environment.VIRTUAL_ENV;
   delete environment.VIRTUAL_ENV_PROMPT;
-}
-
-function logAgentCommandAvailability(): void {
-  const commands = [
-    'claude',
-    'codex',
-    'gemini',
-    'copilot',
-    'goose',
-    'opencode',
-    'kiro',
-    'vibe'
-  ];
-  const child = spawn(
-    '/bin/sh',
-    ['-c', commands.map(command => `command -v ${command} || true`).join('\n')],
-    {
-      env: process.env,
-      stdio: ['ignore', 'pipe', 'pipe']
-    }
-  );
-
-  let stdout = '';
-  child.stdout?.on('data', (chunk: Buffer) => {
-    stdout += chunk.toString('utf8');
-  });
-  child.on('exit', () => {
-    const resolved = stdout
-      .split(/\r?\n/)
-      .map(line => line.trim())
-      .filter(line => line.length > 0);
-    log(
-      `Agent command PATH probe: ${resolved.length ? resolved.join(', ') : 'none'}`
-    );
-  });
-  child.on('error', error => {
-    log(`Agent command PATH probe failed: ${error.message}`);
-  });
 }
 
 function setApplicationIcon(): void {
@@ -813,12 +777,7 @@ function inspectPythonEnvironment(
 function getPythonInspectionEnvironment(pythonPath: string): NodeJS.ProcessEnv {
   const environment: NodeJS.ProcessEnv = {
     ...process.env,
-    PATH: mergePathSegments([
-      path.dirname(pythonPath),
-      getConfiguredExtraPath(),
-      removeActivePythonEnvironmentPath(process.env.PATH),
-      getDefaultExternalCommandPath()
-    ]),
+    PATH: composeRuntimePath(path.dirname(pythonPath)),
     PYTHONNOUSERSITE: '1'
   };
   clearInheritedPythonEnvironment(environment);
@@ -1037,12 +996,7 @@ function getSupervisorEnvironment(
 ): NodeJS.ProcessEnv {
   const environment: NodeJS.ProcessEnv = {
     ...process.env,
-    PATH: mergePathSegments([
-      managedEnvironment.binDir,
-      getConfiguredExtraPath(),
-      removeActivePythonEnvironmentPath(process.env.PATH),
-      getDefaultExternalCommandPath()
-    ]),
+    PATH: composeRuntimePath(managedEnvironment.binDir),
     PYTHONNOUSERSITE: '1'
   };
   clearInheritedPythonEnvironment(environment);
