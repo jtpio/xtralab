@@ -13,21 +13,22 @@ pip install xtralab
 
 ## Usage
 
-Run JupyterLab as usual:
+### As a JupyterLab package
+
+Run JupyterLab the usual way:
 
 ```bash
 jupyter lab
 ```
 
-Or launch as a desktop app — opens in a dedicated Chrome window with an
-isolated profile, on a local server that shuts down when the window closes:
+### As a desktop app
+
+Launch xtralab in a dedicated Chrome window with an isolated profile, on a
+local server that shuts down when the window closes:
 
 ```bash
 uvx --prerelease=allow xtralab
 ```
-
-The `--prerelease=allow` flag is needed while `xtralab` depends on a
-pre-release of JupyterLab 4.6; it can be dropped once 4.6 ships stable.
 
 Or, after `pip install xtralab` into an environment:
 
@@ -35,7 +36,13 @@ Or, after `pip install xtralab` into an environment:
 xtralab
 ```
 
-Requires Chrome or Chromium. macOS only for now.
+The `--prerelease=allow` flag is needed while `xtralab` depends on a
+pre-release of JupyterLab 4.6; it can be dropped once 4.6 ships stable.
+Requires Chrome or Chromium; this launcher currently runs on macOS only.
+
+Alternatively, a standalone Electron build (DMG on macOS, AppImage on Linux)
+is produced on every push to `main` — download the artifacts from the
+repository's [Actions tab](https://github.com/jtpio/xtralab/actions).
 
 ## What's included
 
@@ -80,107 +87,10 @@ Fields: `id` (required), `label`, `caption`, `command`, `promptArgs` (how to
 splice the prompt — `[]` for positional, `["--flag"]` for flagged, `null` to
 opt out), `iconSvg`, `rank`, `enabled`, `requireAvailable`.
 
-## Run as an Electron desktop app
+## Contributing
 
-The Electron app lives in `desktop/`. It opens a lightweight
-launcher window, lets you pick a local folder, starts a JupyterLab server for
-that folder from an app-managed Python environment, waits for the ready URL,
-and loads it into a hardened Electron `BrowserWindow`. Each opened folder gets
-its own Jupyter server and window.
-
-The launcher also detects common project Python environments such as `.venv`,
-`venv`, `env`, `.conda`, and pixi environments. Selecting one creates a
-folder-local `python3` kernelspec under xtralab's app data so notebooks execute
-with the project interpreter while the JupyterLab server continues to run from
-the isolated xtralab environment. If the selected interpreter is missing
-`ipykernel`, xtralab leaves it alone and does not expose it as a kernel.
-
-```bash
-cd desktop
-npm install
-npm run dev
-```
-
-The companion `xtralab-desktop` package (under `desktop/`, not published to PyPI)
-exposes `xtralab serve` as the small server helper used by Electron. It is
-useful for debugging the bundled server path directly, but it does not launch a
-browser by itself. The base `xtralab` package on PyPI stays a minimal meta
-package and does not include this helper.
-
-To produce an unsigned, distributable installer (DMG on macOS, AppImage on
-Linux) using [Electron Forge](https://www.electronforge.io/):
-
-```bash
-cd desktop
-npm run make
-```
-
-The output is written under `desktop/out/make/`. To produce an unpacked
-`.app` folder without an installer wrapper, use `npm run package` instead.
-
-`npm run dev`, `npm run package`, and `npm run make` all build a locked,
-offline Python bundle before launching or packaging Electron:
-
-- `npm run build:lock` exports the resolved Python dependencies from
-  `desktop/uv.lock` to `desktop/python/wheels/requirements.txt` with hashes.
-- `npm run build:wheelhouse` downloads the matching wheels into
-  `desktop/python/wheels/`.
-- `npm run build:python` builds the local `xtralab` and `xtralab-desktop`
-  wheels into that wheelhouse.
-- `npm run build:runtime` prepares `desktop/python/runtime/` and installs the
-  wheelhouse into it with `--no-index`.
-
-Electron Forge copies `desktop/python/runtime/` into the packaged app's
-resources directory. At runtime the desktop app starts `xtralab serve` from
-that bundled runtime directly; it does not create a Python environment under
-app data and does not require `uv`, `pip`, or network access on the user's
-machine.
-
-Because the build is unsigned, macOS Gatekeeper will block the first launch
-with "Apple cannot check it for malicious software." Right-click the app and
-choose **Open** (or run `xattr -d com.apple.quarantine /path/to/xtralab.app`)
-to dismiss the warning once.
-
-#### Dev vs release variants
-
-Local builds — both `npm run dev` and `npm run make` — are tagged as
-**xtralab dev** (bundle id `io.github.jtpio.xtralab.dev`, app data under
-`~/Library/Application Support/xtralab dev/`) so they coexist with a CI-built
-`xtralab.app` (bundle id `io.github.jtpio.xtralab`) without sharing dock
-entries, app data, or kernels. The toggle is controlled by `process.env.CI`
-in `desktop/forge.config.ts`; GitHub Actions sets that to `true` automatically,
-so CI builds come out as the release variant.
-
-To produce a release-tagged build locally (e.g. to test exactly what CI would
-ship), set the variant explicitly:
-
-```bash
-cd desktop
-XTRALAB_BUILD_VARIANT=release npm run make
-```
-
-### Continuous integration builds
-
-Every push to `main` and every pull request also runs the desktop build on
-GitHub Actions for macOS (Apple Silicon) and Linux (x64). The resulting DMG
-and AppImage are uploaded as workflow artifacts and can be downloaded from
-the run page on the repository's Actions tab.
-
-The Electron app does not run from the repo `.venv` or require the repo checkout
-at runtime. It clears inherited Python environment variables before starting
-the server, points Jupyter state at xtralab's app data directory, and prepends
-the bundled runtime's `bin/` directory to `PATH`. External agent CLIs are
-discovered from the inherited non-Python `PATH`, `XTRALAB_EXTRA_PATH` when that
-environment variable is present, and common user/system tool locations such as
-`~/.local/bin`, `/opt/homebrew/bin`, and `/usr/local/bin`.
-
-## Development
-
-```bash
-uv pip install -e .
-jlpm
-jlpm build
-```
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the development setup, the
+Electron desktop app architecture, and the build pipeline.
 
 ## License
 
