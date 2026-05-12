@@ -8,6 +8,7 @@
     "@jupyterlab/notebook-extension:tools": true,
     "@jupyterlab/notebook-extension:update-raw-mimetype": true,
     "@jupyterlab/metadataform-extension:metadataforms": true,
-    "@jupyterlab/debugger-extension:main": true
+    "@jupyterlab/debugger-extension:main": true,
+    "@axlair/jupyterlab_vim": true
   }
 }

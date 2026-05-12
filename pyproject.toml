@@ -41,8 +41,11 @@ dependencies = [
     "jupyterlab-cursor-dark>=1.0.2",
     "jupyterlab-day>=0.2.0",
     "jupyterlab-git>=0.53.0,<1",
+    "jupyterlab-lsp>=5.3.0,<6",
     "jupyterlab-night>=0.5.2",
-    "jupyterlab-quickopen>=2.1.0",
+    "jupyterlab-quickopen>=2.2.0",
+    "jupyterlab-vim>=4.1.4,<5",
+    "ty>=0.0.35",
 ]
 dynamic = ["version", "description", "urls"]
 

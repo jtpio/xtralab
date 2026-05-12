@@ -1,0 +1,53 @@
+{
+  "LanguageServerManager": {
+    "language_servers": {
+      "ty": {
+        "version": 2,
+        "argv": ["ty", "server"],
+        "languages": ["python"],
+        "mime_types": ["text/python", "text/x-python", "text/x-ipython"],
+        "display_name": "ty",
+        "requires_documents_on_disk": false,
+        "urls": {
+          "home": "https://github.com/astral-sh/ty",
+          "issues": "https://github.com/astral-sh/ty/issues"
+        },
+        "install": {
+          "pip": "pip install ty",
+          "uv": "uv add ty"
+        }
+      },
+      "typescript-language-server": {
+        "version": 2,
+        "argv": ["typescript-language-server", "--stdio"],
+        "languages": [
+          "javascript",
+          "jsx",
+          "typescript",
+          "typescript-jsx",
+          "typescriptreact",
+          "javascriptreact"
+        ],
+        "mime_types": [
+          "application/typescript",
+          "text/typescript-jsx",
+          "text/javascript",
+          "text/ecmascript",
+          "application/javascript",
+          "application/x-javascript",
+          "application/ecmascript",
+          "text/jsx"
+        ],
+        "display_name": "typescript-language-server",
+        "urls": {
+          "home": "https://github.com/typescript-language-server/typescript-language-server",
+          "issues": "https://github.com/typescript-language-server/typescript-language-server/issues"
+        },
+        "install": {
+          "npm": "npm install -g typescript-language-server typescript",
+          "yarn": "yarn global add typescript-language-server typescript"
+        }
+      }
+    }
+  }
+}
