@@ -4,5 +4,8 @@
   },
   "@jupyterlab/terminal-extension:plugin": {
     "fontFamily": "MesloLGS NF, ui-monospace, monospace"
+  },
+  "jupyterlab-quickopen:plugin": {
+    "respectGitignore": true
   }
 }
