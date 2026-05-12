@@ -23,8 +23,11 @@ jupyter lab
 
 ### As a desktop app
 
-A standalone Electron build (DMG on macOS, AppImage on Linux) is produced on
-every push to `main` — download the artifacts from the repository's
+A standalone Electron build (DMG on macOS, AppImage on Linux) ships with each
+tagged release — grab the installer for your platform from the
+[Releases page](https://github.com/jtpio/xtralab/releases/latest). Builds from
+the current `main` branch are also produced on every push as workflow
+artifacts under the repository's
 [Actions tab](https://github.com/jtpio/xtralab/actions). See
 [CONTRIBUTING.md](./CONTRIBUTING.md) for the architecture and local build
 instructions.
