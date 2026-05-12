@@ -34,6 +34,8 @@ instructions.
 - [`ajlab`](https://github.com/jtpio/ajlab) — agent-ready JupyterLab base
 - JupyterLab 4.6+
 - `jupyterlab-git` — backs the bundled changes panel
+- `jupyterlab-lsp` + `ty` — Python LSP via Astral's `ty` (bundled); also
+  detects `typescript-language-server` on `PATH` for JS/TS
 - `jupyterlab-quickopen`
 - `jupyterlab-cursor-light`, `jupyterlab-cursor-dark`
 - `jupyterlab-day`, `jupyterlab-night` themes
@@ -47,6 +49,73 @@ The bundled labextension adds:
   collapsible list of changed files. Buttons are filtered to agents installed
   on the machine; a typed prompt is shell-quoted and spliced into the launch
   command for agents that accept one.
+
+## Language servers
+
+xtralab ships with
+[`jupyterlab-lsp`](https://github.com/jupyter-lsp/jupyterlab-lsp) and
+pre-registers two language servers through
+`jupyter_server_config.d/xtralab-lsp.json`:
+
+- **Python — [`ty`](https://github.com/astral-sh/ty)** — installed as a
+  Python dependency. Works out of the box.
+- **TypeScript / JavaScript — `typescript-language-server`** — install
+  yourself:
+
+  ```bash
+  npm install -g typescript-language-server typescript
+  ```
+
+  Restart JupyterLab (or the desktop app) after installing.
+
+Specs use bare command names (`["ty", "server"]`), so binaries are resolved
+from `PATH` at spawn time.
+
+### Where binaries are discovered
+
+- **`pip install xtralab`** — anything on the JupyterLab process's `PATH`.
+- **Desktop app** — the supervisor augments `PATH` with common shim
+  locations (`~/.volta/bin`, `~/.npm-global/bin`, `~/.bun/bin`,
+  `~/.asdf/shims`, `~/.mise/shims`, `/opt/homebrew/bin`, `/usr/local/bin`,
+  …). Set `XTRALAB_EXTRA_PATH` (colon-separated) before launching the app
+  to add directories the defaults miss.
+
+### Adding more servers
+
+To enable another server (bash, yaml, json, dockerfile, pyright, …),
+install the binary then drop a JSON file into a `jupyter_server_config.d/`
+directory:
+
+- **`pip install xtralab`** — run `jupyter --paths` and pick a config dir
+  (typically `~/.jupyter/jupyter_server_config.d/`).
+- **Desktop app (macOS)** —
+  `~/Library/Application Support/xtralab/jupyter/config/jupyter_server_config.d/`
+  (or `xtralab dev` for local dev builds).
+- **Desktop app (Linux AppImage)** —
+  `~/.config/xtralab/jupyter/config/jupyter_server_config.d/`.
+
+Example (`bash-lsp.json`):
+
+```json
+{
+  "LanguageServerManager": {
+    "language_servers": {
+      "bash-language-server": {
+        "version": 2,
+        "argv": ["bash-language-server", "start"],
+        "languages": ["bash", "sh"],
+        "mime_types": ["text/x-sh", "application/x-sh"],
+        "display_name": "bash-language-server"
+      }
+    }
+  }
+}
+```
+
+Pair with `npm install -g bash-language-server`. Reuse a bundled `key` to
+override it. See
+[jupyterlab-lsp's docs](https://jupyterlab-lsp.readthedocs.io/en/latest/Configuring.html)
+for the full spec schema.
 
 ## Customizing the launcher
 

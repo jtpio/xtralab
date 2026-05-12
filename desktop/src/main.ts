@@ -987,7 +987,47 @@ function getManagedEnvironment(): ManagedEnvironment {
     );
   }
 
+  ensureRuntimePyvenvCfg(envDir, binDir);
+
   return { envDir, binDir, pythonPath, xtralabPath };
+}
+
+function ensureRuntimePyvenvCfg(envDir: string, binDir: string): void {
+  // The bundled runtime is a uv-installed Python (not a venv), but we set
+  // VIRTUAL_ENV=<envDir> for child processes. Tools like Astral ty refuse to
+  // start without a pyvenv.cfg, so synthesize a self-referential one. Python's
+  // own startup is unaffected because sys.prefix and sys.base_prefix both
+  // resolve back to envDir.
+  const cfgPath = path.join(envDir, 'pyvenv.cfg');
+  const desiredHomeLine = `home = ${binDir}`;
+  if (existsSync(cfgPath)) {
+    try {
+      const current = readFileSync(cfgPath, 'utf8');
+      if (current.includes(desiredHomeLine)) {
+        return;
+      }
+    } catch {
+      // fall through and rewrite
+    }
+  }
+
+  const libDir = path.join(envDir, 'lib');
+  let versionInfo = '3';
+  if (existsSync(libDir)) {
+    const versionEntry = readdirSync(libDir).find(name =>
+      /^python\d+\.\d+$/.test(name)
+    );
+    if (versionEntry !== undefined) {
+      versionInfo = versionEntry.replace(/^python/, '');
+    }
+  }
+
+  const contents =
+    `${desiredHomeLine}\n` +
+    `implementation = CPython\n` +
+    `version_info = ${versionInfo}\n` +
+    `include-system-site-packages = false\n`;
+  writeFileSync(cfgPath, contents, 'utf8');
 }
 
 function getSupervisorEnvironment(
