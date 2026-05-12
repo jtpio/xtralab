@@ -1221,14 +1221,15 @@ wheels = [
 
 [[package]]
 name = "jupyterlab-quickopen"
-version = "2.1.0"
+version = "2.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jupyter-server" },
+    { name = "pathspec" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e0/88/957236e7cabc83c4682c86083901d68cba5153c564090406e6ce4ad94ae3/jupyterlab_quickopen-2.1.0.tar.gz", hash = "sha256:406c9fd510b367f6832bbddda6b63e7923612de7e49d0ab7228be19d15f7bf62", size = 211012, upload-time = "2025-09-02T09:04:41.297Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/94/13/b98d70a58521590a71558e71fe3f982e351d0d9f672176a35b148dbb0865/jupyterlab_quickopen-2.2.0.tar.gz", hash = "sha256:f565bc565359a644933a6715ca3171a4912d277ef993b3d6f8331e9ef399831e", size = 219149, upload-time = "2026-05-11T07:27:22.8Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/da/ca/7bcd912484cb5eadf43f8bfca49fe6b6d2cb16ea6127f3fd646865820ca1/jupyterlab_quickopen-2.1.0-py3-none-any.whl", hash = "sha256:a45609d1c723f5eebb92c60108aba6dbfeec793e30042750cb5bd44daac639cc", size = 23962, upload-time = "2025-09-02T09:04:39.262Z" },
+    { url = "https://files.pythonhosted.org/packages/32/97/3a6f6a2daec745b473e44f41d175f42d70f6fe2aa14b5d50a1e2828ecd34/jupyterlab_quickopen-2.2.0-py3-none-any.whl", hash = "sha256:1df1c913c485bfd2510b57923b342b638c242a302625a6571caf6a107960a494", size = 29868, upload-time = "2026-05-11T07:27:21.257Z" },
 ]
 
 [[package]]
@@ -1557,6 +1558,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/72/55/b748445cb4ea6b125626f15379be7c96d1035d4fa3e8fee362fa92298abf/pathable-0.5.0.tar.gz", hash = "sha256:d81938348a1cacb525e7c75166270644782c0fb9c8cecc16be033e71427e0ef1", size = 16655, upload-time = "2026-02-20T08:47:00.748Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/52/96/5a770e5c461462575474468e5af931cff9de036e7c2b4fea23c1c58d2cbe/pathable-0.5.0-py3-none-any.whl", hash = "sha256:646e3d09491a6351a0c82632a09c02cdf70a252e73196b36d8a15ba0a114f0a6", size = 16867, upload-time = "2026-02-20T08:46:59.536Z" },
+]
+
+[[package]]
+name = "pathspec"
+version = "1.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/82/42f767fc1c1143d6fd36efb827202a2d997a375e160a71eb2888a925aac1/pathspec-1.1.1.tar.gz", hash = "sha256:17db5ecd524104a120e173814c90367a96a98d07c45b2e10c2f3919fff91bf5a", size = 135180, upload-time = "2026-04-27T01:46:08.907Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f1/d9/7fb5aa316bc299258e68c73ba3bddbc499654a07f151cba08f6153988714/pathspec-1.1.1-py3-none-any.whl", hash = "sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189", size = 57328, upload-time = "2026-04-27T01:46:07.06Z" },
 ]
 
 [[package]]
@@ -2548,7 +2558,7 @@ requires-dist = [
     { name = "jupyterlab-day", specifier = ">=0.2.0" },
     { name = "jupyterlab-git", specifier = ">=0.53.0,<1" },
     { name = "jupyterlab-night", specifier = ">=0.5.2" },
-    { name = "jupyterlab-quickopen", specifier = ">=2.1.0" },
+    { name = "jupyterlab-quickopen", specifier = ">=2.2.0" },
 ]
 
 [[package]]
