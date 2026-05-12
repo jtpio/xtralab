@@ -9,13 +9,15 @@ import { Drag } from '@lumino/dragdrop';
 import { FileTree, useFileTree } from '@pierre/trees/react';
 import type {
   FileTreeBatchOperation,
-  FileTreeDirectoryHandle
+  FileTreeDirectoryHandle,
+  GitStatusEntry
 } from '@pierre/trees';
 
 import type { Ignore } from 'ignore';
 
 import { ROOT_LOAD_KEY, listDirectory, toServerPath } from './contents';
 import { buildIgnoredEntries, loadGitignoreMatcher } from './gitignore';
+import { loadGitStatusEntries } from './gitStatus';
 import { FILE_BROWSER_ICONS } from './icons';
 import type { XtralabFileBrowser } from './widget';
 
@@ -42,6 +44,23 @@ const CONTENTS_MIME = 'application/x-jupyter-icontents';
  * than a click. Matches the value used by the default JupyterLab listing.
  */
 const DRAG_THRESHOLD = 5;
+
+/**
+ * Polling cadence for the git status decoration. Out-of-band changes (a
+ * terminal `git add`, a `git pull`, a file edited outside the JupyterLab
+ * editor) become visible within this interval without a manual refresh.
+ * Aligned with the git panel's own polling so both views update on the
+ * same rhythm.
+ */
+const GIT_STATUS_POLL_INTERVAL_MS = 5000;
+
+/**
+ * Server-relative repository path used for `/git/*` calls. Empty string
+ * means "use the JupyterLab server's root and let git resolve the
+ * enclosing repo" — same convention as the git panel and the launcher
+ * dashboard.
+ */
+const GIT_REPO_PATH = '';
 
 /**
  * The custom-element tag used by `@pierre/trees` for its shadow host. Kept
@@ -92,21 +111,33 @@ export function FileBrowserComponent(
     // path-iteration API.
     const loadedPaths = new Set<string>();
     let gitignoreMatcher: Ignore | null = null;
+    let gitStatusEntries: readonly GitStatusEntry[] = [];
     let cancelled = false;
 
     /**
-     * Recompute the `ignored` git status entries from the current
-     * gitignore matcher and the set of loaded paths, and push them into
-     * the tree. Safe to call at any time: when the matcher is `null`
-     * (no `.gitignore` or it failed to load) we send an empty list, which
-     * also clears any statuses that may have been applied previously.
+     * Recompute the combined `GitStatusEntry` list from the current
+     * gitignore matcher and the latest porcelain status, then push it into
+     * the tree. Safe to call at any time: empty inputs result in an empty
+     * payload, which clears any statuses applied previously.
+     *
+     * Ignored entries go first so the porcelain entries win in the
+     * unlikely event of overlap (a tracked path that also matches a
+     * `.gitignore` rule). `@pierre/trees` lets later entries overwrite
+     * earlier ones in its internal `statusByPath` map.
      */
     const syncGitStatus = (): void => {
-      if (gitignoreMatcher === null) {
-        model.setGitStatus([]);
-        return;
+      const entries: GitStatusEntry[] = [];
+      if (gitignoreMatcher !== null) {
+        for (const entry of buildIgnoredEntries(
+          gitignoreMatcher,
+          loadedPaths
+        )) {
+          entries.push(entry);
+        }
       }
-      const entries = buildIgnoredEntries(gitignoreMatcher, loadedPaths);
+      for (const entry of gitStatusEntries) {
+        entries.push(entry);
+      }
       model.setGitStatus(entries);
     };
 
@@ -127,6 +158,21 @@ export function FileBrowserComponent(
         return;
       }
       gitignoreMatcher = next;
+      syncGitStatus();
+    };
+
+    /**
+     * Refresh the porcelain-derived git status entries and re-apply them
+     * to the tree. Runs on mount, on every refresh, and on a periodic
+     * poll so out-of-band changes (terminal `git add`, file edits saved
+     * outside the editor, …) become visible without explicit user action.
+     */
+    const refreshGitStatus = async (): Promise<void> => {
+      const next = await loadGitStatusEntries(GIT_REPO_PATH);
+      if (cancelled) {
+        return;
+      }
+      gitStatusEntries = next;
       syncGitStatus();
     };
 
@@ -294,8 +340,11 @@ export function FileBrowserComponent(
       // since the last load, then re-apply the resulting statuses to the
       // newly-loaded paths. The reload runs in parallel with the rest of
       // the refresh — `refreshGitignoreMatcher` calls `syncGitStatus`
-      // itself when it completes.
+      // itself when it completes. The porcelain status is also re-fetched
+      // here so a user-triggered refresh picks up out-of-band git changes
+      // immediately instead of waiting for the next poll tick.
       void refreshGitignoreMatcher();
+      void refreshGitStatus();
 
       // Re-expand the directories that were expanded before the refresh.
       // We have to do this after `resetPaths` because the reset starts
@@ -451,6 +500,10 @@ export function FileBrowserComponent(
     knownDirs.set(ROOT_LOAD_KEY, 'unloaded');
     void fetchDirectory(ROOT_LOAD_KEY);
     void refreshGitignoreMatcher();
+    void refreshGitStatus();
+    const gitStatusInterval = window.setInterval(() => {
+      void refreshGitStatus();
+    }, GIT_STATUS_POLL_INTERVAL_MS);
 
     const unsubscribe = model.subscribe(() => {
       knownDirs.forEach((state, canonicalPath) => {
@@ -496,6 +549,7 @@ export function FileBrowserComponent(
 
     return () => {
       cancelled = true;
+      window.clearInterval(gitStatusInterval);
       unsubscribe();
       if (widget !== undefined) {
         if (refreshSlot !== undefined) {
