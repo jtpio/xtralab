@@ -309,6 +309,110 @@ export function FileBrowserComponent(
     };
 
     /**
+     * Reveal {@link canonicalPath} in the tree: load any unloaded
+     * ancestor directories, expand them, and select the target so it is
+     * scrolled into view. Tolerant of partially-loaded state so the
+     * editor breadcrumbs can call it on any path at any time without
+     * caring about what the tree has already fetched.
+     *
+     * Each ancestor is awaited *before* it is expanded — expanding a
+     * directory triggers the model's subscribe callback, which
+     * synchronously sets the directory's load state to `loading` and
+     * kicks off its own fetch in parallel. Awaiting that in-flight
+     * fetch would return immediately on the second await, leaving the
+     * children unloaded when we move to the next iteration.
+     */
+    /**
+     * Clear the tree selection and scroll back to the top. Invoked by
+     * the file browser widget's `scrollToRoot` method when the home
+     * crumb is clicked; gives that gesture visible feedback even when
+     * the sidebar is already focused on the file browser.
+     */
+    const goToRoot = (): void => {
+      if (cancelled) {
+        return;
+      }
+      for (const selected of model.getSelectedPaths()) {
+        model.getItem(selected)?.deselect();
+      }
+      const container = model.getFileTreeContainer();
+      if (container !== undefined) {
+        container.scrollTop = 0;
+      }
+    };
+
+    const revealPath = async (canonicalPath: string): Promise<void> => {
+      if (cancelled || canonicalPath.length === 0) {
+        return;
+      }
+
+      const isDir = canonicalPath.endsWith('/');
+      const trimmed = isDir ? canonicalPath.slice(0, -1) : canonicalPath;
+      const segments = trimmed.split('/').filter(s => s.length > 0);
+      if (segments.length === 0) {
+        return;
+      }
+
+      // Build the ordered list of ancestor directory canonical paths.
+      // For "foo/bar/baz.txt" → ["foo/", "foo/bar/"].
+      // For "foo/bar/"       → ["foo/"].
+      const ancestors: string[] = [];
+      let cumulative = '';
+      for (let i = 0; i < segments.length - 1; i++) {
+        cumulative += `${segments[i]}/`;
+        ancestors.push(cumulative);
+      }
+
+      await fetchDirectory(ROOT_LOAD_KEY);
+      if (cancelled) {
+        return;
+      }
+
+      for (const ancestor of ancestors) {
+        await fetchDirectory(ancestor);
+        if (cancelled) {
+          return;
+        }
+        const item = model.getItem(ancestor);
+        if (item === null || !item.isDirectory()) {
+          return;
+        }
+        const handle = item as FileTreeDirectoryHandle;
+        if (!handle.isExpanded()) {
+          handle.expand();
+        }
+      }
+
+      if (isDir) {
+        await fetchDirectory(canonicalPath);
+        if (cancelled) {
+          return;
+        }
+      }
+
+      const target = model.getItem(canonicalPath);
+      if (target === null) {
+        return;
+      }
+      if (
+        target.isDirectory() &&
+        !(target as FileTreeDirectoryHandle).isExpanded()
+      ) {
+        (target as FileTreeDirectoryHandle).expand();
+      }
+
+      for (const selected of model.getSelectedPaths()) {
+        if (selected === canonicalPath) {
+          continue;
+        }
+        const previous = model.getItem(selected);
+        previous?.deselect();
+      }
+      target.select();
+      model.focusPath(canonicalPath);
+    };
+
+    /**
      * Insert a newly-created path (typically from "new folder" or
      * "duplicate") into the tree without doing a full refresh. Expands
      * the parent so the user sees the newly created entry immediately.
@@ -369,6 +473,8 @@ export function FileBrowserComponent(
 
     let refreshSlot: (() => void) | undefined;
     let pathAddedSlot: ((sender: unknown, path: string) => void) | undefined;
+    let revealSlot: ((sender: unknown, path: string) => void) | undefined;
+    let rootSlot: (() => void) | undefined;
     if (widget !== undefined) {
       refreshSlot = (): void => {
         void refreshAll();
@@ -376,8 +482,16 @@ export function FileBrowserComponent(
       pathAddedSlot = (_sender, path): void => {
         handlePathAdded(path);
       };
+      revealSlot = (_sender, path): void => {
+        void revealPath(path);
+      };
+      rootSlot = (): void => {
+        goToRoot();
+      };
       widget.refreshRequested.connect(refreshSlot);
       widget.pathAdded.connect(pathAddedSlot);
+      widget.revealRequested.connect(revealSlot);
+      widget.rootRequested.connect(rootSlot);
     }
 
     return () => {
@@ -389,6 +503,12 @@ export function FileBrowserComponent(
         }
         if (pathAddedSlot !== undefined) {
           widget.pathAdded.disconnect(pathAddedSlot);
+        }
+        if (revealSlot !== undefined) {
+          widget.revealRequested.disconnect(revealSlot);
+        }
+        if (rootSlot !== undefined) {
+          widget.rootRequested.disconnect(rootSlot);
         }
       }
     };

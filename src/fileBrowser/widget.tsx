@@ -74,6 +74,24 @@ export interface IXtralabFileBrowser {
    */
   readonly pathAdded: ISignal<IXtralabFileBrowser, string>;
 
+  /**
+   * Emits when an external caller asks the tree to scroll to and select
+   * the given canonical path. The React component listens, lazily loads
+   * any unloaded ancestor directories, expands them, and selects the
+   * target. Used by the editor breadcrumbs to jump back to a file or
+   * folder shown in the breadcrumb trail.
+   */
+  readonly revealRequested: ISignal<IXtralabFileBrowser, string>;
+
+  /**
+   * Emits when an external caller asks the tree to return to the
+   * workspace root: clear any current selection and scroll back to the
+   * first row. Distinct from {@link revealRequested} because the
+   * workspace root has no tree row of its own — it cannot be reached
+   * by passing a path.
+   */
+  readonly rootRequested: ISignal<IXtralabFileBrowser, void>;
+
   /** Trigger a refresh of every loaded directory in the tree. */
   refresh(): void;
 
@@ -83,6 +101,21 @@ export interface IXtralabFileBrowser {
    * convention: directories carry a trailing slash, files do not.
    */
   notifyPathAdded(canonicalPath: string): void;
+
+  /**
+   * Ask the tree to reveal {@link canonicalPath}: load and expand any
+   * unloaded ancestor directories, then select and scroll the target
+   * into view. `canonicalPath` follows the `@pierre/trees` convention
+   * (directories carry a trailing slash, files do not). Must be a
+   * non-empty path — use {@link scrollToRoot} for the root gesture.
+   */
+  reveal(canonicalPath: string): void;
+
+  /**
+   * Ask the tree to return to the workspace root: clear any current
+   * selection and scroll back to the top of the tree.
+   */
+  scrollToRoot(): void;
 }
 
 /**
@@ -142,6 +175,14 @@ export class XtralabFileBrowser extends Widget implements IXtralabFileBrowser {
     return this._pathAdded;
   }
 
+  get revealRequested(): ISignal<this, string> {
+    return this._revealRequested;
+  }
+
+  get rootRequested(): ISignal<this, void> {
+    return this._rootRequested;
+  }
+
   /**
    * Update the cached selection. Called from the React tree when the
    * underlying `@pierre/trees` model emits a selection change.
@@ -159,6 +200,19 @@ export class XtralabFileBrowser extends Widget implements IXtralabFileBrowser {
     this._pathAdded.emit(canonicalPath);
   }
 
+  reveal(canonicalPath: string): void {
+    if (canonicalPath.length === 0) {
+      throw new Error(
+        'XtralabFileBrowser.reveal requires a non-empty canonical path; use scrollToRoot for the workspace root.'
+      );
+    }
+    this._revealRequested.emit(canonicalPath);
+  }
+
+  scrollToRoot(): void {
+    this._rootRequested.emit();
+  }
+
   private _contentsManager: Contents.IManager;
   private _docManager: IDocumentManager;
   private _onOpenFile: ((serverPath: string) => void) | undefined;
@@ -166,6 +220,8 @@ export class XtralabFileBrowser extends Widget implements IXtralabFileBrowser {
   private _selectionChanged = new Signal<this, readonly string[]>(this);
   private _refreshRequested = new Signal<this, void>(this);
   private _pathAdded = new Signal<this, string>(this);
+  private _revealRequested = new Signal<this, string>(this);
+  private _rootRequested = new Signal<this, void>(this);
   private _toolbar: Toolbar;
   private _content: XtralabFileTreeContent;
 }

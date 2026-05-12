@@ -1,6 +1,7 @@
 import { PageConfig } from '@jupyterlab/coreutils';
 import type { DocumentRegistry } from '@jupyterlab/docregistry';
 import { homeIcon as rootIcon } from '@jupyterlab/ui-components';
+import type { CommandRegistry } from '@lumino/commands';
 import { Widget } from '@lumino/widgets';
 
 const EDITOR_BREADCRUMBS_CLASS = 'jp-xtralab-EditorBreadcrumbs';
@@ -11,8 +12,16 @@ const ITEM_CLASS = 'jp-BreadCrumbs-item';
 const CURRENT_ITEM_CLASS = 'jp-mod-current';
 const SEPARATOR_CLASS = 'jp-BreadCrumbs-separator';
 
+/**
+ * Command dispatched when the user clicks a breadcrumb segment.
+ * Registered by the file browser plugin; the breadcrumbs only know
+ * the name so they stay decoupled from the file browser internals.
+ */
+const REVEAL_COMMAND = 'xtralab:reveal-path';
+
 export interface IEditorBreadcrumbsOptions {
   context: DocumentRegistry.IContext<DocumentRegistry.IModel>;
+  commands: CommandRegistry;
 }
 
 /**
@@ -27,6 +36,7 @@ export class EditorBreadcrumbs extends Widget {
   constructor(options: IEditorBreadcrumbsOptions) {
     super({ node: document.createElement('nav') });
     this._context = options.context;
+    this._commands = options.commands;
     this.addClass(EDITOR_BREADCRUMBS_CLASS);
     this.node.setAttribute('aria-label', 'Editor file path');
 
@@ -65,17 +75,27 @@ export class EditorBreadcrumbs extends Widget {
     }
 
     parts.forEach((part, index) => {
+      const isLast = index === parts.length - 1;
+      const subPath = parts.slice(0, index + 1).join('/');
+      // Canonical `@pierre/trees` paths: directories carry a trailing
+      // slash, files do not. Every part except the last names a folder
+      // along the way to the open file.
+      const canonical = isLast ? subPath : `${subPath}/`;
+
       const item = document.createElement('span');
       item.className = ITEM_CLASS;
       item.textContent = part;
-      item.title = parts.slice(0, index + 1).join('/');
-      if (index === parts.length - 1) {
+      item.title = subPath;
+      item.tabIndex = 0;
+      item.setAttribute('role', 'button');
+      if (isLast) {
         item.classList.add(CURRENT_ITEM_CLASS);
         item.setAttribute('aria-current', 'page');
       }
+      this._attachReveal(item, canonical);
       this._content.appendChild(item);
 
-      if (index < parts.length - 1) {
+      if (!isLast) {
         this._content.appendChild(this._createSeparator());
       }
     });
@@ -89,8 +109,38 @@ export class EditorBreadcrumbs extends Widget {
       stylesheet: 'breadCrumb'
     });
     item.dataset.path = '/';
-    item.tabIndex = -1;
+    item.tabIndex = 0;
+    item.setAttribute('role', 'button');
+    // Empty canonical path: the reveal command treats this as the
+    // workspace-root gesture — surface the file browser, clear its
+    // selection, and scroll back to the top. The tree has no row for
+    // the workspace root itself.
+    this._attachReveal(item, '');
     return item;
+  }
+
+  /**
+   * Bind click and keyboard activation on a crumb element to the
+   * shared reveal command. Dispatch is best-effort: a failure to
+   * resolve or execute the command is logged but never thrown into
+   * the editor's toolbar.
+   */
+  private _attachReveal(element: HTMLElement, canonicalPath: string): void {
+    const fire = (event: Event): void => {
+      event.preventDefault();
+      event.stopPropagation();
+      void this._commands
+        .execute(REVEAL_COMMAND, { path: canonicalPath })
+        .catch((err: unknown) => {
+          console.error(`xtralab: failed to reveal "${canonicalPath}"`, err);
+        });
+    };
+    element.addEventListener('click', fire);
+    element.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        fire(event);
+      }
+    });
   }
 
   private _createSeparator(): HTMLElement {
@@ -102,6 +152,7 @@ export class EditorBreadcrumbs extends Widget {
   }
 
   private _context: DocumentRegistry.IContext<DocumentRegistry.IModel>;
+  private _commands: CommandRegistry;
   private _container: HTMLElement;
   private _content: HTMLElement;
 }

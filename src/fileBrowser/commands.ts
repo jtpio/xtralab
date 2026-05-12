@@ -24,7 +24,7 @@ import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { ContextMenu } from '@lumino/widgets';
 
 import { toCanonicalPath, toServerPath } from './contents';
-import { IXtralabFileBrowser } from './widget';
+import { FILE_BROWSER_ID, IXtralabFileBrowser } from './widget';
 
 /**
  * Command identifiers exposed by the xtralab browser. We deliberately namespace
@@ -44,6 +44,7 @@ export namespace CommandIDs {
   export const refresh = 'xtralab:refresh';
   export const createNewDirectory = 'xtralab:create-new-directory';
   export const newLauncher = 'xtralab:new-launcher';
+  export const revealPath = 'xtralab:reveal-path';
 }
 
 /**
@@ -403,6 +404,27 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
     icon: refreshIcon.bindprops({ stylesheet: 'menuItem' }),
     execute: () => {
       browser.refresh();
+    }
+  });
+
+  // Public reveal seam. Other plugins (editor breadcrumbs, future
+  // "reveal in tree" actions) call this command rather than depending
+  // on the file browser widget directly. Activating the sidebar is part
+  // of the contract: the tree is hidden behind a tab and a reveal that
+  // does not surface the panel would silently no-op from the user's
+  // point of view. An empty path is the "workspace root" gesture —
+  // there is no tree row for the root itself, so the browser is asked
+  // to scroll back to the top and clear its selection instead.
+  commands.addCommand(CommandIDs.revealPath, {
+    label: 'Reveal in File Browser',
+    execute: (args: ReadonlyPartialJSONObject) => {
+      const path = (args.path as string | undefined) ?? '';
+      app.shell.activateById(FILE_BROWSER_ID);
+      if (path.length === 0) {
+        browser.scrollToRoot();
+      } else {
+        browser.reveal(path);
+      }
     }
   });
 

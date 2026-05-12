@@ -38,6 +38,17 @@
   align-items: center;
   flex: 0 0 auto;
   margin-right: 2px;
+  padding: 2px;
+  border-radius: var(--jp-border-radius);
+  cursor: pointer;
+}
+
+.jp-xtralab-EditorBreadcrumbs .jp-BreadCrumbs-home:hover {
+  background-color: var(--jp-layout-color2);
+}
+
+.jp-xtralab-EditorBreadcrumbs .jp-BreadCrumbs-home:focus-visible {
+  outline: 2px solid var(--jp-brand-color1);
 }
 
 .jp-xtralab-EditorBreadcrumbs .jp-BreadCrumbs-item {
