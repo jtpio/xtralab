@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: '*'
   workflow_dispatch:
+  release:
+    types: [published]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -23,12 +25,18 @@ jobs:
             artifact: xtralab-macos-arm64
             artifact-paths: |
               desktop/out/make/**/*.dmg
+            installer-glob: '*.dmg'
+            platform: darwin-arm64
           - os: ubuntu-latest
             label: Linux (x64)
             artifact: xtralab-linux-x64
             artifact-paths: |
               desktop/out/make/**/*.AppImage
+            installer-glob: '*.AppImage'
+            platform: linux-x64
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -89,3 +97,29 @@ jobs:
           path: ${{ matrix.artifact-paths }}
           if-no-files-found: error
           retention-days: 30
+
+      - name: Attach installer to GitHub Release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+          PLATFORM: ${{ matrix.platform }}
+          INSTALLER_GLOB: ${{ matrix.installer-glob }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          installer_count=$(find desktop/out/make -type f -name "$INSTALLER_GLOB" | wc -l | tr -d ' ')
+          if [ "$installer_count" != "1" ]; then
+            echo "::error::Expected exactly one $INSTALLER_GLOB under desktop/out/make, found $installer_count:"
+            find desktop/out/make -type f -name "$INSTALLER_GLOB"
+            exit 1
+          fi
+          installer=$(find desktop/out/make -type f -name "$INSTALLER_GLOB")
+          ext="${installer##*.}"
+          asset_name="xtralab-${version}-${PLATFORM}.${ext}"
+          staged="$RUNNER_TEMP/$asset_name"
+          cp "$installer" "$staged"
+          echo "Uploading $staged to release $TAG"
+          gh release upload "$TAG" "$staged" --clobber --repo "$REPO"

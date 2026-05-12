@@ -110,3 +110,10 @@ Every push to `main` and every pull request also runs the desktop build on
 GitHub Actions for macOS (Apple Silicon) and Linux (x64). The resulting DMG
 and AppImage are uploaded as workflow artifacts and can be downloaded from
 the run page on the repository's Actions tab.
+
+When the Jupyter Releaser publishes a new GitHub Release (Step 2 of the
+release workflow), the same desktop-build job runs once more against the
+release tag and uploads renamed installers
+(`xtralab-<version>-darwin-arm64.dmg`, `xtralab-<version>-linux-x64.AppImage`)
+directly to that release's assets, alongside the Python wheel/sdist that
+Jupyter Releaser pushes for PyPI.
