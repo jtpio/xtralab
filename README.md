@@ -23,26 +23,11 @@ jupyter lab
 
 ### As a desktop app
 
-Launch xtralab in a dedicated Chrome window with an isolated profile, on a
-local server that shuts down when the window closes:
-
-```bash
-uvx --prerelease=allow xtralab
-```
-
-Or, after `pip install xtralab` into an environment:
-
-```bash
-xtralab
-```
-
-The `--prerelease=allow` flag is needed while `xtralab` depends on a
-pre-release of JupyterLab 4.6; it can be dropped once 4.6 ships stable.
-Requires Chrome or Chromium; this launcher currently runs on macOS only.
-
-Alternatively, a standalone Electron build (DMG on macOS, AppImage on Linux)
-is produced on every push to `main` — download the artifacts from the
-repository's [Actions tab](https://github.com/jtpio/xtralab/actions).
+A standalone Electron build (DMG on macOS, AppImage on Linux) is produced on
+every push to `main` — download the artifacts from the repository's
+[Actions tab](https://github.com/jtpio/xtralab/actions). See
+[CONTRIBUTING.md](./CONTRIBUTING.md) for the architecture and local build
+instructions.
 
 ## What's included
 
