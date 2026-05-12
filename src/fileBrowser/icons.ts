@@ -7,9 +7,9 @@ import {
 import type { FileTreeIconConfig } from '@pierre/trees';
 
 /**
- * The glyph used as the Xtralab file browser's sidebar tab icon. Defined as a
+ * The glyph used as the xtralab file browser's sidebar tab icon. Defined as a
  * `LabIcon` (rather than the default `folderIcon` from
- * `@jupyterlab/ui-components`) so the Xtralab browser is visually distinguishable
+ * `@jupyterlab/ui-components`) so the xtralab browser is visually distinguishable
  * from JupyterLab's built-in file browser, which also lives in the left
  * sidebar.
  *
@@ -49,7 +49,7 @@ const JUPYTER_NOTEBOOK_SPRITE_SHEET = `<svg data-icon-sprite aria-hidden="true" 
 </svg>`;
 
 /**
- * Icon configuration for the Xtralab file browser. Keeps the default `complete`
+ * Icon configuration for the xtralab file browser. Keeps the default `complete`
  * built-in icon set (the colored language icons) and layers a Jupyter notebook
  * symbol on top so `.ipynb` files render with the JupyterLab notebook glyph.
  *
@@ -121,7 +121,7 @@ function extractSymbol(
 }
 
 /**
- * Return a JupyterLab `LabIcon` matching the icon the Xtralab file tree would
+ * Return a JupyterLab `LabIcon` matching the icon the xtralab file tree would
  * render for the given file path. Used by other plugins (e.g. the git diff
  * viewer) that want their main-area widget tabs to display the same per-file
  * glyph the tree shows in the sidebar.

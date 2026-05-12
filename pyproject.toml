@@ -46,9 +46,6 @@ dependencies = [
 ]
 dynamic = ["version", "description", "urls"]
 
-[project.scripts]
-xtralab = "xtralab.app:main"
-
 [tool.hatch.version]
 source = "nodejs"
 
@@ -60,7 +57,6 @@ packages = ["xtralab"]
 
 [tool.hatch.build.targets.wheel.shared-data]
 "xtralab/labextension" = "share/jupyter/labextensions/xtralab"
-"install.json" = "share/jupyter/labextensions/xtralab/install.json"
 "jupyter-config/labconfig" = "etc/jupyter/labconfig"
 "jupyter-config/jupyter_server_config.d" = "etc/jupyter/jupyter_server_config.d"
 
@@ -79,7 +75,7 @@ include = [
     "/LICENSE",
     "/pyproject.toml",
 ]
-exclude = [".github"]
+exclude = [".github", "/desktop"]
 
 [tool.hatch.build.hooks.version]
 path = "xtralab/_version.py"

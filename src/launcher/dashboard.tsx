@@ -2,7 +2,14 @@ import * as React from 'react';
 
 import type { CommandRegistry } from '@lumino/commands';
 import type { ReadonlyPartialJSONObject } from '@lumino/coreutils';
-import { LabIcon, ReactWidget, refreshIcon } from '@jupyterlab/ui-components';
+import {
+  LabIcon,
+  ReactWidget,
+  consoleIcon,
+  notebookIcon,
+  refreshIcon,
+  terminalIcon
+} from '@jupyterlab/ui-components';
 import type { Widget } from '@lumino/widgets';
 
 import { expandStatusFiles, status } from '../git/api';
@@ -133,6 +140,36 @@ function LauncherDashboardComponent(
     [commands, cwd, prompt, onAgentLaunch]
   );
 
+  const launchTerminal = React.useCallback(async () => {
+    const result = (await commands.execute('terminal:create-new', {
+      cwd
+    })) as Widget | undefined;
+    if (result) {
+      onAgentLaunch(result);
+    }
+  }, [commands, cwd, onAgentLaunch]);
+
+  const launchNotebook = React.useCallback(async () => {
+    // No `kernelName` — let the notebook extension fall back to the default
+    // kernel or prompt the user, matching the stock launcher's notebook
+    // tile behavior.
+    const result = (await commands.execute('notebook:create-new', {
+      cwd
+    })) as Widget | undefined;
+    if (result) {
+      onAgentLaunch(result);
+    }
+  }, [commands, cwd, onAgentLaunch]);
+
+  const launchConsole = React.useCallback(async () => {
+    const result = (await commands.execute('console:create', {
+      cwd
+    })) as Widget | undefined;
+    if (result) {
+      onAgentLaunch(result);
+    }
+  }, [commands, cwd, onAgentLaunch]);
+
   const openDiff = React.useCallback(
     (change: IFileChange) => {
       const args: GitCommandArguments.IOpenDiff = { repoPath, change };
@@ -151,6 +188,11 @@ function LauncherDashboardComponent(
         prompt={prompt}
         onPromptChange={setPrompt}
         onLaunch={launch}
+      />
+      <OpenSection
+        onLaunchTerminal={launchTerminal}
+        onLaunchNotebook={launchNotebook}
+        onLaunchConsole={launchConsole}
       />
       <ChangesSection
         git={git}
@@ -350,6 +392,70 @@ function AgentSection(props: {
             </button>
           );
         })}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The non-agent launch tiles — a plain terminal, a new notebook, and a
+ * new console. They sit in a separate section below the agent grid so
+ * they don't compete with the AI agents visually, and they're always
+ * available regardless of the agent prompt textarea (which doesn't
+ * apply to them).
+ */
+function OpenSection(props: {
+  onLaunchTerminal: () => void;
+  onLaunchNotebook: () => void;
+  onLaunchConsole: () => void;
+}): React.ReactElement {
+  const { onLaunchTerminal, onLaunchNotebook, onLaunchConsole } = props;
+  return (
+    <section className="jp-xtralab-Launcher-section">
+      <h2 className="jp-xtralab-Launcher-section-title">Open</h2>
+      <div className="jp-xtralab-Launcher-agents">
+        <button
+          type="button"
+          className="jp-xtralab-Launcher-agent"
+          title="Open a new terminal."
+          aria-label="Open a new terminal"
+          onClick={onLaunchTerminal}
+        >
+          <LabIcon.resolveReact
+            icon={terminalIcon}
+            tag="span"
+            className="jp-xtralab-Launcher-agent-icon"
+          />
+          <span className="jp-xtralab-Launcher-agent-label">Terminal</span>
+        </button>
+        <button
+          type="button"
+          className="jp-xtralab-Launcher-agent"
+          title="Create a new notebook."
+          aria-label="Create a new notebook"
+          onClick={onLaunchNotebook}
+        >
+          <LabIcon.resolveReact
+            icon={notebookIcon}
+            tag="span"
+            className="jp-xtralab-Launcher-agent-icon"
+          />
+          <span className="jp-xtralab-Launcher-agent-label">Notebook</span>
+        </button>
+        <button
+          type="button"
+          className="jp-xtralab-Launcher-agent"
+          title="Create a new console."
+          aria-label="Create a new console"
+          onClick={onLaunchConsole}
+        >
+          <LabIcon.resolveReact
+            icon={consoleIcon}
+            tag="span"
+            className="jp-xtralab-Launcher-agent-icon"
+          />
+          <span className="jp-xtralab-Launcher-agent-label">Console</span>
+        </button>
       </div>
     </section>
   );

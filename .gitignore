@@ -12,6 +12,11 @@ node_modules/
 *.tsbuildinfo
 .eslintcache
 .stylelintcache
+desktop/dist/
+desktop/out/
+desktop/python/wheels/
+desktop/python/runtime/
+desktop/python/runtime.staging/
 
 # Yarn
 .yarn/cache
@@ -29,7 +34,7 @@ env/
 
 # uv
 .uv/
-uv.lock
+/uv.lock
 
 # Tools
 .hatch/

@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self'; script-src 'self'; style-src 'self';"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>xtralab</title>
+    <link rel="stylesheet" href="./launcher.css" />
+  </head>
+  <body>
+    <svg class="symbol" aria-hidden="true">
+      <defs>
+        <symbol id="icon-folder" viewBox="0 0 576 512">
+          <path
+            d="M88.7 223.8L0 375.8V96C0 60.7 28.7 32 64 32H181.5c17 0 33.3 6.7 45.3 18.7l26.5 26.5c12 12 28.3 18.7 45.3 18.7H416c35.3 0 64 28.7 64 64v32H144c-22.8 0-43.8 12.1-55.3 31.8zm27.6 16.1C122.1 230 132.6 224 144 224H544c11.5 0 22 6.1 27.7 16.1s5.7 22.2-.1 32.1l-112 192C453.9 474 443.4 480 432 480H32c-11.5 0-22-6.1-27.7-16.1s-5.7-22.2 .1-32.1l112-192z"
+          />
+        </symbol>
+        <symbol id="icon-arrow-left" viewBox="0 0 448 512">
+          <path
+            d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.2 288 416 288c17.7 0 32-14.3 32-32s-14.3-32-32-32l-306.7 0L214.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"
+          />
+        </symbol>
+        <symbol id="icon-sun" viewBox="0 0 512 512">
+          <path
+            d="M361.5 1.2c5 2.1 8.6 6.6 9.6 11.9L391 121l107.9 19.8c5.3 1 9.8 4.6 11.9 9.6s1.5 10.7-1.6 15.2L446.9 256l62.3 90.3c3.1 4.5 3.7 10.2 1.6 15.2s-6.6 8.6-11.9 9.6L391 391 371.1 498.9c-1 5.3-4.6 9.8-9.6 11.9s-10.7 1.5-15.2-1.6L256 446.9l-90.3 62.3c-4.5 3.1-10.2 3.7-15.2 1.6s-8.6-6.6-9.6-11.9L121 391 13.1 371.1c-5.3-1-9.8-4.6-11.9-9.6s-1.5-10.7 1.6-15.2L65.1 256 2.8 165.7c-3.1-4.5-3.7-10.2-1.6-15.2s6.6-8.6 11.9-9.6L121 121 140.9 13.1c1-5.3 4.6-9.8 9.6-11.9s10.7-1.5 15.2 1.6L256 65.1 346.3 2.8c4.5-3.1 10.2-3.7 15.2-1.6zM160 256a96 96 0 1 1 192 0 96 96 0 1 1 -192 0zm224 0a128 128 0 1 0 -256 0 128 128 0 1 0 256 0z"
+          />
+        </symbol>
+        <symbol id="icon-moon" viewBox="0 0 384 512">
+          <path
+            d="M223.5 32C100 32 0 132.3 0 256S100 480 223.5 480c60.6 0 115.5-24.2 155.8-63.4c5-4.9 6.3-12.5 3.1-18.7s-10.1-9.7-17-8.5c-9.8 1.7-19.8 2.6-30.1 2.6c-96.9 0-175.5-78.8-175.5-176c0-65.8 36-123.1 89.3-153.3c6.1-3.5 9.2-10.5 7.7-17.3s-7.3-11.9-14.3-12.5c-6.3-.5-12.6-.8-19-.8z"
+          />
+        </symbol>
+        <symbol id="icon-circle-half" viewBox="0 0 512 512">
+          <path
+            d="M448 256c0-106-86-192-192-192L256 448c106 0 192-86 192-192zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256z"
+          />
+        </symbol>
+      </defs>
+    </svg>
+
+    <button class="theme-toggle" id="theme-toggle" type="button">
+      <svg class="theme-icon" aria-hidden="true">
+        <use href="#icon-circle-half" />
+      </svg>
+    </button>
+
+    <main class="shell">
+      <section class="brand" aria-label="xtralab">
+        <img class="brand-icon" src="../assets/jupyter.svg" alt="" />
+        <div class="brand-text">
+          <h1 class="brand-title">xtralab</h1>
+          <p class="brand-subtitle">Agent-ready JupyterLab, with extras.</p>
+        </div>
+      </section>
+
+      <div class="view-stack">
+        <div class="welcome-view view-pane" id="welcome-view">
+          <section class="start-section" aria-label="Start">
+            <h2 class="section-title">Start</h2>
+            <button
+              class="action-link"
+              id="open-folder"
+              type="button"
+              title="Open a folder in xtralab"
+            >
+              <span class="action-icon">
+                <svg aria-hidden="true"><use href="#icon-folder" /></svg>
+              </span>
+              <span>Open folder...</span>
+            </button>
+          </section>
+
+          <section
+            class="recent-section"
+            id="recent-section"
+            aria-label="Recent folders"
+            hidden
+          >
+            <h2 class="section-title">Recent folders</h2>
+            <div class="recent-list" id="recent-list"></div>
+          </section>
+        </div>
+
+        <div class="project-view view-pane is-inactive" id="project-view">
+          <button
+            class="back-link"
+            id="back-to-welcome"
+            type="button"
+            title="Back to start"
+          >
+            <span class="back-icon">
+              <svg aria-hidden="true"><use href="#icon-arrow-left" /></svg>
+            </span>
+            <span>Back</span>
+          </button>
+
+          <div class="project-header">
+            <h2 class="project-folder-name" id="project-folder-name"></h2>
+            <p class="project-folder-path" id="project-folder-path"></p>
+          </div>
+
+          <div class="project-form">
+            <label class="field-label" for="environment-select">
+              Python environment
+            </label>
+            <select class="environment-select" id="environment-select"></select>
+            <p class="environment-detail" id="environment-detail"></p>
+
+            <div class="project-actions">
+              <button
+                class="secondary-action"
+                id="choose-interpreter"
+                type="button"
+              >
+                Choose interpreter...
+              </button>
+              <button
+                class="primary-action launch-action"
+                id="launch-folder"
+                type="button"
+              >
+                Open in xtralab
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </main>
+    <script src="./launcher.js"></script>
+  </body>
+</html>

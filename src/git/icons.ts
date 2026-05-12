@@ -6,7 +6,7 @@ import { LabIcon } from '@jupyterlab/ui-components';
  * recoloring and inverse-color sidebar painting automatically.
  *
  * Source: `git-branch` from SVG Repo (https://www.svgrepo.com/svg/377352/git-branch),
- * part of the same Pixelarticons family as the Xtralab file browser's `file-tree`
+ * part of the same Pixelarticons family as the xtralab file browser's `file-tree`
  * icon, so the two sidebar tab glyphs read as a matched set. The original
  * `fill="#000000"` is replaced with `fill="currentColor"` and the root element
  * is given the `jp-icon3` class so the icon picks up JupyterLab's theme color

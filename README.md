@@ -13,29 +13,21 @@ pip install xtralab
 
 ## Usage
 
-Run JupyterLab as usual:
+### As a JupyterLab package
+
+Run JupyterLab the usual way:
 
 ```bash
 jupyter lab
 ```
 
-Or launch as a desktop app — opens in a dedicated Chrome window with an
-isolated profile, on a local server that shuts down when the window closes:
+### As a desktop app
 
-```bash
-uvx --prerelease=allow xtralab
-```
-
-The `--prerelease=allow` flag is needed while `xtralab` depends on a
-pre-release of JupyterLab 4.6; it can be dropped once 4.6 ships stable.
-
-Or, after `pip install xtralab` into an environment:
-
-```bash
-xtralab
-```
-
-Requires Chrome or Chromium. macOS only for now.
+A standalone Electron build (DMG on macOS, AppImage on Linux) is produced on
+every push to `main` — download the artifacts from the repository's
+[Actions tab](https://github.com/jtpio/xtralab/actions). See
+[CONTRIBUTING.md](./CONTRIBUTING.md) for the architecture and local build
+instructions.
 
 ## What's included
 
@@ -80,13 +72,10 @@ Fields: `id` (required), `label`, `caption`, `command`, `promptArgs` (how to
 splice the prompt — `[]` for positional, `["--flag"]` for flagged, `null` to
 opt out), `iconSvg`, `rank`, `enabled`, `requireAvailable`.
 
-## Development
+## Contributing
 
-```bash
-uv pip install -e .
-jlpm
-jlpm build
-```
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the development setup, the
+Electron desktop app architecture, and the build pipeline.
 
 ## License
 

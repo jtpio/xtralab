@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "xtralab-desktop"
+version = "0.2.0"
+description = "Desktop runtime helpers for the xtralab Electron shell. Not published to PyPI."
+requires-python = ">=3.13"
+dependencies = ["xtralab"]
+
+[project.scripts]
+xtralab = "xtralab_desktop.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["xtralab_desktop"]
+
+[tool.uv.sources]
+xtralab = { path = "..", editable = false }
+
+[tool.uv]
+prerelease = "allow"

@@ -145,11 +145,25 @@
         ],
         "parser": "@typescript-eslint/parser",
         "parserOptions": {
-            "project": "tsconfig.json",
+            "project": [
+                "tsconfig.json",
+                "desktop/tsconfig.json",
+                "desktop/tsconfig.forge.json"
+            ],
             "sourceType": "module"
         },
         "plugins": [
             "@typescript-eslint"
+        ],
+        "overrides": [
+            {
+                "files": [
+                    "desktop/src/**/*.ts"
+                ],
+                "rules": {
+                    "@typescript-eslint/naming-convention": "off"
+                }
+            }
         ],
         "rules": {
             "@typescript-eslint/naming-convention": [
