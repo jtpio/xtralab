@@ -1024,9 +1024,9 @@ function ensureRuntimePyvenvCfg(envDir: string, binDir: string): void {
 
   const contents =
     `${desiredHomeLine}\n` +
-    `implementation = CPython\n` +
+    'implementation = CPython\n' +
     `version_info = ${versionInfo}\n` +
-    `include-system-site-packages = false\n`;
+    'include-system-site-packages = false\n';
   writeFileSync(cfgPath, contents, 'utf8');
 }
 
