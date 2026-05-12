@@ -1264,6 +1264,18 @@ wheels = [
 ]
 
 [[package]]
+name = "jupyterlab-vim"
+version = "4.1.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jupyterlab" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/17/d8/3ff5da56fc66a7b751925810c4e4b6a888c8b1e7a7c53b38e5492d1357fd/jupyterlab_vim-4.1.4.tar.gz", hash = "sha256:abf2891aafb32f0cb94ad98321ae7ebcbe0cabe523d38d80d569c0a50b85225a", size = 153262, upload-time = "2024-09-16T09:17:23.986Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a6/2f/65805236702729ebaa19ba34bd977a4582df2a020a365f8cc49445de2a8d/jupyterlab_vim-4.1.4-py3-none-any.whl", hash = "sha256:13c29ff1fd385fddf33eb85a8b16441be69c62032870bb97a3054b2cf00ab135", size = 67065, upload-time = "2024-09-16T09:17:21.928Z" },
+]
+
+[[package]]
 name = "keyring"
 version = "25.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2586,6 +2598,7 @@ dependencies = [
     { name = "jupyterlab-lsp" },
     { name = "jupyterlab-night" },
     { name = "jupyterlab-quickopen" },
+    { name = "jupyterlab-vim" },
     { name = "ty" },
 ]
 
@@ -2600,6 +2613,7 @@ requires-dist = [
     { name = "jupyterlab-lsp", specifier = ">=5.3.0,<6" },
     { name = "jupyterlab-night", specifier = ">=0.5.2" },
     { name = "jupyterlab-quickopen", specifier = ">=2.2.0" },
+    { name = "jupyterlab-vim", specifier = ">=4.1.4,<5" },
     { name = "ty", specifier = ">=0.0.35" },
 ]
 

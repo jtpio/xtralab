@@ -998,6 +998,9 @@ function ensureRuntimePyvenvCfg(envDir: string, binDir: string): void {
   // start without a pyvenv.cfg, so synthesize a self-referential one. Python's
   // own startup is unaffected because sys.prefix and sys.base_prefix both
   // resolve back to envDir.
+  // Upstream tracking: https://github.com/astral-sh/ty/issues/2794 — revisit
+  // and drop this shim once ty accepts a missing/broken pyvenv.cfg or honors
+  // an explicit interpreter override for `ty server`.
   const cfgPath = path.join(envDir, 'pyvenv.cfg');
   const desiredHomeLine = `home = ${binDir}`;
   if (existsSync(cfgPath)) {
