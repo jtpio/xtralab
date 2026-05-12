@@ -1,4 +1,5 @@
 @import url('base.css');
+@import url('editorBreadcrumbs.css');
 @import url('git.css');
 @import url('launcher.css');
 @import url('statusBar.css');

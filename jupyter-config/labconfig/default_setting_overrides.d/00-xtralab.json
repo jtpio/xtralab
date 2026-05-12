@@ -7,5 +7,24 @@
   },
   "jupyterlab-quickopen:plugin": {
     "respectGitignore": true
+  },
+  "@jupyterlab/completer-extension:manager": {
+    "autoCompletion": true,
+    "showDocumentationPanel": true
+  },
+  "@jupyter-lsp/jupyterlab-lsp:completion": {
+    "continuousHinting": true
+  },
+  "@jupyterlab/codemirror-extension:plugin": {
+    "defaultConfig": {
+      "autoClosingBrackets": true,
+      "codeFolding": true,
+      "highlightActiveLine": true,
+      "highlightTrailingWhitespace": true,
+      "scrollPastEnd": true
+    }
+  },
+  "@jupyterlab/notebook-extension:tracker": {
+    "recordTiming": true
   }
 }
