@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import { Poll } from '@lumino/polling';
 import { ISignal } from '@lumino/signaling';
 
 import {
@@ -48,6 +49,14 @@ interface IPanelState {
  * visible without requiring a manual refresh.
  */
 const STATUS_POLL_INTERVAL_MS = 5000;
+
+/**
+ * Upper bound on the poll's exponential backoff when status requests fail
+ * repeatedly. Matches the default JupyterLab file browser's `max`: long
+ * enough that a server outage stops hammering the API, short enough that
+ * a transient failure heals on its own.
+ */
+const STATUS_POLL_MAX_MS = 300_000;
 
 /**
  * Top-level React component rendered inside the {@link GitPanel} widget.
@@ -109,27 +118,32 @@ export function GitPanelComponent(props: {
     }
   }, [repoPath]);
 
-  // Initial load + polling. `refresh` is stable for a given `repoPath`, so
-  // the polling interval is only re-created when the repo path changes.
+  // Initial load + polling. Driven by a Lumino `Poll` so the panel stops
+  // hitting the git endpoint while the JupyterLab tab is hidden, and so
+  // repeated failures back off exponentially instead of spinning at 5s.
+  // External refresh triggers (toolbar button, plugin-level events) call
+  // `poll.refresh()` to schedule an immediate tick instead of running
+  // `refresh()` directly — that keeps the panel from issuing two parallel
+  // status requests when an automatic tick happens to land at the same
+  // time as an external trigger.
   React.useEffect(() => {
-    void refresh();
-    const interval = window.setInterval(
-      () => void refresh(),
-      STATUS_POLL_INTERVAL_MS
-    );
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [refresh]);
-
-  // External refresh triggers (toolbar button, plugin-level events).
-  React.useEffect(() => {
+    const poll = new Poll({
+      name: '@xtralab/git:panelStatus',
+      factory: () => refresh(),
+      frequency: {
+        interval: STATUS_POLL_INTERVAL_MS,
+        backoff: true,
+        max: STATUS_POLL_MAX_MS
+      },
+      standby: 'when-hidden'
+    });
     const handler = (): void => {
-      void refresh();
+      void poll.refresh();
     };
     refreshSignal.connect(handler);
     return () => {
       refreshSignal.disconnect(handler);
+      poll.dispose();
     };
   }, [refresh, refreshSignal]);
 

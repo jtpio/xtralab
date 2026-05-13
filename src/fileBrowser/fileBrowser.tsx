@@ -5,6 +5,7 @@ import { Contents } from '@jupyterlab/services';
 import { fileIcon } from '@jupyterlab/ui-components';
 import { MimeData, PromiseDelegate } from '@lumino/coreutils';
 import { Drag } from '@lumino/dragdrop';
+import { Poll } from '@lumino/polling';
 
 import { FileTree, useFileTree } from '@pierre/trees/react';
 import type {
@@ -53,6 +54,29 @@ const DRAG_THRESHOLD = 5;
  * same rhythm.
  */
 const GIT_STATUS_POLL_INTERVAL_MS = 5000;
+
+/**
+ * Upper bound on the git status poll's exponential backoff. Matches the
+ * other polls in the plugin so behavior is consistent across views.
+ */
+const GIT_STATUS_POLL_MAX_MS = 300_000;
+
+/**
+ * Auto-refresh cadence for the file listing itself. Matches the default
+ * JupyterLab file browser (`DEFAULT_REFRESH_INTERVAL` in
+ * `@jupyterlab/filebrowser`) so the tree picks up files created outside
+ * JupyterLab (terminal commands, external editors, `git pull`, …) within
+ * the same window as the stock browser.
+ */
+const FILE_LISTING_REFRESH_INTERVAL_MS = 10000;
+
+/**
+ * Upper bound on the auto-refresh backoff when polls fail repeatedly.
+ * Matches the default file browser's `max: 300 * 1000` — five minutes is
+ * long enough that a server-side outage stops hammering the API, but
+ * short enough that a transient failure heals on its own.
+ */
+const FILE_LISTING_REFRESH_MAX_MS = 300_000;
 
 /**
  * Server-relative repository path used for `/git/*` calls. Empty string
@@ -358,6 +382,150 @@ export function FileBrowserComponent(
     };
 
     /**
+     * Auto-refresh tick: walk every directory currently loaded into the
+     * tree, fetch its children, and apply the per-directory diff as a
+     * single batched mutation. Unlike {@link refreshAll} this never calls
+     * `model.resetPaths`, so the user's expansion, selection, and scroll
+     * state survive every poll. Mirrors what the default JupyterLab file
+     * browser does for its single-directory view.
+     *
+     * A failed fetch for a single directory is treated as transient and
+     * is skipped without touching that directory's children — they may
+     * still be valid even if this one fetch lost the race with a server
+     * restart. A deleted directory eventually surfaces through its
+     * parent's diff: when the parent is re-fetched and no longer lists
+     * the missing child, the child is removed recursively from the tree
+     * and from the load-state tracking maps.
+     */
+    const quietRefresh = async (): Promise<void> => {
+      if (cancelled) {
+        return;
+      }
+      const dirsToRefresh: string[] = [];
+      knownDirs.forEach((state, path) => {
+        if (state === 'loaded') {
+          dirsToRefresh.push(path);
+        }
+      });
+      if (dirsToRefresh.length === 0) {
+        return;
+      }
+
+      let mutated = false;
+
+      for (const dir of dirsToRefresh) {
+        if (cancelled) {
+          return;
+        }
+        // Skip directories that were removed from `knownDirs` while we
+        // were processing an earlier sibling — the cascade cleanup below
+        // can prune deep subtrees, so a path captured at the start of
+        // the tick may already be gone.
+        if (knownDirs.get(dir) !== 'loaded') {
+          continue;
+        }
+        let fetched: { paths: string[]; subdirectories: string[] };
+        try {
+          fetched = await listDirectory(contentsManager, toServerPath(dir));
+        } catch (err) {
+          console.warn(`xtralab: auto-refresh skipped "${dir}"`, err);
+          continue;
+        }
+        if (cancelled) {
+          return;
+        }
+
+        const newChildren = new Set(fetched.paths);
+        const ops: FileTreeBatchOperation[] = [];
+        const additions: string[] = [];
+        const removals: string[] = [];
+        const directoryRemovals: string[] = [];
+
+        for (const lp of loadedPaths) {
+          if (parentOf(lp) !== dir) {
+            continue;
+          }
+          if (newChildren.has(lp)) {
+            continue;
+          }
+          // Disappeared since the last tick. Remove recursively so any
+          // descendants that were also being tracked go with it.
+          ops.push({ type: 'remove', path: lp, recursive: true });
+          removals.push(lp);
+          if (lp.endsWith('/')) {
+            directoryRemovals.push(lp);
+          }
+        }
+        for (const newChild of fetched.paths) {
+          if (loadedPaths.has(newChild)) {
+            continue;
+          }
+          ops.push({ type: 'add', path: newChild });
+          additions.push(newChild);
+        }
+
+        if (ops.length > 0) {
+          try {
+            model.batch(ops);
+          } catch (err) {
+            console.error(
+              `xtralab: auto-refresh batch failed for "${dir}"`,
+              err
+            );
+            // Leave the bookkeeping mirrors untouched so the next tick
+            // sees the same starting state and tries again.
+            continue;
+          }
+          mutated = true;
+
+          // Apply the matching mirror updates only after the batch lands
+          // in the model. The cascade cleanup below mirrors the
+          // `recursive: true` removal semantics so descendants we were
+          // tracking don't linger in `loadedPaths` or `knownDirs`.
+          for (const r of removals) {
+            loadedPaths.delete(r);
+          }
+          for (const removedDir of directoryRemovals) {
+            knownDirs.delete(removedDir);
+            const descendantPaths: string[] = [];
+            for (const lp of loadedPaths) {
+              if (lp.startsWith(removedDir)) {
+                descendantPaths.push(lp);
+              }
+            }
+            for (const lp of descendantPaths) {
+              loadedPaths.delete(lp);
+            }
+            const descendantDirs: string[] = [];
+            knownDirs.forEach((_, kd) => {
+              if (kd !== ROOT_LOAD_KEY && kd.startsWith(removedDir)) {
+                descendantDirs.push(kd);
+              }
+            });
+            for (const kd of descendantDirs) {
+              knownDirs.delete(kd);
+            }
+          }
+          for (const a of additions) {
+            loadedPaths.add(a);
+          }
+        }
+
+        // Register newly-observed subdirectories so the next user expand
+        // triggers a fetch instead of being ignored.
+        for (const subdir of fetched.subdirectories) {
+          if (!knownDirs.has(subdir)) {
+            knownDirs.set(subdir, 'unloaded');
+          }
+        }
+      }
+
+      if (mutated) {
+        syncGitStatus();
+      }
+    };
+
+    /**
      * Reveal {@link canonicalPath} in the tree: load any unloaded
      * ancestor directories, expand them, and select the target so it is
      * scrolled into view. Tolerant of partially-loaded state so the
@@ -526,10 +694,48 @@ export function FileBrowserComponent(
     knownDirs.set(ROOT_LOAD_KEY, 'unloaded');
     void fetchDirectory(ROOT_LOAD_KEY);
     void refreshGitignoreMatcher();
-    void refreshGitStatus();
-    const gitStatusInterval = window.setInterval(() => {
-      void refreshGitStatus();
-    }, GIT_STATUS_POLL_INTERVAL_MS);
+    const gitStatusPoll = new Poll({
+      name: '@xtralab/fileBrowser:gitStatus',
+      factory: () => refreshGitStatus(),
+      frequency: {
+        interval: GIT_STATUS_POLL_INTERVAL_MS,
+        backoff: true,
+        max: GIT_STATUS_POLL_MAX_MS
+      },
+      standby: 'when-hidden'
+    });
+
+    // Auto-refresh the file listing on the same cadence as the default
+    // JupyterLab file browser. Backoff on failures so a server-side
+    // outage doesn't hammer the API, and stand by when the tab is
+    // hidden so we don't run the polling loop while the user is in
+    // another tab. `auto: false` keeps the first tick from racing the
+    // initial `fetchDirectory(ROOT_LOAD_KEY)` above — the poll is
+    // started explicitly once the initial load is in flight.
+    const listingPoll = new Poll({
+      auto: false,
+      name: '@xtralab/fileBrowser:listing',
+      factory: () => quietRefresh(),
+      frequency: {
+        interval: FILE_LISTING_REFRESH_INTERVAL_MS,
+        backoff: true,
+        max: FILE_LISTING_REFRESH_MAX_MS
+      },
+      standby: 'when-hidden'
+    });
+    void listingPoll.start();
+
+    // Surface contents changes that happen inside JupyterLab (file save,
+    // rename, delete) without waiting for the next poll tick. The
+    // default file browser uses the same `fileChanged` signal for the
+    // same reason. We can't tell from the signal alone whether the
+    // change affects a path we're showing, so we just nudge the poll —
+    // it diffs the loaded directories and emits no batch ops when
+    // nothing relevant changed.
+    const onContentsFileChanged = (): void => {
+      void listingPoll.refresh();
+    };
+    contentsManager.fileChanged.connect(onContentsFileChanged);
 
     const unsubscribe = model.subscribe(() => {
       knownDirs.forEach((state, canonicalPath) => {
@@ -580,7 +786,9 @@ export function FileBrowserComponent(
 
     return () => {
       cancelled = true;
-      window.clearInterval(gitStatusInterval);
+      gitStatusPoll.dispose();
+      contentsManager.fileChanged.disconnect(onContentsFileChanged);
+      listingPoll.dispose();
       unsubscribe();
       if (widget !== undefined) {
         if (refreshSlot !== undefined) {

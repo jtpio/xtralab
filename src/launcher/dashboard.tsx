@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import type { CommandRegistry } from '@lumino/commands';
 import type { ReadonlyPartialJSONObject } from '@lumino/coreutils';
+import { Poll } from '@lumino/polling';
 import {
   LabIcon,
   ReactWidget,
@@ -90,6 +91,13 @@ interface IGitState {
  */
 const CHANGES_POLL_INTERVAL_MS = 8000;
 
+/**
+ * Upper bound on the exponential backoff when the status request fails
+ * repeatedly. Matches the rest of the plugin's polls so behavior is
+ * consistent across the dashboard, the git panel, and the file tree.
+ */
+const CHANGES_POLL_MAX_MS = 300_000;
+
 function LauncherDashboardComponent(
   props: ILauncherDashboardOptions
 ): React.ReactElement {
@@ -114,12 +122,23 @@ function LauncherDashboardComponent(
     }
   }, [repoPath]);
 
+  // Driven by a Lumino `Poll` so the dashboard stops hitting the git
+  // endpoint while the JupyterLab tab is hidden, and so repeated
+  // failures back off exponentially instead of pegging the 8s cadence.
   React.useEffect(() => {
-    void refresh();
-    const handle = window.setInterval(() => {
-      void refresh();
-    }, CHANGES_POLL_INTERVAL_MS);
-    return () => window.clearInterval(handle);
+    const poll = new Poll({
+      name: '@xtralab/launcher:gitChanges',
+      factory: () => refresh(),
+      frequency: {
+        interval: CHANGES_POLL_INTERVAL_MS,
+        backoff: true,
+        max: CHANGES_POLL_MAX_MS
+      },
+      standby: 'when-hidden'
+    });
+    return () => {
+      poll.dispose();
+    };
   }, [refresh]);
 
   const launch = React.useCallback(
