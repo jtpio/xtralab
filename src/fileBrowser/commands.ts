@@ -10,6 +10,7 @@ import { PageConfig, PathExt } from '@jupyterlab/coreutils';
 import {
   addIcon,
   closeIcon,
+  collapseAllIcon,
   CommandToolbarButton,
   copyIcon,
   downloadIcon,
@@ -42,6 +43,7 @@ export namespace CommandIDs {
   export const copyPath = 'xtralab:copy-path';
   export const download = 'xtralab:download';
   export const refresh = 'xtralab:refresh';
+  export const collapseAll = 'xtralab:collapse-all';
   export const createNewDirectory = 'xtralab:create-new-directory';
   export const newLauncher = 'xtralab:new-launcher';
   export const revealPath = 'xtralab:reveal-path';
@@ -407,6 +409,15 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
     }
   });
 
+  commands.addCommand(CommandIDs.collapseAll, {
+    label: 'Collapse All Folders',
+    caption: 'Collapse all folders in the file browser',
+    icon: collapseAllIcon.bindprops({ stylesheet: 'menuItem' }),
+    execute: () => {
+      browser.collapseAll();
+    }
+  });
+
   // Public reveal seam. Other plugins (editor breadcrumbs, future
   // "reveal in tree" actions) call this command rather than depending
   // on the file browser widget directly. Activating the sidebar is part
@@ -490,6 +501,7 @@ export namespace ToolbarNames {
   export const newLauncher = 'new-launcher';
   export const newDirectory = 'new-directory';
   export const refresh = 'refresh';
+  export const collapseAll = 'collapse-all';
 }
 
 /**
@@ -526,6 +538,14 @@ export function populateToolbar(opts: {
     new CommandToolbarButton({
       commands,
       id: CommandIDs.refresh,
+      label: ''
+    })
+  );
+  browser.toolbar.addItem(
+    ToolbarNames.collapseAll,
+    new CommandToolbarButton({
+      commands,
+      id: CommandIDs.collapseAll,
       label: ''
     })
   );

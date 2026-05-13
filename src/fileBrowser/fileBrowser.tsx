@@ -390,6 +390,32 @@ export function FileBrowserComponent(
       }
     };
 
+    /**
+     * Collapse every currently expanded directory in the tree. Walks the
+     * `knownDirs` map (the canonical record of which directories have been
+     * observed in the tree) and calls `.collapse()` on each loaded
+     * directory whose handle reports `isExpanded()`. Unloaded directories
+     * are not expanded by definition, so they're skipped.
+     */
+    const collapseAll = (): void => {
+      if (cancelled) {
+        return;
+      }
+      knownDirs.forEach((state, path) => {
+        if (path === ROOT_LOAD_KEY || state !== 'loaded') {
+          return;
+        }
+        const item = model.getItem(path);
+        if (item === null || !item.isDirectory()) {
+          return;
+        }
+        const handle = item as FileTreeDirectoryHandle;
+        if (handle.isExpanded()) {
+          handle.collapse();
+        }
+      });
+    };
+
     const revealPath = async (canonicalPath: string): Promise<void> => {
       if (cancelled || canonicalPath.length === 0) {
         return;
@@ -528,6 +554,7 @@ export function FileBrowserComponent(
     let pathAddedSlot: ((sender: unknown, path: string) => void) | undefined;
     let revealSlot: ((sender: unknown, path: string) => void) | undefined;
     let rootSlot: (() => void) | undefined;
+    let collapseAllSlot: (() => void) | undefined;
     if (widget !== undefined) {
       refreshSlot = (): void => {
         void refreshAll();
@@ -541,10 +568,14 @@ export function FileBrowserComponent(
       rootSlot = (): void => {
         goToRoot();
       };
+      collapseAllSlot = (): void => {
+        collapseAll();
+      };
       widget.refreshRequested.connect(refreshSlot);
       widget.pathAdded.connect(pathAddedSlot);
       widget.revealRequested.connect(revealSlot);
       widget.rootRequested.connect(rootSlot);
+      widget.collapseAllRequested.connect(collapseAllSlot);
     }
 
     return () => {
@@ -563,6 +594,9 @@ export function FileBrowserComponent(
         }
         if (rootSlot !== undefined) {
           widget.rootRequested.disconnect(rootSlot);
+        }
+        if (collapseAllSlot !== undefined) {
+          widget.collapseAllRequested.disconnect(collapseAllSlot);
         }
       }
     };

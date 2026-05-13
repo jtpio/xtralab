@@ -92,6 +92,13 @@ export interface IXtralabFileBrowser {
    */
   readonly rootRequested: ISignal<IXtralabFileBrowser, void>;
 
+  /**
+   * Emits when an external caller asks the tree to collapse every
+   * expanded folder. The React component listens and walks the loaded
+   * directories, calling `.collapse()` on each expanded one.
+   */
+  readonly collapseAllRequested: ISignal<IXtralabFileBrowser, void>;
+
   /** Trigger a refresh of every loaded directory in the tree. */
   refresh(): void;
 
@@ -116,6 +123,11 @@ export interface IXtralabFileBrowser {
    * selection and scroll back to the top of the tree.
    */
   scrollToRoot(): void;
+
+  /**
+   * Ask the tree to collapse every currently expanded folder.
+   */
+  collapseAll(): void;
 }
 
 /**
@@ -183,6 +195,10 @@ export class XtralabFileBrowser extends Widget implements IXtralabFileBrowser {
     return this._rootRequested;
   }
 
+  get collapseAllRequested(): ISignal<this, void> {
+    return this._collapseAllRequested;
+  }
+
   /**
    * Update the cached selection. Called from the React tree when the
    * underlying `@pierre/trees` model emits a selection change.
@@ -213,6 +229,10 @@ export class XtralabFileBrowser extends Widget implements IXtralabFileBrowser {
     this._rootRequested.emit();
   }
 
+  collapseAll(): void {
+    this._collapseAllRequested.emit();
+  }
+
   private _contentsManager: Contents.IManager;
   private _docManager: IDocumentManager;
   private _onOpenFile: ((serverPath: string) => void) | undefined;
@@ -222,6 +242,7 @@ export class XtralabFileBrowser extends Widget implements IXtralabFileBrowser {
   private _pathAdded = new Signal<this, string>(this);
   private _revealRequested = new Signal<this, string>(this);
   private _rootRequested = new Signal<this, void>(this);
+  private _collapseAllRequested = new Signal<this, void>(this);
   private _toolbar: Toolbar;
   private _content: XtralabFileTreeContent;
 }
