@@ -5,17 +5,20 @@ import { Contents } from '@jupyterlab/services';
 import { fileIcon } from '@jupyterlab/ui-components';
 import { MimeData, PromiseDelegate } from '@lumino/coreutils';
 import { Drag } from '@lumino/dragdrop';
+import { Poll } from '@lumino/polling';
 
 import { FileTree, useFileTree } from '@pierre/trees/react';
 import type {
   FileTreeBatchOperation,
-  FileTreeDirectoryHandle
+  FileTreeDirectoryHandle,
+  GitStatusEntry
 } from '@pierre/trees';
 
 import type { Ignore } from 'ignore';
 
 import { ROOT_LOAD_KEY, listDirectory, toServerPath } from './contents';
 import { buildIgnoredEntries, loadGitignoreMatcher } from './gitignore';
+import { loadGitStatusEntries } from './gitStatus';
 import { FILE_BROWSER_ICONS } from './icons';
 import type { XtralabFileBrowser } from './widget';
 
@@ -42,6 +45,46 @@ const CONTENTS_MIME = 'application/x-jupyter-icontents';
  * than a click. Matches the value used by the default JupyterLab listing.
  */
 const DRAG_THRESHOLD = 5;
+
+/**
+ * Polling cadence for the git status decoration. Out-of-band changes (a
+ * terminal `git add`, a `git pull`, a file edited outside the JupyterLab
+ * editor) become visible within this interval without a manual refresh.
+ * Aligned with the git panel's own polling so both views update on the
+ * same rhythm.
+ */
+const GIT_STATUS_POLL_INTERVAL_MS = 5000;
+
+/**
+ * Upper bound on the git status poll's exponential backoff. Matches the
+ * other polls in the plugin so behavior is consistent across views.
+ */
+const GIT_STATUS_POLL_MAX_MS = 300_000;
+
+/**
+ * Auto-refresh cadence for the file listing itself. Matches the default
+ * JupyterLab file browser (`DEFAULT_REFRESH_INTERVAL` in
+ * `@jupyterlab/filebrowser`) so the tree picks up files created outside
+ * JupyterLab (terminal commands, external editors, `git pull`, …) within
+ * the same window as the stock browser.
+ */
+const FILE_LISTING_REFRESH_INTERVAL_MS = 10000;
+
+/**
+ * Upper bound on the auto-refresh backoff when polls fail repeatedly.
+ * Matches the default file browser's `max: 300 * 1000` — five minutes is
+ * long enough that a server-side outage stops hammering the API, but
+ * short enough that a transient failure heals on its own.
+ */
+const FILE_LISTING_REFRESH_MAX_MS = 300_000;
+
+/**
+ * Server-relative repository path used for `/git/*` calls. Empty string
+ * means "use the JupyterLab server's root and let git resolve the
+ * enclosing repo" — same convention as the git panel and the launcher
+ * dashboard.
+ */
+const GIT_REPO_PATH = '';
 
 /**
  * The custom-element tag used by `@pierre/trees` for its shadow host. Kept
@@ -92,21 +135,33 @@ export function FileBrowserComponent(
     // path-iteration API.
     const loadedPaths = new Set<string>();
     let gitignoreMatcher: Ignore | null = null;
+    let gitStatusEntries: readonly GitStatusEntry[] = [];
     let cancelled = false;
 
     /**
-     * Recompute the `ignored` git status entries from the current
-     * gitignore matcher and the set of loaded paths, and push them into
-     * the tree. Safe to call at any time: when the matcher is `null`
-     * (no `.gitignore` or it failed to load) we send an empty list, which
-     * also clears any statuses that may have been applied previously.
+     * Recompute the combined `GitStatusEntry` list from the current
+     * gitignore matcher and the latest porcelain status, then push it into
+     * the tree. Safe to call at any time: empty inputs result in an empty
+     * payload, which clears any statuses applied previously.
+     *
+     * Ignored entries go first so the porcelain entries win in the
+     * unlikely event of overlap (a tracked path that also matches a
+     * `.gitignore` rule). `@pierre/trees` lets later entries overwrite
+     * earlier ones in its internal `statusByPath` map.
      */
     const syncGitStatus = (): void => {
-      if (gitignoreMatcher === null) {
-        model.setGitStatus([]);
-        return;
+      const entries: GitStatusEntry[] = [];
+      if (gitignoreMatcher !== null) {
+        for (const entry of buildIgnoredEntries(
+          gitignoreMatcher,
+          loadedPaths
+        )) {
+          entries.push(entry);
+        }
       }
-      const entries = buildIgnoredEntries(gitignoreMatcher, loadedPaths);
+      for (const entry of gitStatusEntries) {
+        entries.push(entry);
+      }
       model.setGitStatus(entries);
     };
 
@@ -127,6 +182,21 @@ export function FileBrowserComponent(
         return;
       }
       gitignoreMatcher = next;
+      syncGitStatus();
+    };
+
+    /**
+     * Refresh the porcelain-derived git status entries and re-apply them
+     * to the tree. Runs on mount, on every refresh, and on a periodic
+     * poll so out-of-band changes (terminal `git add`, file edits saved
+     * outside the editor, …) become visible without explicit user action.
+     */
+    const refreshGitStatus = async (): Promise<void> => {
+      const next = await loadGitStatusEntries(GIT_REPO_PATH);
+      if (cancelled) {
+        return;
+      }
+      gitStatusEntries = next;
       syncGitStatus();
     };
 
@@ -294,8 +364,11 @@ export function FileBrowserComponent(
       // since the last load, then re-apply the resulting statuses to the
       // newly-loaded paths. The reload runs in parallel with the rest of
       // the refresh — `refreshGitignoreMatcher` calls `syncGitStatus`
-      // itself when it completes.
+      // itself when it completes. The porcelain status is also re-fetched
+      // here so a user-triggered refresh picks up out-of-band git changes
+      // immediately instead of waiting for the next poll tick.
       void refreshGitignoreMatcher();
+      void refreshGitStatus();
 
       // Re-expand the directories that were expanded before the refresh.
       // We have to do this after `resetPaths` because the reset starts
@@ -306,6 +379,280 @@ export function FileBrowserComponent(
           (item as FileTreeDirectoryHandle).expand();
         }
       }
+    };
+
+    /**
+     * Auto-refresh tick: walk every directory currently loaded into the
+     * tree, fetch its children, and apply the per-directory diff as a
+     * single batched mutation. Unlike {@link refreshAll} this never calls
+     * `model.resetPaths`, so the user's expansion, selection, and scroll
+     * state survive every poll. Mirrors what the default JupyterLab file
+     * browser does for its single-directory view.
+     *
+     * A failed fetch for a single directory is treated as transient and
+     * is skipped without touching that directory's children — they may
+     * still be valid even if this one fetch lost the race with a server
+     * restart. A deleted directory eventually surfaces through its
+     * parent's diff: when the parent is re-fetched and no longer lists
+     * the missing child, the child is removed recursively from the tree
+     * and from the load-state tracking maps.
+     */
+    const quietRefresh = async (): Promise<void> => {
+      if (cancelled) {
+        return;
+      }
+      const dirsToRefresh: string[] = [];
+      knownDirs.forEach((state, path) => {
+        if (state === 'loaded') {
+          dirsToRefresh.push(path);
+        }
+      });
+      if (dirsToRefresh.length === 0) {
+        return;
+      }
+
+      let mutated = false;
+
+      for (const dir of dirsToRefresh) {
+        if (cancelled) {
+          return;
+        }
+        // Skip directories that were removed from `knownDirs` while we
+        // were processing an earlier sibling — the cascade cleanup below
+        // can prune deep subtrees, so a path captured at the start of
+        // the tick may already be gone.
+        if (knownDirs.get(dir) !== 'loaded') {
+          continue;
+        }
+        let fetched: { paths: string[]; subdirectories: string[] };
+        try {
+          fetched = await listDirectory(contentsManager, toServerPath(dir));
+        } catch (err) {
+          console.warn(`xtralab: auto-refresh skipped "${dir}"`, err);
+          continue;
+        }
+        if (cancelled) {
+          return;
+        }
+
+        const newChildren = new Set(fetched.paths);
+        const ops: FileTreeBatchOperation[] = [];
+        const additions: string[] = [];
+        const removals: string[] = [];
+        const directoryRemovals: string[] = [];
+
+        for (const lp of loadedPaths) {
+          if (parentOf(lp) !== dir) {
+            continue;
+          }
+          if (newChildren.has(lp)) {
+            continue;
+          }
+          // Disappeared since the last tick. Remove recursively so any
+          // descendants that were also being tracked go with it.
+          ops.push({ type: 'remove', path: lp, recursive: true });
+          removals.push(lp);
+          if (lp.endsWith('/')) {
+            directoryRemovals.push(lp);
+          }
+        }
+        for (const newChild of fetched.paths) {
+          if (loadedPaths.has(newChild)) {
+            continue;
+          }
+          ops.push({ type: 'add', path: newChild });
+          additions.push(newChild);
+        }
+
+        if (ops.length > 0) {
+          try {
+            model.batch(ops);
+          } catch (err) {
+            console.error(
+              `xtralab: auto-refresh batch failed for "${dir}"`,
+              err
+            );
+            // Leave the bookkeeping mirrors untouched so the next tick
+            // sees the same starting state and tries again.
+            continue;
+          }
+          mutated = true;
+
+          // Apply the matching mirror updates only after the batch lands
+          // in the model. The cascade cleanup below mirrors the
+          // `recursive: true` removal semantics so descendants we were
+          // tracking don't linger in `loadedPaths` or `knownDirs`.
+          for (const r of removals) {
+            loadedPaths.delete(r);
+          }
+          for (const removedDir of directoryRemovals) {
+            knownDirs.delete(removedDir);
+            const descendantPaths: string[] = [];
+            for (const lp of loadedPaths) {
+              if (lp.startsWith(removedDir)) {
+                descendantPaths.push(lp);
+              }
+            }
+            for (const lp of descendantPaths) {
+              loadedPaths.delete(lp);
+            }
+            const descendantDirs: string[] = [];
+            knownDirs.forEach((_, kd) => {
+              if (kd !== ROOT_LOAD_KEY && kd.startsWith(removedDir)) {
+                descendantDirs.push(kd);
+              }
+            });
+            for (const kd of descendantDirs) {
+              knownDirs.delete(kd);
+            }
+          }
+          for (const a of additions) {
+            loadedPaths.add(a);
+          }
+        }
+
+        // Register newly-observed subdirectories so the next user expand
+        // triggers a fetch instead of being ignored.
+        for (const subdir of fetched.subdirectories) {
+          if (!knownDirs.has(subdir)) {
+            knownDirs.set(subdir, 'unloaded');
+          }
+        }
+      }
+
+      if (mutated) {
+        syncGitStatus();
+      }
+    };
+
+    /**
+     * Reveal {@link canonicalPath} in the tree: load any unloaded
+     * ancestor directories, expand them, and select the target so it is
+     * scrolled into view. Tolerant of partially-loaded state so the
+     * editor breadcrumbs can call it on any path at any time without
+     * caring about what the tree has already fetched.
+     *
+     * Each ancestor is awaited *before* it is expanded — expanding a
+     * directory triggers the model's subscribe callback, which
+     * synchronously sets the directory's load state to `loading` and
+     * kicks off its own fetch in parallel. Awaiting that in-flight
+     * fetch would return immediately on the second await, leaving the
+     * children unloaded when we move to the next iteration.
+     */
+    /**
+     * Clear the tree selection and scroll back to the top. Invoked by
+     * the file browser widget's `scrollToRoot` method when the home
+     * crumb is clicked; gives that gesture visible feedback even when
+     * the sidebar is already focused on the file browser.
+     */
+    const goToRoot = (): void => {
+      if (cancelled) {
+        return;
+      }
+      for (const selected of model.getSelectedPaths()) {
+        model.getItem(selected)?.deselect();
+      }
+      const container = model.getFileTreeContainer();
+      if (container !== undefined) {
+        container.scrollTop = 0;
+      }
+    };
+
+    /**
+     * Collapse every currently expanded directory in the tree. Walks the
+     * `knownDirs` map (the canonical record of which directories have been
+     * observed in the tree) and calls `.collapse()` on each loaded
+     * directory whose handle reports `isExpanded()`. Unloaded directories
+     * are not expanded by definition, so they're skipped.
+     */
+    const collapseAll = (): void => {
+      if (cancelled) {
+        return;
+      }
+      knownDirs.forEach((state, path) => {
+        if (path === ROOT_LOAD_KEY || state !== 'loaded') {
+          return;
+        }
+        const item = model.getItem(path);
+        if (item === null || !item.isDirectory()) {
+          return;
+        }
+        const handle = item as FileTreeDirectoryHandle;
+        if (handle.isExpanded()) {
+          handle.collapse();
+        }
+      });
+    };
+
+    const revealPath = async (canonicalPath: string): Promise<void> => {
+      if (cancelled || canonicalPath.length === 0) {
+        return;
+      }
+
+      const isDir = canonicalPath.endsWith('/');
+      const trimmed = isDir ? canonicalPath.slice(0, -1) : canonicalPath;
+      const segments = trimmed.split('/').filter(s => s.length > 0);
+      if (segments.length === 0) {
+        return;
+      }
+
+      // Build the ordered list of ancestor directory canonical paths.
+      // For "foo/bar/baz.txt" → ["foo/", "foo/bar/"].
+      // For "foo/bar/"       → ["foo/"].
+      const ancestors: string[] = [];
+      let cumulative = '';
+      for (let i = 0; i < segments.length - 1; i++) {
+        cumulative += `${segments[i]}/`;
+        ancestors.push(cumulative);
+      }
+
+      await fetchDirectory(ROOT_LOAD_KEY);
+      if (cancelled) {
+        return;
+      }
+
+      for (const ancestor of ancestors) {
+        await fetchDirectory(ancestor);
+        if (cancelled) {
+          return;
+        }
+        const item = model.getItem(ancestor);
+        if (item === null || !item.isDirectory()) {
+          return;
+        }
+        const handle = item as FileTreeDirectoryHandle;
+        if (!handle.isExpanded()) {
+          handle.expand();
+        }
+      }
+
+      if (isDir) {
+        await fetchDirectory(canonicalPath);
+        if (cancelled) {
+          return;
+        }
+      }
+
+      const target = model.getItem(canonicalPath);
+      if (target === null) {
+        return;
+      }
+      if (
+        target.isDirectory() &&
+        !(target as FileTreeDirectoryHandle).isExpanded()
+      ) {
+        (target as FileTreeDirectoryHandle).expand();
+      }
+
+      for (const selected of model.getSelectedPaths()) {
+        if (selected === canonicalPath) {
+          continue;
+        }
+        const previous = model.getItem(selected);
+        previous?.deselect();
+      }
+      target.select();
+      model.focusPath(canonicalPath);
     };
 
     /**
@@ -347,6 +694,48 @@ export function FileBrowserComponent(
     knownDirs.set(ROOT_LOAD_KEY, 'unloaded');
     void fetchDirectory(ROOT_LOAD_KEY);
     void refreshGitignoreMatcher();
+    const gitStatusPoll = new Poll({
+      name: '@xtralab/fileBrowser:gitStatus',
+      factory: () => refreshGitStatus(),
+      frequency: {
+        interval: GIT_STATUS_POLL_INTERVAL_MS,
+        backoff: true,
+        max: GIT_STATUS_POLL_MAX_MS
+      },
+      standby: 'when-hidden'
+    });
+
+    // Auto-refresh the file listing on the same cadence as the default
+    // JupyterLab file browser. Backoff on failures so a server-side
+    // outage doesn't hammer the API, and stand by when the tab is
+    // hidden so we don't run the polling loop while the user is in
+    // another tab. `auto: false` keeps the first tick from racing the
+    // initial `fetchDirectory(ROOT_LOAD_KEY)` above — the poll is
+    // started explicitly once the initial load is in flight.
+    const listingPoll = new Poll({
+      auto: false,
+      name: '@xtralab/fileBrowser:listing',
+      factory: () => quietRefresh(),
+      frequency: {
+        interval: FILE_LISTING_REFRESH_INTERVAL_MS,
+        backoff: true,
+        max: FILE_LISTING_REFRESH_MAX_MS
+      },
+      standby: 'when-hidden'
+    });
+    void listingPoll.start();
+
+    // Surface contents changes that happen inside JupyterLab (file save,
+    // rename, delete) without waiting for the next poll tick. The
+    // default file browser uses the same `fileChanged` signal for the
+    // same reason. We can't tell from the signal alone whether the
+    // change affects a path we're showing, so we just nudge the poll —
+    // it diffs the loaded directories and emits no batch ops when
+    // nothing relevant changed.
+    const onContentsFileChanged = (): void => {
+      void listingPoll.refresh();
+    };
+    contentsManager.fileChanged.connect(onContentsFileChanged);
 
     const unsubscribe = model.subscribe(() => {
       knownDirs.forEach((state, canonicalPath) => {
@@ -369,6 +758,9 @@ export function FileBrowserComponent(
 
     let refreshSlot: (() => void) | undefined;
     let pathAddedSlot: ((sender: unknown, path: string) => void) | undefined;
+    let revealSlot: ((sender: unknown, path: string) => void) | undefined;
+    let rootSlot: (() => void) | undefined;
+    let collapseAllSlot: (() => void) | undefined;
     if (widget !== undefined) {
       refreshSlot = (): void => {
         void refreshAll();
@@ -376,12 +768,27 @@ export function FileBrowserComponent(
       pathAddedSlot = (_sender, path): void => {
         handlePathAdded(path);
       };
+      revealSlot = (_sender, path): void => {
+        void revealPath(path);
+      };
+      rootSlot = (): void => {
+        goToRoot();
+      };
+      collapseAllSlot = (): void => {
+        collapseAll();
+      };
       widget.refreshRequested.connect(refreshSlot);
       widget.pathAdded.connect(pathAddedSlot);
+      widget.revealRequested.connect(revealSlot);
+      widget.rootRequested.connect(rootSlot);
+      widget.collapseAllRequested.connect(collapseAllSlot);
     }
 
     return () => {
       cancelled = true;
+      gitStatusPoll.dispose();
+      contentsManager.fileChanged.disconnect(onContentsFileChanged);
+      listingPoll.dispose();
       unsubscribe();
       if (widget !== undefined) {
         if (refreshSlot !== undefined) {
@@ -389,6 +796,15 @@ export function FileBrowserComponent(
         }
         if (pathAddedSlot !== undefined) {
           widget.pathAdded.disconnect(pathAddedSlot);
+        }
+        if (revealSlot !== undefined) {
+          widget.revealRequested.disconnect(revealSlot);
+        }
+        if (rootSlot !== undefined) {
+          widget.rootRequested.disconnect(rootSlot);
+        }
+        if (collapseAllSlot !== undefined) {
+          widget.collapseAllRequested.disconnect(collapseAllSlot);
         }
       }
     };

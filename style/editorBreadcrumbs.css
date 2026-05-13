@@ -1,0 +1,86 @@
+.jp-xtralab-EditorBreadcrumbs.jp-Toolbar-item {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  align-self: center;
+  box-sizing: border-box;
+  min-width: 0;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  margin: 0;
+  padding: 0 10px;
+  color: var(--jp-ui-font-color2);
+  font-family: var(--jp-ui-font-family);
+  font-size: var(--jp-ui-font-size1);
+  overflow: hidden;
+}
+
+.jp-xtralab-EditorBreadcrumbs .jp-BreadCrumbs-container {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  height: 100%;
+}
+
+.jp-xtralab-EditorBreadcrumbs .jp-BreadCrumbs-content {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.jp-xtralab-EditorBreadcrumbs .jp-BreadCrumbs-home {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-right: 2px;
+  padding: 2px;
+  border-radius: var(--jp-border-radius);
+  cursor: pointer;
+}
+
+.jp-xtralab-EditorBreadcrumbs .jp-BreadCrumbs-home:hover {
+  background-color: var(--jp-layout-color2);
+}
+
+.jp-xtralab-EditorBreadcrumbs .jp-BreadCrumbs-home:focus-visible {
+  outline: 2px solid var(--jp-brand-color1);
+}
+
+.jp-xtralab-EditorBreadcrumbs .jp-BreadCrumbs-item {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0 2px;
+  overflow: hidden;
+  padding: 2px;
+  border-radius: var(--jp-border-radius);
+  cursor: pointer;
+  line-height: 18px;
+  text-overflow: ellipsis;
+}
+
+.jp-xtralab-EditorBreadcrumbs .jp-BreadCrumbs-item,
+.jp-xtralab-EditorBreadcrumbs .jp-BreadCrumbs-separator {
+  vertical-align: middle;
+}
+
+.jp-xtralab-EditorBreadcrumbs .jp-BreadCrumbs-item:hover {
+  background-color: var(--jp-layout-color2);
+}
+
+.jp-xtralab-EditorBreadcrumbs .jp-BreadCrumbs-item:focus-visible {
+  outline: 2px solid var(--jp-brand-color1);
+}
+
+.jp-xtralab-EditorBreadcrumbs .jp-BreadCrumbs-item.jp-mod-current {
+  color: var(--jp-ui-font-color1);
+}
+
+.jp-xtralab-EditorBreadcrumbs .jp-BreadCrumbs-separator {
+  flex: 0 0 auto;
+  line-height: 18px;
+}

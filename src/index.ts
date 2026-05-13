@@ -1,6 +1,8 @@
 import { JupyterFrontEndPlugin } from '@jupyterlab/application';
 
 import fileBrowserPlugin from './fileBrowser';
+import editorBreadcrumbsPlugin from './editorBreadcrumbs';
+import editorIndentPlugin from './editorIndent';
 import gitPlugin from './git';
 import launcherPlugin from './launcher';
 import menusPlugin from './menus';
@@ -15,6 +17,8 @@ import statusBarPlugin from './statusBar';
  * available end up running.
  */
 const plugins: JupyterFrontEndPlugin<unknown>[] = [
+  editorBreadcrumbsPlugin,
+  editorIndentPlugin,
   fileBrowserPlugin,
   gitPlugin,
   launcherPlugin,

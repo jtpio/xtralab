@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import type { CommandRegistry } from '@lumino/commands';
 import type { ReadonlyPartialJSONObject } from '@lumino/coreutils';
+import { Poll } from '@lumino/polling';
 import {
   LabIcon,
   ReactWidget,
@@ -90,6 +91,13 @@ interface IGitState {
  */
 const CHANGES_POLL_INTERVAL_MS = 8000;
 
+/**
+ * Upper bound on the exponential backoff when the status request fails
+ * repeatedly. Matches the rest of the plugin's polls so behavior is
+ * consistent across the dashboard, the git panel, and the file tree.
+ */
+const CHANGES_POLL_MAX_MS = 300_000;
+
 function LauncherDashboardComponent(
   props: ILauncherDashboardOptions
 ): React.ReactElement {
@@ -114,12 +122,23 @@ function LauncherDashboardComponent(
     }
   }, [repoPath]);
 
+  // Driven by a Lumino `Poll` so the dashboard stops hitting the git
+  // endpoint while the JupyterLab tab is hidden, and so repeated
+  // failures back off exponentially instead of pegging the 8s cadence.
   React.useEffect(() => {
-    void refresh();
-    const handle = window.setInterval(() => {
-      void refresh();
-    }, CHANGES_POLL_INTERVAL_MS);
-    return () => window.clearInterval(handle);
+    const poll = new Poll({
+      name: '@xtralab/launcher:gitChanges',
+      factory: () => refresh(),
+      frequency: {
+        interval: CHANGES_POLL_INTERVAL_MS,
+        backoff: true,
+        max: CHANGES_POLL_MAX_MS
+      },
+      standby: 'when-hidden'
+    });
+    return () => {
+      poll.dispose();
+    };
   }, [refresh]);
 
   const launch = React.useCallback(
@@ -320,10 +339,9 @@ function AgentSection(props: {
   const { agents, prompt, onPromptChange, onLaunch } = props;
   const trimmed = prompt.trim();
   const promptActive = trimmed.length > 0;
-  // The "primary" agent is the first prompt-capable one in the rendered
-  // order. We mark it visually so the keyboard shortcut target isn't a
-  // mystery, and reuse the same agent when Cmd/Ctrl+Enter fires from the
-  // textarea — picking by the same rule keeps the two behaviors in sync.
+  // The first prompt-capable agent is what Cmd/Ctrl+Enter fires; the hint
+  // text below the textarea names it so the keyboard shortcut target
+  // isn't a mystery.
   const primaryAgent = agents.find(agent => agent.promptArgs !== undefined);
   const hintId = 'jp-xtralab-Launcher-agent-hint';
 
@@ -362,19 +380,14 @@ function AgentSection(props: {
         {agents.map(agent => {
           const supportsPrompt = agent.promptArgs !== undefined;
           const disabled = promptActive && !supportsPrompt;
-          const isPrimary = agent === primaryAgent;
           const tooltip = disabled
             ? `${agent.label} doesn't accept an initial prompt — clear the prompt to launch.`
             : agent.caption;
-          const classes = ['jp-xtralab-Launcher-agent'];
-          if (isPrimary) {
-            classes.push('jp-xtralab-Launcher-agent-primary');
-          }
           return (
             <button
               key={agent.id}
               type="button"
-              className={classes.join(' ')}
+              className="jp-xtralab-Launcher-agent"
               title={tooltip}
               aria-label={agent.label}
               aria-describedby={hintId}
