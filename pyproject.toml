@@ -35,16 +35,16 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "ajlab>=0.1.5",
+    "ajlab>=0.1.6",
     "jupyterlab>=4.6.0a5",
     "jupyterlab-cursor-light>=1.0.2",
     "jupyterlab-cursor-dark>=1.0.2",
     "jupyterlab-day>=0.2.0",
-    "jupyterlab-git>=0.53.0,<1",
-    "jupyterlab-lsp>=5.3.0,<6",
+    "jupyterlab-git>=0.53.0",
+    "jupyterlab-lsp>=5.3.0",
     "jupyterlab-night>=0.5.2",
     "jupyterlab-quickopen>=2.3.0",
-    "jupyterlab-vim>=4.1.4,<5",
+    "jupyterlab-vim>=4.1.4",
     "ty>=0.0.35",
 ]
 dynamic = ["version", "description", "urls"]
