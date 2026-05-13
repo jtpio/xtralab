@@ -5,6 +5,8 @@ An opinionated JupyterLab meta-package.
 Bundles a curated set of extensions, a path-first file browser, a VS Code-style
 git changes panel, an agent-focused launcher, and a quieter default workspace.
 
+![xtralab screenshot](./screenshot.png)
+
 ## Install
 
 ```bash
