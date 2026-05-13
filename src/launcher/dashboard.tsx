@@ -339,10 +339,9 @@ function AgentSection(props: {
   const { agents, prompt, onPromptChange, onLaunch } = props;
   const trimmed = prompt.trim();
   const promptActive = trimmed.length > 0;
-  // The "primary" agent is the first prompt-capable one in the rendered
-  // order. We mark it visually so the keyboard shortcut target isn't a
-  // mystery, and reuse the same agent when Cmd/Ctrl+Enter fires from the
-  // textarea — picking by the same rule keeps the two behaviors in sync.
+  // The first prompt-capable agent is what Cmd/Ctrl+Enter fires; the hint
+  // text below the textarea names it so the keyboard shortcut target
+  // isn't a mystery.
   const primaryAgent = agents.find(agent => agent.promptArgs !== undefined);
   const hintId = 'jp-xtralab-Launcher-agent-hint';
 
@@ -381,19 +380,14 @@ function AgentSection(props: {
         {agents.map(agent => {
           const supportsPrompt = agent.promptArgs !== undefined;
           const disabled = promptActive && !supportsPrompt;
-          const isPrimary = agent === primaryAgent;
           const tooltip = disabled
             ? `${agent.label} doesn't accept an initial prompt — clear the prompt to launch.`
             : agent.caption;
-          const classes = ['jp-xtralab-Launcher-agent'];
-          if (isPrimary) {
-            classes.push('jp-xtralab-Launcher-agent-primary');
-          }
           return (
             <button
               key={agent.id}
               type="button"
-              className={classes.join(' ')}
+              className="jp-xtralab-Launcher-agent"
               title={tooltip}
               aria-label={agent.label}
               aria-describedby={hintId}

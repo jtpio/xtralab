@@ -295,11 +295,6 @@
   cursor: not-allowed;
 }
 
-.jp-xtralab-Launcher-agent-primary {
-  border-color: var(--jp-brand-color2);
-  box-shadow: 0 0 0 1px var(--jp-brand-color2);
-}
-
 .jp-xtralab-Launcher-agent:hover:not(:disabled) {
   background-color: var(--jp-layout-color2);
   border-color: var(--jp-border-color1);
