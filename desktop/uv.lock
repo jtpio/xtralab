@@ -1234,15 +1234,15 @@ wheels = [
 
 [[package]]
 name = "jupyterlab-quickopen"
-version = "2.2.0"
+version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jupyter-server" },
     { name = "pathspec" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/94/13/b98d70a58521590a71558e71fe3f982e351d0d9f672176a35b148dbb0865/jupyterlab_quickopen-2.2.0.tar.gz", hash = "sha256:f565bc565359a644933a6715ca3171a4912d277ef993b3d6f8331e9ef399831e", size = 219149, upload-time = "2026-05-11T07:27:22.8Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ac/9f/9b8aabd6eaa4be5ca96b7e67c1159fbd88d2956f6806b63c308e17d9a724/jupyterlab_quickopen-2.3.0.tar.gz", hash = "sha256:116440b5546ec62e9f1e91320f79ce4febb812347f2f09ef140cd1081f526163", size = 220448, upload-time = "2026-05-13T09:21:43.311Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/32/97/3a6f6a2daec745b473e44f41d175f42d70f6fe2aa14b5d50a1e2828ecd34/jupyterlab_quickopen-2.2.0-py3-none-any.whl", hash = "sha256:1df1c913c485bfd2510b57923b342b638c242a302625a6571caf6a107960a494", size = 29868, upload-time = "2026-05-11T07:27:21.257Z" },
+    { url = "https://files.pythonhosted.org/packages/71/ae/3c46edda05fd723c37ce03b92801393ab2c83b6dbdce6ed6ee149862109e/jupyterlab_quickopen-2.3.0-py3-none-any.whl", hash = "sha256:831cb708b7da426a184bcd52d43e0d25459994370ee23c7e6c94000604a70cec", size = 30362, upload-time = "2026-05-13T09:21:41.617Z" },
 ]
 
 [[package]]
@@ -2612,7 +2612,7 @@ requires-dist = [
     { name = "jupyterlab-git", specifier = ">=0.53.0,<1" },
     { name = "jupyterlab-lsp", specifier = ">=5.3.0,<6" },
     { name = "jupyterlab-night", specifier = ">=0.5.2" },
-    { name = "jupyterlab-quickopen", specifier = ">=2.2.0" },
+    { name = "jupyterlab-quickopen", specifier = ">=2.3.0" },
     { name = "jupyterlab-vim", specifier = ">=4.1.4,<5" },
     { name = "ty", specifier = ">=0.0.35" },
 ]
