@@ -109,6 +109,7 @@ prerelease = "allow"
 version_cmd = "hatch version"
 
 [tool.jupyter-releaser.hooks]
+after-bump-version = ["python scripts/sync-desktop-version.py"]
 before-build-npm = [
     "python -m pip install 'jupyter-builder>=0.0.8,<0.1.0a0'",
     "jlpm",
