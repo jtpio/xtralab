@@ -1,6 +1,6 @@
 {
     "name": "xtralab",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "description": "An opinionated JupyterLab meta-package that bundles a curated set of extensions, ships a path-first file browser and a VS Code-style git changes panel, and applies a quieter default workspace configuration.",
     "keywords": [
         "jupyter",
