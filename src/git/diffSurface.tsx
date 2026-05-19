@@ -42,10 +42,9 @@ import {
 export const DIFF_WIDGET_CSS_CLASS = 'jp-xtralab-DiffWidget';
 
 /**
- * `localStorage` key for the user's last-chosen split ratio. Persisted so
- * the preference survives reloads — the library has no built-in way to
- * remember per-host UI state, and reopening every diff at 50/50 is
- * annoying once the user has dialed in a layout they like.
+ * `localStorage` key for the user's last-chosen split ratio, persisted so
+ * the preference survives reloads (the library has no built-in way to
+ * remember it).
  */
 const SPLIT_RATIO_STORAGE_KEY = 'xtralab:diff-split-ratio';
 
@@ -104,9 +103,8 @@ function writeStoredSplitRatio(ratio: number): void {
 
 /**
  * View modes available for `.ipynb` diffs. `notebook` is the cell-by-cell
- * rendered view; `json` falls back to the raw nbformat JSON file diff so
- * the user can inspect exactly which bytes changed (handy for nbformat
- * spelunking, seeing execution_count drift, etc.).
+ * rendered view; `json` is the raw nbformat JSON file diff, for inspecting
+ * exactly which bytes changed.
  */
 export type NotebookDiffViewMode = 'notebook' | 'json';
 

@@ -1,17 +1,13 @@
 import * as React from 'react';
 
 /**
- * xtralab's image diff. Replaces `@jupyterlab/git:image-diff` so every diff
- * in the git panel (and the launcher's own diff tab) is rendered by
- * xtralab.
+ * xtralab's image diff, registered in place of `@jupyterlab/git:image-diff`.
  *
- * The git server base64-encodes binary file content
- * (`jupyterlab_git_core/git.py`: `base64.encodebytes(...)` when
- * `is_binary`), so both diff hosts already receive the two sides as base64
- * strings through the same `content()` getters used for text. This module
- * only needs to turn those strings into `<img>` elements and offer the
- * three classic comparison modes (2-up / swipe / onion skin) — no diffing
- * library is involved (and `@pierre/diffs` is text-only anyway).
+ * The git server base64-encodes binary content, so both diff hosts receive
+ * the two sides as base64 strings through the same `content()` getters used
+ * for text. This module turns those strings into `<img>` elements and
+ * offers the 2-up / swipe / onion-skin comparison modes; no diffing library
+ * is involved (`@pierre/diffs` is text-only).
  */
 
 /**
@@ -48,10 +44,7 @@ export function imageDataType(path: string): string | null {
   return IMAGE_DATA_TYPES[lower.slice(dot)] ?? null;
 }
 
-/**
- * Comparison layouts, matching the modes long-time `jupyterlab-git` users
- * expect from the upstream image diff.
- */
+/** Comparison layouts, matching jupyterlab-git's image diff modes. */
 type ImageDiffViewMode = '2-up' | 'swipe' | 'onion';
 
 const IMAGE_DIFF_VIEW_MODE_STORAGE_KEY = 'xtralab:image-diff-view-mode';

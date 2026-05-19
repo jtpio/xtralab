@@ -21,15 +21,12 @@ const GIT_DIFF_TRACKER_NAMESPACE = 'xtralab-git-diff';
 /**
  * The launcher's git diff command plugin.
  *
- * xtralab no longer ships its own "Source Control" sidebar panel: the
- * `@jupyterlab/git` frontend is depended on and kept enabled (only its
- * diffing plugins are swapped — see `diffProvider.tsx`), so the upstream
- * git panel is what the user sees in the sidebar.
- *
- * What remains here is the launcher dashboard's independent diff path: the
- * `xtralab:git:open-diff` command the dashboard's "Changes" section calls,
- * plus a tracker so reopening a diff reveals the existing tab and so the
- * preview/pin behavior keeps working.
+ * The `@jupyterlab/git` frontend stays enabled (only its diff plugins are
+ * swapped — see `diffProvider.tsx`), so the upstream git panel is what the
+ * user sees in the sidebar. This plugin is the launcher dashboard's
+ * independent diff path: the `xtralab:git:open-diff` command the
+ * dashboard's "Changes" section calls, plus a tracker so reopening a diff
+ * reveals the existing tab and the preview/pin behavior keeps working.
  */
 const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
   id: GIT_DIFF_COMMAND_PLUGIN_ID,

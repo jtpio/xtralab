@@ -28,17 +28,15 @@ import { IMAGE_DIFF_EXTENSIONS } from './imageDiff';
  * `jupyterlab-git` diff providers backed by xtralab's `@pierre/diffs`
  * rendering.
  *
- * Rather than disabling the whole `@jupyterlab/git` frontend, xtralab only
- * disables the upstream diffing plugins (`@jupyterlab/git:notebook-diff`,
- * `@jupyterlab/git:plain-text-diff`, `@jupyterlab/git:image-diff`) and
- * registers its own diff factory in their place via the
- * `registerDiffProvider` / `registerFallbackDiffProvider` API introduced
- * in jupyterlab-git 0.54. The upstream git panel, commands, status bar and
- * context menus keep working unchanged; only the rendered diff is ours.
+ * jupyterlab-git's notebook, plain-text and image diff plugins are disabled
+ * (see `package.json`); this module registers a diff factory in their place
+ * via `registerDiffProvider` / `registerFallbackDiffProvider`. The upstream
+ * git panel, commands, status bar and context menus keep working unchanged;
+ * only the rendered diff is xtralab's.
  *
  * The factory adapts a `Git.Diff.IModel` (reference vs. challenger content
- * getters) onto the shared {@link DiffSurface}, so the diff opened from the
- * git panel looks identical to the one opened from the launcher dashboard.
+ * getters) onto the shared {@link DiffSurface}, so a diff opened from the
+ * git panel looks identical to one opened from the launcher dashboard.
  */
 
 interface IXtralabDiffContext {
@@ -417,11 +415,9 @@ function makeXtralabDiffFactory(
 }
 
 /**
- * Registers xtralab's diff rendering as jupyterlab-git's diff providers,
- * replacing the upstream notebook, plain-text and image diff plugins
- * (disabled via `package.json`'s `jupyterlab.disabledExtensions`). Every
- * diff shown in the git panel is therefore xtralab's: `@pierre/diffs` for
- * text/notebooks, and the bundled `<img>`-based view for raster images.
+ * Registers xtralab's diff rendering as jupyterlab-git's diff providers:
+ * `@pierre/diffs` for text and notebooks, the bundled `<img>`-based view
+ * for raster images.
  */
 const diffProviderPlugin: JupyterFrontEndPlugin<void> = {
   id: 'xtralab:git-diff-providers',

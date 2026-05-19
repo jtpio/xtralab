@@ -14,9 +14,8 @@ import { IFileChange } from './tokens';
 /**
  * Command IDs exposed by the launcher's git diff path. The launcher
  * dashboard's "Changes" section drives {@link CommandIDs.openDiff} to open
- * its own diff tab — this path is intentionally kept independent of
- * `jupyterlab-git` (the `jupyterlab-git` panel reaches the same diff
- * rendering through the providers registered in `diffProvider.tsx`).
+ * its own diff tab, independent of `jupyterlab-git` (whose panel reaches
+ * the same rendering via the providers in `diffProvider.tsx`).
  */
 export namespace CommandIDs {
   export const openDiff = 'xtralab:git:open-diff';
