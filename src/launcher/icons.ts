@@ -1,12 +1,14 @@
 import { LabIcon } from '@jupyterlab/ui-components';
 
 /**
- * Brand icons for the agent launcher cards. The artwork is taken verbatim
- * from `jupyter-ai-contrib/jupyter-ai-acp-client`
- * (`jupyter_ai_acp_client/static/*.svg`, BSD-3-Clause), with small
- * adjustments to play nicely with JupyterLab themes:
- *   - Monochrome marks (Codex, Copilot, Goose) use `currentColor` so they
- *     inherit the surrounding launcher card's text color rather than
+ * Brand icons for the agent launcher cards. Every mark except Antigravity is
+ * taken verbatim from `jupyter-ai-contrib/jupyter-ai-acp-client`
+ * (`jupyter_ai_acp_client/static/*.svg`, BSD-3-Clause); Antigravity post-dates
+ * that set, so its mark is the official glyph from `@lobehub/icons-static-svg`
+ * (MIT) — already a single `currentColor` path. Small adjustments are applied
+ * to play nicely with JupyterLab themes:
+ *   - Monochrome marks (Antigravity, Codex, Copilot, Goose) use `currentColor`
+ *     so they inherit the surrounding launcher card's text color rather than
  *     hard-coding black, which disappears on the dark theme.
  *   - The Goose mark upstream is rendered on a white rounded rect; we drop
  *     the rect so the silhouette can sit on the launcher card directly.
@@ -17,6 +19,13 @@ import { LabIcon } from '@jupyterlab/ui-components';
  * their upstream colors; the dark/light contrast of the launcher card behind
  * them is the same as on `jupyter-ai-acp-client`.
  */
+
+export const antigravityIcon = new LabIcon({
+  name: 'xtralab:agent-antigravity',
+  svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+  <path d="M21.751 22.607c1.34 1.005 3.35.335 1.508-1.508C17.73 15.74 18.904 1 12.037 1 5.17 1 6.342 15.74.815 21.1c-2.01 2.009.167 2.511 1.507 1.506 5.192-3.517 4.857-9.714 9.715-9.714 4.857 0 4.522 6.197 9.714 9.715z"/>
+</svg>`
+});
 
 export const claudeIcon = new LabIcon({
   name: 'xtralab:agent-claude',
@@ -112,6 +121,7 @@ export const opencodeIcon = new LabIcon({
  * `iconSvg` or fall back to the generic terminal icon.
  */
 export const BUILTIN_AGENT_ICONS: Record<string, LabIcon> = {
+  antigravity: antigravityIcon,
   claude: claudeIcon,
   codex: codexIcon,
   copilot: copilotIcon,
