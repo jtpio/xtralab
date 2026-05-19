@@ -13,6 +13,7 @@ import { ISignal, Signal } from '@lumino/signaling';
 
 import { getTreeIcon } from '../fileBrowser/icons';
 import { content } from './api';
+import { imageDataType } from './imageDiff';
 import {
   DIFF_WIDGET_CSS_CLASS,
   DiffSurface,
@@ -461,9 +462,13 @@ function DiffViewer(
       error: null
     });
     const { oldRef, newRef } = resolveReferences(change);
+    // Raster images are still binary, but the git server base64-encodes
+    // binary content, so we fetch them like text and let the surface render
+    // an image diff. Other binary files have no useful textual diff.
+    const isImage = imageDataType(change.path) !== null;
     void (async () => {
       try {
-        if (change.isBinary === true) {
+        if (change.isBinary === true && !isImage) {
           if (cancelled) {
             return;
           }

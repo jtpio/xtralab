@@ -12,6 +12,7 @@ import {
   type FileDiffMetadata
 } from '@pierre/diffs';
 
+import { ImageDiffView, imageDataType } from './imageDiff';
 import {
   buildNotebookDiff,
   NotebookDiffView,
@@ -251,12 +252,17 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
 
   const hasContent = !loading && error === null && !isBinary;
 
+  // Raster images take a dedicated `<img>`-based view instead of a
+  // text/notebook diff; the host passes the two sides as base64 strings in
+  // `oldText`/`newText` (the git server base64-encodes binary content).
+  const imageType = React.useMemo(() => imageDataType(newName), [newName]);
+
   // Pre-compute the line-oriented diff metadata. Owning it here lets us
   // pass it to {@link FileDiff} *and* thread the same instance through
   // {@link diffAcceptRejectHunk} when the user discards a hunk — so hunk
   // indexes line up between what the user clicked and what we mutate.
   const metadata = React.useMemo<FileDiffMetadata | null>(() => {
-    if (!hasContent) {
+    if (!hasContent || imageType !== null) {
       return null;
     }
     const oldFile: FileContents = {
@@ -265,18 +271,18 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     };
     const newFile: FileContents = { name: newName, contents: newText };
     return parseDiffFromFile(oldFile, newFile);
-  }, [hasContent, oldText, newText, oldName, newName]);
+  }, [hasContent, imageType, oldText, newText, oldName, newName]);
 
   // Cell-by-cell notebook diff for `.ipynb` files. When non-null the
   // renderer uses a notebook-aware view instead of the line-oriented file
   // diff — kept distinct from {@link metadata} so a notebook whose JSON we
   // cannot parse can fall back to the file diff path.
   const notebookDiff = React.useMemo<INotebookDiffResult | null>(() => {
-    if (!hasContent || !isNotebookPath(newName)) {
+    if (!hasContent || imageType !== null || !isNotebookPath(newName)) {
       return null;
     }
     return buildNotebookDiff({ oldText, newText });
-  }, [hasContent, oldText, newText, newName]);
+  }, [hasContent, imageType, oldText, newText, newName]);
 
   // Tell the host whether a rendered notebook view is currently available
   // so it can show/hide its Notebook/JSON toggle.
@@ -440,6 +446,20 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     return (
       <div className="jp-xtralab-DiffWidget-status">
         Binary file — diff not supported.
+      </div>
+    );
+  }
+  if (imageType !== null) {
+    // `oldText`/`newText` carry the two revisions as base64 here. The
+    // image view owns its own layout and mode selector, so it does not
+    // use the split resizer or the notebook/JSON toggle.
+    return (
+      <div className="jp-xtralab-DiffWidget-content">
+        <ImageDiffView
+          reference={oldText}
+          challenger={newText}
+          fileType={imageType}
+        />
       </div>
     );
   }

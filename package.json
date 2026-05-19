@@ -1,7 +1,7 @@
 {
     "name": "xtralab",
     "version": "0.4.0",
-    "description": "An opinionated JupyterLab meta-package that bundles a curated set of extensions, ships a path-first file browser, renders jupyterlab-git's diffs with @pierre/diffs, and applies a quieter default workspace configuration.",
+    "description": "An opinionated JupyterLab meta-package that bundles a curated set of extensions, ships a path-first file browser, renders jupyterlab-git's text, notebook and image diffs with its own viewers, and applies a quieter default workspace configuration.",
     "keywords": [
         "jupyter",
         "jupyterlab",
@@ -141,6 +141,7 @@
         "disabledExtensions": [
             "@jupyterlab/git:notebook-diff",
             "@jupyterlab/git:plain-text-diff",
+            "@jupyterlab/git:image-diff",
             "@jupyterlab/launcher-extension"
         ]
     },

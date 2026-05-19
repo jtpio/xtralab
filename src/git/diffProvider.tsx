@@ -22,14 +22,15 @@ import {
   writeStoredNotebookViewMode,
   type NotebookDiffViewMode
 } from './diffSurface';
+import { IMAGE_DIFF_EXTENSIONS } from './imageDiff';
 
 /**
  * `jupyterlab-git` diff providers backed by xtralab's `@pierre/diffs`
  * rendering.
  *
  * Rather than disabling the whole `@jupyterlab/git` frontend, xtralab only
- * disables the upstream diffing plugins
- * (`@jupyterlab/git:notebook-diff`, `@jupyterlab/git:plain-text-diff`) and
+ * disables the upstream diffing plugins (`@jupyterlab/git:notebook-diff`,
+ * `@jupyterlab/git:plain-text-diff`, `@jupyterlab/git:image-diff`) and
  * registers its own diff factory in their place via the
  * `registerDiffProvider` / `registerFallbackDiffProvider` API introduced
  * in jupyterlab-git 0.54. The upstream git panel, commands, status bar and
@@ -416,16 +417,16 @@ function makeXtralabDiffFactory(
 }
 
 /**
- * Registers xtralab's `@pierre/diffs` rendering as jupyterlab-git's diff
- * providers, replacing the upstream notebook and plain-text diff plugins
- * (disabled via `package.json`'s `jupyterlab.disabledExtensions`). The
- * upstream image diff plugin is intentionally left enabled — xtralab has
- * no image differ of its own.
+ * Registers xtralab's diff rendering as jupyterlab-git's diff providers,
+ * replacing the upstream notebook, plain-text and image diff plugins
+ * (disabled via `package.json`'s `jupyterlab.disabledExtensions`). Every
+ * diff shown in the git panel is therefore xtralab's: `@pierre/diffs` for
+ * text/notebooks, and the bundled `<img>`-based view for raster images.
  */
 const diffProviderPlugin: JupyterFrontEndPlugin<void> = {
   id: 'xtralab:git-diff-providers',
   description:
-    "Replaces jupyterlab-git's notebook and text diff plugins with xtralab's @pierre/diffs renderer.",
+    "Replaces jupyterlab-git's notebook, text and image diff plugins with xtralab's renderer.",
   autoStart: true,
   requires: [IGitExtension],
   optional: [IRenderMimeRegistry, IThemeManager],
@@ -441,10 +442,15 @@ const diffProviderPlugin: JupyterFrontEndPlugin<void> = {
       themeManager
     });
 
-    // Notebooks get an extension-specific provider; every other text file
-    // falls back to the same factory (the surface auto-detects notebooks
-    // by filename, so a single factory serves both paths).
+    // Notebooks and raster images get extension-specific providers; every
+    // other text file falls back to the same factory. One factory serves
+    // all three — the surface auto-detects notebooks/images by filename.
     gitExtension.registerDiffProvider('XtralabNotebook', ['.ipynb'], factory);
+    gitExtension.registerDiffProvider(
+      'XtralabImage',
+      IMAGE_DIFF_EXTENSIONS,
+      factory
+    );
     gitExtension.registerFallbackDiffProvider(factory);
   }
 };
