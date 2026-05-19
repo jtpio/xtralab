@@ -1,8 +1,7 @@
 import { JupyterFrontEnd } from '@jupyterlab/application';
-import { ICommandPalette, IThemeManager } from '@jupyterlab/apputils';
+import { IThemeManager } from '@jupyterlab/apputils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { Contents } from '@jupyterlab/services';
-import { refreshIcon } from '@jupyterlab/ui-components';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 
 import {
@@ -10,16 +9,16 @@ import {
   diffWidgetId,
   updateGitDiffWidget
 } from './diffWidget';
-import { GitPanel } from './panel';
 import { IFileChange } from './tokens';
 
 /**
- * Command IDs exposed by the git plugin. Both are registered in
- * {@link registerGitCommands} so other extensions, the command palette and
- * keybindings can drive the panel without going through the React internals.
+ * Command IDs exposed by the launcher's git diff path. The launcher
+ * dashboard's "Changes" section drives {@link CommandIDs.openDiff} to open
+ * its own diff tab — this path is intentionally kept independent of
+ * `jupyterlab-git` (the `jupyterlab-git` panel reaches the same diff
+ * rendering through the providers registered in `diffProvider.tsx`).
  */
 export namespace CommandIDs {
-  export const refresh = 'xtralab:git:refresh';
   export const openDiff = 'xtralab:git:open-diff';
 }
 
@@ -39,9 +38,7 @@ export namespace CommandArguments {
 
 export interface IRegisterGitCommandsOptions {
   app: JupyterFrontEnd;
-  panel: GitPanel;
   themeManager: IThemeManager | null;
-  commandPalette: ICommandPalette | null;
   /**
    * Contents manager used by the diff widget to write hunk-discard
    * results back to the working tree.
@@ -56,7 +53,10 @@ export interface IRegisterGitCommandsOptions {
   rendermime: IRenderMimeRegistry | null;
   /**
    * Called whenever the diff widget mutates the working tree (e.g. after
-   * a hunk discard) so the plugin can refresh the changes panel.
+   * a hunk discard). The launcher dashboard polls git status on its own
+   * cadence and `jupyterlab-git`'s panel auto-refreshes on the contents
+   * `fileChanged` signal the save emits, so this is a hook for any extra
+   * bookkeeping rather than a required refresh.
    */
   onChanged: () => void;
   /**
@@ -77,18 +77,15 @@ export interface IRegisterGitCommandsOptions {
 }
 
 /**
- * Register the git commands on the application command registry. Returns
- * a disposer that clears the command palette items the registration created
- * (the commands themselves stay registered for the lifetime of the plugin).
+ * Register the launcher's git diff command on the application command
+ * registry.
  */
 export function registerGitCommands(
   options: IRegisterGitCommandsOptions
-): () => void {
+): void {
   const {
     app,
-    panel,
     themeManager,
-    commandPalette,
     contentsManager,
     rendermime,
     onChanged,
@@ -97,15 +94,6 @@ export function registerGitCommands(
     onPinned
   } = options;
   const { commands } = app;
-
-  commands.addCommand(CommandIDs.refresh, {
-    label: 'Refresh Git Changes',
-    caption: 'Refresh the git changes panel',
-    icon: refreshIcon,
-    execute: () => {
-      panel.refresh();
-    }
-  });
 
   commands.addCommand(CommandIDs.openDiff, {
     label: 'Open Git Diff',
@@ -139,19 +127,6 @@ export function registerGitCommands(
       app.shell.activateById(widget.id);
     }
   });
-
-  const paletteItems = commandPalette
-    ? [
-        commandPalette.addItem({
-          command: CommandIDs.refresh,
-          category: 'Git'
-        })
-      ]
-    : [];
-
-  return () => {
-    paletteItems.forEach(item => item.dispose());
-  };
 }
 
 export { diffWidgetId };

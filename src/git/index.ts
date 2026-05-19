@@ -1,19 +1,9 @@
 import {
-  ILayoutRestorer,
   JupyterFrontEnd,
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
-import {
-  Dialog,
-  ICommandPalette,
-  IThemeManager,
-  WidgetTracker,
-  showDialog,
-  showErrorMessage
-} from '@jupyterlab/apputils';
+import { IThemeManager, WidgetTracker } from '@jupyterlab/apputils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
-
-import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 
 import { CommandArguments, CommandIDs, registerGitCommands } from './commands';
 import {
@@ -21,46 +11,40 @@ import {
   PREVIEW_DIFF_WIDGET_ID,
   pinnedDiffWidgetId
 } from './diffWidget';
+import diffProviderPlugin from './diffProvider';
 import type { MainAreaWidget } from '@jupyterlab/apputils';
-import { GitPanel } from './panel';
 import { IFileChange } from './tokens';
 
-const GIT_PLUGIN_ID = 'xtralab:git';
+const GIT_DIFF_COMMAND_PLUGIN_ID = 'xtralab:git-diff-command';
 const GIT_DIFF_TRACKER_NAMESPACE = 'xtralab-git-diff';
 
 /**
- * The git plugin. Adds a VS Code-style "Source Control" panel to the
- * JupyterLab left sidebar and opens file diffs in the main area when the
- * user clicks an entry in the panel. Backed by the `jupyterlab_git` server
- * extension's REST API; the bundled `@jupyterlab/git` frontend is disabled
- * via `package.json`'s `jupyterlab.disabledExtensions` so the two panels do
- * not coexist.
+ * The launcher's git diff command plugin.
+ *
+ * xtralab no longer ships its own "Source Control" sidebar panel: the
+ * `@jupyterlab/git` frontend is depended on and kept enabled (only its
+ * diffing plugins are swapped — see `diffProvider.tsx`), so the upstream
+ * git panel is what the user sees in the sidebar.
+ *
+ * What remains here is the launcher dashboard's independent diff path: the
+ * `xtralab:git:open-diff` command the dashboard's "Changes" section calls,
+ * plus a tracker so reopening a diff reveals the existing tab and so the
+ * preview/pin behavior keeps working.
  */
-const plugin: JupyterFrontEndPlugin<void> = {
-  id: GIT_PLUGIN_ID,
+const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
+  id: GIT_DIFF_COMMAND_PLUGIN_ID,
   description:
-    'A VS Code-style git changes panel and diff viewer powered by jupyterlab-git and @pierre/diffs.',
+    "The launcher dashboard's side-by-side git diff command, powered by @pierre/diffs.",
   autoStart: true,
-  optional: [
-    ILayoutRestorer,
-    IThemeManager,
-    ICommandPalette,
-    IRenderMimeRegistry
-  ],
+  optional: [IThemeManager, IRenderMimeRegistry],
   activate: (
     app: JupyterFrontEnd,
-    restorer: ILayoutRestorer | null,
     themeManager: IThemeManager | null,
-    commandPalette: ICommandPalette | null,
     rendermime: IRenderMimeRegistry | null
   ): void => {
-    // Match the panel's repo path: empty string means "use the JupyterLab
-    // server's root and let git resolve the enclosing repo".
-    const repoPath = '';
-
-    // Track open diff widgets so the layout restorer can recreate them on
-    // reload, and so the openDiff handler can reveal an already-open diff
-    // for the same file instead of creating a duplicate.
+    // Track open diff widgets so the openDiff handler can reveal an
+    // already-open diff for the same file instead of creating a duplicate
+    // (and so a promoted preview can find its pinned twin).
     const tracker = new WidgetTracker<MainAreaWidget<DiffContentWidget>>({
       namespace: GIT_DIFF_TRACKER_NAMESPACE
     });
@@ -76,41 +60,15 @@ const plugin: JupyterFrontEndPlugin<void> = {
       return existing ?? undefined;
     };
 
-    const panel = new GitPanel({
-      openDiff: (change, options) => {
-        const args: CommandArguments.IOpenDiff = { repoPath, change };
-        if (options?.pin === true) {
-          args.pin = true;
-        }
-        void app.commands.execute(
-          CommandIDs.openDiff,
-          args as unknown as ReadonlyPartialJSONObject
-        );
-      },
-      confirm: async (title, body, accept) => {
-        const result = await showDialog({
-          title,
-          body,
-          buttons: [Dialog.cancelButton(), Dialog.warnButton({ label: accept })]
-        });
-        return result.button.accept === true;
-      },
-      showError: showErrorMessage
-    });
-
-    app.shell.add(panel, 'left', { rank: 60 });
-    if (restorer !== null) {
-      restorer.add(panel, panel.id);
-    }
-
     registerGitCommands({
       app,
-      panel,
       themeManager,
-      commandPalette,
       contentsManager: app.serviceManager.contents,
       rendermime,
-      onChanged: () => panel.refresh(),
+      // The launcher polls git status on its own cadence and the
+      // jupyterlab-git panel auto-refreshes on the contents `fileChanged`
+      // signal a hunk-discard save emits, so no extra refresh is needed.
+      onChanged: () => undefined,
       trackDiff: widget => tracker.add(widget),
       onPinned: current => {
         const existing = findDiff(current.content.change, true);
@@ -132,4 +90,19 @@ const plugin: JupyterFrontEndPlugin<void> = {
   }
 };
 
-export default plugin;
+/**
+ * Every plugin contributed by xtralab's git integration:
+ *
+ *   1. {@link diffCommandPlugin} — the launcher's `xtralab:git:open-diff`.
+ *   2. `diffProviderPlugin` — registers the `@pierre/diffs` rendering as
+ *      jupyterlab-git's diff providers (replacing its disabled
+ *      notebook/text diff plugins).
+ */
+const plugins: JupyterFrontEndPlugin<unknown>[] = [
+  diffCommandPlugin,
+  diffProviderPlugin
+];
+
+export { CommandArguments, CommandIDs };
+
+export default plugins;
