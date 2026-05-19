@@ -1,7 +1,7 @@
 {
     "name": "xtralab",
     "version": "0.4.0",
-    "description": "An opinionated JupyterLab meta-package that bundles a curated set of extensions, ships a path-first file browser and a VS Code-style git changes panel, and applies a quieter default workspace configuration.",
+    "description": "An opinionated JupyterLab meta-package that bundles a curated set of extensions, ships a path-first file browser, renders jupyterlab-git's text, notebook and image diffs with its own viewers, and applies a quieter default workspace configuration.",
     "keywords": [
         "jupyter",
         "jupyterlab",
@@ -66,6 +66,7 @@
         "@jupyterlab/coreutils": "^6.6.0-alpha.5",
         "@jupyterlab/docmanager": "^4.6.0-alpha.5",
         "@jupyterlab/docregistry": "^4.6.0-alpha.5",
+        "@jupyterlab/git": "^0.54.0-a0",
         "@jupyterlab/launcher": "^4.6.0-alpha.5",
         "@jupyterlab/mainmenu": "^4.6.0-alpha.5",
         "@jupyterlab/nbformat": "^4.6.0-alpha.5",
@@ -131,8 +132,16 @@
         "extension": true,
         "outputDir": "xtralab/labextension",
         "schemaDir": "schema",
+        "sharedPackages": {
+            "@jupyterlab/git": {
+                "bundled": false,
+                "singleton": true
+            }
+        },
         "disabledExtensions": [
-            "@jupyterlab/git",
+            "@jupyterlab/git:notebook-diff",
+            "@jupyterlab/git:plain-text-diff",
+            "@jupyterlab/git:image-diff",
             "@jupyterlab/launcher-extension"
         ]
     },
@@ -140,7 +149,12 @@
         "node_modules",
         "dist",
         "coverage",
-        "**/*.d.ts"
+        "**/*.d.ts",
+        "desktop/out",
+        "desktop/dist",
+        "desktop/python/wheels",
+        "desktop/python/runtime",
+        "desktop/python/runtime.staging"
     ],
     "eslintConfig": {
         "extends": [

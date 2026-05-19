@@ -2,8 +2,9 @@
 
 An opinionated JupyterLab meta-package.
 
-Bundles a curated set of extensions, a path-first file browser, a VS Code-style
-git changes panel, an agent-focused launcher, and a quieter default workspace.
+Bundles a curated set of extensions, a path-first file browser, the
+`jupyterlab-git` panel with its text, notebook and image diffs rendered by
+xtralab, an agent-focused launcher, and a quieter default workspace.
 
 ![xtralab screenshot](./screenshot.png)
 
@@ -38,7 +39,8 @@ instructions.
 
 - [`ajlab`](https://github.com/jtpio/ajlab) — agent-ready JupyterLab base
 - JupyterLab 4.6+
-- `jupyterlab-git` — backs the bundled changes panel
+- `jupyterlab-git` — provides the git panel; xtralab swaps its text,
+  notebook and image diff rendering for its own
 - `jupyterlab-lsp` + `ty` — Python LSP via Astral's `ty` (bundled); also
   detects `typescript-language-server` on `PATH` for JS/TS
 - `jupyterlab-quickopen`
@@ -48,7 +50,10 @@ instructions.
 The bundled labextension adds:
 
 - A path-first file browser in the left sidebar.
-- A "Source Control" panel powered by `jupyterlab-git` and `@pierre/diffs`.
+- xtralab-rendered diffs registered as `jupyterlab-git`'s diff providers
+  (its own notebook/plain-text/image diff plugins are disabled) so the
+  upstream git panel shows xtralab's diffs: `@pierre/diffs` for text and
+  notebooks, and an `<img>`-based 2-up/swipe/onion-skin view for images.
 - An agent launcher with a prompt textarea, a row of agent buttons (Claude,
   Codex, Gemini, Copilot, Goose, OpenCode, Kiro, Mistral Vibe), and a
   collapsible list of changed files. Buttons are filtered to agents installed

@@ -1167,21 +1167,21 @@ wheels = [
 
 [[package]]
 name = "jupyterlab-git"
-version = "0.53.0"
+version = "0.54.0a0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jupyter-server" },
     { name = "jupyterlab-git-core", extra = ["nbdime"] },
     { name = "traitlets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bf/9f/b2325f3c350ff2d676768391b8757cb249d54bb53cdd2af8ae796d6c99f7/jupyterlab_git-0.53.0.tar.gz", hash = "sha256:121f0e0bbf637feaed5893d68ca741fd99ae6f7735ab7ef5db230d6da5d19d98", size = 20125, upload-time = "2026-04-30T07:35:46.605Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/2a/195e1bb7741875554256fa37ea1f88a7288e7030595bcfe75cd2f62819dc/jupyterlab_git-0.54.0a0.tar.gz", hash = "sha256:583fff0ff2f3843bd2aeb2048844ce268d7ef60e0ffdc5b05f91bdbe4860e5a5", size = 20126, upload-time = "2026-05-19T06:32:49.288Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/5d/66434ac333ba10f370230fff798cc8329dbaee227e0074d1ddbdb30ad84b/jupyterlab_git-0.53.0-py3-none-any.whl", hash = "sha256:ecca163bb973c3a007d7e43775ca92c9c95ce642bcd605b590a877804755b72f", size = 11394, upload-time = "2026-04-30T07:35:44.995Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/5e/0ab0a28b8e41c77e6ab6fa23057a746efdd5c988d0add94e90c7de85ab76/jupyterlab_git-0.54.0a0-py3-none-any.whl", hash = "sha256:0bbfccd36123a4d7fef5ddbde7aaa9b623805706701a0c422d2b371b0e24991c", size = 11418, upload-time = "2026-05-19T06:32:47.622Z" },
 ]
 
 [[package]]
 name = "jupyterlab-git-core"
-version = "0.53.0"
+version = "0.54.0a0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1190,9 +1190,9 @@ dependencies = [
     { name = "pexpect" },
     { name = "traitlets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/21/33/9a1c566b147fa86c2a026c39080599667d805cbc1b87a71640f6e612c1c2/jupyterlab_git_core-0.53.0.tar.gz", hash = "sha256:a4c4c104eb8f7e62fdc05449834e0b56f3d6b6df30c769ceae52e4001fcbf9e1", size = 313783, upload-time = "2026-04-30T07:35:50.732Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c6/52/2371f483addf4866654a786fe778acd819050314cdcacde4b38af323a185/jupyterlab_git_core-0.54.0a0.tar.gz", hash = "sha256:ed6510df0d495e2868afb51226aac353b62e781e3db16e65d6ffcba056f1ed04", size = 314834, upload-time = "2026-05-19T06:32:53.536Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b5/4d/9c5081cffe24fb71bbfa205edce9c91cb5ba6cd6f8872b160174aac113a9/jupyterlab_git_core-0.53.0-py3-none-any.whl", hash = "sha256:bfe29a487e9491140e9c51fdb66683b7dcd709024f3538edefce6f6ac1b3c737", size = 610248, upload-time = "2026-04-30T07:35:48.571Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/d3/782f4b3b233e30e0c0f014a40f2d36aacdf054a37148895c9407de81236c/jupyterlab_git_core-0.54.0a0-py3-none-any.whl", hash = "sha256:cbd3bc2c1d20b00ff8c1c0d7be6574cdb53219ccb155a798694eedf059e9edd8", size = 612547, upload-time = "2026-05-19T06:32:50.977Z" },
 ]
 
 [package.optional-dependencies]
@@ -2594,6 +2594,7 @@ dependencies = [
     { name = "jupyterlab-cursor-light" },
     { name = "jupyterlab-day" },
     { name = "jupyterlab-git" },
+    { name = "jupyterlab-git-core" },
     { name = "jupyterlab-lsp" },
     { name = "jupyterlab-night" },
     { name = "jupyterlab-quickopen" },
@@ -2608,7 +2609,8 @@ requires-dist = [
     { name = "jupyterlab-cursor-dark", specifier = ">=1.0.2" },
     { name = "jupyterlab-cursor-light", specifier = ">=1.0.2" },
     { name = "jupyterlab-day", specifier = ">=0.2.0" },
-    { name = "jupyterlab-git", specifier = ">=0.53.0" },
+    { name = "jupyterlab-git", specifier = ">=0.54.0a0" },
+    { name = "jupyterlab-git-core", specifier = ">=0.54.0a0" },
     { name = "jupyterlab-lsp", specifier = ">=5.3.0" },
     { name = "jupyterlab-night", specifier = ">=0.5.2" },
     { name = "jupyterlab-quickopen", specifier = ">=2.3.0" },

@@ -1,271 +1,9 @@
 /*
- * Styles for the git changes panel and the diff viewer. The panel mirrors
- * the visual rhythm of the default JupyterLab side panels so it does not
- * stand out from the rest of the UI.
+ * Styles for xtralab's @pierre/diffs viewer. The same surface is used by
+ * the launcher dashboard's own diff tab and by the jupyterlab-git diff
+ * providers, so these rules cover both hosts. (xtralab no longer ships a
+ * git changes panel — the upstream jupyterlab-git panel is reused.)
  */
-
-.jp-xtralab-GitPanel {
-  display: flex;
-  flex-direction: column;
-  min-width: 240px;
-  background-color: var(--jp-layout-color1);
-  color: var(--jp-ui-font-color1);
-  font-family: var(--jp-ui-font-family);
-  font-size: var(--jp-ui-font-size1);
-  overflow: hidden;
-}
-
-.jp-xtralab-GitPanel-content {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.jp-xtralab-GitPanel-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--jp-border-color2);
-}
-
-.jp-xtralab-GitPanel-headerInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.jp-xtralab-GitPanel-repo {
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.jp-xtralab-GitPanel-branch {
-  color: var(--jp-ui-font-color2);
-  font-size: var(--jp-ui-font-size0);
-}
-
-.jp-xtralab-GitPanel-error {
-  margin: 12px;
-  padding: 8px;
-  border-radius: 4px;
-  background-color: var(
-    --jp-error-color3,
-    var(--jp-rendermime-error-background)
-  );
-  color: var(--jp-ui-font-color1);
-  font-size: var(--jp-ui-font-size1);
-  white-space: pre-wrap;
-}
-
-.jp-xtralab-GitPanel-empty {
-  margin: 12px;
-  color: var(--jp-ui-font-color2);
-  font-style: italic;
-  text-align: center;
-}
-
-.jp-xtralab-GitPanel-section {
-  display: flex;
-  flex-direction: column;
-}
-
-/*
- * Section headers and rows place their hover actions between the label
- * and the trailing count/badge, so the count stays pinned to the right
- * edge regardless of whether the section has any bulk actions. Reserving
- * the action width via `visibility: hidden` keeps the layout from
- * shifting when the cursor enters and leaves.
- */
-.jp-xtralab-GitPanel-sectionHeader {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 28px;
-  padding: 0 12px;
-  cursor: pointer;
-  user-select: none;
-  text-transform: uppercase;
-  font-size: var(--jp-ui-font-size0);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--jp-ui-font-color2);
-}
-
-.jp-xtralab-GitPanel-sectionHeader:hover {
-  background-color: var(--jp-layout-color2);
-}
-
-.jp-xtralab-GitPanel-sectionChevron {
-  width: 12px;
-  text-align: center;
-  font-size: 10px;
-}
-
-.jp-xtralab-GitPanel-sectionLabel {
-  flex: 1 1 auto;
-}
-
-.jp-xtralab-GitPanel-sectionCount {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 16px;
-  padding: 0 4px;
-  background-color: var(--jp-layout-color3);
-  color: var(--jp-ui-font-color1);
-  border-radius: 8px;
-  font-size: var(--jp-ui-font-size0);
-  font-weight: 500;
-  line-height: 1;
-}
-
-.jp-xtralab-GitPanel-sectionActions {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  visibility: hidden;
-}
-
-.jp-xtralab-GitPanel-sectionHeader:hover .jp-xtralab-GitPanel-sectionActions {
-  visibility: visible;
-}
-
-.jp-xtralab-GitPanel-sectionBody {
-  display: flex;
-  flex-direction: column;
-}
-
-/*
- * Three-column row layout: the label group on the left grows, the actions
- * column has a fixed reserved width that fits the worst-case button count,
- * and the badge column is auto-sized on the right edge. Reserving the
- * action column keeps the badge horizontally pinned regardless of the
- * row's hover state.
- */
-.jp-xtralab-GitPanel-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 26px;
-  padding: 0 12px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.jp-xtralab-GitPanel-row:hover {
-  background-color: var(--jp-layout-color2);
-}
-
-.jp-xtralab-GitPanel-rowLabel {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.jp-xtralab-GitPanel-rowName {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 0 1 auto;
-}
-
-.jp-xtralab-GitPanel-rowPath {
-  color: var(--jp-ui-font-color2);
-  font-size: var(--jp-ui-font-size0);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 0 1 auto;
-}
-
-.jp-xtralab-GitPanel-rowActions {
-  /*
-   * Reserved width matches the worst case of two 20px buttons + a 2px
-   * gap. Staged rows only host the unstage button, but pinning the
-   * column width keeps the trailing badge horizontally aligned across
-   * the staged and unstaged sections.
-   */
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 2px;
-  flex: 0 0 42px;
-  visibility: hidden;
-}
-
-.jp-xtralab-GitPanel-row:hover .jp-xtralab-GitPanel-rowActions,
-.jp-xtralab-GitPanel-rowActions[data-pending='true'] {
-  visibility: visible;
-}
-
-.jp-xtralab-GitPanel-rowBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 16px;
-  width: 16px;
-  height: 16px;
-  border-radius: 2px;
-  font-size: var(--jp-ui-font-size0);
-  font-weight: 600;
-  font-family: var(--jp-code-font-family);
-}
-
-.jp-xtralab-GitPanel-rowBadge[data-status='modified'] {
-  color: var(--jp-warn-color1);
-}
-
-.jp-xtralab-GitPanel-rowBadge[data-status='added'],
-.jp-xtralab-GitPanel-rowBadge[data-status='untracked'] {
-  color: var(--jp-success-color1);
-}
-
-.jp-xtralab-GitPanel-rowBadge[data-status='deleted'] {
-  color: var(--jp-error-color1);
-}
-
-.jp-xtralab-GitPanel-rowBadge[data-status='renamed'] {
-  color: var(--jp-info-color1, var(--jp-brand-color1));
-}
-
-.jp-xtralab-GitPanel-rowBadge[data-status='unmerged'] {
-  color: var(--jp-error-color1);
-}
-
-.jp-xtralab-GitPanel-iconButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: transparent;
-  color: var(--jp-ui-font-color1);
-  cursor: pointer;
-  border-radius: 2px;
-  font-size: var(--jp-ui-font-size1);
-  line-height: 1;
-}
-
-.jp-xtralab-GitPanel-iconButton:hover {
-  background-color: var(--jp-layout-color3);
-}
-
-.jp-xtralab-GitPanel-iconButton:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
 
 /*
  * Diff viewer (main area). The `MainAreaWidget` holding the React content
@@ -762,4 +500,158 @@
   color: var(--jp-content-font-color1, var(--jp-ui-font-color1));
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/*
+ * Image diff (raster files). xtralab's replacement for the upstream
+ * jupyterlab-git image diff: a sticky mode selector (reusing the diff
+ * segmented-control styling) over the 2-up / swipe / onion-skin views.
+ *
+ * Every mode is sized to *fit the widget*: the images are contained
+ * within the available area (never upscaled past their natural size, and
+ * scaled down to fit when larger) so nothing overflows. In particular the
+ * swipe/onion slider stays on screen even when the two revisions have very
+ * different dimensions. A neutral checkerboard sits behind each image so
+ * transparency reads clearly in both light and dark themes.
+ */
+.jp-xtralab-ImageDiff {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.jp-xtralab-ImageDiff-header {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  background-color: var(--jp-layout-color1);
+  border-bottom: 1px solid var(--jp-border-color2);
+}
+
+/*
+ * The body fills the remaining height and never scrolls — each view is a
+ * flex child that fits inside it (`min-height: 0` lets the flex/grid
+ * children shrink below their intrinsic size so `max-height` on the
+ * images can take effect).
+ */
+.jp-xtralab-ImageDiff-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+  padding: 16px;
+}
+
+.jp-xtralab-ImageDiff-twoUp {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: 16px;
+}
+
+.jp-xtralab-ImageDiff-col {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.jp-xtralab-ImageDiff-frame,
+.jp-xtralab-ImageDiff-stack {
+  /* Checkerboard so transparent regions are obvious; theme-neutral. */
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #c8c8c8 25%, transparent 25%),
+    linear-gradient(-45deg, #c8c8c8 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #c8c8c8 75%),
+    linear-gradient(-45deg, transparent 75%, #c8c8c8 75%);
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+  border: 1px solid var(--jp-border-color2);
+}
+
+.jp-xtralab-ImageDiff-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.jp-xtralab-ImageDiff-img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.jp-xtralab-ImageDiff-empty {
+  padding: 32px 24px;
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size1);
+  font-style: italic;
+}
+
+.jp-xtralab-ImageDiff-caption {
+  flex: 0 0 auto;
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size0);
+  font-family: var(--jp-code-font-family);
+  text-align: center;
+  word-break: break-word;
+}
+
+.jp-xtralab-ImageDiff-interactive {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/*
+ * Both revisions occupy the same grid cell so swipe/onion can overlay
+ * them. `place-items: center` keeps each image at its own size (no
+ * stretching the smaller revision up to the larger one's box) while
+ * `max-height/width` scale either one down to fit the available space.
+ */
+.jp-xtralab-ImageDiff-stack {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: 4px;
+}
+
+.jp-xtralab-ImageDiff-stackImg {
+  grid-area: 1 / 1;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.jp-xtralab-ImageDiff-slider {
+  flex: 0 0 auto;
+  width: min(480px, 100%);
+  accent-color: var(--jp-brand-color1);
+  cursor: ew-resize;
 }
