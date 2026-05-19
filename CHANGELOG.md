@@ -2,6 +2,25 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.5.0
+
+([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.4.0...a86d17490fbc3843c0cb03f8994869aa3afa4a0c))
+
+### Enhancements made
+
+- Reuse more of the `jupyterlab-git` extension [#17](https://github.com/jtpio/xtralab/pull/17) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-05-13&to=2026-05-19&type=c))
+
+@jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-05-13..2026-05-19&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.4.0
 
 ([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.3.0...b9348241be7330bd7ecfa3bb7bd764931a46e173))
@@ -26,8 +45,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-05-12&to=2026-05-13&type=c))
 
 @jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-05-12..2026-05-13&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.3.0
 
