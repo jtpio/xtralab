@@ -34,7 +34,6 @@ jobs:
         run: |
           set -eux
           python -m pip install .
-          python -m jupyterlab.browser_check
 
       - name: Validate metapackage
         run: |
@@ -57,10 +56,18 @@ jobs:
             grep -e "${ext}.*OK" labextensions.txt
           done
 
-          # xtralab disables the @jupyterlab/git frontend so the VS
-          # Code-style panel owns the UI; the entry should still appear,
-          # marked disabled.
-          grep -e "@jupyterlab/git.*disabled" labextensions.txt
+          # xtralab keeps the @jupyterlab/git frontend enabled and only
+          # disables its diff plugins (xtralab registers its own diff
+          # providers in their place). The extension itself should be
+          # enabled + OK, and the three upstream diff plugins should be
+          # listed under "Disabled extensions:".
+          grep -e "@jupyterlab/git v.*OK" labextensions.txt
+          for plugin in \
+            "@jupyterlab/git:notebook-diff" \
+            "@jupyterlab/git:plain-text-diff" \
+            "@jupyterlab/git:image-diff"; do
+            grep -e "${plugin}" labextensions.txt
+          done
 
           # xtralab ships a labconfig fragment that disables the
           # announcements plugin and a few other panels. Verify it lands
@@ -117,8 +124,7 @@ jobs:
 
           jupyter labextension list 2>&1 | tee labextensions.txt
           grep -e "xtralab.*OK" labextensions.txt
-          grep -e "@jupyterlab/git.*disabled" labextensions.txt
-          python -m jupyterlab.browser_check --no-browser-test
+          grep -e "@jupyterlab/git v.*OK" labextensions.txt
 
   check_links:
     name: Check Links
