@@ -22,7 +22,7 @@ import {
   writeStoredNotebookViewMode,
   type NotebookDiffViewMode
 } from './diffSurface';
-import { IMAGE_DIFF_EXTENSIONS } from './imageDiff';
+import { IMAGE_DIFF_EXTENSIONS, imageDataType } from './imageDiff';
 
 /**
  * `jupyterlab-git` diff providers backed by xtralab's `@pierre/diffs`
@@ -82,13 +82,21 @@ class XtralabDiffWidget extends ReactWidget implements Git.Diff.IDiffWidget {
   }
 
   /**
-   * Used by jupyterlab-git's "Mark as resolved" button. Since we do not
-   * offer in-diff merge editing, resolving keeps the current working copy
-   * (the challenger) rather than fabricating a merged result.
+   * Used by jupyterlab-git's "Mark as resolved" button. For merge
+   * conflicts, jupyterlab-git passes the working-tree result as `base`;
+   * keep that content rather than overwriting it with either compared side.
    */
   async getResolvedFile(): Promise<Partial<Contents.IModel>> {
-    const content = await this._model.challenger.content();
-    return { type: 'file', format: 'text', content };
+    const source =
+      this._model.hasConflict === true && this._model.base !== undefined
+        ? this._model.base
+        : this._model.challenger;
+    const content = await source.content();
+    return {
+      type: 'file',
+      format: imageDataType(this._model.filename) !== null ? 'base64' : 'text',
+      content
+    };
   }
 
   /**
