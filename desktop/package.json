@@ -6,18 +6,19 @@
   "private": true,
   "license": "BSD-3-Clause",
   "main": "dist/main.js",
+  "packageManager": "pnpm@10.28.0",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "build:python": "uv build --wheel --out-dir python/wheels .. && uv build --wheel --out-dir python/wheels .",
     "build:lock": "uv export --frozen --no-dev --no-emit-project --no-emit-package xtralab --format requirements.txt --output-file python/wheels/requirements.txt",
     "build:wheelhouse": "node scripts/build-wheelhouse.mjs",
     "build:runtime": "node scripts/build-runtime.mjs",
-    "build:all": "npm run build && npm run build:lock && npm run build:wheelhouse && npm run build:python && npm run build:runtime",
-    "dev": "npm run build:all && electron .",
-    "start": "npm run build:all && electron-forge start",
-    "package": "npm run build:all && electron-forge package",
-    "make": "npm run build:all && electron-forge make",
-    "publish": "npm run build:all && electron-forge publish",
+    "build:all": "pnpm build && pnpm build:lock && pnpm build:wheelhouse && pnpm build:python && pnpm build:runtime",
+    "dev": "pnpm build:all && electron .",
+    "start": "pnpm build:all && electron-forge start",
+    "package": "pnpm build:all && electron-forge package",
+    "make": "pnpm build:all && electron-forge make",
+    "publish": "pnpm build:all && electron-forge publish",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.forge.json"
   },
   "devDependencies": {
@@ -32,8 +33,10 @@
     "electron": "42.0.0",
     "typescript": "5.9.3"
   },
-  "overrides": {
-    "tar": "^7.5.14",
-    "@tootallnate/once": "^3.0.1"
+  "pnpm": {
+    "overrides": {
+      "tar": "^7.5.14",
+      "@tootallnate/once": "^3.0.1"
+    }
   }
 }

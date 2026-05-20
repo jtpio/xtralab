@@ -29,7 +29,7 @@ const config: ForgeConfig = {
       /^\/out($|\/)/,
       /^\/forge\.config\.(ts|js)$/,
       /^\/node_modules($|\/)/,
-      /^\/package-lock\.json$/,
+      /^\/pnpm-lock\.yaml$/,
       /^\/pyproject\.toml$/,
       /^\/tsconfig.*\.json$/,
       /^\/uv\.lock$/,

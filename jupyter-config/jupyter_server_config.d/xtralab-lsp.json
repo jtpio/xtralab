@@ -45,6 +45,7 @@
         },
         "install": {
           "npm": "npm install -g typescript-language-server typescript",
+          "pnpm": "pnpm add -g typescript-language-server typescript",
           "yarn": "yarn global add typescript-language-server typescript"
         }
       }
