@@ -57,3 +57,8 @@ xtralab/_version.py
 .idea/
 *.swp
 .DS_Store
+
+# Google Antigravity CLI (`agy`) per-project registration: a machine-local
+# symlink into ~/.gemini/config/projects — committing it would leak an
+# absolute path and be a dangling symlink for everyone else.
+.antigravitycli/

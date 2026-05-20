@@ -26,7 +26,7 @@ export interface IAgent {
    * the user types one into the launcher's prompt box. The semantics:
    *
    *   - `[]` → prompt is appended as a positional argument:
-   *     `<command> 'PROMPT'`. (Used by claude, codex, gemini, vibe.)
+   *     `<command> 'PROMPT'`. (Used by claude, codex, vibe.)
    *   - `['-i']` / `['--prompt']` → the prompt is preceded by a flag:
    *     `<command> -i 'PROMPT'`. (Used by copilot, opencode.)
    *   - `undefined` → the agent does not accept an initial prompt. The
@@ -75,12 +75,15 @@ export interface IAgentSettings {
 }
 
 /**
- * Default agent cards shipped with xtralab. The list mirrors the eight
- * first-class personas in `jupyter-ai-contrib/jupyter-ai-acp-client` (which
- * is also where the icons come from), but uses the bare CLI names a user
- * would type in a terminal rather than the ACP wrapper binaries that
- * project spawns. Anything not on the user's `$PATH` is filtered out at
- * activation time, so the wider list is harmless.
+ * Default agent cards shipped with xtralab. Seven of these (Claude, Codex,
+ * Copilot, Goose, OpenCode, Kiro, Mistral Vibe) mirror first-class personas
+ * in `jupyter-ai-contrib/jupyter-ai-acp-client` (which is also where their
+ * icons come from), but use the bare CLI names a user would type in a
+ * terminal rather than the ACP wrapper binaries that project spawns.
+ * Antigravity (Google's agent-first IDE/CLI, `agy`) takes the Google slot —
+ * Gemini CLI was dropped because Google is sunsetting it for consumer
+ * accounts on 2026-06-18. Anything not on the user's `$PATH` is filtered
+ * out at activation time, so the wider list is harmless.
  */
 const DEFAULTS: IAgent[] = [
   {
@@ -104,14 +107,20 @@ const DEFAULTS: IAgent[] = [
     promptArgs: []
   },
   {
-    id: 'gemini',
-    label: 'Gemini',
-    caption: 'Start the Gemini CLI in a new terminal.',
-    command: 'gemini',
-    icon: BUILTIN_AGENT_ICONS.gemini,
+    id: 'antigravity',
+    label: 'Antigravity',
+    caption: 'Open Google Antigravity from a new terminal.',
+    command: 'agy',
+    icon: BUILTIN_AGENT_ICONS.antigravity,
     rank: 2,
-    requireAvailable: true,
-    promptArgs: []
+    requireAvailable: true
+    // `agy` is the Antigravity launcher binary — a VS Code-derived editor
+    // CLI that opens the Agent Manager / workspace, not a terminal REPL.
+    // Its positional args are file/folder paths, so there is no inline
+    // natural-language prompt form; like goose/kiro we omit promptArgs so a
+    // typed prompt dims the button instead of being mangled into a path.
+    // The command stays the bare binary (no `agy .`) so the server-side
+    // `shutil.which` availability check still resolves it.
   },
   {
     id: 'copilot',

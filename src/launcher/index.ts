@@ -23,7 +23,7 @@ const PLUGIN_ID = 'xtralab:launcher';
  * The xtralab launcher plugin. Replaces the stock JupyterLab launcher
  * (which is disabled via `package.json`'s `jupyterlab.disabledExtensions`)
  * with an agent-focused dashboard: an optional initial prompt, a row of
- * agent buttons (Claude, Codex, Gemini, …), and a collapsible list of
+ * agent buttons (Claude, Codex, Antigravity, …), and a collapsible list of
  * changed files (clickable into the diff viewer) below them. Clicking an
  * agent opens a fresh terminal and pipes the agent's command into it; if
  * the prompt textarea is non-empty, the prompt is shell-quoted and

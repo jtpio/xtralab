@@ -55,7 +55,7 @@ The bundled labextension adds:
   upstream git panel shows xtralab's diffs: `@pierre/diffs` for text and
   notebooks, and an `<img>`-based 2-up/swipe/onion-skin view for images.
 - An agent launcher with a prompt textarea, a row of agent buttons (Claude,
-  Codex, Gemini, Copilot, Goose, OpenCode, Kiro, Mistral Vibe), and a
+  Codex, Antigravity, Copilot, Goose, OpenCode, Kiro, Mistral Vibe), and a
   collapsible list of changed files. Buttons are filtered to agents installed
   on the machine; a typed prompt is shell-quoted and spliced into the launch
   command for agents that accept one.

@@ -1,22 +1,106 @@
 import { LabIcon } from '@jupyterlab/ui-components';
 
 /**
- * Brand icons for the agent launcher cards. The artwork is taken verbatim
+ * Brand icons for the agent launcher cards. Most marks are taken verbatim
  * from `jupyter-ai-contrib/jupyter-ai-acp-client`
- * (`jupyter_ai_acp_client/static/*.svg`, BSD-3-Clause), with small
- * adjustments to play nicely with JupyterLab themes:
+ * (`jupyter_ai_acp_client/static/*.svg`, BSD-3-Clause); Antigravity post-dates
+ * that set, so its mark is the official glyph from `@lobehub/icons-static-svg`
+ * (MIT) — we ship the brand-colored `antigravity-color` variant so Antigravity
+ * reads as a multi-color Google mark, occupying the slot the Gemini icon used
+ * to fill before the upstream Gemini CLI sunset. Small adjustments are applied
+ * to play nicely with JupyterLab themes:
  *   - Monochrome marks (Codex, Copilot, Goose) use `currentColor` so they
  *     inherit the surrounding launcher card's text color rather than
  *     hard-coding black, which disappears on the dark theme.
  *   - The Goose mark upstream is rendered on a white rounded rect; we drop
  *     the rect so the silhouette can sit on the launcher card directly.
  *   - SVG ids that would collide if two copies of the same artwork ended up
- *     on the page (gradient/mask defs) are namespaced under `xtralab-…`.
+ *     on the page (gradient/mask/filter defs) are namespaced under
+ *     `xtralab-…`.
  *
- * Brand-colored icons (Claude, Gemini, Kiro, Mistral Vibe, OpenCode) keep
+ * Brand-colored icons (Antigravity, Claude, Kiro, Mistral Vibe, OpenCode) keep
  * their upstream colors; the dark/light contrast of the launcher card behind
  * them is the same as on `jupyter-ai-acp-client`.
  */
+
+export const antigravityIcon = new LabIcon({
+  name: 'xtralab:agent-antigravity',
+  svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <mask id="xtralab-antigravity-mask" height="23" maskUnits="userSpaceOnUse" width="24" x="0" y="1">
+    <path d="M21.751 22.607c1.34 1.005 3.35.335 1.508-1.508C17.73 15.74 18.904 1 12.037 1 5.17 1 6.342 15.74.815 21.1c-2.01 2.009.167 2.511 1.507 1.506 5.192-3.517 4.857-9.714 9.715-9.714 4.857 0 4.522 6.197 9.714 9.715z" fill="#fff"/>
+  </mask>
+  <g mask="url(#xtralab-antigravity-mask)">
+    <g filter="url(#xtralab-antigravity-blur-1)">
+      <path d="M-1.018-3.992c-.408 3.591 2.686 6.89 6.91 7.37 4.225.48 7.98-2.043 8.387-5.633.408-3.59-2.686-6.89-6.91-7.37-4.225-.479-7.98 2.043-8.387 5.633z" fill="#FFE432"/>
+    </g>
+    <g filter="url(#xtralab-antigravity-blur-2)">
+      <path d="M15.269 7.747c1.058 4.557 5.691 7.374 10.348 6.293 4.657-1.082 7.575-5.653 6.516-10.21-1.058-4.556-5.691-7.374-10.348-6.292-4.657 1.082-7.575 5.653-6.516 10.21z" fill="#FC413D"/>
+    </g>
+    <g filter="url(#xtralab-antigravity-blur-3)">
+      <path d="M-12.443 10.804c1.338 4.703 7.36 7.11 13.453 5.378 6.092-1.733 9.947-6.95 8.61-11.652C8.282-.173 2.26-2.58-3.833-.848-9.925.884-13.78 6.1-12.443 10.804z" fill="#00B95C"/>
+    </g>
+    <g filter="url(#xtralab-antigravity-blur-4)">
+      <path d="M-12.443 10.804c1.338 4.703 7.36 7.11 13.453 5.378 6.092-1.733 9.947-6.95 8.61-11.652C8.282-.173 2.26-2.58-3.833-.848-9.925.884-13.78 6.1-12.443 10.804z" fill="#00B95C"/>
+    </g>
+    <g filter="url(#xtralab-antigravity-blur-5)">
+      <path d="M-7.608 14.703c3.352 3.424 9.126 3.208 12.896-.483 3.77-3.69 4.108-9.459.756-12.883C2.69-2.087-3.083-1.871-6.853 1.82c-3.77 3.69-4.108 9.458-.755 12.883z" fill="#00B95C"/>
+    </g>
+    <g filter="url(#xtralab-antigravity-blur-6)">
+      <path d="M9.932 27.617c1.04 4.482 5.384 7.303 9.7 6.3 4.316-1.002 6.971-5.448 5.93-9.93-1.04-4.483-5.384-7.304-9.7-6.301-4.316 1.002-6.971 5.448-5.93 9.93z" fill="#3186FF"/>
+    </g>
+    <g filter="url(#xtralab-antigravity-blur-7)">
+      <path d="M2.572-8.185C.392-3.329 2.778 2.472 7.9 4.771c5.122 2.3 11.042.227 13.222-4.63 2.18-4.855-.205-10.656-5.327-12.955-5.122-2.3-11.042-.227-13.222 4.63z" fill="#FBBC04"/>
+    </g>
+    <g filter="url(#xtralab-antigravity-blur-8)">
+      <path d="M-3.267 38.686c-5.277-2.072 3.742-19.117 5.984-24.83 2.243-5.712 8.34-8.664 13.616-6.592 5.278 2.071 11.533 13.482 9.29 19.195-2.242 5.713-23.613 14.298-28.89 12.227z" fill="#3186FF"/>
+    </g>
+    <g filter="url(#xtralab-antigravity-blur-9)">
+      <path d="M28.71 17.471c-1.413 1.649-5.1.808-8.236-1.878-3.135-2.687-4.531-6.201-3.118-7.85 1.412-1.649 5.1-.808 8.235 1.878s4.532 6.2 3.119 7.85z" fill="#749BFF"/>
+    </g>
+    <g filter="url(#xtralab-antigravity-blur-10)">
+      <path d="M18.163 9.077c5.81 3.93 12.502 4.19 14.946.577 2.443-3.612-.287-9.727-6.098-13.658-5.81-3.931-12.502-4.19-14.946-.577-2.443 3.612.287 9.727 6.098 13.658z" fill="#FC413D"/>
+    </g>
+    <g filter="url(#xtralab-antigravity-blur-11)">
+      <path d="M-.915 2.684c-1.44 3.473-.97 6.967 1.05 7.804 2.02.837 4.824-1.3 6.264-4.772 1.44-3.473.97-6.967-1.05-7.804-2.02-.837-4.824 1.3-6.264 4.772z" fill="#FFEE48"/>
+    </g>
+  </g>
+  <defs>
+    <filter color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="17.587" id="xtralab-antigravity-blur-1" width="19.838" x="-3.288" y="-11.917">
+      <feGaussianBlur stdDeviation="1.117"/>
+    </filter>
+    <filter color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="38.565" id="xtralab-antigravity-blur-2" width="38.9" x="4.251" y="-13.493">
+      <feGaussianBlur stdDeviation="5.4"/>
+    </filter>
+    <filter color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="36.517" id="xtralab-antigravity-blur-3" width="40.955" x="-21.889" y="-10.592">
+      <feGaussianBlur stdDeviation="4.591"/>
+    </filter>
+    <filter color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="36.517" id="xtralab-antigravity-blur-4" width="40.955" x="-21.889" y="-10.592">
+      <feGaussianBlur stdDeviation="4.591"/>
+    </filter>
+    <filter color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="36.595" id="xtralab-antigravity-blur-5" width="36.632" x="-19.099" y="-10.278">
+      <feGaussianBlur stdDeviation="4.591"/>
+    </filter>
+    <filter color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="34.087" id="xtralab-antigravity-blur-6" width="33.533" x=".981" y="8.758">
+      <feGaussianBlur stdDeviation="4.363"/>
+    </filter>
+    <filter color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="35.276" id="xtralab-antigravity-blur-7" width="35.978" x="-6.143" y="-21.659">
+      <feGaussianBlur stdDeviation="3.954"/>
+    </filter>
+    <filter color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="46.523" id="xtralab-antigravity-blur-8" width="45.114" x="-11.96" y="-.46">
+      <feGaussianBlur stdDeviation="3.531"/>
+    </filter>
+    <filter color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="24.054" id="xtralab-antigravity-blur-9" width="25.094" x="10.485" y=".58">
+      <feGaussianBlur stdDeviation="3.159"/>
+    </filter>
+    <filter color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="30.007" id="xtralab-antigravity-blur-10" width="33.508" x="5.833" y="-12.467">
+      <feGaussianBlur stdDeviation="2.669"/>
+    </filter>
+    <filter color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="26.151" id="xtralab-antigravity-blur-11" width="22.194" x="-8.355" y="-8.876">
+      <feGaussianBlur stdDeviation="3.303"/>
+    </filter>
+  </defs>
+</svg>`
+});
 
 export const claudeIcon = new LabIcon({
   name: 'xtralab:agent-claude',
@@ -37,20 +121,6 @@ export const copilotIcon = new LabIcon({
   svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
   <path d="M7.998 15.035c-4.562 0-7.873-2.914-7.998-3.749V9.338c.085-.628.677-1.686 1.588-2.065.013-.07.024-.143.036-.218.029-.183.06-.384.126-.612-.201-.508-.254-1.084-.254-1.656 0-.87.128-1.769.693-2.484.579-.733 1.494-1.124 2.724-1.261 1.206-.134 2.262.034 2.944.765.05.053.096.108.139.165.044-.057.094-.112.143-.165.682-.731 1.738-.899 2.944-.765 1.23.137 2.145.528 2.724 1.261.566.715.693 1.614.693 2.484 0 .572-.053 1.148-.254 1.656.066.228.098.429.126.612.012.076.024.148.037.218.924.385 1.522 1.471 1.591 2.095v1.872c0 .766-3.351 3.795-8.002 3.795Zm0-1.485c2.28 0 4.584-1.11 5.002-1.433V7.862l-.023-.116c-.49.21-1.075.291-1.727.291-1.146 0-2.059-.327-2.71-.991A3.222 3.222 0 0 1 8 6.303a3.24 3.24 0 0 1-.544.743c-.65.664-1.563.991-2.71.991-.652 0-1.236-.081-1.727-.291l-.023.116v4.255c.419.323 2.722 1.433 5.002 1.433ZM6.762 2.83c-.193-.206-.637-.413-1.682-.297-1.019.113-1.479.404-1.713.7-.247.312-.369.789-.369 1.554 0 .793.129 1.171.308 1.371.162.181.519.379 1.442.379.853 0 1.339-.235 1.638-.54.315-.322.527-.827.617-1.553.117-.935-.037-1.395-.241-1.614Zm4.155-.297c-1.044-.116-1.488.091-1.681.297-.204.219-.359.679-.242 1.614.091.726.303 1.231.618 1.553.299.305.784.54 1.638.54.922 0 1.28-.198 1.442-.379.179-.2.308-.578.308-1.371 0-.765-.123-1.242-.37-1.554-.233-.296-.693-.587-1.713-.7Z"/>
   <path d="M6.25 9.037a.75.75 0 0 1 .75.75v1.501a.75.75 0 0 1-1.5 0V9.787a.75.75 0 0 1 .75-.75Zm4.25.75v1.501a.75.75 0 0 1-1.5 0V9.787a.75.75 0 0 1 1.5 0Z"/>
-</svg>`
-});
-
-export const geminiIcon = new LabIcon({
-  name: 'xtralab:agent-gemini',
-  svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none">
-  <path d="M16 8.016A8.522 8.522 0 008.016 16h-.032A8.521 8.521 0 000 8.016v-.032A8.521 8.521 0 007.984 0h.032A8.522 8.522 0 0016 7.984v.032z" fill="url(#xtralab-gemini-radial)"/>
-  <defs>
-    <radialGradient id="xtralab-gemini-radial" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(16.1326 5.4553 -43.70045 129.2322 1.588 6.503)">
-      <stop offset=".067" stop-color="#9168C0"/>
-      <stop offset=".343" stop-color="#5684D1"/>
-      <stop offset=".672" stop-color="#1BA1E3"/>
-    </radialGradient>
-  </defs>
 </svg>`
 });
 
@@ -112,10 +182,10 @@ export const opencodeIcon = new LabIcon({
  * `iconSvg` or fall back to the generic terminal icon.
  */
 export const BUILTIN_AGENT_ICONS: Record<string, LabIcon> = {
+  antigravity: antigravityIcon,
   claude: claudeIcon,
   codex: codexIcon,
   copilot: copilotIcon,
-  gemini: geminiIcon,
   goose: gooseIcon,
   kiro: kiroIcon,
   'mistral-vibe': mistralVibeIcon,
