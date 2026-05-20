@@ -119,6 +119,11 @@
         "typescript": "~5.5.4",
         "yjs": "^13.5.0"
     },
+    "pnpm": {
+        "ignoredBuiltDependencies": [
+            "@fortawesome/fontawesome-free"
+        ]
+    },
     "sideEffects": [
         "style/*.css",
         "style/index.js"
