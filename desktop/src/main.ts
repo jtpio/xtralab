@@ -1070,7 +1070,18 @@ function startSupervisor(
   projectEnvironment: ProjectRuntimeEnvironment | null
 ): SupervisorHandle {
   const command = managedEnvironment.xtralabPath;
-  const args = ['serve', '--json', '--timeout', '120', '--cwd', folderPath];
+  const collabDir = getProjectCollabDir(folderPath);
+  mkdirSync(collabDir, { recursive: true });
+  const args = [
+    'serve',
+    '--json',
+    '--timeout',
+    '120',
+    '--cwd',
+    folderPath,
+    '--collab-ystore-db',
+    path.join(collabDir, 'ystore.db')
+  ];
 
   log(`Starting supervisor: ${command} ${args.join(' ')}`);
   log(`Supervisor cwd: ${folderPath}`);
@@ -1626,6 +1637,20 @@ function getProjectKernelDataPath(folderPath: string): string {
     .digest('hex')
     .slice(0, 16);
   return path.join(app.getPath('userData'), 'project-kernels', hash);
+}
+
+// Per-folder collaboration state directory. jupyter-server-ydoc creates two
+// files alongside whichever folder the user opens (.jupyter_ystore.db and
+// .jupyter/collaboration_sessions.json). We relocate them under userData so
+// they don't pollute the user's project (and don't show up as untracked in
+// git). The directory is keyed by a hash of the folder path so each opened
+// folder gets its own isolated Y-history and session set.
+function getProjectCollabDir(folderPath: string): string {
+  const hash = createHash('sha256')
+    .update(folderPath)
+    .digest('hex')
+    .slice(0, 16);
+  return path.join(app.getPath('userData'), 'jupyter', 'collab', hash);
 }
 
 function isPathInside(parentPath: string, childPath: string): boolean {

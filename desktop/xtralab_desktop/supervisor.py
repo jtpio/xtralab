@@ -12,6 +12,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import IO, Any
 
@@ -143,11 +144,13 @@ class JupyterLabSupervisor:
         cwd: str | os.PathLike[str] | None = None,
         env: dict[str, str] | None = None,
         ready_timeout: float = 30.0,
+        extra_args: Sequence[str] = (),
     ) -> None:
         self.python = python
         self.cwd = cwd
         self.env = env
         self.ready_timeout = ready_timeout
+        self.extra_args: tuple[str, ...] = tuple(extra_args)
         self.port = free_port()
         self.mcp_port = free_port()
         self.token = secrets.token_hex(19)
@@ -176,6 +179,7 @@ class JupyterLabSupervisor:
         ]
         if self.cwd is not None:
             command.append(f"--ServerApp.root_dir={os.fspath(self.cwd)}")
+        command.extend(self.extra_args)
         return command
 
     def start(

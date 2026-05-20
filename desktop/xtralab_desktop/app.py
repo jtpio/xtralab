@@ -38,8 +38,21 @@ def _serve_main(args: argparse.Namespace) -> int:
             print(f"error: not a directory: {cwd}", file=sys.stderr)
             return 1
 
+    extra_args: list[str] = []
+    if args.collab_ystore_db is not None:
+        db_path = Path(args.collab_ystore_db).expanduser().resolve()
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        # SQLiteYStore is a configurable traitlet shipped by
+        # jupyter-server-ydoc; this flag redirects the Y-updates SQLite
+        # database away from the default ``.jupyter_ystore.db`` in cwd.
+        extra_args.append(f"--SQLiteYStore.db_path={db_path}")
+
     try:
-        supervisor = JupyterLabSupervisor(cwd=cwd, ready_timeout=args.timeout)
+        supervisor = JupyterLabSupervisor(
+            cwd=cwd,
+            ready_timeout=args.timeout,
+            extra_args=extra_args,
+        )
         info = supervisor.start(stdout=sys.stderr, stderr=sys.stderr)
     except (OSError, RuntimeError) as error:
         print(f"error: {error}", file=sys.stderr)
@@ -91,6 +104,13 @@ def _build_parser() -> argparse.ArgumentParser:
     serve.add_argument(
         "--cwd",
         help="directory to use as the JupyterLab server root",
+    )
+    serve.add_argument(
+        "--collab-ystore-db",
+        help=(
+            "path to the jupyter-server-ydoc SQLite database "
+            "(default: '.jupyter_ystore.db' under --cwd)"
+        ),
     )
     serve.set_defaults(func=_serve_main)
     return parser
