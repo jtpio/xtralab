@@ -18,9 +18,8 @@ desktop/python/wheels/
 desktop/python/runtime/
 desktop/python/runtime.staging/
 
-# Yarn
-.yarn/cache
-.yarn/install-state.gz
+# pnpm
+.pnpm-store/
 
 # Python
 __pycache__/

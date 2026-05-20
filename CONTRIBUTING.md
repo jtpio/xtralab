@@ -3,12 +3,15 @@
 ## Development
 
 Local development requires Python (with [uv](https://docs.astral.sh/uv/)) and
-Node (with `jlpm` from JupyterLab).
+Node with [pnpm](https://pnpm.io/). The repo pins pnpm via the
+`packageManager` field in `package.json`; the easiest way to get a matching
+pnpm is `corepack enable && corepack prepare --activate`, or install it
+manually with `npm install -g pnpm`.
 
 ```bash
 uv pip install -e .
-jlpm
-jlpm build
+pnpm install
+pnpm build
 ```
 
 Then start JupyterLab the usual way to pick up the dev build.
@@ -38,8 +41,8 @@ meta package and does not include this helper.
 
 ```bash
 cd desktop
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 To produce an unsigned, distributable installer (DMG on macOS, AppImage on
@@ -47,11 +50,11 @@ Linux) using [Electron Forge](https://www.electronforge.io/):
 
 ```bash
 cd desktop
-npm run make
+pnpm make
 ```
 
 The output is written under `desktop/out/make/`. To produce an unpacked
-`.app` folder without an installer wrapper, use `npm run package` instead.
+`.app` folder without an installer wrapper, use `pnpm package` instead.
 
 Because the build is unsigned, macOS Gatekeeper will block the first launch
 with "Apple cannot check it for malicious software." Right-click the app and
@@ -60,16 +63,16 @@ to dismiss the warning once.
 
 ### Bundled Python runtime
 
-`npm run dev`, `npm run package`, and `npm run make` all build a locked,
+`pnpm dev`, `pnpm package`, and `pnpm make` all build a locked,
 offline Python bundle before launching or packaging Electron:
 
-- `npm run build:lock` exports the resolved Python dependencies from
+- `pnpm build:lock` exports the resolved Python dependencies from
   `desktop/uv.lock` to `desktop/python/wheels/requirements.txt` with hashes.
-- `npm run build:wheelhouse` downloads the matching wheels into
+- `pnpm build:wheelhouse` downloads the matching wheels into
   `desktop/python/wheels/`.
-- `npm run build:python` builds the local `xtralab` and `xtralab-desktop`
+- `pnpm build:python` builds the local `xtralab` and `xtralab-desktop`
   wheels into that wheelhouse.
-- `npm run build:runtime` prepares `desktop/python/runtime/` and installs the
+- `pnpm build:runtime` prepares `desktop/python/runtime/` and installs the
   wheelhouse into it with `--no-index`.
 
 Electron Forge copies `desktop/python/runtime/` into the packaged app's
@@ -88,7 +91,7 @@ such as `~/.local/bin`, `/opt/homebrew/bin`, and `/usr/local/bin`.
 
 ### Dev vs release variants
 
-Local builds — both `npm run dev` and `npm run make` — are tagged as
+Local builds — both `pnpm dev` and `pnpm make` — are tagged as
 **xtralab dev** (bundle id `io.github.jtpio.xtralab.dev`, app data under
 `~/Library/Application Support/xtralab dev/`) so they coexist with a CI-built
 `xtralab.app` (bundle id `io.github.jtpio.xtralab`) without sharing dock
@@ -101,7 +104,7 @@ ship), set the variant explicitly:
 
 ```bash
 cd desktop
-XTRALAB_BUILD_VARIANT=release npm run make
+XTRALAB_BUILD_VARIANT=release pnpm make
 ```
 
 ### Continuous integration builds

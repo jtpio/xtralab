@@ -50,7 +50,7 @@ function findLatestWheel(prefix, label) {
     });
   if (candidates.length === 0) {
     throw new Error(
-      `No ${label} wheel found in ${wheelsDir}. Run "npm run build:python" first.`
+      `No ${label} wheel found in ${wheelsDir}. Run "pnpm build:python" first.`
     );
   }
   candidates.sort((left, right) => {
@@ -64,7 +64,7 @@ function findLatestWheel(prefix, label) {
 
 if (!existsSync(requirementsPath)) {
   throw new Error(
-    `Bundled requirements.txt not found at ${requirementsPath}. Run "npm run build:lock" first.`
+    `Bundled requirements.txt not found at ${requirementsPath}. Run "pnpm build:lock" first.`
   );
 }
 
