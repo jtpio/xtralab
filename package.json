@@ -119,11 +119,6 @@
         "typescript": "~5.5.4",
         "yjs": "^13.5.0"
     },
-    "pnpm": {
-        "overrides": {
-            "lib0": "0.2.111"
-        }
-    },
     "sideEffects": [
         "style/*.css",
         "style/index.js"
