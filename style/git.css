@@ -672,7 +672,6 @@
   width: 100%;
   position: relative;
   display: flex;
-  cursor: ew-resize;
   user-select: none;
   touch-action: none;
 }
@@ -685,9 +684,10 @@
  * drawn on top. White core with dark outline + soft shadow keeps it
  * legible against any image, light or dark.
  *
- * `pointer-events: none` on the line itself lets the drag handler on
- * the frame receive pointerdown anywhere — the handles re-enable
- * pointer events so cursor/focus rings still work over them.
+ * The divider and its handles are the only elements that show the
+ * `ew-resize` cursor — clicks anywhere over the image still bubble up
+ * to the frame's drag handler, but the cursor only signals "drag me"
+ * over the actual control affordances.
  */
 .jp-xtralab-ImageDiff-swipeDivider {
   position: absolute;
@@ -699,7 +699,7 @@
   box-shadow:
     0 0 0 1px rgb(0 0 0 / 55%),
     0 0 6px rgb(0 0 0 / 45%);
-  pointer-events: none;
+  cursor: ew-resize;
   outline: none;
 }
 
@@ -730,7 +730,7 @@
   align-items: center;
   justify-content: center;
   gap: 3px;
-  pointer-events: none;
+  cursor: ew-resize;
 }
 
 .jp-xtralab-ImageDiff-swipeDividerHandle.jp-mod-top {
