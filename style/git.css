@@ -633,6 +633,7 @@
 .jp-xtralab-ImageDiff-stack {
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
   width: 100%;
   display: grid;
   place-items: center;
@@ -647,6 +648,114 @@
   width: auto;
   height: auto;
   object-fit: contain;
+}
+
+/*
+ * Swipe view wraps the stack in a positioning context so the divider
+ * can be overlaid without joining the grid. Keeping the divider as a
+ * sibling of `.jp-xtralab-ImageDiff-stack` (rather than a child)
+ * preserves the stack's existing flex sizing — it stays the only flex
+ * item the interactive column needs to shrink, so `max-height: 100%`
+ * on the image still keeps big revisions inside the available area.
+ *
+ * The whole frame is the drag target: pressing anywhere over the image
+ * sets the divider to that x position and drag-tracks the pointer. The
+ * dedicated bottom slider was removed because its thumb sat on a
+ * narrow centered track that drifted out of sync with the wide
+ * divider, which felt off. Dragging directly on the image (GitHub /
+ * Pierre style) keeps cursor and divider visually aligned.
+ */
+.jp-xtralab-ImageDiff-swipeFrame {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  position: relative;
+  display: flex;
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
+}
+
+/*
+ * Swipe divider: a vertical line marking the boundary between the two
+ * clipped revisions. The natural seam between two clipped images is
+ * barely visible — especially on light content where it disappears into
+ * the background — so an explicit divider with high-contrast styling is
+ * drawn on top. White core with dark outline + soft shadow keeps it
+ * legible against any image, light or dark.
+ *
+ * `pointer-events: none` on the line itself lets the drag handler on
+ * the frame receive pointerdown anywhere — the handles re-enable
+ * pointer events so cursor/focus rings still work over them.
+ */
+.jp-xtralab-ImageDiff-swipeDivider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background-color: #fff;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 55%),
+    0 0 6px rgb(0 0 0 / 45%);
+  pointer-events: none;
+  outline: none;
+}
+
+.jp-xtralab-ImageDiff-swipeDivider:focus-visible {
+  box-shadow:
+    0 0 0 1px var(--jp-brand-color1),
+    0 0 0 3px rgb(33 150 243 / 35%),
+    0 0 6px rgb(0 0 0 / 45%);
+}
+
+/*
+ * Handle pucks at the top and bottom of the divider. The two arrows
+ * inside (left + right chevrons) signal that the line can be dragged
+ * sideways — matching GitHub's image diff swipe affordance.
+ */
+.jp-xtralab-ImageDiff-swipeDividerHandle {
+  position: absolute;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  margin-left: -14px;
+  border-radius: 50%;
+  background-color: #fff;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 55%),
+    0 2px 6px rgb(0 0 0 / 40%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.jp-xtralab-ImageDiff-swipeDividerHandle.jp-mod-top {
+  top: -14px;
+}
+
+.jp-xtralab-ImageDiff-swipeDividerHandle.jp-mod-bottom {
+  bottom: -14px;
+}
+
+/* Chevron triangles drawn with borders so no asset is needed. */
+.jp-xtralab-ImageDiff-swipeDividerArrow {
+  width: 0;
+  height: 0;
+  border-style: solid;
+}
+
+.jp-xtralab-ImageDiff-swipeDividerArrow.jp-mod-left {
+  border-width: 5px 5px 5px 0;
+  border-color: transparent #333 transparent transparent;
+}
+
+.jp-xtralab-ImageDiff-swipeDividerArrow.jp-mod-right {
+  border-width: 5px 0 5px 5px;
+  border-color: transparent transparent transparent #333;
 }
 
 .jp-xtralab-ImageDiff-slider {
