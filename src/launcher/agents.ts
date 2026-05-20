@@ -26,7 +26,7 @@ export interface IAgent {
    * the user types one into the launcher's prompt box. The semantics:
    *
    *   - `[]` → prompt is appended as a positional argument:
-   *     `<command> 'PROMPT'`. (Used by claude, codex, gemini, vibe.)
+   *     `<command> 'PROMPT'`. (Used by claude, codex, vibe.)
    *   - `['-i']` / `['--prompt']` → the prompt is preceded by a flag:
    *     `<command> -i 'PROMPT'`. (Used by copilot, opencode.)
    *   - `undefined` → the agent does not accept an initial prompt. The
@@ -75,13 +75,15 @@ export interface IAgentSettings {
 }
 
 /**
- * Default agent cards shipped with xtralab. The first eight mirror the
- * first-class personas in `jupyter-ai-contrib/jupyter-ai-acp-client` (which
- * is also where their icons come from), but use the bare CLI names a user
- * would type in a terminal rather than the ACP wrapper binaries that
- * project spawns. Antigravity (Google's agent-first IDE/CLI, `agy`) is
- * appended on top of that set. Anything not on the user's `$PATH` is
- * filtered out at activation time, so the wider list is harmless.
+ * Default agent cards shipped with xtralab. Seven of these (Claude, Codex,
+ * Copilot, Goose, OpenCode, Kiro, Mistral Vibe) mirror first-class personas
+ * in `jupyter-ai-contrib/jupyter-ai-acp-client` (which is also where their
+ * icons come from), but use the bare CLI names a user would type in a
+ * terminal rather than the ACP wrapper binaries that project spawns.
+ * Antigravity (Google's agent-first IDE/CLI, `agy`) takes the Google slot —
+ * Gemini CLI was dropped because Google is sunsetting it for consumer
+ * accounts on 2026-06-18. Anything not on the user's `$PATH` is filtered
+ * out at activation time, so the wider list is harmless.
  */
 const DEFAULTS: IAgent[] = [
   {
@@ -105,22 +107,12 @@ const DEFAULTS: IAgent[] = [
     promptArgs: []
   },
   {
-    id: 'gemini',
-    label: 'Gemini',
-    caption: 'Start the Gemini CLI in a new terminal.',
-    command: 'gemini',
-    icon: BUILTIN_AGENT_ICONS.gemini,
-    rank: 2,
-    requireAvailable: true,
-    promptArgs: []
-  },
-  {
     id: 'antigravity',
     label: 'Antigravity',
     caption: 'Open Google Antigravity from a new terminal.',
     command: 'agy',
     icon: BUILTIN_AGENT_ICONS.antigravity,
-    rank: 3,
+    rank: 2,
     requireAvailable: true
     // `agy` is the Antigravity launcher binary — a VS Code-derived editor
     // CLI that opens the Agent Manager / workspace, not a terminal REPL.
@@ -128,8 +120,7 @@ const DEFAULTS: IAgent[] = [
     // natural-language prompt form; like goose/kiro we omit promptArgs so a
     // typed prompt dims the button instead of being mangled into a path.
     // The command stays the bare binary (no `agy .`) so the server-side
-    // `shutil.which` availability check still resolves it. Ranked right
-    // after `gemini` to group Google's two agentic CLIs.
+    // `shutil.which` availability check still resolves it.
   },
   {
     id: 'copilot',
@@ -137,7 +128,7 @@ const DEFAULTS: IAgent[] = [
     caption: 'Start the GitHub Copilot CLI in a new terminal.',
     command: 'copilot',
     icon: BUILTIN_AGENT_ICONS.copilot,
-    rank: 4,
+    rank: 3,
     requireAvailable: true,
     // `-i "PROMPT"` is the documented way to start interactive mode and
     // auto-execute the prompt; `-p` exits after responding (non-interactive).
@@ -149,7 +140,7 @@ const DEFAULTS: IAgent[] = [
     caption: 'Start Goose in a new terminal.',
     command: 'goose',
     icon: BUILTIN_AGENT_ICONS.goose,
-    rank: 5,
+    rank: 4,
     requireAvailable: true
     // `goose` does not accept an inline interactive prompt; users would
     // need to type the prompt after `goose session` starts.
@@ -160,7 +151,7 @@ const DEFAULTS: IAgent[] = [
     caption: 'Start OpenCode in a new terminal.',
     command: 'opencode',
     icon: BUILTIN_AGENT_ICONS.opencode,
-    rank: 6,
+    rank: 5,
     requireAvailable: true,
     promptArgs: ['--prompt']
   },
@@ -170,7 +161,7 @@ const DEFAULTS: IAgent[] = [
     caption: 'Start the Kiro CLI in a new terminal.',
     command: 'kiro',
     icon: BUILTIN_AGENT_ICONS.kiro,
-    rank: 7,
+    rank: 6,
     requireAvailable: true
     // The Kiro chat session only takes initial prompts via the in-session
     // `/chat new <prompt>` slash command, not a CLI argument.
@@ -181,7 +172,7 @@ const DEFAULTS: IAgent[] = [
     caption: 'Start Mistral Vibe in a new terminal.',
     command: 'vibe',
     icon: BUILTIN_AGENT_ICONS['mistral-vibe'],
-    rank: 8,
+    rank: 7,
     requireAvailable: true,
     promptArgs: []
   }
