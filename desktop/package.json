@@ -37,6 +37,10 @@
     "overrides": {
       "tar": "^7.5.14",
       "@tootallnate/once": "^3.0.1"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "fs-xattr",
+      "macos-alias"
+    ]
   }
 }

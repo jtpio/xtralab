@@ -3,9 +3,11 @@
 
 Run by jupyter-releaser as an ``after-bump-version`` hook, after
 ``hatch version`` has updated the root ``package.json``. Propagates the new
-version to ``desktop/package.json``, ``desktop/package-lock.json``,
-``desktop/pyproject.toml``, and ``desktop/uv.lock`` so the "Publish X.Y.Z"
-commit picks them up.
+version to ``desktop/package.json``, ``desktop/pyproject.toml``, and
+``desktop/uv.lock`` so the "Publish X.Y.Z" commit picks them up.
+
+``desktop/pnpm-lock.yaml`` does not record the workspace's own version
+(only its dependencies), so no JS lockfile update is needed.
 """
 
 from __future__ import annotations
@@ -33,12 +35,6 @@ def main() -> None:
     pkg = json.loads(pkg_path.read_text())
     pkg["version"] = version
     write_json(pkg_path, pkg)
-
-    lock_path = DESKTOP / "package-lock.json"
-    lock = json.loads(lock_path.read_text())
-    lock["version"] = version
-    lock["packages"][""]["version"] = version
-    write_json(lock_path, lock)
 
     pyproject = DESKTOP / "pyproject.toml"
     text = pyproject.read_text()
