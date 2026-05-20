@@ -2,7 +2,7 @@
 requires = [
     "hatchling>=1.5.0",
     "hatch-jupyter-builder>=0.5",
-    "jupyter-builder>=0.0.8,<0.1.0a0",
+    "jupyter-builder>=1.0.0b1,<2.0.0a0",
     "hatch-nodejs-version>=0.3.2",
 ]
 build-backend = "hatchling.build"
@@ -36,7 +36,7 @@ classifiers = [
 ]
 dependencies = [
     "ajlab>=0.1.6",
-    "jupyterlab>=4.6.0a5",
+    "jupyterlab>=4.6.0b0",
     "jupyterlab-cursor-light>=1.0.2",
     "jupyterlab-cursor-dark>=1.0.2",
     "jupyterlab-day>=0.2.0",
@@ -111,7 +111,7 @@ version_cmd = "hatch version"
 [tool.jupyter-releaser.hooks]
 after-bump-version = ["python scripts/sync-desktop-version.py"]
 before-build-npm = [
-    "python -m pip install 'jupyter-builder>=0.0.8,<0.1.0a0'",
+    "python -m pip install 'jupyter-builder>=1.0.0b1,<2.0.0a0'",
     "npm install -g pnpm@10.28.0",
     "pnpm install",
     "pnpm build:prod"
