@@ -983,7 +983,7 @@ function getManagedEnvironment(): ManagedEnvironment {
 
   if (!existsSync(xtralabPath)) {
     throw new Error(
-      `Bundled Python runtime is missing at ${envDir}. Run "npm run build:runtime" before launching.`
+      `Bundled Python runtime is missing at ${envDir}. Run "pnpm build:runtime" before launching.`
     );
   }
 

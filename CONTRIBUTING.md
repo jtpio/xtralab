@@ -39,6 +39,12 @@ meta package and does not include this helper.
 
 ### Running and building
 
+`desktop/` uses pnpm with `node-linker=hoisted` (set in `desktop/.npmrc`)
+because Electron Forge requires a flat `node_modules` layout. Native modules
+needed by the DMG maker (`fs-xattr`, `macos-alias`) are allow-listed in
+`desktop/package.json` under `pnpm.onlyBuiltDependencies` so their postinstall
+scripts run; pnpm 10 blocks dependency install scripts by default.
+
 ```bash
 cd desktop
 pnpm install
