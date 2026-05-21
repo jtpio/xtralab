@@ -1,6 +1,6 @@
 # xtralab
 
-An opinionated JupyterLab meta-package.
+An opinionated JupyterLab meta-package for use with coding agents.
 
 Bundles a curated set of extensions, a path-first file browser, the
 `jupyterlab-git` panel with its text, notebook and image diffs rendered by
