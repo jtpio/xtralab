@@ -2599,6 +2599,7 @@ dependencies = [
     { name = "jupyterlab-night" },
     { name = "jupyterlab-quickopen" },
     { name = "jupyterlab-vim" },
+    { name = "psutil" },
     { name = "ty" },
 ]
 
@@ -2615,6 +2616,7 @@ requires-dist = [
     { name = "jupyterlab-night", specifier = ">=0.5.2" },
     { name = "jupyterlab-quickopen", specifier = ">=2.3.0" },
     { name = "jupyterlab-vim", specifier = ">=4.1.4" },
+    { name = "psutil", specifier = ">=5.9" },
     { name = "ty", specifier = ">=0.0.35" },
 ]
 
