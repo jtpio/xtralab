@@ -7,7 +7,7 @@ import gitPlugins from './git';
 import launcherPlugin from './launcher';
 import menusPlugin from './menus';
 import sidebarPlugin from './sidebar';
-import statusBarPlugin from './statusBar';
+import terminalsPlugin from './terminals';
 
 /**
  * Every plugin contributed by `xtralab`. The entry point of the
@@ -25,7 +25,7 @@ const plugins: JupyterFrontEndPlugin<unknown>[] = [
   launcherPlugin,
   menusPlugin,
   sidebarPlugin,
-  statusBarPlugin
+  terminalsPlugin
 ];
 
 export default plugins;

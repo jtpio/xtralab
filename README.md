@@ -59,6 +59,12 @@ The bundled labextension adds:
   collapsible list of changed files. Buttons are filtered to agents installed
   on the machine; a typed prompt is shell-quoted and spliced into the launch
   command for agents that accept one.
+- A **Terminals** panel in the left sidebar listing every running terminal
+  session by the real title its program published (e.g. an agent's name).
+  Clicking a row activates its tab or reopens the session — so a backgrounded
+  agent is one click away even after its tab is closed — and an inline button
+  shuts the session down. The header has buttons to open a new terminal or
+  shut every session down at once (with a confirmation).
 
 ## Language servers
 
