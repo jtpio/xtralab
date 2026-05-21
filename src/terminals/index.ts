@@ -102,10 +102,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
       onCreate
     });
 
-    // Sits just below the xtralab file browser (rank 50) so running
-    // agents are one click away near the top of the sidebar. Sessions
-    // restored from a previous lab run land via `runningChanged` once the
-    // terminal manager is ready, which the panel's `UseSignal` picks up.
+    // Added to the left sidebar. The shipped default tab order is set by
+    // the shell `layout` override in jupyter-config/labconfig (which puts
+    // this Terminals panel first, so running agents are one click away at
+    // the top of the sidebar); the `rank` below is only the in-code
+    // fallback used when that override is absent. Sessions restored from a
+    // previous lab run land via `runningChanged` once the terminal manager
+    // is ready, which the panel's `UseSignal` picks up.
     app.shell.add(panel, 'left', { rank: 60 });
     if (restorer) {
       restorer.add(panel, panel.id);

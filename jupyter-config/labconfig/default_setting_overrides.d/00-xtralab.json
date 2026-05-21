@@ -1,6 +1,23 @@
 {
   "@jupyterlab/application-extension:shell": {
-    "dockPanelPadding": false
+    "dockPanelPadding": false,
+    "activityBarPosition": "top",
+    "layout": {
+      "single": {
+        "xtralab-running-terminals": { "area": "left", "options": { "rank": 1 } },
+        "xtralab:file-browser": { "area": "left", "options": { "rank": 2 } },
+        "jp-git-sessions": { "area": "left", "options": { "rank": 3 } },
+        "filebrowser": { "area": "left", "options": { "rank": 4 } },
+        "jp-running-sessions": { "area": "left", "options": { "rank": 5 } }
+      },
+      "multiple": {
+        "xtralab-running-terminals": { "area": "left", "options": { "rank": 1 } },
+        "xtralab:file-browser": { "area": "left", "options": { "rank": 2 } },
+        "jp-git-sessions": { "area": "left", "options": { "rank": 3 } },
+        "filebrowser": { "area": "left", "options": { "rank": 4 } },
+        "jp-running-sessions": { "area": "left", "options": { "rank": 5 } }
+      }
+    }
   },
   "@jupyterlab/terminal-extension:plugin": {
     "fontFamily": "MesloLGS NF, ui-monospace, monospace"
