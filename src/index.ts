@@ -1,5 +1,6 @@
 import { JupyterFrontEndPlugin } from '@jupyterlab/application';
 
+import agentSessionsPlugin from './agentSessions';
 import fileBrowserPlugin from './fileBrowser';
 import editorBreadcrumbsPlugin from './editorBreadcrumbs';
 import editorIndentPlugin from './editorIndent';
@@ -7,7 +8,8 @@ import gitPlugins from './git';
 import launcherPlugin from './launcher';
 import menusPlugin from './menus';
 import sidebarPlugin from './sidebar';
-import statusBarPlugin from './statusBar';
+import terminalsPlugin from './terminals';
+import topBarPlugin from './topBar';
 
 /**
  * Every plugin contributed by `xtralab`. The entry point of the
@@ -18,6 +20,7 @@ import statusBarPlugin from './statusBar';
  * diff command + the jupyterlab-git diff providers), so it is spread in.
  */
 const plugins: JupyterFrontEndPlugin<unknown>[] = [
+  agentSessionsPlugin,
   editorBreadcrumbsPlugin,
   editorIndentPlugin,
   fileBrowserPlugin,
@@ -25,7 +28,8 @@ const plugins: JupyterFrontEndPlugin<unknown>[] = [
   launcherPlugin,
   menusPlugin,
   sidebarPlugin,
-  statusBarPlugin
+  terminalsPlugin,
+  topBarPlugin
 ];
 
 export default plugins;

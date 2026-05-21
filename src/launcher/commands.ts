@@ -3,21 +3,15 @@ import type { MainAreaWidget } from '@jupyterlab/apputils';
 import type { ITerminal } from '@jupyterlab/terminal';
 import { DisposableSet, type IDisposable } from '@lumino/disposable';
 
+import type { IAgentSessions } from '../agentSessions';
 import type { IAgent } from './agents';
 import { buildAgentInvocation } from './invocation';
+import { agentCommandId } from './tokens';
 
 /**
  * The command id for opening the launcher.
  */
 export const CREATE_LAUNCHER_COMMAND = 'launcher:create';
-
-/**
- * Build a JupyterLab command id for a given agent. Centralised so the
- * plugin and the launcher both use the same names.
- */
-export function agentCommandId(agentId: string): string {
-  return `xtralab:start-agent:${agentId}`;
-}
 
 /**
  * Register a JupyterLab command per agent. Each command opens a new
@@ -27,10 +21,16 @@ export function agentCommandId(agentId: string): string {
  * Returns a single disposable that tears down every registered command —
  * the launcher disposes the previous set before re-registering on settings
  * changes so the command palette stays in sync with the configured agents.
+ *
+ * When an `agentSessions` registry is supplied, each launch tags its terminal
+ * session with the agent's command, so the terminals panel can badge the row
+ * with the agent's logo immediately (before server-side detection confirms
+ * it).
  */
 export function registerAgentCommands(
   app: JupyterFrontEnd,
-  agents: IAgent[]
+  agents: IAgent[],
+  agentSessions: IAgentSessions | null = null
 ): IDisposable {
   const disposables = new DisposableSet();
   for (const agent of agents) {
@@ -53,6 +53,10 @@ export function registerAgentCommands(
         await main.revealed;
 
         const session = main.content.session;
+        // Optimistically tag the session with this agent so the terminals
+        // panel can show its logo right away; server-side detection takes
+        // over as the source of truth on its next poll.
+        agentSessions?.set(session.name, agent.command);
         const sendCommand = (): void => {
           session.send({
             type: 'stdin',

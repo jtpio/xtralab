@@ -59,9 +59,6 @@ importers:
       '@jupyterlab/settingregistry':
         specifier: ^4.6.0-beta.0
         version: 4.6.0-beta.0(react@18.3.1)
-      '@jupyterlab/statusbar':
-        specifier: ^4.6.0-beta.0
-        version: 4.6.0-beta.0
       '@jupyterlab/terminal':
         specifier: ^4.6.0-beta.0
         version: 4.6.0-beta.0(react@18.3.1)
