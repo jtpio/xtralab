@@ -63,8 +63,19 @@ The bundled labextension adds:
   session by the real title its program published (e.g. an agent's name).
   Clicking a row activates its tab or reopens the session — so a backgrounded
   agent is one click away even after its tab is closed — and an inline button
-  shuts the session down. The header has buttons to open a new terminal or
-  shut every session down at once (with a confirmation).
+  shuts the session down. The header's **+** button opens a menu to start any
+  installed agent (the same list and icons as the launcher) or a plain
+  terminal, and a stop button shuts every session down at once (with a
+  confirmation). Each row is badged with the logo of the agent running inside
+  it — detected from the session's own processes, so it works whether you
+  launched the agent from xtralab or typed it into a plain terminal, and
+  reverts to the terminal icon once the agent exits.
+- Left and right **sidebar toggle buttons** in the top bar — a left-sidebar
+  icon just after the Jupyter logo and a right-sidebar icon at the far edge.
+  They run JupyterLab's `application:toggle-left-area` /
+  `application:toggle-right-area` commands and light up while their sidebar is
+  open. (The right area is empty by default, so its button stays disabled
+  until a widget is moved there.)
 
 ## Language servers
 

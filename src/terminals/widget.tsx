@@ -5,6 +5,7 @@ import {
 import {
   addIcon,
   closeIcon,
+  LabIcon,
   ReactWidget,
   stopIcon,
   terminalIcon,
@@ -40,6 +41,7 @@ export class RunningTerminals extends ReactWidget {
     super();
     this._registry = options.registry;
     this._trans = options.trans ?? nullTranslator.load('jupyterlab');
+    this._iconForCommand = options.iconForCommand;
     this._onActivate = options.onActivate;
     this._onShutdown = options.onShutdown;
     this._onShutdownAll = options.onShutdownAll;
@@ -68,6 +70,7 @@ export class RunningTerminals extends ReactWidget {
           <RunningTerminalsComponent
             registry={this._registry}
             trans={this._trans}
+            iconForCommand={this._iconForCommand}
             onActivate={this._onActivate}
             onShutdown={this._onShutdown}
             onShutdownAll={this._onShutdownAll}
@@ -80,16 +83,24 @@ export class RunningTerminals extends ReactWidget {
 
   private _registry: SessionRegistry;
   private _trans: TranslationBundle;
+  private _iconForCommand: (command: string | null) => LabIcon;
   private _onActivate: (sessionName: string) => void;
   private _onShutdown: (sessionName: string) => void;
   private _onShutdownAll: () => void;
-  private _onCreate: () => void;
+  private _onCreate: (anchor: { x: number; y: number }) => void;
 }
 
 export namespace RunningTerminals {
   export interface IOptions {
     registry: SessionRegistry;
     trans?: TranslationBundle;
+    /**
+     * Resolve the running-agent command for a row (from
+     * `registry.agentCommandFor`) to the icon to show before its label —
+     * the agent's logo, or the plain terminal icon. Supplied by the plugin
+     * so the widget never imports the agent list.
+     */
+    iconForCommand: (command: string | null) => LabIcon;
     /**
      * Activate the named session's open tab, or reopen it in a fresh
      * terminal widget if no tab is currently attached.
@@ -102,21 +113,35 @@ export namespace RunningTerminals {
      * confirm with the user first, since it tears down all live sessions.
      */
     onShutdownAll: () => void;
-    /** Open a brand-new terminal. */
-    onCreate: () => void;
+    /**
+     * Activate the "+" button, anchored at the given viewport coordinates
+     * (the bottom-left of the button). The plugin decides what to show
+     * there — a menu of agents plus a plain terminal, or just a new
+     * terminal when no agents are available — so the panel only reports
+     * where the button is and never imports the command/menu machinery.
+     */
+    onCreate: (anchor: { x: number; y: number }) => void;
   }
 }
 
 function RunningTerminalsComponent(props: {
   registry: SessionRegistry;
   trans: TranslationBundle;
+  iconForCommand: (command: string | null) => LabIcon;
   onActivate: (sessionName: string) => void;
   onShutdown: (sessionName: string) => void;
   onShutdownAll: () => void;
-  onCreate: () => void;
+  onCreate: (anchor: { x: number; y: number }) => void;
 }): React.ReactElement {
-  const { registry, trans, onActivate, onShutdown, onShutdownAll, onCreate } =
-    props;
+  const {
+    registry,
+    trans,
+    iconForCommand,
+    onActivate,
+    onShutdown,
+    onShutdownAll,
+    onCreate
+  } = props;
   const names = registry.sessionNames();
 
   return (
@@ -137,9 +162,16 @@ function RunningTerminalsComponent(props: {
           <button
             type="button"
             className="jp-xtralab-Terminals-action jp-xtralab-Terminals-new"
-            onClick={onCreate}
+            onClick={event => {
+              // Anchor whatever the plugin shows (usually an agent menu) to
+              // the button's bottom-left, in viewport coordinates — what
+              // `Menu.open(x, y)` expects.
+              const rect = event.currentTarget.getBoundingClientRect();
+              onCreate({ x: rect.left, y: rect.bottom });
+            }}
             title={trans.__('New Terminal')}
             aria-label={trans.__('New Terminal')}
+            aria-haspopup="menu"
           >
             <addIcon.react tag="span" verticalAlign="middle" />
           </button>
@@ -157,6 +189,11 @@ function RunningTerminalsComponent(props: {
             const tooltip = hasWidget
               ? trans.__('Activate %1', label)
               : trans.__('Reopen %1', label);
+            // The running agent's logo (e.g. Claude), or the plain terminal
+            // icon when nothing recognised is running in the session.
+            const RowIcon = iconForCommand(
+              registry.agentCommandFor(name)
+            ).react;
             return (
               <li key={name} className="jp-xtralab-Terminals-item">
                 <button
@@ -166,7 +203,7 @@ function RunningTerminalsComponent(props: {
                   title={tooltip}
                   aria-label={tooltip}
                 >
-                  <terminalIcon.react tag="span" verticalAlign="middle" />
+                  <RowIcon tag="span" verticalAlign="middle" />
                   <span className="jp-xtralab-Terminals-item-label">
                     {label}
                   </span>

@@ -6,7 +6,10 @@ import {
 import { Dialog, showDialog } from '@jupyterlab/apputils';
 import { ITerminalTracker } from '@jupyterlab/terminal';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
+import { LabIcon, MenuSvg, terminalIcon } from '@jupyterlab/ui-components';
 
+import { IAgentSessions } from '../agentSessions';
+import { agentCommandId, IAgentRegistry } from '../launcher/tokens';
 import { SessionRegistry } from './model';
 import { RunningTerminals } from './widget';
 
@@ -27,8 +30,15 @@ const PLUGIN_ID = 'xtralab:terminals';
  * Clicking a row activates the existing tab if one is open, or reopens
  * the session in a fresh terminal widget (`terminal:open`). The inline
  * `×` button shuts the session down on the server. The header carries a
- * `+` button to open a brand-new terminal (`terminal:create-new`) and a
- * stop button to shut every session down at once (after a confirmation).
+ * `+` button and a stop button (the latter shuts every session down at
+ * once, after a confirmation).
+ *
+ * The `+` button drops down a menu — built from the launcher's shared
+ * `IAgentRegistry` — listing each available agent (Claude, Codex, …)
+ * followed by a plain terminal, so starting an agent session is as
+ * consistent here as in the launcher and reuses the very same registered
+ * commands and icons. When the launcher is disabled or no agents are
+ * installed, the button falls back to opening a plain terminal directly.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
@@ -36,15 +46,37 @@ const plugin: JupyterFrontEndPlugin<void> = {
     'A left-sidebar panel listing every running terminal session by its real (program-published) title, with activate/reopen, shutdown and new-terminal actions.',
   autoStart: true,
   requires: [ITerminalTracker],
-  optional: [ILayoutRestorer, ITranslator],
+  optional: [ILayoutRestorer, ITranslator, IAgentRegistry, IAgentSessions],
   activate: (
     app: JupyterFrontEnd,
     tracker: ITerminalTracker,
     restorer: ILayoutRestorer | null,
-    translator: ITranslator | null
+    translator: ITranslator | null,
+    agentRegistry: IAgentRegistry | null,
+    agentSessions: IAgentSessions | null
   ): void => {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
-    const registry = new SessionRegistry(app.serviceManager, tracker);
+
+    // Resolve a session's running-agent command to an icon: the matching
+    // agent's logo, or the plain terminal icon when nothing (recognised) is
+    // running. Reads `agentRegistry.agents` live so it tracks settings
+    // changes. Used by the panel to badge each row.
+    const iconForCommand = (command: string | null): LabIcon => {
+      if (!command) {
+        return terminalIcon;
+      }
+      const agent = agentRegistry?.agents.find(a => a.command === command);
+      return agent?.icon ?? terminalIcon;
+    };
+
+    const registry = new SessionRegistry({
+      serviceManager: app.serviceManager,
+      tracker,
+      agentSessions,
+      // The commands the server should look for, derived live from the
+      // current agent list so it tracks settings changes.
+      detectCommands: () => agentRegistry?.agents.map(a => a.command) ?? []
+    });
 
     const onActivate = (name: string): void => {
       // `terminal:open` is the upstream entry point that handles both
@@ -89,13 +121,42 @@ const plugin: JupyterFrontEndPlugin<void> = {
         });
     };
 
-    const onCreate = (): void => {
-      void app.commands.execute('terminal:create-new');
+    // The header "+" button. With the launcher's agent registry available
+    // it drops down a menu of the available agents (reusing their registered
+    // `xtralab:start-agent:<id>` commands, so the icons and labels match the
+    // launcher exactly) followed by a separator and a plain terminal. Built
+    // lazily and repopulated on each open so it always reflects the current,
+    // settings-driven agent list. Without the registry (launcher disabled)
+    // or with no agents installed, there is nothing to choose between, so
+    // the button keeps the original one-click "new terminal" behavior.
+    //
+    // `MenuSvg` (not the bare Lumino `Menu`) is what every JupyterLab menu
+    // uses: its renderer applies the `menuItem` LabIcon stylesheet, which
+    // sizes the agent icons to 16px and centers them vertically — the bare
+    // `Menu` renders the raw, oversized, misaligned SVGs.
+    let newMenu: MenuSvg | null = null;
+    const onCreate = (anchor: { x: number; y: number }): void => {
+      const agents = agentRegistry?.agents ?? [];
+      if (agents.length === 0) {
+        void app.commands.execute('terminal:create-new');
+        return;
+      }
+      if (!newMenu) {
+        newMenu = new MenuSvg({ commands: app.commands });
+      }
+      newMenu.clearItems();
+      for (const agent of agents) {
+        newMenu.addItem({ command: agentCommandId(agent.id) });
+      }
+      newMenu.addItem({ type: 'separator' });
+      newMenu.addItem({ command: 'terminal:create-new' });
+      newMenu.open(anchor.x, anchor.y);
     };
 
     const panel = new RunningTerminals({
       registry,
       trans,
+      iconForCommand,
       onActivate,
       onShutdown,
       onShutdownAll,

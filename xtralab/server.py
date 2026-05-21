@@ -1,26 +1,49 @@
 """Server-side helpers for the xtralab labextension.
 
-Currently exposes a single endpoint, ``/xtralab/agents/availability``, which
-the launcher polls at activation to figure out which configured agent
-commands are present on ``$PATH``. The endpoint accepts a list of command
-strings (via JSON body or repeated ``command`` query parameters) and replies
-with the resolved binary path for each, or ``null`` when ``shutil.which``
-returns nothing.
+Two endpoints, both thin and opinion-free — the frontend owns the agent list
+(defaults + user settings) and just asks the server narrow questions:
 
-The endpoint is intentionally minimal — a thin ``which`` proxy. The frontend
-owns the agent list (defaults + user settings), so the server has no opinion
-about which commands matter; it only answers "is this binary on PATH".
+``/xtralab/agents/availability``
+    Which configured agent commands are present on ``$PATH``. Accepts a list
+    of command strings and replies with the resolved binary path for each, or
+    ``null`` when ``shutil.which`` returns nothing. Used by the launcher to
+    filter its agent cards.
+
+``/xtralab/terminals/agents``
+    Which of those commands is *currently running* inside each open terminal
+    session. For every live terminal the handler walks the shell's child
+    processes (via ``psutil``) and reports the first one whose command matches
+    one the caller asked about, or ``null`` when the session is sitting at its
+    prompt. The Terminals panel uses this to badge each row with the running
+    agent's logo — including agents the user started by hand, which the
+    frontend could not otherwise know about.
 """
 
 from __future__ import annotations
 
 import json
+import os
 from shutil import which
 
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.serverapp import ServerApp
 from jupyter_server.utils import url_path_join
 from tornado.web import authenticated
+
+try:
+    import psutil
+except ImportError:  # pragma: no cover - psutil is a declared dependency
+    psutil = None  # type: ignore[assignment]
+
+# Executables whose *identity* is their script argument rather than the
+# binary itself, e.g. ``node /path/to/claude`` or ``python -m foo``. For these
+# we look at the first non-flag argv token to recognise the agent; for every
+# other process we only trust its own name/argv[0]. This split is what keeps
+# ``vim claude`` (editing a file called ``claude``) from being mistaken for
+# the Claude agent while still recognising ``node …/bin/claude``.
+_INTERPRETERS = frozenset(
+    {"node", "nodejs", "python", "python3", "deno", "bun", "ruby", "perl"}
+)
 
 
 class AgentAvailabilityHandler(APIHandler):
@@ -52,10 +75,109 @@ class AgentAvailabilityHandler(APIHandler):
         self.finish(json.dumps(self._resolve(commands)))
 
 
+def _candidate_names(name: str, cmdline: list[str]) -> set[str]:
+    """Command basenames that could identify one process.
+
+    Always includes the process' own executable name and ``argv[0]`` basename
+    (covers native binaries and shebang scripts invoked as ``claude``); for
+    interpreter wrappers it also includes the basename of the first non-flag
+    argument (covers ``node …/bin/claude``). Deliberately does *not* fold in
+    arbitrary arguments, so an editor or interpreter pointed at a file that
+    merely shares an agent's name is not a false match.
+    """
+    cands: set[str] = set()
+    name_base = os.path.basename(name) if name else ""
+    if name_base:
+        cands.add(name_base)
+    argv0 = os.path.basename(cmdline[0]) if cmdline else ""
+    if argv0:
+        cands.add(argv0)
+    if (name_base in _INTERPRETERS or argv0 in _INTERPRETERS) and cmdline:
+        for token in cmdline[1:]:
+            if token.startswith("-"):
+                continue
+            base = os.path.basename(token)
+            if base:
+                cands.add(base)
+            break
+    return cands
+
+
+def _match_processes(procs: object, commands: set[str]) -> str | None:
+    for proc in procs:  # type: ignore[attr-defined]
+        try:
+            cands = _candidate_names(proc.name(), proc.cmdline())
+        except Exception:
+            # Process vanished, or we lack permission to inspect it — skip.
+            continue
+        for command in commands:
+            if command in cands:
+                return command
+    return None
+
+
+def _running_agent(pty: object, commands: set[str]) -> str | None:
+    """The agent command running in one terminal, or ``None`` at the prompt."""
+    ptyproc = getattr(pty, "ptyproc", None)
+    pid = getattr(ptyproc, "pid", None)
+    if pid is None or psutil is None:
+        return None
+    try:
+        shell = psutil.Process(pid)
+    except Exception:
+        return None
+    # A direct child is the command the shell launched (the common case, incl.
+    # interpreter wrappers like ``node …/claude``); prefer it so a busy agent's
+    # own grandchildren never shadow it. Fall back to the whole subtree for
+    # indirection like ``npm exec`` or re-exec shims.
+    try:
+        match = _match_processes(shell.children(), commands)
+        if match:
+            return match
+        return _match_processes(shell.children(recursive=True), commands)
+    except Exception:
+        return None
+
+
+class RunningAgentsHandler(APIHandler):
+    """Report which requested command is running in each open terminal."""
+
+    def _detect(self, commands: list[str]) -> dict[str, str | None]:
+        result: dict[str, str | None] = {}
+        manager = self.settings.get("terminal_manager")
+        wanted = {c for c in commands if isinstance(c, str) and c}
+        if manager is None or psutil is None or not wanted:
+            return result
+        # ``terminals`` is a {name: PtyWithClients} map kept by terminado's
+        # NamedTermManager (which jupyter_server_terminals subclasses).
+        for name, pty in list(getattr(manager, "terminals", {}).items()):
+            result[name] = _running_agent(pty, wanted)
+        return result
+
+    @authenticated
+    def post(self) -> None:
+        body = self.get_json_body() or {}
+        commands = body.get("commands") or []
+        if not isinstance(commands, list):
+            self.set_status(400)
+            self.finish(json.dumps({"error": "'commands' must be a list of strings"}))
+            return
+        self.finish(json.dumps(self._detect(commands)))
+
+
 def _setup_handlers(server_app: ServerApp) -> None:
     base_url = server_app.web_app.settings["base_url"]
-    route = url_path_join(base_url, "xtralab", "agents", "availability")
-    server_app.web_app.add_handlers(".*$", [(route, AgentAvailabilityHandler)])
+    handlers = [
+        (
+            url_path_join(base_url, "xtralab", "agents", "availability"),
+            AgentAvailabilityHandler,
+        ),
+        (
+            url_path_join(base_url, "xtralab", "terminals", "agents"),
+            RunningAgentsHandler,
+        ),
+    ]
+    server_app.web_app.add_handlers(".*$", handlers)
 
 
 def _load_jupyter_server_extension(server_app: ServerApp) -> None:

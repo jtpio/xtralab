@@ -25,7 +25,7 @@ import type {
 } from '../git/tokens';
 
 import type { IAgent } from './agents';
-import { agentCommandId } from './commands';
+import { agentCommandId } from './tokens';
 
 /**
  * Public construction options for the launcher dashboard widget. The

@@ -46,6 +46,7 @@ dependencies = [
     "jupyterlab-night>=0.5.2",
     "jupyterlab-quickopen>=2.3.0",
     "jupyterlab-vim>=4.1.4",
+    "psutil>=5.9",
     "ty>=0.0.35",
 ]
 dynamic = ["version", "description", "urls"]

@@ -12,10 +12,13 @@ import type { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import type { IDisposable } from '@lumino/disposable';
 import type { Widget } from '@lumino/widgets';
 
+import { IAgentSessions } from '../agentSessions';
 import { mergeAgents, type IAgent, type IAgentSettings } from './agents';
 import { fetchAvailableCommands } from './availability';
 import { CREATE_LAUNCHER_COMMAND, registerAgentCommands } from './commands';
 import { LauncherDashboard } from './dashboard';
+import { AgentRegistry } from './registry';
+import { IAgentRegistry } from './tokens';
 
 const PLUGIN_ID = 'xtralab:launcher';
 
@@ -39,25 +42,35 @@ const PLUGIN_ID = 'xtralab:launcher';
  * effect, which would defeat the point of the agent-only launcher. If an
  * extension needs to surface itself, we'll add it here explicitly.
  */
-const plugin: JupyterFrontEndPlugin<void> = {
+const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
   id: PLUGIN_ID,
   description:
     'An agent-focused launcher that replaces the default JupyterLab launcher.',
   autoStart: true,
-  optional: [ILabShell, ICommandPalette, ISettingRegistry, ITranslator],
+  provides: IAgentRegistry,
+  optional: [
+    ILabShell,
+    ICommandPalette,
+    ISettingRegistry,
+    ITranslator,
+    IAgentSessions
+  ],
   activate: async (
     app: JupyterFrontEnd,
     labShell: ILabShell | null,
     palette: ICommandPalette | null,
     settingRegistry: ISettingRegistry | null,
-    translator: ITranslator | null
-  ): Promise<void> => {
+    translator: ITranslator | null,
+    agentSessions: IAgentSessions | null
+  ): Promise<IAgentRegistry> => {
     const { commands, shell } = app;
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
-    // The currently active agent list. Updated whenever settings change so
-    // every freshly-created launcher widget renders the latest list.
-    let currentAgents: IAgent[] = [];
+    // The shared agent registry this plugin provides on `IAgentRegistry`.
+    // It holds the active agent list (updated whenever settings change), so
+    // every freshly-created launcher widget — and any other plugin that
+    // consumes the token, e.g. the terminals panel — renders the latest list.
+    const registry = new AgentRegistry();
 
     // Track command registrations so a settings change can wipe them
     // before re-registering — without this the command palette would
@@ -69,8 +82,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
       const filtered = await filterByAvailability(agents);
 
       registered?.dispose();
-      registered = registerAgentCommands(app, filtered);
-      currentAgents = filtered;
+      registered = registerAgentCommands(app, filtered, agentSessions);
+      registry.setAgents(filtered);
     };
 
     const readOverrides = (
@@ -121,7 +134,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         };
         const launcher = new LauncherDashboard({
           commands,
-          agents: currentAgents,
+          agents: registry.agents,
           onAgentLaunch,
           // Empty repoPath/cwd matches the JupyterLab convention used by
           // the git panel and the stock launcher: let the server resolve
@@ -186,6 +199,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
         return commands.execute(CREATE_LAUNCHER_COMMAND, { ref });
       });
     }
+
+    return registry;
   }
 };
 
