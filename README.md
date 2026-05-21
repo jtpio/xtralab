@@ -63,7 +63,10 @@ The bundled labextension adds:
   session by the real title its program published (e.g. an agent's name).
   Clicking a row activates its tab or reopens the session — so a backgrounded
   agent is one click away even after its tab is closed — and an inline button
-  shuts the session down. The header's **+** button opens a menu to start any
+  shuts the session down. The terminal you are currently working in is
+  highlighted, the way the file browser marks the open document; the highlight
+  clears when you switch to a notebook or any other non-terminal tab. The
+  header's **+** button opens a menu to start any
   installed agent (the same list and icons as the launcher) or a plain
   terminal, and a stop button shuts every session down at once (with a
   confirmation). Each row is badged with the logo of the agent running inside

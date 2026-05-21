@@ -72,15 +72,20 @@
   outline-offset: -1px;
 }
 
-/* "Shut down all" is disabled when there are no running terminals. */
+/*
+ * "Shut down all" is disabled when there are no running terminals. Dim the
+ * whole control with opacity rather than `color`: the stop glyph is an SVG
+ * whose fill comes from its own `jp-icon3` class (not `currentColor`), so a
+ * `color` change alone leaves the icon looking fully active — which is why the
+ * button did not read as disabled.
+ */
 .jp-xtralab-Terminals-action:disabled {
-  color: var(--jp-ui-font-color3);
   cursor: default;
+  opacity: 0.4;
 }
 
 .jp-xtralab-Terminals-action:disabled:hover {
   background: transparent;
-  color: var(--jp-ui-font-color3);
 }
 
 .jp-xtralab-Terminals-empty {
@@ -178,4 +183,53 @@
 .jp-xtralab-Terminals-action svg {
   width: 16px;
   height: 16px;
+}
+
+/*
+ * The terminal that is currently the active widget in the main area — the
+ * running-session counterpart of the file browser highlighting the open
+ * document. It reuses the file listing's brand-color treatment so "this is
+ * the focused terminal" reads at a glance, and the panel highlights nothing
+ * while a notebook (or any non-terminal widget) holds the focus instead.
+ * Driven from `widget.tsx` via the terminal tracker + the shell's current
+ * widget.
+ */
+.jp-xtralab-Terminals-item.jp-mod-current {
+  color: var(--jp-ui-inverse-font-color1);
+  background-color: var(--jp-brand-color1);
+}
+
+/* Hovering the current row keeps the highlight rather than falling back to
+ * the neutral hover background. */
+.jp-xtralab-Terminals-item.jp-mod-current:hover {
+  background-color: var(--jp-brand-color1);
+}
+
+/*
+ * Invert the monochrome terminal glyph against the brand background, exactly
+ * as the file listing does for its selected rows. Colored agent logos carry
+ * no selectable classes, so they keep their own colors.
+ */
+.jp-xtralab-Terminals-item.jp-mod-current .jp-icon-selectable[fill] {
+  fill: #fff;
+}
+
+.jp-xtralab-Terminals-item.jp-mod-current .jp-icon-selectable-inverse[fill] {
+  fill: var(--jp-brand-color1);
+}
+
+/* Keep the inline shutdown button legible on the brand background, including
+ * while it is itself hovered. */
+.jp-xtralab-Terminals-item.jp-mod-current .jp-xtralab-Terminals-item-close,
+.jp-xtralab-Terminals-item.jp-mod-current
+  .jp-xtralab-Terminals-item-close:hover {
+  color: var(--jp-ui-inverse-font-color1);
+}
+
+/* Focus rings need a color that contrasts with the brand background. */
+.jp-xtralab-Terminals-item.jp-mod-current
+  .jp-xtralab-Terminals-item-activate:focus-visible,
+.jp-xtralab-Terminals-item.jp-mod-current
+  .jp-xtralab-Terminals-item-close:focus-visible {
+  outline-color: var(--jp-layout-color1);
 }

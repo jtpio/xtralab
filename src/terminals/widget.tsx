@@ -143,6 +143,10 @@ function RunningTerminalsComponent(props: {
     onCreate
   } = props;
   const names = registry.sessionNames();
+  // The session whose terminal is the current widget in the main area, so its
+  // row can be highlighted. `null` when the current tab is a notebook or any
+  // other non-terminal widget.
+  const currentName = registry.currentSessionName();
 
   return (
     <div className="jp-xtralab-Terminals-body">
@@ -194,14 +198,23 @@ function RunningTerminalsComponent(props: {
             const RowIcon = iconForCommand(
               registry.agentCommandFor(name)
             ).react;
+            const isCurrent = name === currentName;
             return (
-              <li key={name} className="jp-xtralab-Terminals-item">
+              <li
+                key={name}
+                className={
+                  isCurrent
+                    ? 'jp-xtralab-Terminals-item jp-mod-current'
+                    : 'jp-xtralab-Terminals-item'
+                }
+              >
                 <button
                   type="button"
                   className="jp-xtralab-Terminals-item-activate"
                   onClick={() => onActivate(name)}
                   title={tooltip}
                   aria-label={tooltip}
+                  aria-current={isCurrent || undefined}
                 >
                   <RowIcon tag="span" verticalAlign="middle" />
                   <span className="jp-xtralab-Terminals-item-label">

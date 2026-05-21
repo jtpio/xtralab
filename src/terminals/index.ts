@@ -72,6 +72,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const registry = new SessionRegistry({
       serviceManager: app.serviceManager,
       tracker,
+      // The shell tells the registry which widget is current, so the panel can
+      // highlight the terminal that is the current main-area widget (and
+      // nothing while a notebook or other widget is current instead).
+      shell: app.shell,
       agentSessions,
       // The commands the server should look for, derived live from the
       // current agent list so it tracks settings changes.

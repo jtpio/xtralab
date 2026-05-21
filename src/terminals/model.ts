@@ -1,3 +1,4 @@
+import type { JupyterFrontEnd } from '@jupyterlab/application';
 import type { MainAreaWidget } from '@jupyterlab/apputils';
 import type { ServiceManager, Terminal } from '@jupyterlab/services';
 import type { ITerminal, ITerminalTracker } from '@jupyterlab/terminal';
@@ -73,11 +74,20 @@ export class SessionRegistry implements IDisposable {
     this._tracker = options.tracker;
     this._agentSessions = options.agentSessions ?? null;
     this._detectCommands = options.detectCommands ?? (() => []);
+    this._shell = options.shell ?? null;
 
     this._terminals.runningChanged.connect(this._onRunningChanged, this);
     this._tracker.widgetAdded.connect(this._onWidgetAdded, this);
     this._tracker.forEach(widget => this._trackWidget(widget));
     this._refreshLive();
+
+    // Track which terminal is the current widget in the main area so the panel
+    // can highlight its row — and highlight nothing while a notebook or any
+    // other non-terminal tab is current instead. `currentChanged` is optional
+    // on the shell interface (not every shell can switch focus), so guard it;
+    // when it is absent the highlight stays off.
+    this._shell?.currentChanged?.connect(this._onShellCurrentChanged, this);
+    this._updateCurrent();
 
     // A freshly written launch tag should re-render the panel immediately
     // (show the logo) and again once the grace window closes (so a tag for
@@ -194,6 +204,18 @@ export class SessionRegistry implements IDisposable {
   }
 
   /**
+   * Session name of the terminal that is currently the active widget in the
+   * shell's main area, or `null` when that widget is not a terminal (for
+   * example a notebook or text editor is current). The panel uses this to
+   * highlight the current terminal's row — mirroring how the file browser
+   * surfaces the open document — and to leave every row unhighlighted while a
+   * non-terminal tab is current.
+   */
+  currentSessionName(): string | null {
+    return this._currentName;
+  }
+
+  /**
    * Stable per-session rank assigned in observation order. Used to keep
    * the rendered list in a steady order so rows don't reshuffle as
    * sessions come and go. Cleaned up when the session is shut down so the
@@ -217,6 +239,7 @@ export class SessionRegistry implements IDisposable {
     this._terminals.runningChanged.disconnect(this._onRunningChanged, this);
     this._tracker.widgetAdded.disconnect(this._onWidgetAdded, this);
     this._agentSessions?.changed.disconnect(this._onTagChanged, this);
+    this._shell?.currentChanged?.disconnect(this._onShellCurrentChanged, this);
     this._tracker.forEach(widget => this._untrackWidget(widget));
     Signal.clearData(this);
   }
@@ -330,6 +353,28 @@ export class SessionRegistry implements IDisposable {
     this._stateChanged.emit();
   }
 
+  private _onShellCurrentChanged(): void {
+    this._updateCurrent();
+  }
+
+  /**
+   * Recompute which terminal (if any) is the active main-area widget and emit
+   * only when it changes. The terminal tracker tells us whether the shell's
+   * current widget is one of our terminals; anything else — a notebook, an
+   * editor, or nothing — clears the highlight.
+   */
+  private _updateCurrent(): void {
+    const current = this._shell?.currentWidget ?? null;
+    const name =
+      current && this._tracker.has(current)
+        ? (current as TerminalWidget).content.session.name
+        : null;
+    if (name !== this._currentName) {
+      this._currentName = name;
+      this._stateChanged.emit();
+    }
+  }
+
   private _trackWidget(widget: TerminalWidget): void {
     const name = widget.content.session.name;
     this._cacheLabel(name, widget.title.label);
@@ -389,12 +434,14 @@ export class SessionRegistry implements IDisposable {
   private _tracker: ITerminalTracker;
   private _agentSessions: IAgentSessions | null;
   private _detectCommands: () => string[];
+  private _shell: JupyterFrontEnd.IShell | null;
   private _poll: Poll;
   private _labels = new Map<string, string>();
   private _ranks = new Map<string, number>();
   private _firstSeen = new Map<string, number>();
   private _detected = new Map<string, string | null>();
   private _live = new Set<string>();
+  private _currentName: string | null = null;
   private _nextRank = 100;
   private _isDisposed = false;
   private _stateChanged = new Signal<this, void>(this);
@@ -407,6 +454,14 @@ export namespace SessionRegistry {
   export interface IOptions {
     serviceManager: ServiceManager.IManager;
     tracker: ITerminalTracker;
+    /**
+     * The application shell, used to tell which widget is currently active so
+     * the panel can highlight the terminal that is the current main-area
+     * widget — and highlight nothing when that widget is not a terminal (a
+     * notebook, an editor, …). Optional: without it, or on a shell that cannot
+     * report `currentChanged`, the highlight stays off.
+     */
+    shell?: JupyterFrontEnd.IShell | null;
     /**
      * Shared launch-tag registry. When present, its records seed each row's
      * agent badge until server-side detection takes over.
