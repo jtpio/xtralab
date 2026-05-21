@@ -166,14 +166,16 @@ const plugin: JupyterFrontEndPlugin<void> = {
       onCreate
     });
 
-    // Added to the left sidebar. The shipped default tab order is set by
-    // the shell `layout` override in jupyter-config/labconfig (which puts
-    // this Terminals panel first, so running agents are one click away at
-    // the top of the sidebar); the `rank` below is only the in-code
-    // fallback used when that override is absent. Sessions restored from a
-    // previous lab run land via `runningChanged` once the terminal manager
-    // is ready, which the panel's `UseSignal` picks up.
-    app.shell.add(panel, 'left', { rank: 60 });
+    // Added to the left sidebar. The shipped `layout` setting in
+    // jupyter-config/labconfig gives each sidebar widget a default rank —
+    // this Terminals panel ranks first, so running agents sit one click
+    // away at the top. That setting assigns rank only and pins no area, so
+    // the "Move Widget" context menu can relocate the panel and the layout
+    // restorer remembers where the user puts it. The `rank` here is the
+    // in-code fallback used when the setting is absent. Sessions restored
+    // from a previous lab run land via `runningChanged` once the terminal
+    // manager is ready, which the panel's `UseSignal` picks up.
+    app.shell.add(panel, 'left', { rank: 1 });
     if (restorer) {
       restorer.add(panel, panel.id);
     }

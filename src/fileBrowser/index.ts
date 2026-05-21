@@ -37,7 +37,11 @@ const plugin: JupyterFrontEndPlugin<void> = {
         void app.commands.execute('docmanager:open', { path: serverPath });
       }
     });
-    app.shell.add(browser, 'left', { rank: 50 });
+    // Ranks just under the Terminals panel in the left sidebar. The shipped
+    // `layout` setting assigns the default ranks (rank only, no area pin),
+    // so this browser stays movable via the "Move Widget" context menu; the
+    // `rank` here is the in-code fallback for when that setting is absent.
+    app.shell.add(browser, 'left', { rank: 2 });
     if (restorer) {
       restorer.add(browser, browser.id);
     }
