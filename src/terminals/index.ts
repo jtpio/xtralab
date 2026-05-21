@@ -18,14 +18,13 @@ const PLUGIN_ID = 'xtralab:terminals';
 /**
  * Adds a left-sidebar panel that lists every running terminal session.
  *
- * This replaces the per-session status bar items: the bar grew unwieldy
- * once more than a couple of agents were running, whereas a dedicated
- * sidebar tab scales to an arbitrary number of sessions. It overlaps
- * with JupyterLab's own "Running Terminals and Kernels" panel, but that
- * one only shows `terminals/<n>` names — this panel reuses the same
- * label cache the status bar did, so each row shows the *real* title the
- * running program published (the launcher's agent name, or whatever
- * xterm escape sequence the process set), surviving a tab close.
+ * Each row is labelled with the *real* title the running program
+ * published — the launcher's agent name, or whatever title an xterm
+ * escape sequence set — which the registry caches so it survives the
+ * user closing the tab while the session keeps running on the server.
+ * JupyterLab's built-in "Running Terminals and Kernels" panel lists the
+ * same sessions but only by their `terminals/<n>` name, so this panel
+ * resolves and caches the published title to show something meaningful.
  *
  * Clicking a row activates the existing tab if one is open, or reopens
  * the session in a fresh terminal widget (`terminal:open`). The inline
@@ -132,7 +131,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     // lazily and repopulated on each open so it always reflects the current,
     // settings-driven agent list. Without the registry (launcher disabled)
     // or with no agents installed, there is nothing to choose between, so
-    // the button keeps the original one-click "new terminal" behavior.
+    // the button opens a plain terminal directly in one click.
     //
     // `MenuSvg` (not the bare Lumino `Menu`) is what every JupyterLab menu
     // uses: its renderer applies the `menuItem` LabIcon stylesheet, which
