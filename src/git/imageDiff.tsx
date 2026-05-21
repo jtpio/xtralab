@@ -301,35 +301,136 @@ function RangeSlider(props: {
 
 function Swipe({ reference, challenger }: ISideViewProps): React.ReactElement {
   const [position, setPosition] = React.useState(50);
+  const [dragging, setDragging] = React.useState(false);
+  const frameRef = React.useRef<HTMLDivElement>(null);
+
+  const setFromClientX = React.useCallback((clientX: number) => {
+    const frame = frameRef.current;
+    if (frame === null) {
+      return;
+    }
+    const rect = frame.getBoundingClientRect();
+    if (rect.width <= 0) {
+      return;
+    }
+    const next = ((clientX - rect.left) / rect.width) * 100;
+    setPosition(Math.max(0, Math.min(100, next)));
+  }, []);
+
+  const onPointerDown = React.useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      // Only react to the primary pointer (left click / touch / pen tip).
+      if (event.button !== 0) {
+        return;
+      }
+      event.preventDefault();
+      setDragging(true);
+      setFromClientX(event.clientX);
+    },
+    [setFromClientX]
+  );
+
+  React.useEffect(() => {
+    if (!dragging) {
+      return;
+    }
+    const onMove = (event: PointerEvent) => {
+      setFromClientX(event.clientX);
+    };
+    const onUp = () => {
+      setDragging(false);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+  }, [dragging, setFromClientX]);
+
+  const onKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const step = event.shiftKey ? 10 : 1;
+      let next: number | null = null;
+      switch (event.key) {
+        case 'ArrowLeft':
+          next = position - step;
+          break;
+        case 'ArrowRight':
+          next = position + step;
+          break;
+        case 'Home':
+          next = 0;
+          break;
+        case 'End':
+          next = 100;
+          break;
+      }
+      if (next === null) {
+        return;
+      }
+      event.preventDefault();
+      setPosition(Math.max(0, Math.min(100, next)));
+    },
+    [position]
+  );
+
   return (
     <div className="jp-xtralab-ImageDiff-interactive">
-      <div className="jp-xtralab-ImageDiff-stack">
-        {reference.uri !== null ? (
-          <img
-            className="jp-xtralab-ImageDiff-stackImg"
-            src={reference.uri}
-            alt="Reference revision"
-            style={{
-              clipPath: `inset(0 ${100 - position}% 0 0)`
-            }}
-          />
-        ) : null}
-        {challenger.uri !== null ? (
-          <img
-            className="jp-xtralab-ImageDiff-stackImg"
-            src={challenger.uri}
-            alt="Challenger revision"
-            style={{
-              clipPath: `inset(0 0 0 ${position}%)`
-            }}
-          />
-        ) : null}
+      <div
+        className="jp-xtralab-ImageDiff-swipeFrame"
+        ref={frameRef}
+        onPointerDown={onPointerDown}
+        data-dragging={dragging ? 'true' : undefined}
+      >
+        <div className="jp-xtralab-ImageDiff-stack">
+          {reference.uri !== null ? (
+            <img
+              className="jp-xtralab-ImageDiff-stackImg"
+              src={reference.uri}
+              alt="Reference revision"
+              draggable={false}
+              style={{
+                clipPath: `inset(0 ${100 - position}% 0 0)`
+              }}
+            />
+          ) : null}
+          {challenger.uri !== null ? (
+            <img
+              className="jp-xtralab-ImageDiff-stackImg"
+              src={challenger.uri}
+              alt="Challenger revision"
+              draggable={false}
+              style={{
+                clipPath: `inset(0 0 0 ${position}%)`
+              }}
+            />
+          ) : null}
+        </div>
+        <div
+          className="jp-xtralab-ImageDiff-swipeDivider"
+          style={{ left: `${position}%` }}
+          role="slider"
+          aria-label="Swipe between reference and challenger"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(position)}
+          aria-orientation="vertical"
+          tabIndex={0}
+          onKeyDown={onKeyDown}
+        >
+          <div className="jp-xtralab-ImageDiff-swipeDividerHandle jp-mod-top">
+            <div className="jp-xtralab-ImageDiff-swipeDividerArrow jp-mod-left" />
+            <div className="jp-xtralab-ImageDiff-swipeDividerArrow jp-mod-right" />
+          </div>
+          <div className="jp-xtralab-ImageDiff-swipeDividerHandle jp-mod-bottom">
+            <div className="jp-xtralab-ImageDiff-swipeDividerArrow jp-mod-left" />
+            <div className="jp-xtralab-ImageDiff-swipeDividerArrow jp-mod-right" />
+          </div>
+        </div>
       </div>
-      <RangeSlider
-        value={position}
-        onChange={setPosition}
-        ariaLabel="Swipe between reference and challenger"
-      />
     </div>
   );
 }
