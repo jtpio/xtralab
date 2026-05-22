@@ -2,6 +2,34 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.6.0
+
+([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.5.0...335842e86bf164264c9662a1a18951aae47fe25c))
+
+### Enhancements made
+
+- Improve MCP integration, launcher, git [#25](https://github.com/jtpio/xtralab/pull/25) ([@jtpio](https://github.com/jtpio))
+- Terminal pane and default layout [#24](https://github.com/jtpio/xtralab/pull/24) ([@jtpio](https://github.com/jtpio))
+- fix image diffs [#23](https://github.com/jtpio/xtralab/pull/23) ([@jtpio](https://github.com/jtpio))
+- Collaboration files and dependency bumps [#20](https://github.com/jtpio/xtralab/pull/20) ([@jtpio](https://github.com/jtpio))
+- Antigravity CLI [#19](https://github.com/jtpio/xtralab/pull/19) ([@jtpio](https://github.com/jtpio))
+
+### Maintenance and upkeep improvements
+
+- More fixes [#22](https://github.com/jtpio/xtralab/pull/22) ([@jtpio](https://github.com/jtpio))
+- Migrate to `pnpm` [#21](https://github.com/jtpio/xtralab/pull/21) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-05-19&to=2026-05-22&type=c))
+
+@jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-05-19..2026-05-22&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.5.0
 
 ([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.4.0...a86d17490fbc3843c0cb03f8994869aa3afa4a0c))
@@ -18,8 +46,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-05-13&to=2026-05-19&type=c))
 
 @jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-05-13..2026-05-19&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.4.0
 
