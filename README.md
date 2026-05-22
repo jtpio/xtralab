@@ -58,7 +58,9 @@ The bundled labextension adds:
   Codex, Antigravity, Copilot, Goose, OpenCode, Kiro, Mistral Vibe), and a
   collapsible list of changed files. Buttons are filtered to agents installed
   on the machine; a typed prompt is shell-quoted and spliced into the launch
-  command for agents that accept one.
+  command for agents that accept one. An **Open** row below the agents starts a
+  plain terminal, notebook, or console — plus a one-click tile that opens your
+  terminal editor (Neovim, falling back to Vim) when either is on `PATH`.
 - A **Terminals** panel in the left sidebar listing every running terminal
   session by the real title its program published (e.g. an agent's name).
   Clicking a row activates its tab or reopens the session — so a backgrounded
@@ -69,16 +71,52 @@ The bundled labextension adds:
   header's **+** button opens a menu to start any
   installed agent (the same list and icons as the launcher) or a plain
   terminal, and a stop button shuts every session down at once (with a
-  confirmation). Each row is badged with the logo of the agent running inside
-  it — detected from the session's own processes, so it works whether you
-  launched the agent from xtralab or typed it into a plain terminal, and
-  reverts to the terminal icon once the agent exits.
+  confirmation). Each row is badged with the logo of the agent — or terminal
+  editor (Neovim/Vim) — running inside it, detected from the session's own
+  processes, so it works whether you launched it from xtralab or typed it into
+  a plain terminal, and reverts to the terminal icon once the program exits.
 - Left and right **sidebar toggle buttons** in the top bar — a left-sidebar
-  icon just after the Jupyter logo and a right-sidebar icon at the far edge.
+  icon at the leading edge and a right-sidebar icon at the far edge.
   They run JupyterLab's `application:toggle-left-area` /
   `application:toggle-right-area` commands and light up while their sidebar is
   open. (The right area is empty by default, so its button stays disabled
   until a widget is moved there.)
+
+## Connecting agents to Jupyter (MCP)
+
+xtralab ships
+[`jupyter-server-mcp`](https://github.com/jupyter-ai-contrib/jupyter-server-mcp)
+(via [`ajlab`](https://github.com/jtpio/ajlab)), which runs a
+[Model Context Protocol](https://modelcontextprotocol.io) server inside
+JupyterLab automatically. To let a coding agent drive JupyterLab through it,
+register the server with the agent using the `jupyter-server-mcp-proxy`
+console script — it bridges the agent's stdio to the running server:
+
+```bash
+claude mcp add jupyter -- jupyter-server-mcp-proxy
+codex mcp add jupyter -- jupyter-server-mcp-proxy
+copilot mcp add jupyter -- jupyter-server-mcp-proxy
+```
+
+The launcher surfaces these same commands under a collapsible **Connect
+agents to JupyterLab (MCP)** section with Copy buttons, filtered to the
+agents you have installed.
+
+Run the command in a terminal inside xtralab so it inherits the server's
+environment. No port is needed: in the desktop app the supervisor exports
+`JUPYTER_SERVER_MCP_URL` into the Jupyter environment — inherited by the
+terminal and the agent — so the proxy connects straight to this server; under
+`pip install xtralab` the proxy discovers the running server from its runtime
+file instead. Either way a single registration keeps working across restarts
+and dynamically-assigned ports.
+
+`claude mcp add` defaults to a project-local scope (kept in `~/.claude.json`,
+not your working tree, so nothing is committed). Codex and Copilot register
+globally, so the entry also shows up in their sessions outside xtralab — where
+the proxy just finds no server to connect to. Any other MCP client can point
+at the proxy the same way; see the
+[`jupyter-server-mcp`](https://github.com/jupyter-ai-contrib/jupyter-server-mcp)
+README.
 
 ## Language servers
 

@@ -19,6 +19,9 @@
       }
     }
   },
+  "@jupyterlab/git:plugin": {
+    "fileClickAction": "diff-on-single"
+  },
   "@jupyterlab/terminal-extension:plugin": {
     "fontFamily": "MesloLGS NF, ui-monospace, monospace"
   },

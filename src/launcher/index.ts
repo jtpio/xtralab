@@ -17,6 +17,7 @@ import { mergeAgents, type IAgent, type IAgentSettings } from './agents';
 import { fetchAvailableCommands } from './availability';
 import { CREATE_LAUNCHER_COMMAND, registerAgentCommands } from './commands';
 import { LauncherDashboard } from './dashboard';
+import { EDITOR_CANDIDATES, resolveEditor, type IEditor } from './editors';
 import { AgentRegistry } from './registry';
 import { IAgentRegistry } from './tokens';
 
@@ -77,9 +78,31 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
     // accumulate stale entries when the agent list shrinks.
     let registered: IDisposable | null = null;
 
+    // The editor tile (Neovim, else Vim) to hand the next launcher widget,
+    // resolved alongside the agents from the same availability probe. Like
+    // `registry.agents`, freshly-created launchers read the current value;
+    // already-open launchers keep what they were built with.
+    let currentEditor: IEditor | null = null;
+
     const applyAgents = async (overrides: IAgentSettings[]): Promise<void> => {
       const agents = mergeAgents(overrides);
-      const filtered = await filterByAvailability(agents);
+
+      // One availability probe covers both the agent commands and the editor
+      // candidates, so a settings change costs a single round-trip. Agents
+      // with `requireAvailable: false` opt out (their command may be a shell
+      // alias that `which` can't see) and are kept regardless.
+      const probe = Array.from(
+        new Set([
+          ...agents
+            .filter(agent => agent.requireAvailable)
+            .map(agent => agent.command),
+          ...EDITOR_CANDIDATES.map(editor => editor.command)
+        ])
+      );
+      const available = await fetchAvailableCommands(probe);
+
+      const filtered = filterAgents(agents, available);
+      currentEditor = resolveEditor(available);
 
       registered?.dispose();
       registered = registerAgentCommands(app, filtered, agentSessions);
@@ -135,6 +158,8 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
         const launcher = new LauncherDashboard({
           commands,
           agents: registry.agents,
+          editor: currentEditor,
+          agentSessions,
           onAgentLaunch,
           // Empty repoPath/cwd matches the JupyterLab convention used by
           // the git panel and the stock launcher: let the server resolve
@@ -205,22 +230,21 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
 };
 
 /**
- * Drop agents whose command isn't on `$PATH`, except for entries that
- * explicitly opt out of the check via `requireAvailable: false` (typical
- * use case: shell aliases the user wants surfaced regardless).
+ * Drop agents whose command isn't on `$PATH`, except entries that opt out via
+ * `requireAvailable: false` (e.g. shell aliases the user wants surfaced
+ * regardless). `available` is the resolved set from
+ * {@link fetchAvailableCommands}.
  *
- * If the availability endpoint can't be reached we fail open and return
- * the input unchanged — better to show an unreachable agent than to hide
- * the entire launcher because the server extension didn't load.
+ * When `available` is `null` (the endpoint couldn't be reached) we fail open
+ * and return the input unchanged — better to show an unreachable agent than
+ * to hide the entire launcher because the server extension didn't load. The
+ * editor tile resolves from the same set but fails closed; see
+ * {@link resolveEditor}.
  */
-async function filterByAvailability(agents: IAgent[]): Promise<IAgent[]> {
-  const commands = agents
-    .filter(agent => agent.requireAvailable)
-    .map(agent => agent.command);
-  if (commands.length === 0) {
-    return agents;
-  }
-  const available = await fetchAvailableCommands(commands);
+function filterAgents(
+  agents: IAgent[],
+  available: Set<string> | null
+): IAgent[] {
   if (!available) {
     return agents;
   }

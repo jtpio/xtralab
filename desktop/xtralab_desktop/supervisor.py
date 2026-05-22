@@ -155,6 +155,7 @@ class JupyterLabSupervisor:
         self.mcp_port = free_port()
         self.token = secrets.token_hex(19)
         self.base_url = f"http://127.0.0.1:{self.port}"
+        self.mcp_url = f"http://127.0.0.1:{self.mcp_port}/mcp"
         self.info = ServerInfo(
             url=f"{self.base_url}/lab?token={self.token}",
             base_url=self.base_url,
@@ -191,11 +192,20 @@ class JupyterLabSupervisor:
         if self.process is not None:
             raise RuntimeError("JupyterLab supervisor has already been started")
 
+        # Hand the MCP server's URL to every child process — the terminals
+        # Jupyter spawns and the coding agents launched inside them — so the
+        # ``jupyter-server-mcp-proxy`` an agent starts connects straight to
+        # this server's port instead of falling back to runtime-file
+        # discovery. ``self.env is None`` means "inherit our environment", so
+        # seed from ``os.environ`` in that case before adding the variable.
+        child_env = dict(os.environ if self.env is None else self.env)
+        child_env["JUPYTER_SERVER_MCP_URL"] = self.mcp_url
+
         try:
             self.process = subprocess.Popen(
                 self.command,
                 cwd=self.cwd,
-                env=self.env,
+                env=child_env,
                 stdout=stdout,
                 stderr=stderr,
                 **popen_session_kwargs(),

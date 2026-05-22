@@ -1,5 +1,6 @@
 {
   "disabledExtensions": {
+    "@jupyterlab/application-extension:logo": true,
     "@jupyterlab/application-extension:property-inspector": true,
     "@jupyterlab/apputils-extension:announcements": true,
     "@jupyterlab/apputils-extension:running-sessions-status": true,

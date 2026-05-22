@@ -36,8 +36,8 @@ importers:
         specifier: ^4.6.0-beta.0
         version: 4.6.0-beta.0
       '@jupyterlab/git':
-        specifier: ^0.54.0-a0
-        version: 0.54.0-a0(@types/react@18.3.29)
+        specifier: ^0.54.0-a1
+        version: 0.54.0-a1(@types/react@18.3.29)
       '@jupyterlab/launcher':
         specifier: ^4.6.0-beta.0
         version: 4.6.0-beta.0
@@ -553,8 +553,8 @@ packages:
   '@jupyterlab/filebrowser@4.5.7':
     resolution: {integrity: sha512-eJ774VWSMjl5yXXXWOL0PIj8FMs0QAGRMDL4AZ4w8LwRgjidnzviftpwPHo8noaLPl5BK2dPUMZjnOBVR6vb1A==}
 
-  '@jupyterlab/git@0.54.0-a0':
-    resolution: {integrity: sha512-ivmRVjitYVIKGIAHsFodBoSrXNd2G8yIBBkLAezCvvn+9YpHOB5nsiN/m6EttxxECygTkGlmon/qV1xm2GL4Gw==}
+  '@jupyterlab/git@0.54.0-a1':
+    resolution: {integrity: sha512-Zrg1x3vmx7xQ/0b6jIn4/rqoN4+S4DaeUmyt9m04owKcmFT9yY1++tJbQhZMutfT+JK2jTd0Sl522z37BCJjtQ==}
 
   '@jupyterlab/launcher@4.6.0-beta.0':
     resolution: {integrity: sha512-nO8mNcQ5Fv9PgduEm1ad2LOvE7aIJnBopBTVsfAmhg4O9vsFB98xdyJrnC8uqa/rqSKj7axeI/AJMgawzZnbzw==}
@@ -4731,7 +4731,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@jupyterlab/git@0.54.0-a0(@types/react@18.3.29)':
+  '@jupyterlab/git@0.54.0-a1(@types/react@18.3.29)':
     dependencies:
       '@emotion/react': 11.14.0(@types/react@18.3.29)(react@18.3.1)
       '@emotion/styled': 11.14.1(@emotion/react@11.14.0(@types/react@18.3.29)(react@18.3.1))(@types/react@18.3.29)(react@18.3.1)
