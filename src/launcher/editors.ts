@@ -53,8 +53,7 @@ export const EDITOR_CANDIDATES: IEditor[] = [
  * `available` is `null` when the availability endpoint couldn't be reached.
  * The editor fails *closed* in that case (returns `null`), unlike the agent
  * list which fails open: hiding one optional tile is harmless, whereas hiding
- * every agent would leave an empty launcher. So the tile only ever appears
- * for an editor we have positively confirmed is installed.
+ * every agent would leave an empty launcher.
  */
 export function resolveEditor(available: Set<string> | null): IEditor | null {
   if (!available) {

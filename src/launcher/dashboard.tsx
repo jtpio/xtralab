@@ -51,11 +51,10 @@ export interface ILauncherDashboardOptions {
    */
   editor: IEditor | null;
   /**
-   * Shared launch-tag registry. When the editor tile is launched, the dashboard
-   * records the new session here so the terminals panel badges it with the
-   * editor's logo immediately — before server-side detection confirms it —
-   * mirroring how agent launches are tagged. `null` when the provider plugin
-   * is unavailable.
+   * Shared launch-tag registry. When the editor tile launches, it records the
+   * session here so the terminals panel badges it with the editor's logo right
+   * away, the same as agent launches do. `null` when the provider plugin is
+   * unavailable.
    */
   agentSessions: IAgentSessions | null;
   /**
@@ -218,12 +217,10 @@ function LauncherDashboardComponent(
     if (!editor) {
       return;
     }
-    // An editor is "open a terminal and type its command" — the same launch
-    // the agent buttons use, minus the prompt — so it shares `launchInTerminal`
-    // rather than the native `terminal:create-new` call the tiles above use.
-    // Tagging the session mirrors the agent launch path, so the terminals panel
-    // shows the editor's logo at once instead of waiting for the first
-    // detection poll.
+    // An editor is "open a terminal and type its command" — the agent launch
+    // minus the prompt — so it shares `launchInTerminal` rather than the native
+    // `terminal:create-new` call the tiles above use, and tags the session the
+    // same way so the terminals panel badges it with the editor's logo.
     const result = await launchInTerminal(commands, {
       cwd,
       invocation: editor.command,
@@ -520,11 +517,9 @@ function McpSection(props: { agents: IAgent[] }): React.ReactElement | null {
   };
 
   const copy = (command: string, id: string): void => {
-    // Prefer the async Clipboard API, but in the desktop app's Electron window
-    // it can be blocked by policy and reject silently; fall back to the
-    // hidden-textarea `execCommand`, which copies under the button's user
-    // gesture regardless. Only flag "Copied" once a copy actually succeeds, so
-    // the feedback never lies.
+    // Prefer the async Clipboard API; fall back to `legacyCopy` when it's
+    // missing or rejects (Electron can block it by policy). Flag "Copied" only
+    // once a copy actually succeeds.
     const clipboard = navigator.clipboard;
     if (clipboard) {
       void clipboard.writeText(command).then(

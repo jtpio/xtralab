@@ -67,10 +67,9 @@ export function registerAgentCommands(
  * sequence lives in one place.
  *
  * `onSession`, when given, is called once with the new session's name right
- * after the terminal is revealed. The agent path uses it to optimistically
- * tag the session so the terminals panel can badge it before server-side
- * detection confirms the running process; the editor path omits it, since a
- * Vim session is a plain terminal rather than an agent.
+ * after the terminal is revealed. Callers use it to optimistically tag the
+ * session so the terminals panel can badge it with the agent's (or editor's)
+ * logo before server-side detection confirms the running process.
  *
  * Resolves with the host `MainAreaWidget` so the caller can place it — the
  * launcher swaps it into its own tab.
