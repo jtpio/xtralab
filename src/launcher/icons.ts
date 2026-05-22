@@ -210,3 +210,14 @@ export const BUILTIN_AGENT_ICONS: Record<string, LabIcon> = {
   'mistral-vibe': mistralVibeIcon,
   opencode: opencodeIcon
 };
+
+/**
+ * Built-in icons keyed by the editor's id, used to resolve the icon for a
+ * built-in editor (Neovim, Vim) declared without an inline `iconSvg`. Custom
+ * editors added via settings can supply their own `iconSvg` or fall back to
+ * the generic text-editor icon.
+ */
+export const BUILTIN_EDITOR_ICONS: Record<string, LabIcon> = {
+  nvim: neovimIcon,
+  vim: vimIcon
+};

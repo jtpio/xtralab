@@ -17,7 +17,12 @@ import { mergeAgents, type IAgent, type IAgentSettings } from './agents';
 import { fetchAvailableCommands } from './availability';
 import { CREATE_LAUNCHER_COMMAND, registerAgentCommands } from './commands';
 import { LauncherDashboard } from './dashboard';
-import { EDITOR_CANDIDATES, resolveEditor, type IEditor } from './editors';
+import {
+  mergeEditors,
+  resolveEditor,
+  type IEditor,
+  type IEditorSettings
+} from './editors';
 import { AgentRegistry } from './registry';
 import { IAgentRegistry } from './tokens';
 
@@ -67,10 +72,11 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
     const { commands, shell } = app;
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
-    // The shared agent registry this plugin provides on `IAgentRegistry`.
-    // It holds the active agent list (updated whenever settings change), so
-    // every freshly-created launcher widget — and any other plugin that
-    // consumes the token, e.g. the terminals panel — renders the latest list.
+    // The shared launcher registry this plugin provides on `IAgentRegistry`.
+    // It holds the active agent and editor lists (recomputed whenever settings
+    // change), so every freshly-created launcher widget — and any other plugin
+    // that consumes the token, e.g. the terminals panel — renders the latest
+    // lists.
     const registry = new AgentRegistry();
 
     // Track command registrations so a settings change can wipe them
@@ -84,45 +90,67 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
     // already-open launchers keep what they were built with.
     let currentEditor: IEditor | null = null;
 
-    const applyAgents = async (overrides: IAgentSettings[]): Promise<void> => {
-      const agents = mergeAgents(overrides);
+    const applyLauncherSettings = async (
+      agentOverrides: IAgentSettings[],
+      editorOverrides: IEditorSettings[]
+    ): Promise<void> => {
+      const agents = mergeAgents(agentOverrides);
+      const editors = mergeEditors(editorOverrides);
 
-      // One availability probe covers both the agent commands and the editor
-      // candidates, so a settings change costs a single round-trip. Agents
-      // with `requireAvailable: false` opt out (their command may be a shell
-      // alias that `which` can't see) and are kept regardless.
+      // One availability probe covers both the agent and editor commands, so a
+      // settings change costs a single round-trip. Entries with
+      // `requireAvailable: false` opt out (their command may be a shell alias
+      // that `which` can't see) and are kept regardless.
       const probe = Array.from(
         new Set([
           ...agents
             .filter(agent => agent.requireAvailable)
             .map(agent => agent.command),
-          ...EDITOR_CANDIDATES.map(editor => editor.command)
+          ...editors
+            .filter(editor => editor.requireAvailable)
+            .map(editor => editor.command)
         ])
       );
       const available = await fetchAvailableCommands(probe);
 
       const filtered = filterAgents(agents, available);
-      currentEditor = resolveEditor(available);
+      currentEditor = resolveEditor(editors, available);
 
       registered?.dispose();
       registered = registerAgentCommands(app, filtered, agentSessions);
       registry.setAgents(filtered);
+      // The terminals panel reads the full editor list (not just the single
+      // resolved tile) so it can badge any configured editor that is running.
+      registry.setEditors(editors);
     };
 
-    const readOverrides = (
+    const readAgentOverrides = (
       settings: ISettingRegistry.ISettings
     ): IAgentSettings[] => {
       const raw = settings.composite.agents;
       return Array.isArray(raw) ? (raw as IAgentSettings[]) : [];
     };
 
+    const readEditorOverrides = (
+      settings: ISettingRegistry.ISettings
+    ): IEditorSettings[] => {
+      const raw = settings.composite.editors;
+      return Array.isArray(raw) ? (raw as IEditorSettings[]) : [];
+    };
+
     if (settingRegistry) {
       try {
         const settings = await settingRegistry.load(PLUGIN_ID);
-        await applyAgents(readOverrides(settings));
+        await applyLauncherSettings(
+          readAgentOverrides(settings),
+          readEditorOverrides(settings)
+        );
         settings.changed.connect(async () => {
           try {
-            await applyAgents(readOverrides(settings));
+            await applyLauncherSettings(
+              readAgentOverrides(settings),
+              readEditorOverrides(settings)
+            );
           } catch (reason) {
             console.error(
               'xtralab: failed to reapply launcher settings',
@@ -134,10 +162,10 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
         console.error('xtralab: failed to load launcher settings', reason);
         // Settings load failed — fall back to defaults so the launcher
         // still has cards instead of going silent.
-        await applyAgents([]);
+        await applyLauncherSettings([], []);
       }
     } else {
-      await applyAgents([]);
+      await applyLauncherSettings([], []);
     }
 
     commands.addCommand(CREATE_LAUNCHER_COMMAND, {

@@ -9,7 +9,6 @@ import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { LabIcon, MenuSvg, terminalIcon } from '@jupyterlab/ui-components';
 
 import { IAgentSessions } from '../agentSessions';
-import { EDITOR_CANDIDATES } from '../launcher/editors';
 import { agentCommandId, IAgentRegistry } from '../launcher/tokens';
 import { SessionRegistry } from './model';
 import { RunningTerminals } from './widget';
@@ -69,9 +68,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
       if (agent) {
         return agent.icon;
       }
-      // Editors aren't in the agent registry, but a terminal running one is
-      // badged with its logo just like an agent's.
-      const editor = EDITOR_CANDIDATES.find(e => e.command === command);
+      // The launcher shares its editor list on the same registry; a terminal
+      // running one (Neovim/Vim, or a user-configured editor) is badged with
+      // its logo just like an agent's.
+      const editor = agentRegistry?.editors.find(e => e.command === command);
       return editor?.icon ?? terminalIcon;
     };
 
@@ -83,12 +83,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
       // nothing while a notebook or other widget is current instead).
       shell: app.shell,
       agentSessions,
-      // The commands the server should look for: the current agent list
-      // (derived live so it tracks settings changes) plus the editor
-      // candidates, so a terminal running Neovim or Vim is badged too.
+      // The commands the server should look for: the current agent and editor
+      // lists, both read live from the launcher's registry so they track
+      // settings changes — a terminal running an agent or an editor
+      // (Neovim/Vim, or a configured one) is badged.
       detectCommands: () => [
         ...(agentRegistry?.agents.map(a => a.command) ?? []),
-        ...EDITOR_CANDIDATES.map(e => e.command)
+        ...(agentRegistry?.editors.map(e => e.command) ?? [])
       ]
     });
 

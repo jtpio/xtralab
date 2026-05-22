@@ -2,9 +2,9 @@
 
 An opinionated JupyterLab meta-package for use with coding agents.
 
-Bundles a curated set of extensions, a path-first file browser, the
-`jupyterlab-git` panel with its text, notebook and image diffs rendered by
-xtralab, an agent-focused launcher, and a quieter default workspace.
+It bundles a curated set of JupyterLab extensions, a path-first file browser,
+git diffs rendered by xtralab, an agent launcher, and a quieter default
+workspace.
 
 ![xtralab screenshot](./screenshot.png)
 
@@ -18,7 +18,7 @@ pip install xtralab
 
 ### As a JupyterLab package
 
-Run JupyterLab the usual way:
+Once installed, start JupyterLab the usual way:
 
 ```bash
 jupyter lab
@@ -26,71 +26,43 @@ jupyter lab
 
 ### As a desktop app
 
-A standalone Electron build (DMG on macOS, AppImage on Linux) ships with each
-tagged release — grab the installer for your platform from the
-[Releases page](https://github.com/jtpio/xtralab/releases/latest). Builds from
-the current `main` branch are also produced on every push as workflow
-artifacts under the repository's
+A standalone Electron build is also available, packaged as a DMG on macOS and
+an AppImage on Linux. Each tagged release ships installers on the
+[releases page](https://github.com/jtpio/xtralab/releases/latest), and builds
+from `main` are uploaded as workflow artifacts on the
 [Actions tab](https://github.com/jtpio/xtralab/actions). See
-[CONTRIBUTING.md](./CONTRIBUTING.md) for the architecture and local build
-instructions.
+[CONTRIBUTING.md](./CONTRIBUTING.md) for the desktop app architecture and local
+build instructions.
 
 ## What's included
 
-- [`ajlab`](https://github.com/jtpio/ajlab) — agent-ready JupyterLab base
-- JupyterLab 4.6+
-- `jupyterlab-git` — provides the git panel; xtralab swaps its text,
-  notebook and image diff rendering for its own
-- `jupyterlab-lsp` + `ty` — Python LSP via Astral's `ty` (bundled); also
-  detects `typescript-language-server` on `PATH` for JS/TS
-- `jupyterlab-quickopen`
-- `jupyterlab-cursor-light`, `jupyterlab-cursor-dark`
-- `jupyterlab-day`, `jupyterlab-night` themes
+xtralab builds on [`ajlab`](https://github.com/jtpio/ajlab), the agent-ready
+JupyterLab base. On top of it, xtralab pulls in JupyterLab 4.6+ with
+`jupyterlab-git`, `jupyterlab-lsp`, `jupyterlab-quickopen`, `jupyterlab-vim`,
+and a set of light and dark themes (`jupyterlab-cursor-light`,
+`jupyterlab-cursor-dark`, `jupyterlab-day`, `jupyterlab-night`). See
+[`pyproject.toml`](./pyproject.toml) for the full list and pinned versions.
 
-The bundled labextension adds:
+The bundled xtralab labextension then adds:
 
 - A path-first file browser in the left sidebar.
-- xtralab-rendered diffs registered as `jupyterlab-git`'s diff providers
-  (its own notebook/plain-text/image diff plugins are disabled) so the
-  upstream git panel shows xtralab's diffs: `@pierre/diffs` for text and
-  notebooks, and an `<img>`-based 2-up/swipe/onion-skin view for images.
-- An agent launcher with a prompt textarea, a row of agent buttons (Claude,
-  Codex, Antigravity, Copilot, Goose, OpenCode, Kiro, Mistral Vibe), and a
-  collapsible list of changed files. Buttons are filtered to agents installed
-  on the machine; a typed prompt is shell-quoted and spliced into the launch
-  command for agents that accept one. An **Open** row below the agents starts a
-  plain terminal, notebook, or console — plus a one-click tile that opens your
-  terminal editor (Neovim, falling back to Vim) when either is on `PATH`.
-- A **Terminals** panel in the left sidebar listing every running terminal
-  session by the real title its program published (e.g. an agent's name).
-  Clicking a row activates its tab or reopens the session — so a backgrounded
-  agent is one click away even after its tab is closed — and an inline button
-  shuts the session down. The terminal you are currently working in is
-  highlighted, the way the file browser marks the open document; the highlight
-  clears when you switch to a notebook or any other non-terminal tab. The
-  header's **+** button opens a menu to start any
-  installed agent (the same list and icons as the launcher) or a plain
-  terminal, and a stop button shuts every session down at once (with a
-  confirmation). Each row is badged with the logo of the agent — or terminal
-  editor (Neovim/Vim) — running inside it, detected from the session's own
-  processes, so it works whether you launched it from xtralab or typed it into
-  a plain terminal, and reverts to the terminal icon once the program exits.
-- Left and right **sidebar toggle buttons** in the top bar — a left-sidebar
-  icon at the leading edge and a right-sidebar icon at the far edge.
-  They run JupyterLab's `application:toggle-left-area` /
-  `application:toggle-right-area` commands and light up while their sidebar is
-  open. (The right area is empty by default, so its button stays disabled
-  until a widget is moved there.)
+- Git diffs rendered by xtralab in the `jupyterlab-git` panel, using
+  `@pierre/diffs` for text and notebooks and a 2-up / swipe / onion-skin view
+  for images.
+- An agent launcher with a prompt box, buttons for the agents installed on your
+  machine (Claude, Codex, Antigravity, Copilot, Goose, OpenCode, Kiro, Mistral
+  Vibe), a collapsible list of changed files, and an Open row for a terminal,
+  notebook, console, or your terminal editor (Neovim or Vim).
+- A Terminals panel listing the running terminal sessions, each badged with the
+  agent or editor detected inside it.
+- Sidebar toggle buttons in the top bar for the left and right areas.
 
 ## Connecting agents to Jupyter (MCP)
 
-xtralab ships
-[`jupyter-server-mcp`](https://github.com/jupyter-ai-contrib/jupyter-server-mcp)
-(via [`ajlab`](https://github.com/jtpio/ajlab)), which runs a
-[Model Context Protocol](https://modelcontextprotocol.io) server inside
-JupyterLab automatically. To let a coding agent drive JupyterLab through it,
-register the server with the agent using the `jupyter-server-mcp-proxy`
-console script — it bridges the agent's stdio to the running server:
+xtralab runs a [Model Context Protocol][mcp-spec] server inside JupyterLab,
+provided by [`jupyter-server-mcp`][mcp]. To let a coding agent drive JupyterLab
+through it, register the bundled `jupyter-server-mcp-proxy` console script with
+the agent:
 
 ```bash
 claude mcp add jupyter -- jupyter-server-mcp-proxy
@@ -98,71 +70,39 @@ codex mcp add jupyter -- jupyter-server-mcp-proxy
 copilot mcp add jupyter -- jupyter-server-mcp-proxy
 ```
 
-The launcher surfaces these same commands under a collapsible **Connect
-agents to JupyterLab (MCP)** section with Copy buttons, filtered to the
-agents you have installed.
+Run this from a terminal inside xtralab, so the proxy inherits the server
+environment and discovers the running server automatically. No port is needed,
+and a single registration keeps working across restarts. The launcher also
+surfaces these commands with copy buttons, filtered to the agents you have
+installed.
 
-Run the command in a terminal inside xtralab so it inherits the server's
-environment. No port is needed: in the desktop app the supervisor exports
-`JUPYTER_SERVER_MCP_URL` into the Jupyter environment — inherited by the
-terminal and the agent — so the proxy connects straight to this server; under
-`pip install xtralab` the proxy discovers the running server from its runtime
-file instead. Either way a single registration keeps working across restarts
-and dynamically-assigned ports.
+See the [`jupyter-server-mcp` README][mcp] for other MCP clients.
 
-`claude mcp add` defaults to a project-local scope (kept in `~/.claude.json`,
-not your working tree, so nothing is committed). Codex and Copilot register
-globally, so the entry also shows up in their sessions outside xtralab — where
-the proxy just finds no server to connect to. Any other MCP client can point
-at the proxy the same way; see the
-[`jupyter-server-mcp`](https://github.com/jupyter-ai-contrib/jupyter-server-mcp)
-README.
+[mcp]: https://github.com/jupyter-ai-contrib/jupyter-server-mcp
+[mcp-spec]: https://modelcontextprotocol.io
 
 ## Language servers
 
-xtralab ships with
-[`jupyterlab-lsp`](https://github.com/jupyter-lsp/jupyterlab-lsp) and
-pre-registers two language servers through
-`jupyter_server_config.d/xtralab-lsp.json`:
+xtralab ships [`jupyterlab-lsp`][lsp] with two language servers pre-registered:
 
-- **Python — [`ty`](https://github.com/astral-sh/ty)** — installed as a
-  Python dependency. Works out of the box.
-- **TypeScript / JavaScript — `typescript-language-server`** — install
-  yourself:
+- Python, using [`ty`](https://github.com/astral-sh/ty), which is bundled and
+  works out of the box.
+- TypeScript and JavaScript, using `typescript-language-server`, which you
+  install yourself:
 
   ```bash
   npm install -g typescript-language-server typescript
   ```
 
-  Restart JupyterLab (or the desktop app) after installing.
+  Restart JupyterLab afterwards to pick it up.
 
-Specs use bare command names (`["ty", "server"]`), so binaries are resolved
-from `PATH` at spawn time.
-
-### Where binaries are discovered
-
-- **`pip install xtralab`** — anything on the JupyterLab process's `PATH`.
-- **Desktop app** — the supervisor augments `PATH` with common shim
-  locations (`~/.volta/bin`, `~/.npm-global/bin`, `~/.bun/bin`,
-  `~/.asdf/shims`, `~/.mise/shims`, `/opt/homebrew/bin`, `/usr/local/bin`,
-  …). Set `XTRALAB_EXTRA_PATH` (colon-separated) before launching the app
-  to add directories the defaults miss.
-
-### Adding more servers
-
-To enable another server (bash, yaml, json, dockerfile, pyright, …),
-install the binary then drop a JSON file into a `jupyter_server_config.d/`
-directory:
-
-- **`pip install xtralab`** — run `jupyter --paths` and pick a config dir
-  (typically `~/.jupyter/jupyter_server_config.d/`).
-- **Desktop app (macOS)** —
-  `~/Library/Application Support/xtralab/jupyter/config/jupyter_server_config.d/`
-  (or `xtralab dev` for local dev builds).
-- **Desktop app (Linux AppImage)** —
-  `~/.config/xtralab/jupyter/config/jupyter_server_config.d/`.
-
-Example (`bash-lsp.json`):
+To enable another server (bash, yaml, json, pyright, and more), install its
+binary and drop a JSON spec into a `jupyter_server_config.d/` directory. For
+`pip install xtralab`, run `jupyter --paths` to find one (typically
+`~/.jupyter/jupyter_server_config.d/`). For the desktop app, use
+`~/Library/Application Support/xtralab/jupyter/config/jupyter_server_config.d/`
+on macOS or `~/.config/xtralab/jupyter/config/jupyter_server_config.d/` on
+Linux.
 
 ```json
 {
@@ -180,15 +120,19 @@ Example (`bash-lsp.json`):
 }
 ```
 
-Pair with `npm install -g bash-language-server`. Reuse a bundled `key` to
-override it. See
-[jupyterlab-lsp's docs](https://jupyterlab-lsp.readthedocs.io/en/latest/Configuring.html)
-for the full spec schema.
+See the [`jupyterlab-lsp` documentation][lsp-config] for the full spec.
+
+[lsp]: https://github.com/jupyter-lsp/jupyterlab-lsp
+[lsp-config]: https://jupyterlab-lsp.readthedocs.io/en/latest/Configuring.html
 
 ## Customizing the launcher
 
-Open `Settings → Settings Editor → xtralab launcher` and edit the `agents`
-array. Entries are merged with the defaults by `id`.
+Open `Settings → Settings Editor → xtralab launcher` to override, hide, or add
+launcher entries. Both lists below merge with xtralab's defaults by `id`.
+
+### Agents
+
+Edit the `agents` array:
 
 ```jsonc
 {
@@ -205,14 +149,43 @@ array. Entries are merged with the defaults by `id`.
 }
 ```
 
-Fields: `id` (required), `label`, `caption`, `command`, `promptArgs` (how to
-splice the prompt — `[]` for positional, `["--flag"]` for flagged, `null` to
-opt out), `iconSvg`, `rank`, `enabled`, `requireAvailable`.
+Fields: `id` (required), `label`, `caption`, `command`, `promptArgs` (how the
+prompt is spliced: `[]` for positional, `["--flag"]` for flagged, `null` to opt
+out), `iconSvg`, `rank`, `enabled`, `requireAvailable`.
+
+### Editors
+
+The **Open** section's terminal-editor tile (Neovim, falling back to Vim) is
+configured the same way through an `editors` array:
+
+```jsonc
+{
+  "editors": [
+    // Hide Neovim so the tile falls back to Vim (or disappears if Vim
+    // isn't installed either)
+    { "id": "nvim", "enabled": false },
+
+    // Add Helix, preferred over the built-ins
+    {
+      "id": "helix",
+      "label": "Helix",
+      "command": "hx",
+      "rank": -1,
+      "iconSvg": "<svg>…</svg>"
+    }
+  ]
+}
+```
+
+The launcher shows a single tile: the first editor, by `rank`, whose `command`
+is on `PATH`. Disable both built-ins (`nvim`, `vim`) to remove the tile
+entirely. Fields: `id` (required), `label`, `caption`, `command`, `iconSvg`,
+`rank`, `enabled`, `requireAvailable`.
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for the development setup, the
-Electron desktop app architecture, and the build pipeline.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the development setup, the Electron
+desktop app architecture, and the build pipeline.
 
 ## License
 
