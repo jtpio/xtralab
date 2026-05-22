@@ -13,6 +13,7 @@ import {
 } from '@jupyterlab/ui-components';
 import type { Widget } from '@lumino/widgets';
 
+import type { IAgentSessions } from '../agentSessions';
 import { expandStatusFiles, status } from '../git/api';
 import {
   CommandIDs as GitCommandIDs,
@@ -25,6 +26,8 @@ import type {
 } from '../git/tokens';
 
 import type { IAgent } from './agents';
+import { launchInTerminal } from './commands';
+import type { IEditor } from './editors';
 import { agentCommandId } from './tokens';
 
 /**
@@ -41,6 +44,19 @@ export interface ILauncherDashboardOptions {
    * rank; the widget renders them as-is.
    */
   agents: IAgent[];
+  /**
+   * The terminal editor to offer in the "Open" section (Neovim preferred over
+   * Vim), or `null` when neither is installed. Resolved by the plugin from the
+   * same availability probe that filters the agents.
+   */
+  editor: IEditor | null;
+  /**
+   * Shared launch-tag registry. When the editor tile launches, it records the
+   * session here so the terminals panel badges it with the editor's logo right
+   * away, the same as agent launches do. `null` when the provider plugin is
+   * unavailable.
+   */
+  agentSessions: IAgentSessions | null;
   /**
    * Called after an agent command has returned its top-level widget. The
    * plugin uses this to swap the new terminal into the launcher's tab.
@@ -101,7 +117,15 @@ const CHANGES_POLL_MAX_MS = 300_000;
 function LauncherDashboardComponent(
   props: ILauncherDashboardOptions
 ): React.ReactElement {
-  const { commands, agents, onAgentLaunch, repoPath, cwd } = props;
+  const {
+    commands,
+    agents,
+    editor,
+    agentSessions,
+    onAgentLaunch,
+    repoPath,
+    cwd
+  } = props;
   const [prompt, setPrompt] = React.useState('');
   const [git, setGit] = React.useState<IGitState>({
     loading: true,
@@ -189,6 +213,23 @@ function LauncherDashboardComponent(
     }
   }, [commands, cwd, onAgentLaunch]);
 
+  const launchEditor = React.useCallback(async () => {
+    if (!editor) {
+      return;
+    }
+    // An editor is "open a terminal and type its command" — the agent launch
+    // minus the prompt — so it shares `launchInTerminal` rather than the native
+    // `terminal:create-new` call the tiles above use, and tags the session the
+    // same way so the terminals panel badges it with the editor's logo.
+    const result = await launchInTerminal(commands, {
+      cwd,
+      invocation: editor.command,
+      label: editor.label,
+      onSession: name => agentSessions?.set(name, editor.command)
+    });
+    onAgentLaunch(result);
+  }, [commands, cwd, editor, agentSessions, onAgentLaunch]);
+
   const openDiff = React.useCallback(
     (change: IFileChange) => {
       const args: GitCommandArguments.IOpenDiff = { repoPath, change };
@@ -208,10 +249,13 @@ function LauncherDashboardComponent(
         onPromptChange={setPrompt}
         onLaunch={launch}
       />
+      <McpSection agents={agents} />
       <OpenSection
+        editor={editor}
         onLaunchTerminal={launchTerminal}
         onLaunchNotebook={launchNotebook}
         onLaunchConsole={launchConsole}
+        onLaunchEditor={launchEditor}
       />
       <ChangesSection
         git={git}
@@ -411,18 +455,158 @@ function AgentSection(props: {
 }
 
 /**
+ * Launcher agents whose CLI has a clean, non-interactive `mcp add` that takes
+ * `<name> -- <command>`. The other agents (Goose, OpenCode, Kiro, Mistral
+ * Vibe, Antigravity) register MCP through their own config files or UI, so
+ * there is no one-line command to surface for them.
+ */
+const MCP_ADD_AGENT_IDS = new Set(['claude', 'codex', 'copilot']);
+
+/** The stdio proxy console script that bridges an agent to the MCP server. */
+const MCP_PROXY_COMMAND = 'jupyter-server-mcp-proxy';
+
+/**
+ * Copy `text` to the clipboard via a hidden, selected `<textarea>` and the
+ * legacy `execCommand('copy')`. Deprecated, but still the most reliable path
+ * under a user gesture when the async Clipboard API is unavailable or blocked
+ * (the desktop app's Electron window can deny clipboard writes by policy).
+ * Returns whether the copy succeeded.
+ */
+function legacyCopy(text: string): boolean {
+  try {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-1000px';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A collapsed-by-default hint listing the one-line command that registers
+ * xtralab's running Jupyter MCP server with each installed agent that
+ * supports `mcp add`. Copy-only: the user runs it in their own terminal,
+ * where the server is reachable with no port to configure — the desktop
+ * supervisor exports `JUPYTER_SERVER_MCP_URL`, and `pip` installs let the
+ * proxy discover the server from its runtime file. Renders nothing when none
+ * of those agents are on `$PATH`.
+ */
+function McpSection(props: { agents: IAgent[] }): React.ReactElement | null {
+  const [copiedId, setCopiedId] = React.useState<string | null>(null);
+  const registerable = props.agents.filter(agent =>
+    MCP_ADD_AGENT_IDS.has(agent.id)
+  );
+  if (registerable.length === 0) {
+    return null;
+  }
+
+  const flagCopied = (id: string): void => {
+    setCopiedId(id);
+    window.setTimeout(
+      () => setCopiedId(current => (current === id ? null : current)),
+      1500
+    );
+  };
+
+  const copy = (command: string, id: string): void => {
+    // Prefer the async Clipboard API; fall back to `legacyCopy` when it's
+    // missing or rejects (Electron can block it by policy). Flag "Copied" only
+    // once a copy actually succeeds.
+    const clipboard = navigator.clipboard;
+    if (clipboard) {
+      void clipboard.writeText(command).then(
+        () => flagCopied(id),
+        () => {
+          if (legacyCopy(command)) {
+            flagCopied(id);
+          }
+        }
+      );
+    } else if (legacyCopy(command)) {
+      flagCopied(id);
+    }
+  };
+
+  return (
+    <details className="jp-xtralab-Launcher-section jp-xtralab-Launcher-mcp-section">
+      <summary className="jp-xtralab-Launcher-section-summary">
+        <span className="jp-xtralab-Launcher-section-title">
+          Connect agents to JupyterLab (MCP)
+        </span>
+      </summary>
+      <div className="jp-xtralab-Launcher-section-body">
+        <p className="jp-xtralab-Launcher-agent-hint">
+          Run once per agent to let it drive this JupyterLab over MCP. No port
+          needed — the proxy finds this server on its own.
+        </p>
+        <ul className="jp-xtralab-Launcher-mcp-list">
+          {registerable.map(agent => {
+            const command = `${agent.command} mcp add jupyter -- ${MCP_PROXY_COMMAND}`;
+            return (
+              <li key={agent.id} className="jp-xtralab-Launcher-mcp-item">
+                <code className="jp-xtralab-Launcher-mcp-command">
+                  {command}
+                </code>
+                <button
+                  type="button"
+                  className={
+                    copiedId === agent.id
+                      ? 'jp-xtralab-Launcher-mcp-copy jp-mod-copied'
+                      : 'jp-xtralab-Launcher-mcp-copy'
+                  }
+                  aria-label={`Copy the ${agent.label} command`}
+                  onClick={() => copy(command, agent.id)}
+                >
+                  {copiedId === agent.id ? 'Copied!' : 'Copy'}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="jp-xtralab-Launcher-mcp-note">
+          Other agents (Goose, OpenCode, Kiro, Mistral Vibe, Antigravity)
+          register MCP through their own config — point them at the same{' '}
+          <code>{MCP_PROXY_COMMAND}</code> command.
+        </p>
+      </div>
+    </details>
+  );
+}
+
+/**
  * The non-agent launch tiles — a plain terminal, a new notebook, and a
  * new console. They sit in a separate section below the agent grid so
  * they don't compete with the AI agents visually, and they're always
  * available regardless of the agent prompt textarea (which doesn't
  * apply to them).
+ *
+ * A terminal editor (Neovim, else Vim) joins the row when one is installed —
+ * it opens in a terminal like the agents do, so it lives here rather than in
+ * the agent grid. When neither is on `$PATH`, `editor` is `null` and no tile
+ * renders.
  */
 function OpenSection(props: {
+  editor: IEditor | null;
   onLaunchTerminal: () => void;
   onLaunchNotebook: () => void;
   onLaunchConsole: () => void;
+  onLaunchEditor: () => void;
 }): React.ReactElement {
-  const { onLaunchTerminal, onLaunchNotebook, onLaunchConsole } = props;
+  const {
+    editor,
+    onLaunchTerminal,
+    onLaunchNotebook,
+    onLaunchConsole,
+    onLaunchEditor
+  } = props;
   return (
     <section className="jp-xtralab-Launcher-section">
       <h2 className="jp-xtralab-Launcher-section-title">Open</h2>
@@ -469,6 +653,24 @@ function OpenSection(props: {
           />
           <span className="jp-xtralab-Launcher-agent-label">Console</span>
         </button>
+        {editor && (
+          <button
+            type="button"
+            className="jp-xtralab-Launcher-agent"
+            title={editor.caption}
+            aria-label={editor.caption}
+            onClick={onLaunchEditor}
+          >
+            <LabIcon.resolveReact
+              icon={editor.icon}
+              tag="span"
+              className="jp-xtralab-Launcher-agent-icon"
+            />
+            <span className="jp-xtralab-Launcher-agent-label">
+              {editor.label}
+            </span>
+          </button>
+        )}
       </div>
     </section>
   );

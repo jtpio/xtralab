@@ -58,7 +58,8 @@
  * that hosts the title, count badge, and refresh action; the disclosure
  * triangle is the browser default — it rotates when the section opens.
  */
-.jp-xtralab-Launcher-changes-section {
+.jp-xtralab-Launcher-changes-section,
+.jp-xtralab-Launcher-mcp-section {
   /* Reset the default `<details>` block so its contents inherit the
      section's gap-aligned column layout instead of stacking flush. */
   display: flex;
@@ -70,7 +71,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  list-style-position: outside;
+  list-style: none;
   cursor: pointer;
   user-select: none;
   padding: 2px 0;
@@ -84,6 +85,31 @@
 .jp-xtralab-Launcher-section-summary:focus-visible {
   outline: 1px solid var(--jp-brand-color1);
   outline-offset: 1px;
+}
+
+/*
+ * Disclosure caret. `display: flex` on the `<summary>` drops the browser's
+ * native triangle, so draw one (a CSS border triangle in `currentColor`) and
+ * rotate it from pointing right to pointing down when the section is open.
+ */
+.jp-xtralab-Launcher-section-summary::-webkit-details-marker {
+  display: none;
+}
+
+.jp-xtralab-Launcher-section-summary::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 4px 0 4px 6px;
+  border-color: transparent transparent transparent currentcolor;
+  transition: transform 120ms ease;
+}
+
+.jp-xtralab-Launcher-section[open]
+  > .jp-xtralab-Launcher-section-summary::before {
+  transform: rotate(90deg);
 }
 
 .jp-xtralab-Launcher-section-count {
@@ -315,4 +341,100 @@
   font-size: var(--jp-ui-font-size1);
   font-weight: 500;
   text-align: center;
+}
+
+/*
+ * MCP registration hint. A collapsed-by-default `<details>` listing the
+ * one-line `mcp add` command for each installed agent that supports one,
+ * each paired with a Copy button. The command sits in a read-only `<code>`
+ * box — the user copies it and runs it in their own terminal — so the row
+ * is not itself a button.
+ */
+
+/*
+ * The MCP hint is an optional helper, not a primary section, so its summary
+ * is rendered lighter and in sentence case rather than reusing the bold,
+ * uppercase treatment of the `START AN AGENT` / `OPEN` headers — otherwise a
+ * collapsed disclosure reads as a misplaced top-level section.
+ */
+.jp-xtralab-Launcher-mcp-section .jp-xtralab-Launcher-section-title {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.jp-xtralab-Launcher-mcp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jp-xtralab-Launcher-mcp-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jp-xtralab-Launcher-mcp-command {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 10px;
+  background-color: var(--jp-layout-color2);
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 4px;
+  font-family: var(--jp-code-font-family);
+  font-size: var(--jp-code-font-size);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/*
+ * Copy buttons are sized to the longest label ("Copied!") and centered, so
+ * swapping "Copy" ↔ "Copied!" never resizes the button or ragged-aligns the
+ * column.
+ */
+.jp-xtralab-Launcher-mcp-copy {
+  flex: 0 0 auto;
+  min-width: 4.5rem;
+  padding: 4px 12px;
+  text-align: center;
+  background-color: var(--jp-layout-color1);
+  color: var(--jp-ui-font-color1);
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--jp-ui-font-size0);
+}
+
+.jp-xtralab-Launcher-mcp-copy:hover {
+  background-color: var(--jp-layout-color2);
+  border-color: var(--jp-border-color1);
+}
+
+.jp-xtralab-Launcher-mcp-copy:focus-visible {
+  outline: 1px solid var(--jp-brand-color1);
+  outline-offset: 1px;
+}
+
+/* Confirmation state after a successful copy — a clear color shift, paired
+   with the button's "Copied!" label, so the action is unmistakable. */
+.jp-xtralab-Launcher-mcp-copy.jp-mod-copied {
+  color: var(--jp-success-color1, var(--jp-ui-font-color1));
+  border-color: var(--jp-success-color1, var(--jp-border-color1));
+}
+
+.jp-xtralab-Launcher-mcp-note {
+  margin: 4px 0 0;
+  color: var(--jp-ui-font-color3);
+  font-size: var(--jp-ui-font-size0);
+  line-height: 1.4;
+}
+
+.jp-xtralab-Launcher-mcp-note code {
+  font-family: var(--jp-code-font-family);
+  font-size: var(--jp-code-font-size);
 }

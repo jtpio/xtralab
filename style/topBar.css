@@ -8,8 +8,8 @@
 /*
  * The right-area button is added to the flex container `#jp-top-panel` after
  * the main menu (a high rank). `margin-left: auto` consumes the free space to
- * its left so it floats to the far right, mirroring the left button that sits
- * right after the Jupyter logo.
+ * its left so it floats to the far right, mirroring the left button at the
+ * leading edge.
  */
 .xtralab-TopBarButton-right {
   margin-left: auto;
@@ -24,7 +24,7 @@
  *     inset `box-shadow`;
  *   - `:host([disabled])` (e.g. the right area is empty) fills the host with
  *     `neutralFillRest`.
- * Neutralize both so the control stays a flat icon like the logo and menu.
+ * Neutralize both so the control stays a flat icon like the menu.
  * The hover/active stealth fills are left untouched as a normal affordance.
  * `!important` is needed to override the (non-important) `:host(...)` rules
  * defined inside the component's shadow DOM.

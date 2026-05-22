@@ -65,6 +65,61 @@
           }
         }
       }
+    },
+    "editors": {
+      "title": "Editors",
+      "description": "Override or extend the terminal editors offered in the launcher's Open section (and recognized in the Terminals panel). Each entry must include an `id`. When the id matches a built-in (nvim, vim), the fields you set override the corresponding defaults; leave a field out to keep the default. New ids define additional editors. The launcher shows a single tile — the first editor, by `rank`, whose `command` is on PATH (Neovim before Vim by default). Set `enabled: false` to hide a built-in; disable both to remove the tile entirely. Set `requireAvailable: false` for a shell alias that should show even though it isn't on PATH.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": {
+            "title": "ID",
+            "description": "Stable identifier. Match a built-in (nvim, vim) to override, or pick a new id to define a new editor.",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "description": "Tile title shown on the launcher.",
+            "type": "string"
+          },
+          "caption": {
+            "title": "Caption",
+            "description": "Tooltip shown for the tile.",
+            "type": "string"
+          },
+          "command": {
+            "title": "Command",
+            "description": "Literal string typed into the new terminal (e.g. `nvim`). Aliases work because shells expand them on interactive lines.",
+            "type": "string"
+          },
+          "iconSvg": {
+            "title": "Icon SVG",
+            "description": "Inline SVG for the tile icon. Required only for new editors whose icon is not already shipped by xtralab.",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "description": "Preference order (lower numbers come first). The launcher shows the first available editor by rank.",
+            "type": "number"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "description": "When false, hides the editor from the launcher (and the Terminals panel stops badging it).",
+            "type": "boolean",
+            "default": true
+          },
+          "requireAvailable": {
+            "title": "Require available",
+            "description": "When false, the launcher skips the availability check for this entry (useful for a shell alias that isn't on PATH but resolves in an interactive shell).",
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
     }
   }
 }

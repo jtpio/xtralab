@@ -5,7 +5,7 @@ import fileBrowserPlugin from './fileBrowser';
 import editorBreadcrumbsPlugin from './editorBreadcrumbs';
 import editorIndentPlugin from './editorIndent';
 import gitPlugins from './git';
-import launcherPlugin from './launcher';
+import launcherPlugins from './launcher';
 import menusPlugin from './menus';
 import sidebarPlugin from './sidebar';
 import terminalsPlugin from './terminals';
@@ -16,8 +16,9 @@ import topBarPlugin from './topBar';
  * labextension is an array because the package bundles several independent
  * enhancements (file browser, git diff providers, …) — JupyterLab activates
  * each plugin individually and only the ones whose required tokens are
- * available end up running. `gitPlugins` is itself an array (the launcher
- * diff command + the jupyterlab-git diff providers), so it is spread in.
+ * available end up running. `gitPlugins` and `launcherPlugins` are themselves
+ * arrays (the git diff providers; the launcher plus its editor registry), so
+ * they are spread in.
  */
 const plugins: JupyterFrontEndPlugin<unknown>[] = [
   agentSessionsPlugin,
@@ -25,7 +26,7 @@ const plugins: JupyterFrontEndPlugin<unknown>[] = [
   editorIndentPlugin,
   fileBrowserPlugin,
   ...gitPlugins,
-  launcherPlugin,
+  ...launcherPlugins,
   menusPlugin,
   sidebarPlugin,
   terminalsPlugin,

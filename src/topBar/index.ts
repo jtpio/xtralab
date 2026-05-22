@@ -28,10 +28,12 @@ interface IButtonSpec {
   icon: LabIcon;
   caption: (trans: ReturnType<ITranslator['load']>) => string;
   /**
-   * Rank within the `top` area. The Jupyter logo is added at rank 0 and the
-   * main menu bar at rank 100, so a small rank lands the left button between
-   * them; a large rank puts the right button after the menu, where
-   * `margin-left: auto` (style/topBar.css) floats it to the far edge.
+   * Rank within the `top` area. The main menu bar is added at rank 100, so a
+   * negative rank lands the left button at the leading edge before it; a large
+   * rank puts the right button after the menu, where `margin-left: auto`
+   * (style/topBar.css) floats it to the far edge. xtralab's shipped config
+   * disables the upstream Jupyter logo that otherwise occupies rank 0, so the
+   * leading edge is free.
    */
   rank: number;
   /** Side-specific class, used by the stylesheet for placement. */
@@ -44,7 +46,7 @@ const BUTTONS: IButtonSpec[] = [
     command: TOGGLE_LEFT_AREA,
     icon: leftSidebarIcon,
     caption: trans => trans.__('Toggle left sidebar'),
-    rank: 1,
+    rank: -1,
     sideClass: 'xtralab-TopBarButton-left'
   },
   {
@@ -59,8 +61,8 @@ const BUTTONS: IButtonSpec[] = [
 
 /**
  * Add two icon buttons to the top bar that toggle the left and right side
- * areas, mirroring the macOS-style sidebar buttons: a left-sidebar button
- * just after the Jupyter logo and a right-sidebar button at the far edge.
+ * areas, mirroring the macOS-style sidebar buttons: a left-sidebar button at
+ * the leading edge and a right-sidebar button at the far edge.
  *
  * Each is a `CommandToolbarButton` wrapping an existing
  * `application:toggle-{left,right}-area` command, so clicking it runs the
@@ -103,8 +105,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
           // ToolbarButtonComponent calls `event.target.focus()` on click,
           // leaving the stealth button showing a focus fill/outline (the
           // stray "border") until you click elsewhere — unwanted chrome for a
-          // title-bar control sitting between the logo and the menu. Keyboard
-          // Tab focus still works, so this stays accessible.
+          // title-bar control. Keyboard Tab focus still works, so this stays
+          // accessible.
           noFocusOnClick: true
         });
         button.id = spec.id;

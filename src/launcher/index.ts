@@ -17,6 +17,7 @@ import { mergeAgents, type IAgent, type IAgentSettings } from './agents';
 import { fetchAvailableCommands } from './availability';
 import { CREATE_LAUNCHER_COMMAND, registerAgentCommands } from './commands';
 import { LauncherDashboard } from './dashboard';
+import { editorRegistryPlugin, IEditorRegistry } from './editorRegistry';
 import { AgentRegistry } from './registry';
 import { IAgentRegistry } from './tokens';
 
@@ -53,7 +54,8 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
     ICommandPalette,
     ISettingRegistry,
     ITranslator,
-    IAgentSessions
+    IAgentSessions,
+    IEditorRegistry
   ],
   activate: async (
     app: JupyterFrontEnd,
@@ -61,7 +63,8 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
     palette: ICommandPalette | null,
     settingRegistry: ISettingRegistry | null,
     translator: ITranslator | null,
-    agentSessions: IAgentSessions | null
+    agentSessions: IAgentSessions | null,
+    editorRegistry: IEditorRegistry | null
   ): Promise<IAgentRegistry> => {
     const { commands, shell } = app;
     const trans = (translator ?? nullTranslator).load('jupyterlab');
@@ -79,7 +82,20 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
 
     const applyAgents = async (overrides: IAgentSettings[]): Promise<void> => {
       const agents = mergeAgents(overrides);
-      const filtered = await filterByAvailability(agents);
+
+      // Probe the server's `$PATH` so we only surface agents that are actually
+      // installed. Agents with `requireAvailable: false` opt out (their command
+      // may be a shell alias that `which` can't see) and are kept regardless.
+      const probe = Array.from(
+        new Set(
+          agents
+            .filter(agent => agent.requireAvailable)
+            .map(agent => agent.command)
+        )
+      );
+      const available = await fetchAvailableCommands(probe);
+
+      const filtered = filterAgents(agents, available);
 
       registered?.dispose();
       registered = registerAgentCommands(app, filtered, agentSessions);
@@ -135,6 +151,8 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
         const launcher = new LauncherDashboard({
           commands,
           agents: registry.agents,
+          editor: editorRegistry?.current ?? null,
+          agentSessions,
           onAgentLaunch,
           // Empty repoPath/cwd matches the JupyterLab convention used by
           // the git panel and the stock launcher: let the server resolve
@@ -205,22 +223,19 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
 };
 
 /**
- * Drop agents whose command isn't on `$PATH`, except for entries that
- * explicitly opt out of the check via `requireAvailable: false` (typical
- * use case: shell aliases the user wants surfaced regardless).
+ * Drop agents whose command isn't on `$PATH`, except entries that opt out via
+ * `requireAvailable: false` (e.g. shell aliases the user wants surfaced
+ * regardless). `available` is the resolved set from
+ * {@link fetchAvailableCommands}.
  *
- * If the availability endpoint can't be reached we fail open and return
- * the input unchanged — better to show an unreachable agent than to hide
- * the entire launcher because the server extension didn't load.
+ * When `available` is `null` (the endpoint couldn't be reached) we fail open
+ * and return the input unchanged — better to show an unreachable agent than
+ * to hide the entire launcher because the server extension didn't load.
  */
-async function filterByAvailability(agents: IAgent[]): Promise<IAgent[]> {
-  const commands = agents
-    .filter(agent => agent.requireAvailable)
-    .map(agent => agent.command);
-  if (commands.length === 0) {
-    return agents;
-  }
-  const available = await fetchAvailableCommands(commands);
+function filterAgents(
+  agents: IAgent[],
+  available: Set<string> | null
+): IAgent[] {
   if (!available) {
     return agents;
   }
@@ -240,4 +255,9 @@ namespace Private {
   }
 }
 
-export default plugin;
+const plugins: JupyterFrontEndPlugin<unknown>[] = [
+  plugin,
+  editorRegistryPlugin
+];
+
+export default plugins;

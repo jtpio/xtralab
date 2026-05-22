@@ -9,6 +9,7 @@ import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { LabIcon, MenuSvg, terminalIcon } from '@jupyterlab/ui-components';
 
 import { IAgentSessions } from '../agentSessions';
+import { IEditorRegistry } from '../launcher/editorRegistry';
 import { agentCommandId, IAgentRegistry } from '../launcher/tokens';
 import { SessionRegistry } from './model';
 import { RunningTerminals } from './widget';
@@ -45,27 +46,40 @@ const plugin: JupyterFrontEndPlugin<void> = {
     'A left-sidebar panel listing every running terminal session by its real (program-published) title, with activate/reopen, shutdown and new-terminal actions.',
   autoStart: true,
   requires: [ITerminalTracker],
-  optional: [ILayoutRestorer, ITranslator, IAgentRegistry, IAgentSessions],
+  optional: [
+    ILayoutRestorer,
+    ITranslator,
+    IAgentRegistry,
+    IEditorRegistry,
+    IAgentSessions
+  ],
   activate: (
     app: JupyterFrontEnd,
     tracker: ITerminalTracker,
     restorer: ILayoutRestorer | null,
     translator: ITranslator | null,
     agentRegistry: IAgentRegistry | null,
+    editorRegistry: IEditorRegistry | null,
     agentSessions: IAgentSessions | null
   ): void => {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
-    // Resolve a session's running-agent command to an icon: the matching
-    // agent's logo, or the plain terminal icon when nothing (recognised) is
-    // running. Reads `agentRegistry.agents` live so it tracks settings
-    // changes. Used by the panel to badge each row.
+    // Resolve a session's running command to an icon: the matching agent's
+    // logo, the matching editor's logo (Neovim/Vim), or the plain terminal
+    // icon when nothing recognised is running. Reads `agentRegistry.agents`
+    // live so it tracks settings changes. Used by the panel to badge each row.
     const iconForCommand = (command: string | null): LabIcon => {
       if (!command) {
         return terminalIcon;
       }
       const agent = agentRegistry?.agents.find(a => a.command === command);
-      return agent?.icon ?? terminalIcon;
+      if (agent) {
+        return agent.icon;
+      }
+      // A terminal running an editor (Neovim/Vim, or a user-configured one) is
+      // badged with its logo, the same as an agent.
+      const editor = editorRegistry?.editors.find(e => e.command === command);
+      return editor?.icon ?? terminalIcon;
     };
 
     const registry = new SessionRegistry({
@@ -76,10 +90,33 @@ const plugin: JupyterFrontEndPlugin<void> = {
       // nothing while a notebook or other widget is current instead).
       shell: app.shell,
       agentSessions,
-      // The commands the server should look for, derived live from the
-      // current agent list so it tracks settings changes.
-      detectCommands: () => agentRegistry?.agents.map(a => a.command) ?? []
+      // The commands the server should look for: the current agent and editor
+      // lists, each read live from its registry so they track settings changes
+      // — a terminal running an agent or an editor (Neovim/Vim, or a configured
+      // one) is badged.
+      detectCommands: () => [
+        ...(agentRegistry?.agents.map(a => a.command) ?? []),
+        ...(editorRegistry?.editors.map(e => e.command) ?? [])
+      ]
     });
+
+    // Mirror the agent/editor detected in each open terminal onto its main-area
+    // tab icon, so the tab matches its sidebar row. Re-running on every
+    // `stateChanged` is safe: `Title.icon` ignores an unchanged assignment, so
+    // the writes neither loop nor churn.
+    const syncTabIcons = (): void => {
+      tracker.forEach(widget => {
+        const session = widget.content?.session;
+        if (!session) {
+          return;
+        }
+        widget.title.icon = iconForCommand(
+          registry.agentCommandFor(session.name)
+        );
+      });
+    };
+    registry.stateChanged.connect(syncTabIcons);
+    syncTabIcons();
 
     const onActivate = (name: string): void => {
       // `terminal:open` is the upstream entry point that handles both
