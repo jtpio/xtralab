@@ -54,7 +54,8 @@ The bundled xtralab labextension then adds:
   Vibe), a collapsible list of changed files, and an Open row for a terminal,
   notebook, console, or your terminal editor (Neovim or Vim).
 - A Terminals panel listing the running terminal sessions, each badged with the
-  agent or editor detected inside it.
+  agent or editor detected inside it. Open terminal tabs in the main area carry
+  the same icon.
 - Sidebar toggle buttons in the top bar for the left and right areas.
 
 ## Connecting agents to Jupyter (MCP)

@@ -3,14 +3,11 @@ import { LabIcon, textEditorIcon } from '@jupyterlab/ui-components';
 import { BUILTIN_EDITOR_ICONS } from './icons';
 
 /**
- * A terminal text editor surfaced on the launcher's "Open" section. Unlike an
- * agent, an editor takes no initial prompt and is launched by simply typing
- * its command into a fresh terminal (e.g. `nvim`). The shape mirrors `IAgent`
- * minus `promptArgs` — editors never take a prompt — so the two share the same
- * merge-and-availability machinery. The launcher only ever shows a single
- * editor tile (the first available candidate; see {@link resolveEditor}), but
- * the full list is shared with the terminals panel so every configured editor
- * is recognised and badged there.
+ * A terminal text editor surfaced on the launcher's "Open" section. An editor
+ * takes no initial prompt and is launched by typing its command into a fresh
+ * terminal (e.g. `nvim`). The launcher shows a single editor tile (the first
+ * available candidate; see {@link resolveEditor}); the full list is shared with
+ * the terminals panel to badge running editors.
  */
 export interface IEditor {
   /** Stable id; also the default `$PATH` command probed for availability. */
@@ -168,12 +165,9 @@ export function mergeEditors(overrides: IEditorSettings[]): IEditor[] {
  * opts out of the check (`requireAvailable: false`) — Neovim before Vim by
  * default — or `null` when none qualifies.
  *
- * `available` is `null` when the availability endpoint couldn't be reached. A
- * `requireAvailable` editor fails *closed* in that case (it isn't shown),
- * unlike the agent list which fails open: hiding one optional tile is
- * harmless, whereas hiding every agent would leave an empty launcher. An entry
- * with `requireAvailable: false` is shown regardless, since it never depended
- * on the probe.
+ * When `available` is `null` (the endpoint couldn't be reached), a
+ * `requireAvailable` editor is not shown; an entry with
+ * `requireAvailable: false` is shown regardless.
  */
 export function resolveEditor(
   editors: IEditor[],

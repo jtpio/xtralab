@@ -9,6 +9,7 @@ import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { LabIcon, MenuSvg, terminalIcon } from '@jupyterlab/ui-components';
 
 import { IAgentSessions } from '../agentSessions';
+import { IEditorRegistry } from '../launcher/editorRegistry';
 import { agentCommandId, IAgentRegistry } from '../launcher/tokens';
 import { SessionRegistry } from './model';
 import { RunningTerminals } from './widget';
@@ -45,13 +46,20 @@ const plugin: JupyterFrontEndPlugin<void> = {
     'A left-sidebar panel listing every running terminal session by its real (program-published) title, with activate/reopen, shutdown and new-terminal actions.',
   autoStart: true,
   requires: [ITerminalTracker],
-  optional: [ILayoutRestorer, ITranslator, IAgentRegistry, IAgentSessions],
+  optional: [
+    ILayoutRestorer,
+    ITranslator,
+    IAgentRegistry,
+    IEditorRegistry,
+    IAgentSessions
+  ],
   activate: (
     app: JupyterFrontEnd,
     tracker: ITerminalTracker,
     restorer: ILayoutRestorer | null,
     translator: ITranslator | null,
     agentRegistry: IAgentRegistry | null,
+    editorRegistry: IEditorRegistry | null,
     agentSessions: IAgentSessions | null
   ): void => {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
@@ -68,10 +76,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
       if (agent) {
         return agent.icon;
       }
-      // The launcher shares its editor list on the same registry; a terminal
-      // running one (Neovim/Vim, or a user-configured editor) is badged with
-      // its logo just like an agent's.
-      const editor = agentRegistry?.editors.find(e => e.command === command);
+      // A terminal running an editor (Neovim/Vim, or a user-configured one) is
+      // badged with its logo, the same as an agent.
+      const editor = editorRegistry?.editors.find(e => e.command === command);
       return editor?.icon ?? terminalIcon;
     };
 
@@ -84,14 +91,32 @@ const plugin: JupyterFrontEndPlugin<void> = {
       shell: app.shell,
       agentSessions,
       // The commands the server should look for: the current agent and editor
-      // lists, both read live from the launcher's registry so they track
-      // settings changes — a terminal running an agent or an editor
-      // (Neovim/Vim, or a configured one) is badged.
+      // lists, each read live from its registry so they track settings changes
+      // — a terminal running an agent or an editor (Neovim/Vim, or a configured
+      // one) is badged.
       detectCommands: () => [
         ...(agentRegistry?.agents.map(a => a.command) ?? []),
-        ...(agentRegistry?.editors.map(e => e.command) ?? [])
+        ...(editorRegistry?.editors.map(e => e.command) ?? [])
       ]
     });
+
+    // Mirror the agent/editor detected in each open terminal onto its main-area
+    // tab icon, so the tab matches its sidebar row. Re-running on every
+    // `stateChanged` is safe: `Title.icon` ignores an unchanged assignment, so
+    // the writes neither loop nor churn.
+    const syncTabIcons = (): void => {
+      tracker.forEach(widget => {
+        const session = widget.content?.session;
+        if (!session) {
+          return;
+        }
+        widget.title.icon = iconForCommand(
+          registry.agentCommandFor(session.name)
+        );
+      });
+    };
+    registry.stateChanged.connect(syncTabIcons);
+    syncTabIcons();
 
     const onActivate = (name: string): void => {
       // `terminal:open` is the upstream entry point that handles both

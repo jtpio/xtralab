@@ -17,12 +17,7 @@ import { mergeAgents, type IAgent, type IAgentSettings } from './agents';
 import { fetchAvailableCommands } from './availability';
 import { CREATE_LAUNCHER_COMMAND, registerAgentCommands } from './commands';
 import { LauncherDashboard } from './dashboard';
-import {
-  mergeEditors,
-  resolveEditor,
-  type IEditor,
-  type IEditorSettings
-} from './editors';
+import { editorRegistryPlugin, IEditorRegistry } from './editorRegistry';
 import { AgentRegistry } from './registry';
 import { IAgentRegistry } from './tokens';
 
@@ -59,7 +54,8 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
     ICommandPalette,
     ISettingRegistry,
     ITranslator,
-    IAgentSessions
+    IAgentSessions,
+    IEditorRegistry
   ],
   activate: async (
     app: JupyterFrontEnd,
@@ -67,16 +63,16 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
     palette: ICommandPalette | null,
     settingRegistry: ISettingRegistry | null,
     translator: ITranslator | null,
-    agentSessions: IAgentSessions | null
+    agentSessions: IAgentSessions | null,
+    editorRegistry: IEditorRegistry | null
   ): Promise<IAgentRegistry> => {
     const { commands, shell } = app;
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
-    // The shared launcher registry this plugin provides on `IAgentRegistry`.
-    // It holds the active agent and editor lists (recomputed whenever settings
-    // change), so every freshly-created launcher widget — and any other plugin
-    // that consumes the token, e.g. the terminals panel — renders the latest
-    // lists.
+    // The shared agent registry this plugin provides on `IAgentRegistry`.
+    // It holds the active agent list (updated whenever settings change), so
+    // every freshly-created launcher widget — and any other plugin that
+    // consumes the token, e.g. the terminals panel — renders the latest list.
     const registry = new AgentRegistry();
 
     // Track command registrations so a settings change can wipe them
@@ -84,73 +80,42 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
     // accumulate stale entries when the agent list shrinks.
     let registered: IDisposable | null = null;
 
-    // The editor tile (Neovim, else Vim) to hand the next launcher widget,
-    // resolved alongside the agents from the same availability probe. Like
-    // `registry.agents`, freshly-created launchers read the current value;
-    // already-open launchers keep what they were built with.
-    let currentEditor: IEditor | null = null;
+    const applyAgents = async (overrides: IAgentSettings[]): Promise<void> => {
+      const agents = mergeAgents(overrides);
 
-    const applyLauncherSettings = async (
-      agentOverrides: IAgentSettings[],
-      editorOverrides: IEditorSettings[]
-    ): Promise<void> => {
-      const agents = mergeAgents(agentOverrides);
-      const editors = mergeEditors(editorOverrides);
-
-      // One availability probe covers both the agent and editor commands, so a
-      // settings change costs a single round-trip. Entries with
-      // `requireAvailable: false` opt out (their command may be a shell alias
-      // that `which` can't see) and are kept regardless.
+      // Probe the server's `$PATH` so we only surface agents that are actually
+      // installed. Agents with `requireAvailable: false` opt out (their command
+      // may be a shell alias that `which` can't see) and are kept regardless.
       const probe = Array.from(
-        new Set([
-          ...agents
+        new Set(
+          agents
             .filter(agent => agent.requireAvailable)
-            .map(agent => agent.command),
-          ...editors
-            .filter(editor => editor.requireAvailable)
-            .map(editor => editor.command)
-        ])
+            .map(agent => agent.command)
+        )
       );
       const available = await fetchAvailableCommands(probe);
 
       const filtered = filterAgents(agents, available);
-      currentEditor = resolveEditor(editors, available);
 
       registered?.dispose();
       registered = registerAgentCommands(app, filtered, agentSessions);
       registry.setAgents(filtered);
-      // The terminals panel reads the full editor list (not just the single
-      // resolved tile) so it can badge any configured editor that is running.
-      registry.setEditors(editors);
     };
 
-    const readAgentOverrides = (
+    const readOverrides = (
       settings: ISettingRegistry.ISettings
     ): IAgentSettings[] => {
       const raw = settings.composite.agents;
       return Array.isArray(raw) ? (raw as IAgentSettings[]) : [];
     };
 
-    const readEditorOverrides = (
-      settings: ISettingRegistry.ISettings
-    ): IEditorSettings[] => {
-      const raw = settings.composite.editors;
-      return Array.isArray(raw) ? (raw as IEditorSettings[]) : [];
-    };
-
     if (settingRegistry) {
       try {
         const settings = await settingRegistry.load(PLUGIN_ID);
-        await applyLauncherSettings(
-          readAgentOverrides(settings),
-          readEditorOverrides(settings)
-        );
+        await applyAgents(readOverrides(settings));
         settings.changed.connect(async () => {
           try {
-            await applyLauncherSettings(
-              readAgentOverrides(settings),
-              readEditorOverrides(settings)
-            );
+            await applyAgents(readOverrides(settings));
           } catch (reason) {
             console.error(
               'xtralab: failed to reapply launcher settings',
@@ -162,10 +127,10 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
         console.error('xtralab: failed to load launcher settings', reason);
         // Settings load failed — fall back to defaults so the launcher
         // still has cards instead of going silent.
-        await applyLauncherSettings([], []);
+        await applyAgents([]);
       }
     } else {
-      await applyLauncherSettings([], []);
+      await applyAgents([]);
     }
 
     commands.addCommand(CREATE_LAUNCHER_COMMAND, {
@@ -186,7 +151,7 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
         const launcher = new LauncherDashboard({
           commands,
           agents: registry.agents,
-          editor: currentEditor,
+          editor: editorRegistry?.current ?? null,
           agentSessions,
           onAgentLaunch,
           // Empty repoPath/cwd matches the JupyterLab convention used by
@@ -265,9 +230,7 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
  *
  * When `available` is `null` (the endpoint couldn't be reached) we fail open
  * and return the input unchanged — better to show an unreachable agent than
- * to hide the entire launcher because the server extension didn't load. The
- * editor tile resolves from the same set but fails closed; see
- * {@link resolveEditor}.
+ * to hide the entire launcher because the server extension didn't load.
  */
 function filterAgents(
   agents: IAgent[],
@@ -292,4 +255,9 @@ namespace Private {
   }
 }
 
-export default plugin;
+const plugins: JupyterFrontEndPlugin<unknown>[] = [
+  plugin,
+  editorRegistryPlugin
+];
+
+export default plugins;
