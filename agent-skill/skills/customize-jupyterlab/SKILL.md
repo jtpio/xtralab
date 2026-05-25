@@ -1,6 +1,6 @@
 ---
 name: customize-jupyterlab
-description: Use this skill whenever the user wants to change how JupyterLab or xtralab looks or behaves — hide or show sidebar tabs, change the default theme, disable extensions, hide the status bar, move the activity bar, register a language server, tweak CodeMirror or notebook defaults, customize the xtralab launcher or sidebar, change keyboard shortcuts, edit context or menu items, set per-user defaults that survive reinstalls. Use it even when the user does not say "JupyterLab" or "xtralab" explicitly, as long as the context is a Jupyter notebook environment or the xtralab desktop app. Teaches the four config surfaces (page_config.d, default_setting_overrides.d, jupyter_server_config.d, lab/user-settings), how to find them with `jupyter --paths`, and where to write changes safely without touching installed package files.
+description: Use this skill whenever the user wants to change how JupyterLab or xtralab looks or behaves — hide or show sidebar tabs, change the default theme, disable extensions, hide the status bar, move the activity bar, register a language server, tweak CodeMirror or notebook defaults, customize the xtralab launcher or sidebar, change keyboard shortcuts, edit context or menu items, set per-user defaults that survive reinstalls. Also use it when the user wants to _add_ new UI or behavior — a toolbar button, status-bar item, sidebar panel, custom command, menu entry, launcher card, file handler, mime renderer, or any "ad-hoc extension" — since those need a labextension, not a config tweak. Use it even when the user does not say "JupyterLab" or "xtralab" explicitly, as long as the context is a Jupyter notebook environment or the xtralab desktop app. Teaches the four config surfaces (page_config.d, default_setting_overrides.d, jupyter_server_config.d, lab/user-settings) and the fifth surface for runtime behavior (`share/jupyter/labextensions/`), how to find them with `jupyter --paths`, and where to write changes safely without touching installed package files.
 compatibility: Requires JupyterLab 4+ and the `jupyter` CLI on PATH. Works with pip and conda installs, and with the xtralab desktop app (which sets `JUPYTER_CONFIG_DIR` to its own per-app directory).
 ---
 
@@ -10,7 +10,7 @@ JupyterLab does not have one settings file — it has four layered config surfac
 
 ## Golden rules
 
-1. **Never edit package-installed files.** Anything under `<venv>/lib/.../site-packages/...` or `<venv>/share/jupyter/...` (kernels, labextensions, shipped schemas) is owned by packages and gets overwritten on reinstall. `<venv>/etc/jupyter/` is _not_ in this category — it is a config dir Jupyter searches, and you may write user snippets there (see rule 2).
+1. **Never edit package-installed files.** Anything under `<venv>/lib/.../site-packages/...` or _existing_ directories under `<venv>/share/jupyter/...` (kernels, shipped labextensions, shipped schemas) is owned by packages and gets overwritten on reinstall. Two exceptions: (a) `<venv>/etc/jupyter/` is a config dir Jupyter searches, and you may write user snippets there (see rule 2); (b) _adding a new sub-directory_ under `<venv>/share/jupyter/labextensions/<your-name>/` is the intended install location for a federated labextension (see [references/adhoc-extensions.md](references/adhoc-extensions.md)).
 2. **Pick the right config dir, by priority.** Run `jupyter --paths` and look at the **config** section. Write to the first one that exists, in this order:
    1. **The active environment's `etc/jupyter/`** (`<venv>/etc/jupyter/`, `$CONDA_PREFIX/etc/jupyter/`, or whatever `sys.prefix/etc/jupyter` resolves to) — **preferred when an env is active**. Scopes the customization to this project/env, travels with it, and is what users typically want when they're working inside a venv. Caveat: rebuilding the env (`rm -rf .venv && uv sync`, `conda env remove`, `pip install --force-reinstall jupyterlab`) wipes it. Tell the user this when you write here.
    2. **`~/.jupyter/`** (the user-config dir) — fallback when no env is active, or when the user explicitly wants the change to apply to _every_ JupyterLab they run as this user. Survives env rebuilds.
@@ -33,6 +33,14 @@ JupyterLab does not have one settings file — it has four layered config surfac
 | **User settings**             | `lab/user-settings/<plugin-id>/<setting>.jupyterlab-settings`                 | Per-user override of one specific setting; highest priority. Written by the in-app Settings Editor but you can drop files here too.                            |
 
 A user request usually maps to _one_ of these. If you are not sure, default to **setting overrides** for visible JupyterLab behavior and **page config** for hiding extensions entirely. See [references/recipes.md](references/recipes.md) for the mapping per request type.
+
+## When customization needs code: ad-hoc labextensions
+
+The four config surfaces above can only reshape what JupyterLab already exposes. To **add** new behavior — a toolbar button, a status-bar item, a sidebar panel, a custom command, a launcher card, a file handler, a mime renderer — you have to ship a labextension.
+
+This is a fifth surface, and it does not need a full TypeScript / pip-package setup. A labextension is a directory under `<prefix>/share/jupyter/labextensions/<name>/` containing a `package.json` and a JS file that registers a webpack-module-federation container on `window._JUPYTERLAB[<name>]`. JupyterLab discovers it at server startup and loads it like any other federated extension. For the common case (consuming only packages JupyterLab already ships — anything in `@jupyterlab/*` or `@lumino/*`), you can hand-write the container in plain JS — no build, no `node_modules`.
+
+**Decide config vs. extension** with the table in [references/adhoc-extensions.md](references/adhoc-extensions.md). Anything phrased as "add", "new", "custom", or describing behavior that does not exist yet is an extension request. Read that reference before scaffolding — it has the full federation contract, the plugin object shape, ready-to-use patterns (toolbar button, command + palette + shortcut, status-bar item, sidebar, launcher, file type, mime renderer), and the gotchas (sync factory requirement, shared-scope token identity, etc.).
 
 ## Workflow
 
@@ -107,6 +115,7 @@ jupyter server --debug 2>&1 | head -200
 - [references/config-paths.md](references/config-paths.md) — full path tree for pip, conda, Docker, JupyterHub, xtralab desktop app; what is writable, what is not, and what `JUPYTER_CONFIG_DIR` overrides.
 - [references/recipes.md](references/recipes.md) — cookbook of common requests with the exact file, location, and JSON to write.
 - [references/known-plugin-ids.md](references/known-plugin-ids.md) — plugin IDs for the most commonly toggled JupyterLab extensions (status bar, announcements, extension manager, debugger, ToC, property inspector, notebook tools, …) and the xtralab plugins.
+- [references/adhoc-extensions.md](references/adhoc-extensions.md) — how to ship an ad-hoc labextension without a full build: the federation container contract, hand-written skeleton, common patterns (toolbar button, command, status-bar item, sidebar, launcher, file type, mime renderer), three build approaches, gotchas.
 
 ## Upstream documentation
 

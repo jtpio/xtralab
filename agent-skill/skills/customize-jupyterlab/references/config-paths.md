@@ -19,7 +19,7 @@ runtime:
     <user-runtime>
 ```
 
-For UI customization, only **config** matters. **data** holds installed kernels and labextensions (don't write there manually).
+For UI customization, only **config** matters. **data** holds installed kernels and labextensions — don't modify _existing_ entries there, but _adding a new sub-directory_ under `<data>/labextensions/<your-name>/` is the intended install location for an ad-hoc labextension (see [adhoc-extensions.md](adhoc-extensions.md)).
 
 ## Which path to use
 
