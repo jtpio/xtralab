@@ -1,0 +1,16 @@
+{
+  "name": "xtralab",
+  "owner": {
+    "name": "Jeremy Tuloup"
+  },
+  "plugins": [
+    {
+      "name": "xtralab-skills",
+      "source": "./agent-skill",
+      "description": "Agent skills for customizing JupyterLab and xtralab — themes, sidebars, status bar, language servers, launcher, and more.",
+      "version": "0.1.0",
+      "homepage": "https://github.com/jtpio/xtralab",
+      "license": "BSD-3-Clause"
+    }
+  ]
+}
