@@ -11,13 +11,12 @@ JupyterLab does not have one settings file — it has four layered config surfac
 ## Golden rules
 
 1. **Never edit package-installed files.** Anything under `<venv>/lib/.../site-packages/...` or _existing_ directories under `<venv>/share/jupyter/...` (kernels, shipped labextensions, shipped schemas) is owned by packages and gets overwritten on reinstall. Two exceptions: (a) `<venv>/etc/jupyter/` is a config dir Jupyter searches, and you may write user snippets there (see rule 2); (b) _adding a new sub-directory_ under `<venv>/share/jupyter/labextensions/<your-name>/` is the intended install location for a federated labextension (see [references/adhoc-extensions.md](references/adhoc-extensions.md)).
-2. **Pick the right config dir, by priority.** Run `jupyter --paths` and look at the **config** section. Write to the first one that exists, in this order:
-   1. **The active environment's `etc/jupyter/`** (`<venv>/etc/jupyter/`, `$CONDA_PREFIX/etc/jupyter/`, or whatever `sys.prefix/etc/jupyter` resolves to) — **preferred when an env is active**. Scopes the customization to this project/env, travels with it, and is what users typically want when they're working inside a venv. Caveat: rebuilding the env (`rm -rf .venv && uv sync`, `conda env remove`, `pip install --force-reinstall jupyterlab`) wipes it. Tell the user this when you write here.
-   2. **`~/.jupyter/`** (the user-config dir) — fallback when no env is active, or when the user explicitly wants the change to apply to _every_ JupyterLab they run as this user. Survives env rebuilds.
-   3. **`JUPYTER_CONFIG_DIR`** — if it is set (xtralab desktop app, JupyterHub spawners, some Docker images), it overrides everything above. Always honor it when present.
-   4. Never write to `/usr/local/etc/jupyter/` or `/etc/jupyter/` without explicit user/admin intent — those are system-wide.
+2. **Pick the right config dir, by priority.** Run `jupyter --paths` and look at the **config** section. Treat that list as authoritative, then write to the first non-system writable config dir whose scope matches the request:
+   1. **The active project environment's `etc/jupyter/`** (`<venv>/etc/jupyter/`, `$CONDA_PREFIX/etc/jupyter/`, or whatever `sys.prefix/etc/jupyter` resolves to) — **preferred when a normal project venv or conda env is active**. Scopes the customization to this project/env, travels with it, and is what users typically want when they're working inside a venv. Caveat: rebuilding the env (`rm -rf .venv && uv sync`, `conda env remove`, `pip install --force-reinstall jupyterlab`) wipes it. Tell the user this when you write here.
+   2. **The user-config entry from `jupyter --paths`** — usually `~/.jupyter/`, but `JUPYTER_CONFIG_DIR` replaces this slot when it is set (xtralab desktop app, JupyterHub spawners, some Docker images). Use this when no project env is active, when the user wants the change to apply broadly, or when the active env path is a bundled/installed runtime rather than the user's project env.
+   3. Never write to `/usr/local/etc/jupyter/` or `/etc/jupyter/` without explicit user/admin intent — those are system-wide.
 
-   If you are unsure which of (1) and (2) the user wants, default to the env path when one is active and mention the trade-off in your reply.
+   If you are unsure which of (1) and (2) the user wants, default to the env path when a normal project env is active and mention the trade-off in your reply. For the xtralab desktop app, write to its `JUPYTER_CONFIG_DIR` path, not the bundled runtime's `etc/jupyter/`.
 
 3. **One concern per snippet file.** Prefer creating a new file like `99-user-theme.json` next to existing files rather than editing a shipped `00-xtralab.json` or `00-ajlab.json`. JupyterLab merges all `*.json` files in a `*.d/` directory; lexical order breaks ties, so `99-` wins.
 4. **Validate JSON before saving.** A malformed file silently disables every snippet in the directory.
@@ -46,7 +45,7 @@ This is a fifth surface, and it does not need a full TypeScript / pip-package se
 
 For every customization request:
 
-1. **Locate the writable config dir, following the priority in rule 2 above.** Run `jupyter --paths`. Prefer the active env's `etc/jupyter/` if one shows up first in the config list; fall back to `~/.jupyter/`. Honor `JUPYTER_CONFIG_DIR` when set. When you write to an env path, tell the user the customization is scoped to that env and will be lost if the env is rebuilt.
+1. **Locate the writable config dir, following the priority in rule 2 above.** Run `jupyter --paths`. Prefer the active project env's `etc/jupyter/` when it is a normal venv/conda env; otherwise use the user-config entry shown by `jupyter --paths` (`JUPYTER_CONFIG_DIR` when set, `~/.jupyter/` otherwise). When you write to an env path, tell the user the customization is scoped to that env and will be lost if the env is rebuilt.
 2. **Decide the surface.** Look up the recipe in [references/recipes.md](references/recipes.md). If the request is "hide thing X from the UI", grep [references/known-plugin-ids.md](references/known-plugin-ids.md) for X first — disabling the plugin is usually the cleanest path.
 3. **Read the existing file in that surface, if any.** If you are about to overwrite a shipped file, stop and write a new `99-*.json` instead.
 4. **Write the smallest JSON snippet that does the job.** Do not copy adjacent settings you are not changing.
