@@ -58,13 +58,13 @@ ln -s "$(pwd)/agent-skill/skills/customize-jupyterlab" ~/.agents/skills/customiz
 
 Agent-specific paths if `~/.agents/skills/` isn't on the search list:
 
-| Agent | Path it also scans |
-|---|---|
-| Claude Code | `~/.claude/skills/<name>/` |
-| Codex CLI | `~/.codex/skills/<name>/`, repo `.agents/skills/<name>/` |
-| Gemini CLI | repo `.agents/skills/<name>/` |
+| Agent                                    | Path it also scans                                                                                 |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Claude Code                              | `~/.claude/skills/<name>/`                                                                         |
+| Codex CLI                                | `~/.codex/skills/<name>/`, repo `.agents/skills/<name>/`                                           |
+| Gemini CLI                               | repo `.agents/skills/<name>/`                                                                      |
 | GitHub Copilot (VS Code / Visual Studio) | per the [Agent Skills docs](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills) |
-| Cursor | manual placement; see [docs](https://cursor.com/docs/context/skills) |
+| Cursor                                   | manual placement; see [docs](https://cursor.com/docs/context/skills)                               |
 
 ### Project-local (xtralab developers)
 
@@ -92,13 +92,13 @@ Try it after install: open a project and ask "change my JupyterLab theme to dark
 
 The skill is open-standard SKILL.md, so any of these channels work:
 
-| Channel | How | Audience |
-|---|---|---|
-| **Agent Skills marketplace** ([skills.sh](https://skills.sh)) | submit `customize-jupyterlab/` as a public skill; users install with `npx skills add` | any skills-compatible agent |
-| **Claude Code community marketplace** | submit this directory as a plugin via [claude.ai/settings/plugins/submit](https://claude.ai/settings/plugins/submit) | Claude Code users |
-| **Codex plugin marketplace** | add a `.codex-plugin/plugin.json` mirror, then list in `~/.agents/plugins/marketplace.json` per the Codex plugin docs | Codex CLI users |
-| **As part of xtralab pip release** | exclude from the published wheel (skill is not Python code); document the manual install path in xtralab's README | xtralab installers who also use an agent |
-| **As a separate Git repo** (`xtralab-skills`) | move this directory out into its own repo for cleaner versioning | all of the above |
+| Channel                                                       | How                                                                                                                   | Audience                                 |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| **Agent Skills marketplace** ([skills.sh](https://skills.sh)) | submit `customize-jupyterlab/` as a public skill; users install with `npx skills add`                                 | any skills-compatible agent              |
+| **Claude Code community marketplace**                         | submit this directory as a plugin via [claude.ai/settings/plugins/submit](https://claude.ai/settings/plugins/submit)  | Claude Code users                        |
+| **Codex plugin marketplace**                                  | add a `.codex-plugin/plugin.json` mirror, then list in `~/.agents/plugins/marketplace.json` per the Codex plugin docs | Codex CLI users                          |
+| **As part of xtralab pip release**                            | exclude from the published wheel (skill is not Python code); document the manual install path in xtralab's README     | xtralab installers who also use an agent |
+| **As a separate Git repo** (`xtralab-skills`)                 | move this directory out into its own repo for cleaner versioning                                                      | all of the above                         |
 
 A reasonable order of operations:
 
@@ -111,4 +111,4 @@ A reasonable order of operations:
 
 - `SKILL.md` is intentionally short. Detail lives in `references/*.md` so the agent only loads what it needs.
 - Recipes prefer xtralab-native settings (`xtralab:sidebar`, `xtralab:launcher`) when they exist, and fall back to upstream JupyterLab plugin IDs otherwise.
-- The recipes match xtralab's *shipped* defaults — if you change `page_config.d/00-xtralab.json` or `default_setting_overrides.d/00-xtralab.json` in this repo, update [`recipes.md`](skills/customize-jupyterlab/references/recipes.md) and [`known-plugin-ids.md`](skills/customize-jupyterlab/references/known-plugin-ids.md) in the same change.
+- The recipes match xtralab's _shipped_ defaults — if you change `page_config.d/00-xtralab.json` or `default_setting_overrides.d/00-xtralab.json` in this repo, update [`recipes.md`](skills/customize-jupyterlab/references/recipes.md) and [`known-plugin-ids.md`](skills/customize-jupyterlab/references/known-plugin-ids.md) in the same change.

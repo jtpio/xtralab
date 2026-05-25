@@ -26,20 +26,20 @@ For UI customization, only **config** matters. **data** holds installed kernels 
 **Default priority** (when no other signal from the user):
 
 1. **Active env's `etc/jupyter/`** — `<venv>/etc/jupyter/`, `$CONDA_PREFIX/etc/jupyter/`, or whatever `sys.prefix/etc/jupyter` resolves to. Scopes the change to this project; this is what users usually want when they're already working inside an env. **Trade-off:** rebuilding the env (`rm -rf .venv && uv sync`, force-reinstall, `conda env remove`) wipes it — always mention this when writing here.
-2. **`~/.jupyter/`** — the per-user config dir. Use when no env is active, or when the user explicitly wants the change to apply to *every* JupyterLab they run as themselves. Survives env rebuilds.
+2. **`~/.jupyter/`** — the per-user config dir. Use when no env is active, or when the user explicitly wants the change to apply to _every_ JupyterLab they run as themselves. Survives env rebuilds.
 3. **`JUPYTER_CONFIG_DIR`** — when set, overrides 1 and 2. Always honor it.
 
-| Environment | Default writable config dir | Fallback / alternative |
-|---|---|---|
-| pip install, system Python (no venv active) | `~/.jupyter/` | — |
-| pip install, virtualenv active | `<venv>/etc/jupyter/` (per-env, project-scoped) | `~/.jupyter/` if the user wants the change for *every* env |
-| `conda env` active | `$CONDA_PREFIX/etc/jupyter/` (per-env) | `~/.jupyter/` (per-user) |
-| xtralab desktop app (macOS) | `~/Library/Application Support/xtralab/jupyter/config/` | Set by the Electron shell via `JUPYTER_CONFIG_DIR`. |
-| xtralab desktop app (Linux) | `~/.config/xtralab/jupyter/config/` | Same mechanism. |
-| Docker (JupyterStack, etc.) | depends on the image; check `jupyter --paths` from inside the container | Often a baked-in path like `/etc/jupyter/`. |
-| JupyterHub / managed deploy | usually `/etc/jupyter/` and `/usr/local/etc/jupyter/` are read-only; user-config may be on a writable PVC | Ask the operator. |
+| Environment                                 | Default writable config dir                                                                               | Fallback / alternative                                     |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| pip install, system Python (no venv active) | `~/.jupyter/`                                                                                             | —                                                          |
+| pip install, virtualenv active              | `<venv>/etc/jupyter/` (per-env, project-scoped)                                                           | `~/.jupyter/` if the user wants the change for _every_ env |
+| `conda env` active                          | `$CONDA_PREFIX/etc/jupyter/` (per-env)                                                                    | `~/.jupyter/` (per-user)                                   |
+| xtralab desktop app (macOS)                 | `~/Library/Application Support/xtralab/jupyter/config/`                                                   | Set by the Electron shell via `JUPYTER_CONFIG_DIR`.        |
+| xtralab desktop app (Linux)                 | `~/.config/xtralab/jupyter/config/`                                                                       | Same mechanism.                                            |
+| Docker (JupyterStack, etc.)                 | depends on the image; check `jupyter --paths` from inside the container                                   | Often a baked-in path like `/etc/jupyter/`.                |
+| JupyterHub / managed deploy                 | usually `/etc/jupyter/` and `/usr/local/etc/jupyter/` are read-only; user-config may be on a writable PVC | Ask the operator.                                          |
 
-**Rule of thumb:** if the user invoked the skill from inside a venv/conda env shell, prefer the env path. If they're asking about "my JupyterLab" in general or no env is active, use `~/.jupyter/`. When in doubt, default to the env path *and* tell the user where you wrote so they can correct you.
+**Rule of thumb:** if the user invoked the skill from inside a venv/conda env shell, prefer the env path. If they're asking about "my JupyterLab" in general or no env is active, use `~/.jupyter/`. When in doubt, default to the env path _and_ tell the user where you wrote so they can correct you.
 
 ## What lives in each config directory
 
@@ -131,12 +131,13 @@ Free-form JSON5 (supports `//` comments):
 
 ```json5
 {
-    // @jupyterlab/apputils-extension:themes
-    "theme": "Cursor Dark"
+  // @jupyterlab/apputils-extension:themes
+  theme: 'Cursor Dark'
 }
 ```
 
 Path: `<plugin-id>` is split on `:` into directory + filename. For `@jupyterlab/apputils-extension:themes`:
+
 - directory: `@jupyterlab/apputils-extension/`
 - file: `themes.jupyterlab-settings`
 
@@ -145,7 +146,7 @@ Path: `<plugin-id>` is split on `:` into directory + filename. For `@jupyterlab/
 1. `<user-config>/lab/user-settings/...` — written via the in-app Settings Editor
 2. `default_setting_overrides.d/*.json` from any visible config dir (lexical: `99-*` beats `00-*`)
 3. The plugin's own schema default
-4. `page_config.d/*.json` is *not* a settings layer — it controls whether the plugin loads at all
+4. `page_config.d/*.json` is _not_ a settings layer — it controls whether the plugin loads at all
 
 ## xtralab desktop app
 
@@ -158,13 +159,14 @@ JUPYTER_RUNTIME_DIR = <platform-default runtime dir>
 ```
 
 `<Electron userData>` is:
+
 - macOS: `~/Library/Application Support/xtralab/`
 - Linux: `~/.config/xtralab/`
 - Windows: `%APPDATA%\xtralab\`
 
-To customize the desktop app, write under `<JUPYTER_CONFIG_DIR>/labconfig/page_config.d/`, `default_setting_overrides.d/`, etc., creating the directories if they do not exist yet. The desktop app's bundled runtime under `desktop/python/runtime/etc/jupyter/` is the *installed* layer — never write there.
+To customize the desktop app, write under `<JUPYTER_CONFIG_DIR>/labconfig/page_config.d/`, `default_setting_overrides.d/`, etc., creating the directories if they do not exist yet. The desktop app's bundled runtime under `desktop/python/runtime/etc/jupyter/` is the _installed_ layer — never write there.
 
-## What `jupyter --paths` does *not* show
+## What `jupyter --paths` does _not_ show
 
 - The labextension-specific `disabledExtensions` array can also be set inline via `--LabApp.disabled_extensions=...` flags. Don't recommend this for persistent config; use `page_config.d/`.
 - Federated extensions installed via `pip install` register under `<env-data>/labextensions/`. To install a new third-party extension, `pip install` it (read-only data dir means you can't drop files manually).

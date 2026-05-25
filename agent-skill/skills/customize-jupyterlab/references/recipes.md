@@ -55,7 +55,9 @@ Same file, `"activityBarPosition": "left"`.
 **File:** `labconfig/default_setting_overrides.d/99-shell.json`
 
 ```json
-{ "@jupyterlab/application-extension:shell": { "startMode": "single-document" } }
+{
+  "@jupyterlab/application-extension:shell": { "startMode": "single-document" }
+}
 ```
 
 Accepted values: `"single-document"`, `"multiple-document"`. An empty string lets the URL decide.
@@ -80,9 +82,7 @@ Note: this removes the menu entirely. Most users want individual menu items hidd
 {
   "@jupyterlab/application-extension:shell": {},
   "@jupyterlab/mainmenu-extension:plugin": {
-    "menus": [
-      { "id": "jp-mainmenu-help", "disabled": true }
-    ]
+    "menus": [{ "id": "jp-mainmenu-help", "disabled": true }]
   }
 }
 ```
@@ -99,7 +99,7 @@ Menu IDs come from the contributing extension's schema. Inspect with `Settings â
 **File:** `lab/user-settings/xtralab/sidebar.jupyterlab-settings`
 
 ```json5
-{ "showDefaultFileBrowser": false }
+{ showDefaultFileBrowser: false }
 ```
 
 **Surface (vanilla JupyterLab):** page config
@@ -115,7 +115,7 @@ Menu IDs come from the contributing extension's schema. Inspect with `Settings â
 **File:** `lab/user-settings/xtralab/sidebar.jupyterlab-settings`
 
 ```json5
-{ "showRunningSessions": false }
+{ showRunningSessions: false }
 ```
 
 **Surface (vanilla):** page config â€” disable `@jupyterlab/running-extension:plugin`.
@@ -141,11 +141,11 @@ Menu IDs come from the contributing extension's schema. Inspect with `Settings â
   "@jupyterlab/application-extension:shell": {
     "layout": {
       "single": {
-        "filebrowser":         { "options": { "rank": 1 } },
+        "filebrowser": { "options": { "rank": 1 } },
         "jp-running-sessions": { "options": { "rank": 2 } }
       },
       "multiple": {
-        "filebrowser":         { "options": { "rank": 1 } },
+        "filebrowser": { "options": { "rank": 1 } },
         "jp-running-sessions": { "options": { "rank": 2 } }
       }
     }
@@ -406,22 +406,20 @@ xtralab already disables noisy plugins (announcements, extension manager, ToC, n
 **File:** `lab/user-settings/xtralab/launcher.jupyterlab-settings`
 
 ```json5
-{ "agents": [ { "id": "kiro", "enabled": false } ] }
+{ agents: [{ id: 'kiro', enabled: false }] }
 ```
 
 ### Point Claude at a shell alias
 
 ```json5
-{ "agents": [ { "id": "claude", "command": "cl", "requireAvailable": false } ] }
+{ agents: [{ id: 'claude', command: 'cl', requireAvailable: false }] }
 ```
 
 ### Add a new agent card (Aider)
 
 ```json5
 {
-  "agents": [
-    { "id": "aider", "label": "Aider", "command": "aider", "promptArgs": [] }
-  ]
+  agents: [{ id: 'aider', label: 'Aider', command: 'aider', promptArgs: [] }]
 }
 ```
 
@@ -431,13 +429,13 @@ xtralab already disables noisy plugins (announcements, extension manager, ToC, n
 
 ```json5
 {
-  "editors": [
+  editors: [
     {
-      "id": "helix",
-      "label": "Helix",
-      "command": "hx",
-      "rank": -1,
-      "iconSvg": "<svg>â€¦</svg>"
+      id: 'helix',
+      label: 'Helix',
+      command: 'hx',
+      rank: -1,
+      iconSvg: '<svg>â€¦</svg>'
     }
   ]
 }
