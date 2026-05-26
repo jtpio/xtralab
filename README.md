@@ -82,6 +82,36 @@ See the [`jupyter-server-mcp` README][mcp] for other MCP clients.
 [mcp]: https://github.com/jupyter-ai-contrib/jupyter-server-mcp
 [mcp-spec]: https://modelcontextprotocol.io
 
+## Agent skill
+
+xtralab ships an [Agent Skills][skills] entry at [`agent-skill/`](./agent-skill)
+that teaches any coding agent how to customize JupyterLab from plain-English
+requests like "hide the status bar", "change the theme", or "add a language
+server". The same SKILL.md file works with Claude Code, Codex CLI, Gemini CLI,
+GitHub Copilot, and other tools that read the Agent Skills format.
+
+For Claude Code, this repository doubles as a one-plugin marketplace. Inside a
+Claude Code session:
+
+```text
+/plugin marketplace add jtpio/xtralab
+/plugin install xtralab-skills@xtralab
+```
+
+For agents that read from `~/.agents/skills/`, such as Codex CLI or Gemini CLI,
+clone and copy the skill directory:
+
+```bash
+git clone --depth=1 https://github.com/jtpio/xtralab.git /tmp/xtralab
+mkdir -p ~/.agents/skills
+cp -r /tmp/xtralab/agent-skill/skills/customize-jupyterlab ~/.agents/skills/
+```
+
+See [`agent-skill/README.md`](./agent-skill/README.md) for additional install
+paths, the list of supported agents, and what the skill knows.
+
+[skills]: https://agentskills.io
+
 ## Language servers
 
 xtralab ships [`jupyterlab-lsp`][lsp] with two language servers pre-registered:

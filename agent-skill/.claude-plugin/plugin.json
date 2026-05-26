@@ -1,0 +1,11 @@
+{
+  "name": "xtralab-skills",
+  "version": "0.1.0",
+  "description": "Agent skills for customizing JupyterLab and xtralab — themes, sidebars, status bar, language servers, launcher, and more.",
+  "author": {
+    "name": "Jeremy Tuloup"
+  },
+  "homepage": "https://github.com/jtpio/xtralab",
+  "repository": "https://github.com/jtpio/xtralab",
+  "license": "BSD-3-Clause"
+}
