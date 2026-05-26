@@ -1,4 +1,5 @@
 {
+  "notebookStartsKernel": false,
   "disabledExtensions": {
     "@jupyterlab/application-extension:logo": true,
     "@jupyterlab/application-extension:property-inspector": true,
