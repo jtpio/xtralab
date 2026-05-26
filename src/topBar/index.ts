@@ -86,6 +86,19 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const { commands } = app;
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
+    // The upstream toggle-{left,right}-area commands derive `isEnabled` from
+    // `!labShell.isEmpty(side)` but don't fire `commandChanged` when widgets
+    // move in or out of a side area. `CommandToolbarButton` only re-renders on
+    // `commandChanged` for its own id, so the buttons need an explicit notify
+    // whenever the shell layout shifts — `layoutModified` covers each side
+    // handler's `_updated` (add/remove, expand/collapse), keeping both
+    // `isEnabled` and `isToggled` in sync.
+    labShell.layoutModified.connect(() => {
+      for (const spec of BUTTONS) {
+        commands.notifyCommandChanged(spec.command);
+      }
+    });
+
     // Defer to `app.restored` so the upstream toggle commands are already in
     // the registry: `CommandToolbarButton` renders nothing until its command
     // exists and only re-renders on `commandChanged` of type `changed` /

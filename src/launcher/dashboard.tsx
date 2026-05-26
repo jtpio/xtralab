@@ -3,6 +3,7 @@ import * as React from 'react';
 import type { CommandRegistry } from '@lumino/commands';
 import type { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { Poll } from '@lumino/polling';
+import type { IDocumentWidget } from '@jupyterlab/docregistry';
 import {
   LabIcon,
   ReactWidget,
@@ -193,13 +194,28 @@ function LauncherDashboardComponent(
   }, [commands, cwd, onAgentLaunch]);
 
   const launchNotebook = React.useCallback(async () => {
-    // No `kernelName` — let the notebook extension fall back to the default
-    // kernel or prompt the user, matching the stock launcher's notebook
-    // tile behavior.
-    const result = (await commands.execute('notebook:create-new', {
-      cwd
-    })) as Widget | undefined;
+    // Open a fresh notebook with no kernel attached — equivalent to clicking
+    // "No Kernel" in the Select Kernel dialog. `notebook:create-new` always
+    // routes through that dialog when no kernelName is given, so drive the
+    // underlying docmanager steps directly and pass `shouldStart: false` to
+    // suppress kernel selection. The user picks a kernel from the notebook
+    // toolbar when they're ready.
+    const file = (await commands.execute('docmanager:new-untitled', {
+      path: cwd,
+      type: 'notebook'
+    })) as { path: string } | undefined;
+    if (!file) {
+      return;
+    }
+    const result = (await commands.execute('docmanager:open', {
+      path: file.path,
+      factory: 'Notebook',
+      kernelPreference: { shouldStart: false, canStart: true }
+    })) as IDocumentWidget | undefined;
     if (result) {
+      // Match `notebook:create-new`'s post-open marker so the first manual
+      // save offers a rename instead of overwriting the auto-generated name.
+      result.isUntitled = true;
       onAgentLaunch(result);
     }
   }, [commands, cwd, onAgentLaunch]);
