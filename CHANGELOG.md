@@ -2,6 +2,27 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.7.0
+
+([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.6.0...c9fadcfa0575c3c011c5d1b176927489a6e79141))
+
+### Enhancements made
+
+- fix handling of no kernel and right sidebar [#29](https://github.com/jtpio/xtralab/pull/29) ([@jtpio](https://github.com/jtpio))
+- Do not start a kernel by default [#28](https://github.com/jtpio/xtralab/pull/28) ([@jtpio](https://github.com/jtpio))
+- Skill to customize JupyterLab [#26](https://github.com/jtpio/xtralab/pull/26) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-05-22&to=2026-05-26&type=c))
+
+@jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-05-22..2026-05-26&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.6.0
 
 ([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.5.0...335842e86bf164264c9662a1a18951aae47fe25c))
@@ -27,8 +48,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-05-19&to=2026-05-22&type=c))
 
 @jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-05-19..2026-05-22&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.5.0
 
