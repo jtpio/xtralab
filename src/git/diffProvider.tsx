@@ -15,11 +15,15 @@ import { ISignal, Signal } from '@lumino/signaling';
 
 import {
   DIFF_WIDGET_CSS_CLASS,
+  DiffStyleControl,
   DiffSurface,
   NotebookViewModeControl,
   isDarkTheme,
+  readStoredDiffStyle,
   readStoredNotebookViewMode,
+  writeStoredDiffStyle,
   writeStoredNotebookViewMode,
+  type DiffStyle,
   type NotebookDiffViewMode
 } from './diffSurface';
 import { IMAGE_DIFF_EXTENSIONS, imageDataType } from './imageDiff';
@@ -60,6 +64,7 @@ class XtralabDiffWidget extends ReactWidget implements Git.Diff.IDiffWidget {
     this._model = model;
     this._context = context;
     this._notebookViewMode = readStoredNotebookViewMode();
+    this._diffStyle = readStoredDiffStyle();
     // `jp-git-diff-root` borrows jupyterlab-git's host sizing (height:100%
     // flex column inside its PreviewMainAreaWidget); `jp-xtralab-DiffWidget`
     // brings our diff theming + the `.jp-xtralab-DiffWidget-*` styles.
@@ -146,6 +151,45 @@ class XtralabDiffWidget extends ReactWidget implements Git.Diff.IDiffWidget {
     return this._hasNotebookViewChanged;
   }
 
+  /** The user's current split-vs-unified layout choice for file diffs. */
+  get diffStyle(): DiffStyle {
+    return this._diffStyle;
+  }
+
+  setDiffStyle(style: DiffStyle): void {
+    if (style === this._diffStyle) {
+      return;
+    }
+    this._diffStyle = style;
+    writeStoredDiffStyle(style);
+    this._diffStyleChanged.emit(style);
+  }
+
+  get diffStyleChanged(): ISignal<this, DiffStyle> {
+    return this._diffStyleChanged;
+  }
+
+  /**
+   * Whether the textual/code file diff (the only view the split-vs-unified
+   * choice affects) is currently active; mirrored into the toolbar so the
+   * Split/Unified selector only shows when it applies.
+   */
+  get fileDiffActive(): boolean {
+    return this._fileDiffActive;
+  }
+
+  setFileDiffActive(value: boolean): void {
+    if (value === this._fileDiffActive) {
+      return;
+    }
+    this._fileDiffActive = value;
+    this._fileDiffActiveChanged.emit(value);
+  }
+
+  get fileDiffActiveChanged(): ISignal<this, boolean> {
+    return this._fileDiffActiveChanged;
+  }
+
   /** Resolve the in-flight {@link refresh} promise, if any. */
   settleRefresh(): void {
     const pending = this._pendingRefresh;
@@ -175,6 +219,10 @@ class XtralabDiffWidget extends ReactWidget implements Git.Diff.IDiffWidget {
   );
   private _hasNotebookView = false;
   private _hasNotebookViewChanged = new Signal<this, boolean>(this);
+  private _diffStyle: DiffStyle;
+  private _diffStyleChanged = new Signal<this, DiffStyle>(this);
+  private _fileDiffActive = false;
+  private _fileDiffActiveChanged = new Signal<this, boolean>(this);
 }
 
 interface IModelDiffState {
@@ -221,6 +269,29 @@ function ModelDiffView(props: {
   const handleNotebookAvailabilityChange = React.useCallback(
     (available: boolean) => {
       widget.setHasNotebookView(available);
+    },
+    [widget]
+  );
+
+  // Mirror the widget's diff-style choice so toolbar-driven changes
+  // re-render the diff. The widget owns the canonical value.
+  const [diffStyle, setDiffStyle] = React.useState<DiffStyle>(
+    () => widget.diffStyle
+  );
+  React.useEffect(() => {
+    const handler = (_sender: XtralabDiffWidget, style: DiffStyle): void => {
+      setDiffStyle(style);
+    };
+    widget.diffStyleChanged.connect(handler);
+    setDiffStyle(widget.diffStyle);
+    return () => {
+      widget.diffStyleChanged.disconnect(handler);
+    };
+  }, [widget]);
+
+  const handleFileDiffActiveChange = React.useCallback(
+    (active: boolean) => {
+      widget.setFileDiffActive(active);
     },
     [widget]
   );
@@ -337,7 +408,9 @@ function ModelDiffView(props: {
       dark={dark}
       rendermime={rendermime}
       notebookViewMode={notebookViewMode}
+      diffStyle={diffStyle}
       onNotebookAvailabilityChange={handleNotebookAvailabilityChange}
+      onFileDiffActiveChange={handleFileDiffActiveChange}
       hunkDiscard={hunkDiscard}
     />
   );
@@ -402,6 +475,60 @@ function ToolbarControl(props: {
 }
 
 /**
+ * Split/Unified toggle mounted into the diff toolbar jupyterlab-git passes
+ * to the factory. Bound to the widget's signals so it stays in sync with the
+ * rendered surface and only appears while the textual/code file diff is the
+ * active view.
+ */
+class DiffStyleToolbarItem extends ReactWidget {
+  constructor(widget: XtralabDiffWidget) {
+    super();
+    this._widget = widget;
+    this.addClass('jp-xtralab-DiffWidget-diffStyleToolbarItem');
+  }
+
+  protected render(): React.ReactElement {
+    return <DiffStyleControlBound widget={this._widget} />;
+  }
+
+  private _widget: XtralabDiffWidget;
+}
+
+function DiffStyleControlBound(props: {
+  widget: XtralabDiffWidget;
+}): React.ReactElement {
+  const { widget } = props;
+  const [style, setStyle] = React.useState<DiffStyle>(() => widget.diffStyle);
+  const [available, setAvailable] = React.useState<boolean>(
+    () => widget.fileDiffActive
+  );
+  React.useEffect(() => {
+    const onStyle = (_sender: XtralabDiffWidget, next: DiffStyle): void => {
+      setStyle(next);
+    };
+    const onAvailable = (_sender: XtralabDiffWidget, next: boolean): void => {
+      setAvailable(next);
+    };
+    widget.diffStyleChanged.connect(onStyle);
+    widget.fileDiffActiveChanged.connect(onAvailable);
+    setStyle(widget.diffStyle);
+    setAvailable(widget.fileDiffActive);
+    return () => {
+      widget.diffStyleChanged.disconnect(onStyle);
+      widget.fileDiffActiveChanged.disconnect(onAvailable);
+    };
+  }, [widget]);
+
+  return (
+    <DiffStyleControl
+      diffStyle={style}
+      available={available}
+      onChange={next => widget.setDiffStyle(next)}
+    />
+  );
+}
+
+/**
  * Build the `Git.Diff.Factory` xtralab registers with jupyterlab-git. The
  * factory closes over the application-level context (contents manager for
  * hunk discard, rendermime for notebook outputs, theme manager) that the
@@ -416,6 +543,10 @@ function makeXtralabDiffFactory(
       options.toolbar.addItem(
         'xtralab-notebook-view-mode',
         new NotebookViewModeToolbarItem(widget)
+      );
+      options.toolbar.addItem(
+        'xtralab-diff-style',
+        new DiffStyleToolbarItem(widget)
       );
     }
     return widget;

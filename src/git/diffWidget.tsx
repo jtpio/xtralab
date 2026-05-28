@@ -16,11 +16,15 @@ import { content } from './api';
 import { imageDataType } from './imageDiff';
 import {
   DIFF_WIDGET_CSS_CLASS,
+  DiffStyleControl,
   DiffSurface,
   NotebookViewModeControl,
   isDarkTheme,
+  readStoredDiffStyle,
   readStoredNotebookViewMode,
+  writeStoredDiffStyle,
   writeStoredNotebookViewMode,
+  type DiffStyle,
   type NotebookDiffViewMode
 } from './diffSurface';
 import { GitReference, IFileChange } from './tokens';
@@ -158,17 +162,18 @@ export function createGitDiffWidget(
     'notebook-view-mode',
     new NotebookViewModeToolbarItem(content)
   );
+  widget.toolbar.addItem('diff-style', new DiffStyleToolbarItem(content));
   const syncToolbarVisibility = (): void => {
     if (widget === null || widget.isDisposed) {
       return;
     }
-    if (!content.pinned || content.hasNotebookView) {
+    if (!content.pinned || content.hasNotebookView || content.fileDiffActive) {
       widget.toolbar.show();
     } else {
       widget.toolbar.hide();
     }
   };
-  const onHasNotebookViewChanged = (): void => {
+  const onToolbarStateChanged = (): void => {
     if (widget === null || widget.isDisposed) {
       return;
     }
@@ -190,11 +195,13 @@ export function createGitDiffWidget(
     }
     syncToolbarVisibility();
   };
-  content.hasNotebookViewChanged.connect(onHasNotebookViewChanged);
+  content.hasNotebookViewChanged.connect(onToolbarStateChanged);
+  content.fileDiffActiveChanged.connect(onToolbarStateChanged);
   content.pinnedChanged.connect(onPinnedChanged);
   syncToolbarVisibility();
   widget.disposed.connect(() => {
-    content.hasNotebookViewChanged.disconnect(onHasNotebookViewChanged);
+    content.hasNotebookViewChanged.disconnect(onToolbarStateChanged);
+    content.fileDiffActiveChanged.disconnect(onToolbarStateChanged);
     content.pinnedChanged.disconnect(onPinnedChanged);
   });
   return widget;
@@ -228,6 +235,7 @@ export class DiffContentWidget extends ReactWidget {
     this._options = options;
     this._pinned = options.pinned === true;
     this._notebookViewMode = readStoredNotebookViewMode();
+    this._diffStyle = readStoredDiffStyle();
   }
 
   /** The change this widget renders, used by callers to identify the widget. */
@@ -277,6 +285,48 @@ export class DiffContentWidget extends ReactWidget {
     return this._hasNotebookViewChanged;
   }
 
+  /** The user's current split-vs-unified layout choice for file diffs. */
+  get diffStyle(): DiffStyle {
+    return this._diffStyle;
+  }
+
+  /** Update the diff layout and persist it across sessions. */
+  setDiffStyle(style: DiffStyle): void {
+    if (style === this._diffStyle) {
+      return;
+    }
+    this._diffStyle = style;
+    writeStoredDiffStyle(style);
+    this._diffStyleChanged.emit(style);
+  }
+
+  /** Emits whenever {@link diffStyle} changes. */
+  get diffStyleChanged(): ISignal<this, DiffStyle> {
+    return this._diffStyleChanged;
+  }
+
+  /**
+   * Whether the textual/code file diff (the only view the split-vs-unified
+   * choice affects) is currently active. Set by the React content; the
+   * toolbar reads it to decide whether to show the Split/Unified selector.
+   */
+  get fileDiffActive(): boolean {
+    return this._fileDiffActive;
+  }
+
+  setFileDiffActive(value: boolean): void {
+    if (value === this._fileDiffActive) {
+      return;
+    }
+    this._fileDiffActive = value;
+    this._fileDiffActiveChanged.emit(value);
+  }
+
+  /** Emits whenever {@link fileDiffActive} changes. */
+  get fileDiffActiveChanged(): ISignal<this, boolean> {
+    return this._fileDiffActiveChanged;
+  }
+
   get pinned(): boolean {
     return this._pinned;
   }
@@ -309,6 +359,10 @@ export class DiffContentWidget extends ReactWidget {
   );
   private _hasNotebookView = false;
   private _hasNotebookViewChanged = new Signal<this, boolean>(this);
+  private _diffStyle: DiffStyle;
+  private _diffStyleChanged = new Signal<this, DiffStyle>(this);
+  private _fileDiffActive = false;
+  private _fileDiffActiveChanged = new Signal<this, boolean>(this);
   private _pinned: boolean;
   private _pinnedChanged = new Signal<this, boolean>(this);
 }
@@ -378,6 +432,32 @@ function DiffViewer(
       widget.notebookViewModeChanged.disconnect(handler);
     };
   }, [widget]);
+
+  // Mirror the widget's diff-style choice the same way (the widget owns the
+  // canonical value so the toolbar can read and write it without going
+  // through React).
+  const [diffStyle, setDiffStyleLocal] = React.useState<DiffStyle>(
+    () => widget.diffStyle
+  );
+  React.useEffect(() => {
+    const handler = (_sender: DiffContentWidget, style: DiffStyle): void => {
+      setDiffStyleLocal(style);
+    };
+    widget.diffStyleChanged.connect(handler);
+    setDiffStyleLocal(widget.diffStyle);
+    return () => {
+      widget.diffStyleChanged.disconnect(handler);
+    };
+  }, [widget]);
+
+  // Tell the host widget whether the textual/code file diff is the active
+  // view, so the toolbar's Split/Unified selector only shows when it applies.
+  const handleFileDiffActiveChange = React.useCallback(
+    (active: boolean) => {
+      widget.setFileDiffActive(active);
+    },
+    [widget]
+  );
 
   // Tell the host widget whether a rendered notebook view is currently
   // available. The toolbar item that lives in the `MainAreaWidget`
@@ -558,7 +638,9 @@ function DiffViewer(
       dark={dark}
       rendermime={rendermime}
       notebookViewMode={notebookViewMode}
+      diffStyle={diffStyle}
       onNotebookAvailabilityChange={handleNotebookAvailabilityChange}
+      onFileDiffActiveChange={handleFileDiffActiveChange}
       onMetadataChange={handleMetadataChange}
       hunkDiscard={hunkDiscard}
     />
@@ -623,6 +705,61 @@ function NotebookViewModeToolbarControl(props: {
       mode={mode}
       available={available}
       onChange={next => content.setNotebookViewMode(next)}
+    />
+  );
+}
+
+/**
+ * Split/Unified selector mounted into the `MainAreaWidget` toolbar. Mirrors
+ * {@link NotebookViewModeToolbarItem}: it reads from and writes to the
+ * {@link DiffContentWidget} so toolbar interactions and React state stay in
+ * sync, and only appears while the textual/code file diff is the active view
+ * (driven by the same `fileDiffActive` signal that gates toolbar visibility).
+ */
+class DiffStyleToolbarItem extends ReactWidget {
+  constructor(content: DiffContentWidget) {
+    super();
+    this._content = content;
+    this.addClass('jp-xtralab-DiffWidget-diffStyleToolbarItem');
+  }
+
+  protected render(): React.ReactElement {
+    return <DiffStyleToolbarControl content={this._content} />;
+  }
+
+  private _content: DiffContentWidget;
+}
+
+function DiffStyleToolbarControl(props: {
+  content: DiffContentWidget;
+}): React.ReactElement {
+  const { content } = props;
+  const [style, setStyle] = React.useState<DiffStyle>(() => content.diffStyle);
+  const [available, setAvailable] = React.useState<boolean>(
+    () => content.fileDiffActive
+  );
+  React.useEffect(() => {
+    const onStyle = (_sender: DiffContentWidget, next: DiffStyle): void => {
+      setStyle(next);
+    };
+    const onAvailable = (_sender: DiffContentWidget, next: boolean): void => {
+      setAvailable(next);
+    };
+    content.diffStyleChanged.connect(onStyle);
+    content.fileDiffActiveChanged.connect(onAvailable);
+    setStyle(content.diffStyle);
+    setAvailable(content.fileDiffActive);
+    return () => {
+      content.diffStyleChanged.disconnect(onStyle);
+      content.fileDiffActiveChanged.disconnect(onAvailable);
+    };
+  }, [content]);
+
+  return (
+    <DiffStyleControl
+      diffStyle={style}
+      available={available}
+      onChange={next => content.setDiffStyle(next)}
     />
   );
 }

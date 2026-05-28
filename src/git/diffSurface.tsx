@@ -102,6 +102,35 @@ function writeStoredSplitRatio(ratio: number): void {
 }
 
 /**
+ * Layout for textual/code diffs, forwarded to `@pierre/diffs` as its
+ * `diffStyle` option. `split` is the side-by-side old|new view; `unified`
+ * is the single-column inline view (what diffs.com calls "stacked").
+ */
+export type DiffStyle = 'split' | 'unified';
+
+const DIFF_STYLE_STORAGE_KEY = 'xtralab:diff-style';
+
+export function readStoredDiffStyle(): DiffStyle {
+  try {
+    const raw = window.localStorage.getItem(DIFF_STYLE_STORAGE_KEY);
+    if (raw === 'split' || raw === 'unified') {
+      return raw;
+    }
+  } catch {
+    // See readStoredSplitRatio — privacy-mode / sandboxed contexts can throw.
+  }
+  return 'split';
+}
+
+export function writeStoredDiffStyle(style: DiffStyle): void {
+  try {
+    window.localStorage.setItem(DIFF_STYLE_STORAGE_KEY, style);
+  } catch {
+    // Best-effort.
+  }
+}
+
+/**
  * View modes available for `.ipynb` diffs. `notebook` is the cell-by-cell
  * rendered view; `json` is the raw nbformat JSON file diff, for inspecting
  * exactly which bytes changed.
@@ -212,11 +241,20 @@ export interface IDiffSurfaceProps {
   rendermime: IRenderMimeRegistry | null;
   /** Current rendered-vs-JSON choice for notebook diffs (host-controlled). */
   notebookViewMode: NotebookDiffViewMode;
+  /** Split vs unified layout for the textual/code file diff (host-controlled). */
+  diffStyle: DiffStyle;
   /**
    * Called whenever the availability of a rendered notebook view changes,
    * so the host can show/hide its Notebook/JSON toolbar toggle.
    */
   onNotebookAvailabilityChange?: (available: boolean) => void;
+  /**
+   * Called whenever the textual/code file diff (the only view the split vs
+   * unified choice affects) becomes the active view, so the host can
+   * show/hide its Split/Unified toolbar toggle. False for image, binary,
+   * rendered-notebook, loading and error states.
+   */
+  onFileDiffActiveChange?: (active: boolean) => void;
   /**
    * Called after each (re)computation of the diff with the number of hunks
    * (or `null` when no textual diff exists). Hosts use this to implement
@@ -243,7 +281,9 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     dark,
     rendermime,
     notebookViewMode,
+    diffStyle,
     onNotebookAvailabilityChange,
+    onFileDiffActiveChange,
     onMetadataChange,
     hunkDiscard
   } = props;
@@ -294,6 +334,21 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
       hunkCount: metadata !== null ? metadata.hunks.length : null
     });
   }, [onMetadataChange, metadata]);
+
+  // Decide which view to render. The notebook view requires a successful
+  // nbformat parse; if that failed, we only show the raw JSON file diff.
+  // Computed before the early returns below so the file-diff-active effect
+  // can depend on it without violating the rules of hooks.
+  const hasNotebookView = notebookDiff !== null;
+  const showNotebookView = hasNotebookView && notebookViewMode === 'notebook';
+  const showFileDiff = !showNotebookView && metadata !== null;
+
+  // The split vs unified choice only affects the textual/code file diff, so
+  // tell the host whether that view is active to drive its Split/Unified
+  // toolbar toggle.
+  React.useEffect(() => {
+    onFileDiffActiveChange?.(showFileDiff);
+  }, [onFileDiffActiveChange, showFileDiff]);
 
   // Split ratio for the diff columns: fraction of width given to the
   // deletions (left) pane. Persisted across sessions so the user only
@@ -461,12 +516,6 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
       </div>
     );
   }
-  // Decide which view to render. The notebook view requires a successful
-  // nbformat parse; if that failed, we only show the raw JSON file diff.
-  const hasNotebookView = notebookDiff !== null;
-  const showNotebookView = hasNotebookView && notebookViewMode === 'notebook';
-  const showFileDiff = !showNotebookView && metadata !== null;
-
   if (!showNotebookView && !showFileDiff) {
     return (
       <div className="jp-xtralab-DiffWidget-status">No content to diff.</div>
@@ -506,7 +555,7 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
               // fine for the small files git diffs typically operate on.
               disableWorkerPool={true}
               options={{
-                diffStyle: 'split',
+                diffStyle,
                 // Drop the file header — the tab title already shows the
                 // file name and the panel header carries the change
                 // context.
@@ -523,7 +572,7 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
             />
           ) : null}
         </div>
-        {showFileDiff ? (
+        {showFileDiff && diffStyle === 'split' ? (
           <div
             className="jp-xtralab-DiffWidget-resizer"
             style={{ left: `${leftPercent}%` }}
@@ -582,6 +631,93 @@ export function NotebookViewModeControl(props: {
         onClick={() => onChange('json')}
       >
         JSON
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Split / unified glyphs, inlined from the `@pierre/diffs` icon sprite
+ * (`diffs-icon-diff-split` / `diffs-icon-diff-unified`) so the toggle looks
+ * like the one on the library's own docs site without depending on the
+ * sprite sheet being injected into the document. `currentColor` lets the
+ * segmented-button styling drive the fill (including the active state).
+ */
+function DiffSplitIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M14 0H8.5v16H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2m-1.5 6.5v1h1a.5.5 0 0 1 0 1h-1v1a.5.5 0 0 1-1 0v-1h-1a.5.5 0 0 1 0-1h1v-1a.5.5 0 0 1 1 0" />
+      <path
+        d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5.5V0zm.5 7.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1 0-1"
+        opacity=".3"
+      />
+    </svg>
+  );
+}
+
+function DiffUnifiedIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        d="M16 14a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5h16zm-8-4a.5.5 0 0 0-.5.5v1h-1a.5.5 0 0 0 0 1h1v1a.5.5 0 0 0 1 0v-1h1a.5.5 0 0 0 0-1h-1v-1A.5.5 0 0 0 8 10"
+        clipRule="evenodd"
+      />
+      <path
+        fillRule="evenodd"
+        d="M14 0a2 2 0 0 1 2 2v5.5H0V2a2 2 0 0 1 2-2zM6.5 3.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1z"
+        clipRule="evenodd"
+        opacity=".4"
+      />
+    </svg>
+  );
+}
+
+/**
+ * Segmented Split/Unified selector. Mirrors {@link NotebookViewModeControl}:
+ * hosts mount it into their own toolbar and drive its value/visibility from
+ * the same state they pass to {@link DiffSurface}. Only meaningful while the
+ * textual/code file diff is the active view, so `available` mirrors the
+ * surface's `onFileDiffActiveChange`.
+ */
+export function DiffStyleControl(props: {
+  diffStyle: DiffStyle;
+  available: boolean;
+  onChange: (style: DiffStyle) => void;
+}): React.ReactElement {
+  const { diffStyle, available, onChange } = props;
+  if (!available) {
+    return <></>;
+  }
+  return (
+    <div
+      className="jp-xtralab-DiffWidget-segmented"
+      role="tablist"
+      aria-label="Diff view style"
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={diffStyle === 'split'}
+        data-active={diffStyle === 'split'}
+        className="jp-xtralab-DiffWidget-segmentedButton jp-xtralab-DiffWidget-segmentedButton-icon"
+        title="Split (side-by-side) view"
+        aria-label="Split view"
+        onClick={() => onChange('split')}
+      >
+        <DiffSplitIcon />
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={diffStyle === 'unified'}
+        data-active={diffStyle === 'unified'}
+        className="jp-xtralab-DiffWidget-segmentedButton jp-xtralab-DiffWidget-segmentedButton-icon"
+        title="Unified (inline) view"
+        aria-label="Unified view"
+        onClick={() => onChange('unified')}
+      >
+        <DiffUnifiedIcon />
       </button>
     </div>
   );
