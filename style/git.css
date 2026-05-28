@@ -79,14 +79,21 @@
 }
 
 /*
- * Notebook/JSON view-mode selector that lives in the `MainAreaWidget`
- * toolbar for `.ipynb` diffs. The host toolbar provides its own
- * background and border, so this is just the segmented control itself.
+ * Segmented selectors that live in the diff toolbar: the Notebook/JSON
+ * view-mode toggle (for `.ipynb` diffs) and the Split/Unified diff-style
+ * toggle (for textual/code diffs). The host toolbar provides its own
+ * background and border, so these are just the segmented controls.
  */
-.jp-xtralab-DiffWidget-viewModeToolbarItem {
+.jp-xtralab-DiffWidget-viewModeToolbarItem,
+.jp-xtralab-DiffWidget-diffStyleToolbarItem {
   display: flex;
   align-items: center;
   font-size: var(--jp-ui-font-size0);
+}
+
+/* Breathing room when both toggles appear (notebook diff in JSON view). */
+.jp-xtralab-DiffWidget-diffStyleToolbarItem {
+  margin-left: 4px;
 }
 
 .jp-xtralab-DiffWidget-segmented {
@@ -118,6 +125,24 @@
 
 .jp-xtralab-DiffWidget-segmentedButton[data-active='true']:hover {
   background-color: var(--jp-brand-color1);
+}
+
+/*
+ * Icon variant of the segmented button, used by the Split/Unified toggle.
+ * The inline SVGs fill with `currentColor`, so the active/hover color rules
+ * above carry over to the glyph.
+ */
+.jp-xtralab-DiffWidget-segmentedButton-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 8px;
+}
+
+.jp-xtralab-DiffWidget-segmentedButton-icon svg {
+  display: block;
+  width: 14px;
+  height: 14px;
 }
 
 /*
