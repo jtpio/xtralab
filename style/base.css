@@ -21,6 +21,7 @@
   --trees-bg-muted-override: var(--jp-layout-color2);
   --trees-fg-override: var(--jp-ui-font-color1);
   --trees-fg-muted-override: var(--jp-ui-font-color2);
+  --trees-status-ignored-override: var(--jp-ui-font-color2);
   --trees-accent-override: var(--jp-brand-color1);
   --trees-border-color-override: var(--jp-border-color2);
   --trees-indent-guide-bg-override: var(--jp-border-color3);
