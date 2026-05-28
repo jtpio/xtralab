@@ -44,6 +44,11 @@ jobs:
 
       - name: Base Setup
         uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+        with:
+          # Node 24.16.0 makes electron-forge packaging exit 0 without
+          # producing an installer; pin to the last known-good until the
+          # upstream regression is fixed.
+          node_version: 24.15.0
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
