@@ -2,9 +2,11 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   chmodSync,
+  copyFileSync,
   existsSync,
   lstatSync,
   mkdirSync,
+  mkdtempSync,
   readdirSync,
   readFileSync,
   renameSync,
@@ -12,6 +14,7 @@ import {
   statSync,
   writeFileSync
 } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -23,7 +26,8 @@ const runtimeDir = join(desktopRoot, 'python', 'runtime');
 const stagingDir = `${runtimeDir}.staging`;
 const markerPath = join(runtimeDir, '.runtime-state.json');
 const pythonVersion = process.env.XTRALAB_PYTHON ?? '3.14';
-const markerSchema = 1;
+const ripgrepVersion = process.env.XTRALAB_RIPGREP_VERSION ?? '15.1.0';
+const markerSchema = 2;
 
 function run(command, args) {
   return new Promise((resolveP, rejectP) => {
@@ -62,6 +66,71 @@ function findLatestWheel(prefix, label) {
   return candidates[0];
 }
 
+function ripgrepReleaseAsset(version) {
+  const target = `${process.platform}-${process.arch}`;
+  // Linux uses the statically linked musl build so the AppImage's bundled rg
+  // runs regardless of the host's glibc version.
+  const assets = {
+    'darwin-arm64': `ripgrep-${version}-aarch64-apple-darwin.tar.gz`,
+    'darwin-x64': `ripgrep-${version}-x86_64-apple-darwin.tar.gz`,
+    'linux-x64': `ripgrep-${version}-x86_64-unknown-linux-musl.tar.gz`,
+    'linux-arm64': `ripgrep-${version}-aarch64-unknown-linux-gnu.tar.gz`
+  };
+  const asset = assets[target];
+  if (asset === undefined) {
+    throw new Error(`No ripgrep release asset is mapped for platform "${target}"`);
+  }
+  return asset;
+}
+
+async function fetchOrThrow(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`GET ${url} failed with status ${response.status}`);
+  }
+  return response;
+}
+
+// jupyterlab-search-replace shells out to `rg`; bundle the official binary
+// from GitHub releases so search works without ripgrep on the host PATH.
+async function installRipgrep(version, binDir) {
+  const asset = ripgrepReleaseAsset(version);
+  const baseUrl = `https://github.com/BurntSushi/ripgrep/releases/download/${version}`;
+  const tempDir = mkdtempSync(join(tmpdir(), 'xtralab-ripgrep-'));
+  try {
+    const checksumLine = (
+      await (await fetchOrThrow(`${baseUrl}/${asset}.sha256`)).text()
+    ).trim();
+    const expectedSha = checksumLine.split(/\s+/)[0].toLowerCase();
+
+    const tarballPath = join(tempDir, asset);
+    const tarballBytes = Buffer.from(
+      await (await fetchOrThrow(`${baseUrl}/${asset}`)).arrayBuffer()
+    );
+    writeFileSync(tarballPath, tarballBytes);
+
+    const actualSha = createHash('sha256').update(tarballBytes).digest('hex');
+    if (actualSha !== expectedSha) {
+      throw new Error(
+        `ripgrep checksum mismatch for ${asset}: expected ${expectedSha}, got ${actualSha}`
+      );
+    }
+
+    await run('tar', ['-xzf', tarballPath, '-C', tempDir]);
+    const rgSource = join(tempDir, asset.replace(/\.tar\.gz$/, ''), 'rg');
+    if (!existsSync(rgSource)) {
+      throw new Error(`rg binary not found at ${rgSource} after extracting ${asset}`);
+    }
+
+    const rgDest = join(binDir, 'rg');
+    copyFileSync(rgSource, rgDest);
+    chmodSync(rgDest, 0o755);
+    console.log(`Installed ripgrep ${version} (${asset}) at ${rgDest}`);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
 if (!existsSync(requirementsPath)) {
   throw new Error(
     `Bundled requirements.txt not found at ${requirementsPath}. Run "pnpm build:lock" first.`
@@ -76,6 +145,7 @@ const desktopWheelBytes = readFileSync(desktopWheel.path);
 const fingerprint = {
   schema: markerSchema,
   pythonVersion,
+  ripgrepVersion,
   platform: process.platform,
   arch: process.arch,
   requirementsSize: requirementsBytes.byteLength,
@@ -91,12 +161,18 @@ const fingerprint = {
 };
 
 const pythonExecutable = join(runtimeDir, 'bin', 'python');
-if (existsSync(markerPath) && existsSync(pythonExecutable)) {
+const ripgrepBinary = join(runtimeDir, 'bin', 'rg');
+if (
+  existsSync(markerPath) &&
+  existsSync(pythonExecutable) &&
+  existsSync(ripgrepBinary)
+) {
   try {
     const previous = JSON.parse(readFileSync(markerPath, 'utf8'));
     if (
       previous.schema === fingerprint.schema &&
       previous.pythonVersion === fingerprint.pythonVersion &&
+      previous.ripgrepVersion === fingerprint.ripgrepVersion &&
       previous.platform === fingerprint.platform &&
       previous.arch === fingerprint.arch &&
       previous.requirementsSize === fingerprint.requirementsSize &&
@@ -195,6 +271,9 @@ await run('uv', [
   ':all:',
   desktopWheel.path
 ]);
+
+console.log(`Installing ripgrep ${ripgrepVersion}`);
+await installRipgrep(ripgrepVersion, join(runtimeDir, 'bin'));
 
 console.log('Rewriting absolute shebangs in bin/');
 rewriteRuntimeShebangs(runtimeDir, pythonVersion);

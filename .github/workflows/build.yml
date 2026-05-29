@@ -54,6 +54,7 @@ jobs:
             "jupyterlab-cursor-light" \
             "jupyterlab-cursor-dark" \
             "jupyterlab-quickopen" \
+            "jupyterlab-search-replace" \
             "jupyterlab-commands-toolkit" \
             "@jupyter/docprovider-extension"; do
             grep -e "${ext}.*OK" labextensions.txt

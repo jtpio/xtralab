@@ -206,6 +206,13 @@ class JupyterLabSupervisor:
                 self.command,
                 cwd=self.cwd,
                 env=child_env,
+                # Detach the server — and the ``rg`` process that
+                # jupyterlab-search-replace spawns — from our stdin. Given no path
+                # arguments and a readable pipe on stdin (which the desktop shell
+                # hands us), ripgrep searches stdin instead of the working directory
+                # and blocks forever. /dev/null is a character device, which ripgrep
+                # ignores, so it searches the files on disk.
+                stdin=subprocess.DEVNULL,
                 stdout=stdout,
                 stderr=stderr,
                 **popen_session_kwargs(),
