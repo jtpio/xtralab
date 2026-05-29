@@ -38,9 +38,10 @@ build instructions.
 
 xtralab builds on [`ajlab`](https://github.com/jtpio/ajlab), the agent-ready
 JupyterLab base. On top of it, xtralab pulls in JupyterLab 4.6+ with
-`jupyterlab-git`, `jupyterlab-lsp`, `jupyterlab-quickopen`, `jupyterlab-vim`,
-and a set of light and dark themes (`jupyterlab-cursor-light`,
-`jupyterlab-cursor-dark`, `jupyterlab-day`, `jupyterlab-night`). See
+`jupyterlab-git`, `jupyterlab-lsp`, `jupyterlab-quickopen`,
+`jupyterlab-search-replace`, `jupyterlab-vim`, and a set of light and dark
+themes (`jupyterlab-cursor-light`, `jupyterlab-cursor-dark`,
+`jupyterlab-day`, `jupyterlab-night`). See
 [`pyproject.toml`](./pyproject.toml) for the full list and pinned versions.
 
 The bundled xtralab labextension then adds:
