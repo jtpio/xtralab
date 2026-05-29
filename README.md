@@ -1,4 +1,4 @@
-# xtralab
+![xtralab-logo](./logo.png)
 
 An opinionated JupyterLab meta-package for use with coding agents.
 
