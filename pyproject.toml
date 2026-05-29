@@ -37,7 +37,7 @@ classifiers = [
 dependencies = [
     "ajlab>=0.1.7",
     "jupyter-server-mcp>=0.3.0a0",
-    "jupyterlab>=4.6.0b0",
+    "jupyterlab>=4.6.0b0,<4.6.0b1",  # b1 moves @jupyter/ydoc to v4; jupyter-collaboration not yet compatible
     "jupyterlab-cursor-light>=1.0.2",
     "jupyterlab-cursor-dark>=1.0.2",
     "jupyterlab-day>=0.2.0",
@@ -48,7 +48,7 @@ dependencies = [
     "jupyterlab-quickopen>=2.3.0",
     "jupyterlab-vim>=4.1.4",
     "psutil>=5.9",
-    "ty>=0.0.35",
+    "ty>=0.0.40",
 ]
 dynamic = ["version", "description", "urls"]
 
