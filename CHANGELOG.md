@@ -2,6 +2,39 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.8.0
+
+([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.7.0...f6f00e4049d90f5bb3b97a51c8c32a08464855ec))
+
+### Enhancements made
+
+- Add search-replace [#35](https://github.com/jtpio/xtralab/pull/35) ([@jtpio](https://github.com/jtpio))
+- Unified diffs [#30](https://github.com/jtpio/xtralab/pull/30) ([@jtpio](https://github.com/jtpio))
+
+### Bugs fixed
+
+- fix tree with light themes [#31](https://github.com/jtpio/xtralab/pull/31) ([@jtpio](https://github.com/jtpio))
+
+### Maintenance and upkeep improvements
+
+- fix build [#34](https://github.com/jtpio/xtralab/pull/34) ([@jtpio](https://github.com/jtpio))
+- Pin node version on the desktop build [#32](https://github.com/jtpio/xtralab/pull/32) ([@jtpio](https://github.com/jtpio))
+
+### Documentation improvements
+
+- Add logo [#33](https://github.com/jtpio/xtralab/pull/33) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-05-26&to=2026-05-29&type=c))
+
+@jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-05-26..2026-05-29&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.7.0
 
 ([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.6.0...c9fadcfa0575c3c011c5d1b176927489a6e79141))
@@ -20,8 +53,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-05-22&to=2026-05-26&type=c))
 
 @jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-05-22..2026-05-26&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.6.0
 
