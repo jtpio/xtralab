@@ -1,7 +1,6 @@
 import { LabIcon, fileIcon } from '@jupyterlab/ui-components';
 import {
   createFileTreeIconResolver,
-  getBuiltInFileIconColor,
   getBuiltInSpriteSheet
 } from '@pierre/trees';
 import type { FileTreeIconConfig } from '@pierre/trees';
@@ -118,6 +117,87 @@ function extractSymbol(
     viewBox: viewBoxMatch?.[1] ?? '0 0 16 16',
     inner: match[1]
   };
+}
+
+/**
+ * Per-token fallback colors for the built-in file icons, keyed by the icon
+ * token `@pierre/trees` resolves for a path (e.g. `python`, `typescript`).
+ *
+ * The tree paints colored icons through `--trees-file-icon-color-<token>` CSS
+ * custom properties scoped to its shadow host, so those variables resolve to
+ * nothing for the standalone {@link LabIcon}s rendered outside the tree (the
+ * main-area tabs {@link getTreeIcon} feeds). These literals mirror the tree's
+ * own defaults so {@link getBuiltInFileIconColor} can bottom out in a real
+ * color there. Each value is a `light-dark(…)` pair so dark themes pick up the
+ * brighter variant via the page's `color-scheme`.
+ */
+const BUILT_IN_FILE_ICON_COLOR_FALLBACKS: Record<string, string> = {
+  astro: 'light-dark(#a631be, #d568ea)',
+  babel: 'light-dark(#d5a910, #ffd452)',
+  bash: 'light-dark(#199f43, #5ecc71)',
+  biome: 'light-dark(#1a85d4, #69b1ff)',
+  bootstrap: 'light-dark(#693acf, #9d6afb)',
+  browserslist: 'light-dark(#d5a910, #ffd452)',
+  bun: 'light-dark(#594c5b, #79697b)',
+  c: 'light-dark(#1a85d4, #69b1ff)',
+  claude: 'light-dark(#d47628, #ffa359)',
+  cpp: 'light-dark(#1a85d4, #69b1ff)',
+  css: 'light-dark(#693acf, #9d6afb)',
+  database: 'light-dark(#a631be, #d568ea)',
+  default: 'light-dark(#84848a, #adadb1)',
+  docker: 'light-dark(#1a85d4, #69b1ff)',
+  eslint: 'light-dark(#693acf, #9d6afb)',
+  git: 'light-dark(#ff8c5b, #d5512f)',
+  go: 'light-dark(#1ca1c7, #68cdf2)',
+  graphql: 'light-dark(#d32a61, #ff678d)',
+  html: 'light-dark(#d47628, #ffa359)',
+  image: 'light-dark(#d32a61, #ff678d)',
+  javascript: 'light-dark(#d5a910, #ffd452)',
+  json: 'light-dark(#d47628, #ffa359)',
+  markdown: 'light-dark(#199f43, #5ecc71)',
+  mcp: 'light-dark(#17a5af, #64d1db)',
+  npm: 'light-dark(#d52c36, #ff6762)',
+  oxc: 'light-dark(#1ca1c7, #68cdf2)',
+  postcss: 'light-dark(#d52c36, #ff6762)',
+  prettier: 'light-dark(#17a5af, #64d1db)',
+  python: 'light-dark(#1a85d4, #69b1ff)',
+  react: 'light-dark(#1ca1c7, #68cdf2)',
+  ruby: 'light-dark(#d52c36, #ff6762)',
+  rust: 'light-dark(#d47628, #ffa359)',
+  sass: 'light-dark(#d32a61, #ff678d)',
+  svelte: 'light-dark(#d52c36, #ff6762)',
+  svg: 'light-dark(#d47628, #ffa359)',
+  svgo: 'light-dark(#199f43, #5ecc71)',
+  swift: 'light-dark(#d47628, #ffa359)',
+  table: 'light-dark(#17a5af, #64d1db)',
+  tailwind: 'light-dark(#1ca1c7, #68cdf2)',
+  terraform: 'light-dark(#693acf, #9d6afb)',
+  text: 'light-dark(#84848a, #adadb1)',
+  typescript: 'light-dark(#1a85d4, #69b1ff)',
+  vite: 'light-dark(#a631be, #d568ea)',
+  vscode: 'light-dark(#1a85d4, #69b1ff)',
+  vue: 'light-dark(#199f43, #5ecc71)',
+  wasm: 'light-dark(#693acf, #9d6afb)',
+  webpack: 'light-dark(#1a85d4, #69b1ff)',
+  yml: 'light-dark(#d52c36, #ff6762)',
+  zig: 'light-dark(#d47628, #ffa359)',
+  zip: 'light-dark(#d47628, #ffa359)'
+};
+
+/**
+ * Color the file tree would paint for the built-in icon `token`, as a
+ * self-contained CSS value usable outside the tree's shadow DOM. Prefers the
+ * tree's `--trees-file-icon-color-<token>` / `--trees-file-icon-color` custom
+ * properties when they are in scope and falls back to the matching literal in
+ * {@link BUILT_IN_FILE_ICON_COLOR_FALLBACKS} otherwise. Returns `undefined`
+ * for tokens with no known color.
+ */
+function getBuiltInFileIconColor(token: string): string | undefined {
+  const fallback = BUILT_IN_FILE_ICON_COLOR_FALLBACKS[token];
+  if (fallback === undefined) {
+    return undefined;
+  }
+  return `var(--trees-file-icon-color-${token}, var(--trees-file-icon-color, ${fallback}))`;
 }
 
 /**
