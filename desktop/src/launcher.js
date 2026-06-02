@@ -44,6 +44,7 @@ const openFolderLink = document.getElementById('open-folder');
 const backLink = document.getElementById('back-to-welcome');
 const recentSection = document.getElementById('recent-section');
 const recentList = document.getElementById('recent-list');
+const recentClear = document.getElementById('recent-clear');
 const projectFolderName = document.getElementById('project-folder-name');
 const projectFolderPath = document.getElementById('project-folder-path');
 const environmentSelect = document.getElementById('environment-select');
@@ -66,6 +67,7 @@ function updateActionAvailability() {
     option === null ||
     (option.kind !== 'managed' && !option.hasIpykernel);
   backLink.disabled = isBusy;
+  recentClear.disabled = isBusy;
   for (const button of recentList.querySelectorAll('button')) {
     button.disabled = isBusy;
   }
@@ -206,7 +208,19 @@ function renderPreparedFolder(result) {
   renderEnvironmentDetail();
 }
 
+function createIcon(symbolId) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('aria-hidden', 'true');
+  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  use.setAttribute('href', symbolId);
+  svg.append(use);
+  return svg;
+}
+
 function createRecentRow(folderPath) {
+  const item = document.createElement('div');
+  item.className = 'recent-item';
+
   const row = document.createElement('button');
   row.className = 'recent-row';
   row.type = 'button';
@@ -227,11 +241,23 @@ function createRecentRow(folderPath) {
     renderPreparedFolder(result);
   });
 
-  return row;
+  const remove = document.createElement('button');
+  remove.className = 'recent-remove';
+  remove.type = 'button';
+  remove.title = `Remove ${folderName(folderPath)} from recent folders`;
+  remove.setAttribute('aria-label', remove.title);
+  remove.append(createIcon('#icon-xmark'));
+  remove.addEventListener('click', async () => {
+    const folders = await window.xtralab.forgetRecentFolder(folderPath);
+    renderRecentFolders(folders);
+  });
+
+  item.append(row, remove);
+  return item;
 }
 
-async function renderRecentFolders() {
-  const recentFolders = await window.xtralab.getRecentFolders();
+async function renderRecentFolders(folders) {
+  const recentFolders = folders ?? (await window.xtralab.getRecentFolders());
   recentList.replaceChildren();
 
   if (recentFolders.length === 0) {
@@ -254,6 +280,11 @@ openFolderLink.addEventListener('click', async () => {
   }
   renderPreparedFolder(result);
   await renderRecentFolders();
+});
+
+recentClear.addEventListener('click', async () => {
+  const folders = await window.xtralab.clearRecentFolders();
+  renderRecentFolders(folders);
 });
 
 backLink.addEventListener('click', () => {
