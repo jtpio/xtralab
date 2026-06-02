@@ -162,14 +162,12 @@ function getWorkingDirectory(browser: IXtralabFileBrowser): string {
 /**
  * Resolve the main-area widget whose tab is the target of the current
  * context-menu event, or `null` when that target is not a document tab. The
- * shell stamps the owning widget id onto each tab's `data-id`, so the
- * right-clicked tab resolves to its widget even when it is not the current
- * one.
+ * shell stamps each tab's `data-id` with its widget id, so the right-clicked
+ * tab resolves even when it is not the current one.
  *
- * Only meaningful while a context-menu event is fresh: `contextMenuHitTest`
- * reads the last context-menu event and is not cleared when the menu closes,
- * so callers must gate this behind an actual context-menu invocation (see
- * {@link documentPathToReveal}) to avoid resolving a stale tab.
+ * Valid only during a context-menu invocation: `contextMenuHitTest` reads the
+ * last context-menu event, which is not cleared when the menu closes, so
+ * {@link documentPathToReveal} gates this to avoid resolving a stale tab.
  */
 function contextMenuTabWidget(app: JupyterFrontEnd): Widget | null {
   const node = app.contextMenuHitTest(
@@ -188,14 +186,10 @@ function contextMenuTabWidget(app: JupyterFrontEnd): Widget | null {
 }
 
 /**
- * Resolve the document to reveal as a canonical `@pierre/trees` path.
- * `fromContextMenu` is `true` for the file-tab context-menu entry, where the
- * target is the right-clicked tab; it is `false` for the command palette,
- * where the target is the active main-area widget. The palette path skips the
- * context-menu hit-test on purpose, so a stale right-click cannot redirect it
- * to the wrong tab. Returns `undefined` when no document is resolved or it has
- * no path. A document context's `path` is the file's server path, which for a
- * file is already canonical — only directories carry a trailing slash.
+ * Resolve the document to reveal as a canonical `@pierre/trees` path: the
+ * right-clicked tab when `fromContextMenu` is true (the file-tab menu),
+ * otherwise the active main-area widget (the palette). A file's context
+ * `path` is already canonical. Returns `undefined` when nothing resolves.
  */
 function documentPathToReveal(
   app: JupyterFrontEnd,
@@ -500,11 +494,8 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
     }
   });
 
-  // Reveal a file in the xtralab tree browser. From the file-tab context menu
-  // it acts on the right-clicked tab; from the command palette it acts on the
-  // active editor. Either way it hands off to the reveal-path command, which
-  // surfaces the sidebar and scrolls the tree to the target. Disabled when no
-  // document is resolved (launcher, terminal, settings, …).
+  // Reveal the resolved document in the tree browser via the reveal-path
+  // command, which surfaces the sidebar and scrolls to the target.
   commands.addCommand(CommandIDs.revealInFileTree, {
     label: trans.__('Show in File Tree'),
     caption: trans.__('Show this file in the xtralab file browser'),
@@ -560,18 +551,16 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
     }
   });
 
-  // "Show in File Tree" depends on the resolved document (the active widget
-  // when invoked from the palette) rather than the tree selection, so
-  // re-evaluate it when the current widget changes. The signal is optional on
-  // the shell interface.
+  // This command's enabled state tracks the active widget, not the tree
+  // selection, so re-evaluate it on current-widget changes. `currentChanged`
+  // is optional on the shell interface.
   const onCurrentChanged = (): void => {
     commands.notifyCommandChanged(CommandIDs.revealInFileTree);
   };
   app.shell.currentChanged?.connect(onCurrentChanged);
 
-  // Also surface it in the palette, where it reveals the active editor's
-  // file. The file-tab context-menu entry is declared in `schema/plugin.json`
-  // on the `[data-type="document-title"]` selector.
+  // Also surface it in the palette (acts on the active editor); the file-tab
+  // context-menu entry is declared in `schema/plugin.json`.
   const paletteItem = palette?.addItem({
     command: CommandIDs.revealInFileTree,
     category: trans.__('File Browser')

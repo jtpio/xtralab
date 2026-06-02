@@ -120,16 +120,14 @@ function extractSymbol(
 }
 
 /**
- * Per-token fallback colors for the built-in file icons, keyed by the icon
- * token `@pierre/trees` resolves for a path (e.g. `python`, `typescript`).
+ * Fallback colors for the built-in file icons, keyed by the icon token
+ * `@pierre/trees` resolves for a path (e.g. `python`, `typescript`).
  *
- * The tree paints colored icons through `--trees-file-icon-color-<token>` CSS
- * custom properties scoped to its shadow host, so those variables resolve to
- * nothing for the standalone {@link LabIcon}s rendered outside the tree (the
- * main-area tabs {@link getTreeIcon} feeds). These literals mirror the tree's
- * own defaults so {@link getBuiltInFileIconColor} can bottom out in a real
- * color there. Each value is a `light-dark(…)` pair so dark themes pick up the
- * brighter variant via the page's `color-scheme`.
+ * The tree only exposes these as `--trees-file-icon-color-<token>` CSS
+ * variables scoped to its shadow host, so they resolve to nothing for the
+ * standalone {@link LabIcon}s {@link getTreeIcon} builds for main-area tabs.
+ * Mirroring them here lets {@link getBuiltInFileIconColor} bottom out in a
+ * real color. Each is a `light-dark(…)` pair for dark themes.
  */
 const BUILT_IN_FILE_ICON_COLOR_FALLBACKS: Record<string, string> = {
   astro: 'light-dark(#a631be, #d568ea)',
@@ -186,11 +184,10 @@ const BUILT_IN_FILE_ICON_COLOR_FALLBACKS: Record<string, string> = {
 
 /**
  * Color the file tree would paint for the built-in icon `token`, as a
- * self-contained CSS value usable outside the tree's shadow DOM. Prefers the
- * tree's `--trees-file-icon-color-<token>` / `--trees-file-icon-color` custom
- * properties when they are in scope and falls back to the matching literal in
- * {@link BUILT_IN_FILE_ICON_COLOR_FALLBACKS} otherwise. Returns `undefined`
- * for tokens with no known color.
+ * self-contained CSS value usable outside the tree's shadow DOM: the tree's
+ * `--trees-file-icon-color-*` properties when in scope, else the literal from
+ * {@link BUILT_IN_FILE_ICON_COLOR_FALLBACKS}. Returns `undefined` for unknown
+ * tokens.
  */
 function getBuiltInFileIconColor(token: string): string | undefined {
   const fallback = BUILT_IN_FILE_ICON_COLOR_FALLBACKS[token];

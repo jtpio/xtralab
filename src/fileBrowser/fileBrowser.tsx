@@ -652,10 +652,9 @@ export function FileBrowserComponent(
         previous?.deselect();
       }
       target.select();
-      // `select` highlights the row; `scrollToPath` moves keyboard focus to
-      // it and scrolls it to the middle of the viewport. It resolves the
-      // target through the tree's virtualized projection, so it scrolls the
-      // row into view even when it sits outside the currently rendered window.
+      // `select` highlights the row; `scrollToPath` focuses it and scrolls it
+      // to the middle of the viewport, even when the row is virtualized out of
+      // the rendered window.
       model.scrollToPath(canonicalPath, { focus: true, offset: 'center' });
     };
 
