@@ -27,6 +27,10 @@ contextBridge.exposeInMainWorld('xtralab', {
   getHomeDir: (): Promise<string> => ipcRenderer.invoke('xtralab:get-home-dir'),
   getRecentFolders: (): Promise<string[]> =>
     ipcRenderer.invoke('xtralab:get-recent-folders'),
+  forgetRecentFolder: (folderPath: string): Promise<string[]> =>
+    ipcRenderer.invoke('xtralab:forget-recent-folder', folderPath),
+  clearRecentFolders: (): Promise<string[]> =>
+    ipcRenderer.invoke('xtralab:clear-recent-folders'),
   openFolderDialog: (): Promise<FolderEnvironmentResult> =>
     ipcRenderer.invoke('xtralab:open-folder-dialog'),
   prepareFolder: (folderPath: string): Promise<FolderEnvironmentResult> =>

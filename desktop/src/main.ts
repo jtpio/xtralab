@@ -419,6 +419,16 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle('xtralab:get-home-dir', () => app.getPath('home'));
   ipcMain.handle('xtralab:get-recent-folders', () => getRecentFolders());
+  ipcMain.handle(
+    'xtralab:forget-recent-folder',
+    (event: IpcMainInvokeEvent, folderPath: unknown) => {
+      if (typeof folderPath !== 'string') {
+        return getRecentFolders();
+      }
+      return forgetRecentFolder(folderPath);
+    }
+  );
+  ipcMain.handle('xtralab:clear-recent-folders', () => clearRecentFolders());
   ipcMain.handle('xtralab:show-logs', async () => {
     await shell.openPath(getLogsDir());
   });
@@ -1526,6 +1536,19 @@ function rememberRecentFolder(folderPath: string): void {
     ...recentFolders.filter(recentFolder => recentFolder !== folderPath)
   ].slice(0, recentFoldersLimit);
   saveRecentFolders();
+}
+
+function forgetRecentFolder(folderPath: string): string[] {
+  recentFolders = recentFolders.filter(
+    recentFolder => recentFolder !== folderPath
+  );
+  return getRecentFolders();
+}
+
+function clearRecentFolders(): string[] {
+  recentFolders = [];
+  saveRecentFolders();
+  return recentFolders;
 }
 
 function loadFolderEnvironmentPreferences(): void {

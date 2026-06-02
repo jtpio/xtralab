@@ -205,6 +205,8 @@ svg.symbol {
 
 .action-link:focus-visible,
 .recent-row:focus-visible,
+.recent-clear:focus-visible,
+.recent-remove:focus-visible,
 .environment-select:focus-visible,
 .primary-action:focus-visible,
 .secondary-action:focus-visible,
@@ -217,6 +219,38 @@ svg.symbol {
 .recent-section {
   display: flex;
   flex-direction: column;
+}
+
+.recent-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.recent-header .section-title {
+  margin-bottom: 0;
+}
+
+.recent-clear {
+  flex: 0 0 auto;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--link-detail);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.recent-clear:hover {
+  color: var(--link-hover);
+}
+
+.recent-clear:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 .recent-list {
@@ -267,6 +301,53 @@ svg.symbol {
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.recent-item .recent-row {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.recent-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--link-detail);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.recent-remove svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+
+.recent-item:hover .recent-remove,
+.recent-remove:focus-visible {
+  opacity: 1;
+}
+
+.recent-remove:hover {
+  color: var(--error);
+}
+
+.recent-remove:disabled {
+  cursor: default;
+  opacity: 0;
 }
 
 .project-view {
