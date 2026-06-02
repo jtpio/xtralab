@@ -2,11 +2,14 @@ import { JupyterFrontEnd } from '@jupyterlab/application';
 import {
   Clipboard,
   Dialog,
+  ICommandPalette,
   InputDialog,
   showDialog,
   showErrorMessage
 } from '@jupyterlab/apputils';
 import { PageConfig, PathExt } from '@jupyterlab/coreutils';
+import { IDocumentManager } from '@jupyterlab/docmanager';
+import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import {
   addIcon,
   closeIcon,
@@ -22,7 +25,7 @@ import {
   refreshIcon
 } from '@jupyterlab/ui-components';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
-import { ContextMenu } from '@lumino/widgets';
+import { ContextMenu, Widget } from '@lumino/widgets';
 
 import { toCanonicalPath, toServerPath } from './contents';
 import { FILE_BROWSER_ID, IXtralabFileBrowser } from './widget';
@@ -47,6 +50,7 @@ export namespace CommandIDs {
   export const createNewDirectory = 'xtralab:create-new-directory';
   export const newLauncher = 'xtralab:new-launcher';
   export const revealPath = 'xtralab:reveal-path';
+  export const revealInFileTree = 'xtralab:reveal-in-file-tree';
 }
 
 /**
@@ -60,6 +64,9 @@ export const OPEN_WITH_SUBMENU_ID = 'jp-contextmenu-xtralab-open-with';
 export interface IRegisterCommandsOptions {
   app: JupyterFrontEnd;
   browser: IXtralabFileBrowser;
+  docManager: IDocumentManager;
+  palette: ICommandPalette | null;
+  translator: ITranslator | null;
 }
 
 /**
@@ -153,6 +160,53 @@ function getWorkingDirectory(browser: IXtralabFileBrowser): string {
 }
 
 /**
+ * Resolve the main-area widget whose tab is the target of the current
+ * context-menu event, or `null` when that target is not a document tab. The
+ * shell stamps each tab's `data-id` with its widget id, so the right-clicked
+ * tab resolves even when it is not the current one.
+ *
+ * Valid only during a context-menu invocation: `contextMenuHitTest` reads the
+ * last context-menu event, which is not cleared when the menu closes, so
+ * {@link documentPathToReveal} gates this to avoid resolving a stale tab.
+ */
+function contextMenuTabWidget(app: JupyterFrontEnd): Widget | null {
+  const node = app.contextMenuHitTest(
+    n => n.dataset !== undefined && n.dataset.type === 'document-title'
+  );
+  const id = node?.dataset.id;
+  if (id === undefined) {
+    return null;
+  }
+  for (const widget of app.shell.widgets('main')) {
+    if (widget.id === id) {
+      return widget;
+    }
+  }
+  return null;
+}
+
+/**
+ * Resolve the document to reveal as a canonical `@pierre/trees` path: the
+ * right-clicked tab when `fromContextMenu` is true (the file-tab menu),
+ * otherwise the active main-area widget (the palette). A file's context
+ * `path` is already canonical. Returns `undefined` when nothing resolves.
+ */
+function documentPathToReveal(
+  app: JupyterFrontEnd,
+  docManager: IDocumentManager,
+  fromContextMenu: boolean
+): string | undefined {
+  const widget =
+    (fromContextMenu ? contextMenuTabWidget(app) : null) ??
+    app.shell.currentWidget;
+  if (widget === null) {
+    return undefined;
+  }
+  const path = docManager.contextForWidget(widget)?.path ?? '';
+  return path.length > 0 ? path : undefined;
+}
+
+/**
  * Refresh the "Open With" submenu's items from the document factories that
  * can open the file under the right-click. Mirrors the
  * `@jupyterlab/filebrowser-extension:open-with` pattern: the schema declares
@@ -210,8 +264,9 @@ function makeOpenWithUpdater(
  *   the plugin.
  */
 export function registerCommands(opts: IRegisterCommandsOptions): () => void {
-  const { app, browser } = opts;
+  const { app, browser, docManager, palette, translator } = opts;
   const { commands } = app;
+  const trans = (translator ?? nullTranslator).load('jupyterlab');
 
   commands.addCommand(CommandIDs.open, {
     label: args =>
@@ -439,6 +494,23 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
     }
   });
 
+  // Reveal the resolved document in the tree browser via the reveal-path
+  // command, which surfaces the sidebar and scrolls to the target.
+  commands.addCommand(CommandIDs.revealInFileTree, {
+    label: trans.__('Show in File Tree'),
+    caption: trans.__('Show this file in the xtralab file browser'),
+    isEnabled: args =>
+      documentPathToReveal(app, docManager, args.fromTab === true) !==
+      undefined,
+    execute: args => {
+      const path = documentPathToReveal(app, docManager, args.fromTab === true);
+      if (path === undefined) {
+        return undefined;
+      }
+      return commands.execute(CommandIDs.revealPath, { path });
+    }
+  });
+
   commands.addCommand(CommandIDs.createNewDirectory, {
     label: 'New Folder',
     caption: 'Create a new folder',
@@ -479,6 +551,21 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
     }
   });
 
+  // This command's enabled state tracks the active widget, not the tree
+  // selection, so re-evaluate it on current-widget changes. `currentChanged`
+  // is optional on the shell interface.
+  const onCurrentChanged = (): void => {
+    commands.notifyCommandChanged(CommandIDs.revealInFileTree);
+  };
+  app.shell.currentChanged?.connect(onCurrentChanged);
+
+  // Also surface it in the palette (acts on the active editor); the file-tab
+  // context-menu entry is declared in `schema/plugin.json`.
+  const paletteItem = palette?.addItem({
+    command: CommandIDs.revealInFileTree,
+    category: trans.__('File Browser')
+  });
+
   // The static items are declared in `schema/plugin.json` under
   // `jupyter.lab.menus.context` so users can override or disable them. The
   // schema also declares an empty submenu placeholder with id
@@ -489,6 +576,8 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
 
   return () => {
     app.contextMenu.opened.disconnect(updateOpenWithMenu);
+    app.shell.currentChanged?.disconnect(onCurrentChanged);
+    paletteItem?.dispose();
   };
 }
 

@@ -96,11 +96,11 @@ importers:
         specifier: ^2.0.0
         version: 2.7.5
       '@pierre/diffs':
-        specifier: ^1.1.20
-        version: 1.1.22(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^1.2.7
+        version: 1.2.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@pierre/trees':
-        specifier: 1.0.0-beta.3
-        version: 1.0.0-beta.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 1.0.0-beta.4
+        version: 1.0.0-beta.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       detect-indent:
         specifier: ^7.0.2
         version: 7.0.2
@@ -943,18 +943,18 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@pierre/diffs@1.1.22':
-    resolution: {integrity: sha512-1Iv7kdl6OABFCd1n2HQbGUiRHouXPaHoIjcb7Lwg8zeJKY5ph+cESFcGEyIiwW0NCbKGtYS2bTnXmI+Eze5dwg==}
+  '@pierre/diffs@1.2.7':
+    resolution: {integrity: sha512-YrHmFZLDtiLZ4DkiVqMDUFqTFIct3ML3t20nMp0UeuiUtqrmRcenYVxPb4IafiNkhZZURhCiwcs89tVb/HrSDA==}
     peerDependencies:
       react: ^18.3.1 || ^19.0.0
       react-dom: ^18.3.1 || ^19.0.0
 
-  '@pierre/theme@0.0.28':
-    resolution: {integrity: sha512-1j/H/fECBuc9dEvntdWI+l435HZapw+RCJTlqCA6BboQ5TjlnE005j/ROWutXIs8aq5OAc82JI2Kwk4A1WWBgw==}
+  '@pierre/theme@1.0.3':
+    resolution: {integrity: sha512-sWHv11TMoqKxKDgTIk5VbhQjdPhs8DCcBxbjh3mRlS3YOM/OcrWoGX6MM8eBGn9cUu3M46Py0JnxsG2nJaFTuA==}
     engines: {vscode: ^1.0.0}
 
-  '@pierre/trees@1.0.0-beta.3':
-    resolution: {integrity: sha512-gfV7V1AoceIwTSFwiiWl/89gNtJROyo2dFeYYuAkT4F3AbE+ajCIGZEICBw1ygmVxVetF9Kq1Xpjz8BhXXZwTQ==}
+  '@pierre/trees@1.0.0-beta.4':
+    resolution: {integrity: sha512-OfT1yk9ne8Te5+GB5zUY8yqE6B8BqjBHQJleH4lu8ltwNpoocZl4vXt1AzlEExpxI/pp+AFX5QG+lR3JjtTEag==}
     peerDependencies:
       react: ^18.3.1 || ^19.0.0
       react-dom: ^18.3.1 || ^19.0.0
@@ -5649,9 +5649,9 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
 
-  '@pierre/diffs@1.1.22(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@pierre/diffs@1.2.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@pierre/theme': 0.0.28
+      '@pierre/theme': 1.0.3
       '@shikijs/transformers': 3.23.0
       diff: 8.0.3
       hast-util-to-html: 9.0.5
@@ -5660,9 +5660,9 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
       shiki: 3.23.0
 
-  '@pierre/theme@0.0.28': {}
+  '@pierre/theme@1.0.3': {}
 
-  '@pierre/trees@1.0.0-beta.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@pierre/trees@1.0.0-beta.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       preact: 11.0.0-beta.0
       preact-render-to-string: 6.6.5(preact@11.0.0-beta.0)

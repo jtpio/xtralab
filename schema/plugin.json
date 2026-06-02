@@ -58,6 +58,12 @@
         "command": "xtralab:download",
         "selector": ".jp-xtralab-FileBrowser [data-type=\"item\"][data-item-type=\"file\"]",
         "rank": 10
+      },
+      {
+        "command": "xtralab:reveal-in-file-tree",
+        "args": { "fromTab": true },
+        "selector": "[data-type=\"document-title\"]",
+        "rank": 25
       }
     ]
   },

@@ -4,9 +4,13 @@ import {
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
 
+import { ICommandPalette } from '@jupyterlab/apputils';
+
 import { IDocumentManager } from '@jupyterlab/docmanager';
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
+
+import { ITranslator } from '@jupyterlab/translation';
 
 import { populateToolbar, registerCommands } from './commands';
 import { XtralabFileBrowser } from './widget';
@@ -23,12 +27,14 @@ const plugin: JupyterFrontEndPlugin<void> = {
     'A path-first file browser for JupyterLab built on @pierre/trees.',
   autoStart: true,
   requires: [IDocumentManager],
-  optional: [ILayoutRestorer, ISettingRegistry],
+  optional: [ILayoutRestorer, ISettingRegistry, ICommandPalette, ITranslator],
   activate: (
     app: JupyterFrontEnd,
     docManager: IDocumentManager,
     restorer: ILayoutRestorer | null,
-    settingRegistry: ISettingRegistry | null
+    settingRegistry: ISettingRegistry | null,
+    palette: ICommandPalette | null,
+    translator: ITranslator | null
   ): void => {
     const browser = new XtralabFileBrowser({
       contentsManager: app.serviceManager.contents,
@@ -46,7 +52,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       restorer.add(browser, browser.id);
     }
 
-    registerCommands({ app, browser });
+    registerCommands({ app, browser, docManager, palette, translator });
     populateToolbar({ app, browser });
 
     if (settingRegistry) {

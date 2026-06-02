@@ -652,7 +652,10 @@ export function FileBrowserComponent(
         previous?.deselect();
       }
       target.select();
-      model.focusPath(canonicalPath);
+      // `select` highlights the row; `scrollToPath` focuses it and scrolls it
+      // to the middle of the viewport, even when the row is virtualized out of
+      // the rendered window.
+      model.scrollToPath(canonicalPath, { focus: true, offset: 'center' });
     };
 
     /**
