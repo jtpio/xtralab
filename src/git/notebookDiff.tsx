@@ -151,7 +151,7 @@ function emptyNotebook(): INotebook {
  * nbformat allows multiline string fields (`source`, stream `text`,
  * `text/plain` outputs, …) to be either a single string or an array of
  * strings. Normalize to one string so equality checks and diffs see the
- * same shape regardless of how the writer chose to serialise it.
+ * same shape regardless of how the writer chose to serialize it.
  */
 export function joinMultiline(value: string | string[] | undefined): string {
   if (value === undefined) {

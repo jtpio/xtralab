@@ -194,7 +194,7 @@ export class SessionRegistry implements IDisposable {
 
   /**
    * Return the open widget for a session, if any. The panel uses this to
-   * switch behaviour between "activate existing tab" and "open a new tab
+   * switch behavior between "activate existing tab" and "open a new tab
    * connected to the live session".
    */
   widgetFor(name: string): TerminalWidget | null {

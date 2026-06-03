@@ -32,7 +32,7 @@ export const RUNNING_TERMINALS_ID = 'xtralab-running-terminals';
  * Backed by {@link SessionRegistry}: a `UseSignal` re-renders the list
  * whenever the registry emits `stateChanged`, so it tracks
  * `runningChanged` and the agent-title cache without any local state.
- * Click behaviour (activate vs. reopen, shutdown, new terminal) is
+ * Click behavior (activate vs. reopen, shutdown, new terminal) is
  * delegated to plugin-supplied callbacks so the widget never imports
  * `app`.
  */
