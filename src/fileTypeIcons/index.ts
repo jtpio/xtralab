@@ -55,12 +55,85 @@ function applyTreeIcon(fileType: DocumentRegistry.IFileType): void {
 }
 
 /**
+ * Common source extensions `@pierre/trees` has a glyph for but JupyterLab ships
+ * no file type for. Registering a file type for each lets the surfaces that
+ * resolve icons only through the document registry — including the git history
+ * and commit-comparison lists, which load files asynchronously and expose no
+ * signal to decorate — paint the tree glyph as well. Extensions an existing
+ * file type already claims, or that the tree has no specific glyph for, are
+ * skipped.
+ */
+const EXTRA_FILE_TYPE_EXTENSIONS = [
+  '.ts',
+  '.tsx',
+  '.mts',
+  '.cts',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.go',
+  '.rs',
+  '.rb',
+  '.c',
+  '.h',
+  '.cpp',
+  '.cc',
+  '.hpp',
+  '.swift',
+  '.zig',
+  '.vue',
+  '.svelte',
+  '.astro',
+  '.scss',
+  '.sass',
+  '.sh',
+  '.bash',
+  '.zsh',
+  '.graphql',
+  '.wasm'
+];
+
+/**
+ * Register a tree-iconed file type for each extension in
+ * {@link EXTRA_FILE_TYPE_EXTENSIONS} the registry does not already cover. The
+ * types carry no widget factory, so files still open through JupyterLab's
+ * default editor; only the icon (and content type) is contributed.
+ */
+function registerExtraFileTypes(docRegistry: DocumentRegistry): void {
+  for (const extension of EXTRA_FILE_TYPE_EXTENSIONS) {
+    const icon = getSpecificTreeIcon(`file${extension}`);
+    if (icon === null) {
+      continue;
+    }
+    const claimed = docRegistry
+      .getFileTypesForPath(`file${extension}`)
+      .some(fileType =>
+        fileType.extensions?.some(e => e.toLowerCase() === extension)
+      );
+    if (claimed) {
+      continue;
+    }
+    docRegistry.addFileType({
+      name: `xtralab:file-type:${extension.slice(1)}`,
+      extensions: [extension],
+      icon,
+      contentType: 'file',
+      fileFormat: 'text'
+    });
+  }
+}
+
+/**
  * Give the xtralab file browser's `@pierre/trees` glyphs to the other places
  * JupyterLab paints per-file icons. Each surface resolves a file's icon
  * differently, so each is handled at its own source:
  *
- *   - The default file browser reads `DocumentRegistry.IFileType.icon` live on
- *     every render, so re-skinning the registry's file types reaches it.
+ *   - The default file browser and `jupyterlab-git`'s history and
+ *     commit-comparison lists resolve a file's icon from its
+ *     `DocumentRegistry` file type, so existing types are re-skinned and types
+ *     for extensions JupyterLab ships none for (e.g. `.ts`, `.tsx`) are
+ *     registered.
  *   - A document tab takes its icon from its widget factory when the widget is
  *     created, so the glyph is set on the widget's `title` as it opens.
  *   - `jupyterlab-git`'s status panel resolves each file's type once and renders
@@ -87,6 +160,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     for (const fileType of docRegistry.fileTypes()) {
       applyTreeIcon(fileType);
     }
+    registerExtraFileTypes(docRegistry);
     // File types other extensions register after this plugin activates still
     // pick up the tree glyph.
     docRegistry.changed.connect((_, args) => {
