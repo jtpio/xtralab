@@ -13,6 +13,8 @@ import {
   type FileDiffMetadata
 } from '@pierre/diffs';
 
+import { resolveDiffTheme } from './diffTheme';
+
 /**
  * The CSS class added to the root of the notebook diff. Selectors that
  * style cell sections, headers, and the per-cell diff blocks hang off this
@@ -836,6 +838,11 @@ function MarkdownPreviewSection(props: {
 interface INotebookDiffViewProps {
   diff: INotebookDiffResult;
   dark: boolean;
+  /**
+   * Whether a Pierre JupyterLab theme is active; selects Pierre's rich
+   * highlighting vs the CSS-variable theme (see {@link resolveDiffTheme}).
+   */
+  pierreTheme: boolean;
   rendermime: IRenderMimeRegistry | null;
 }
 
@@ -852,8 +859,8 @@ interface INotebookDiffViewProps {
 export function NotebookDiffView(
   props: INotebookDiffViewProps
 ): React.ReactElement {
-  const { diff, dark, rendermime } = props;
-  const theme: DiffsThemeNames = dark ? 'pierre-dark' : 'pierre-light';
+  const { diff, dark, pierreTheme, rendermime } = props;
+  const theme: DiffsThemeNames = resolveDiffTheme(dark, pierreTheme);
   const summary = React.useMemo(() => summarize(diff.cells), [diff.cells]);
   return (
     <div className={NOTEBOOK_DIFF_CSS_CLASS}>

@@ -16,6 +16,7 @@ import {
   DiffSurface,
   NotebookViewModeControl,
   isDarkTheme,
+  isPierreTheme,
   readStoredDiffStyle,
   readStoredNotebookViewMode,
   writeStoredDiffStyle,
@@ -347,17 +348,21 @@ function ModelDiffView(props: {
   const [dark, setDark] = React.useState<boolean>(() =>
     isDarkTheme(themeManager)
   );
+  const [pierre, setPierre] = React.useState<boolean>(() =>
+    isPierreTheme(themeManager)
+  );
   React.useEffect(() => {
+    const sync = (): void => {
+      setDark(isDarkTheme(themeManager));
+      setPierre(isPierreTheme(themeManager));
+    };
     if (themeManager !== null) {
-      const handler = (): void => setDark(isDarkTheme(themeManager));
-      themeManager.themeChanged.connect(handler);
+      themeManager.themeChanged.connect(sync);
       return () => {
-        themeManager.themeChanged.disconnect(handler);
+        themeManager.themeChanged.disconnect(sync);
       };
     }
-    const observer = new MutationObserver(() =>
-      setDark(isDarkTheme(themeManager))
-    );
+    const observer = new MutationObserver(sync);
     observer.observe(document.body, {
       attributes: true,
       attributeFilter: ['data-jp-theme-light']
@@ -503,6 +508,7 @@ function ModelDiffView(props: {
       newName={model.filename}
       oldName={model.oldFilename ?? model.filename}
       dark={dark}
+      pierreTheme={pierre}
       rendermime={rendermime}
       notebookViewMode={notebookViewMode}
       diffStyle={diffStyle}

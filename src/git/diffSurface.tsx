@@ -18,6 +18,7 @@ import {
   NotebookDiffView,
   type INotebookDiffResult
 } from './notebookDiff';
+import { resolveDiffTheme } from './diffTheme';
 
 /**
  * Shared diff rendering surface. Both diff hosts in this extension — the
@@ -197,6 +198,18 @@ export function isDarkTheme(themeManager: IThemeManager | null): boolean {
 }
 
 /**
+ * Whether a Pierre JupyterLab theme (`jupyterlab-pierre-light` / `-dark`) is
+ * active. Those themes carry Pierre's palette, so the diff keeps Pierre's rich
+ * highlighting; under any other theme the diff follows the theme's `--jp-*`
+ * variables instead. Matches on the theme name, so any current or future
+ * Pierre variant is covered.
+ */
+export function isPierreTheme(themeManager: IThemeManager | null): boolean {
+  const theme = themeManager?.theme ?? null;
+  return theme !== null && theme.toLowerCase().includes('pierre');
+}
+
+/**
  * Optional per-hunk discard wiring. When supplied and `enabled`, each hunk
  * in a plain-text/code diff gets an inline "discard" button; clicking it
  * reverts that hunk and hands the rebuilt full-file text back to the host
@@ -233,6 +246,12 @@ export interface IDiffSurfaceProps {
   oldName?: string;
   /** Whether to render with the dark `@pierre/diffs` theme. */
   dark: boolean;
+  /**
+   * Whether a Pierre JupyterLab theme is active. When true the diff keeps
+   * Pierre's rich highlighting; otherwise its syntax follows the active
+   * theme's `--jp-*` variables. See {@link resolveDiffTheme}.
+   */
+  pierreTheme: boolean;
   /**
    * Rendermime registry used by the notebook view to render outputs and
    * markdown cells. May be `null` in stripped-down hosts; the notebook
@@ -279,6 +298,7 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     newName,
     oldName,
     dark,
+    pierreTheme,
     rendermime,
     notebookViewMode,
     diffStyle,
@@ -539,6 +559,7 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
             <NotebookDiffView
               diff={notebookDiff}
               dark={dark}
+              pierreTheme={pierreTheme}
               rendermime={rendermime}
             />
           ) : showFileDiff && metadata !== null ? (
@@ -560,7 +581,7 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
                 // file name and the panel header carries the change
                 // context.
                 disableFileHeader: true,
-                theme: dark ? 'pierre-dark' : 'pierre-light',
+                theme: resolveDiffTheme(dark, pierreTheme),
                 themeType: dark ? 'dark' : 'light',
                 // Inject the column-resize override into the shadow root
                 // via the library's `@layer unsafe` channel. Keeping the

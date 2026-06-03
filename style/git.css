@@ -40,12 +40,15 @@
   color: var(--jp-ui-font-color1);
 
   /*
-   * Map JupyterLab's theme variables onto the `--diffs-*-override`
-   * properties the library exposes. The `*-override` variants take
-   * precedence over the library's defaults, so these values track the
-   * JupyterLab theme automatically — no JS needed when the theme
-   * switches. Theme-dependent colors (insertion green, deletion red, …)
-   * still come from the active Shiki theme passed via `options.theme`.
+   * Map JupyterLab's theme variables onto the `--diffs-*-override` properties
+   * the library exposes. The `*-override` variants beat the library's
+   * defaults, so the diff's chrome and its insertion/deletion colors track the
+   * active JupyterLab theme automatically — no JS needed when the theme
+   * switches (the library derives the insertion/deletion line backgrounds from
+   * these base colors via `color-mix`). Syntax highlighting follows the Shiki
+   * theme chosen in `diffSurface.tsx` (see `resolveDiffTheme`): Pierre's rich
+   * palette under a Pierre theme, otherwise a CSS-variable theme that also
+   * reads `--jp-mirror-editor-*`.
    */
   --diffs-bg-override: var(--jp-layout-color1);
   --diffs-bg-buffer-override: var(--jp-layout-color1);
@@ -58,6 +61,8 @@
   --diffs-fg-number-override: var(--jp-ui-font-color3);
   --diffs-fg-conflict-marker-override: var(--jp-warn-color1);
   --diffs-modified-color-override: var(--jp-warn-color1);
+  --diffs-addition-color-override: var(--jp-success-color1);
+  --diffs-deletion-color-override: var(--jp-error-color1);
 }
 
 /*
