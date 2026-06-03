@@ -5,14 +5,15 @@ import {
 import { IThemeManager, WidgetTracker } from '@jupyterlab/apputils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 
-import { CommandArguments, CommandIDs, registerGitCommands } from './commands';
 import {
-  DiffContentWidget,
+  CommandArguments,
+  CommandIDs,
+  DiffMainAreaWidget,
   PREVIEW_DIFF_WIDGET_ID,
-  pinnedDiffWidgetId
-} from './diffWidget';
+  pinnedDiffWidgetId,
+  registerGitCommands
+} from './commands';
 import diffProviderPlugin from './diffProvider';
-import type { MainAreaWidget } from '@jupyterlab/apputils';
 import { IFileChange } from './tokens';
 
 const GIT_DIFF_COMMAND_PLUGIN_ID = 'xtralab:git-diff-command';
@@ -24,9 +25,9 @@ const GIT_DIFF_TRACKER_NAMESPACE = 'xtralab-git-diff';
  * The `@jupyterlab/git` frontend stays enabled (only its diff plugins are
  * swapped — see `diffProvider.tsx`), so the upstream git panel is what the
  * user sees in the sidebar. This plugin is the launcher dashboard's
- * independent diff path: the `xtralab:git:open-diff` command the
- * dashboard's "Changes" section calls, plus a tracker so reopening a diff
- * reveals the existing tab and the preview/pin behavior keeps working.
+ * independent diff path: the `xtralab:git:open-diff` command the dashboard's
+ * "Changes" section calls, plus a tracker so reopening a diff reveals the
+ * existing tab and the preview/pin behavior keeps working.
  */
 const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
   id: GIT_DIFF_COMMAND_PLUGIN_ID,
@@ -42,14 +43,14 @@ const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
     // Track open diff widgets so the openDiff handler can reveal an
     // already-open diff for the same file instead of creating a duplicate
     // (and so a promoted preview can find its pinned twin).
-    const tracker = new WidgetTracker<MainAreaWidget<DiffContentWidget>>({
+    const tracker = new WidgetTracker<DiffMainAreaWidget>({
       namespace: GIT_DIFF_TRACKER_NAMESPACE
     });
 
     const findDiff = (
       change: IFileChange,
       pin = false
-    ): MainAreaWidget<DiffContentWidget> | undefined => {
+    ): DiffMainAreaWidget | undefined => {
       const id = pin ? pinnedDiffWidgetId(change) : PREVIEW_DIFF_WIDGET_ID;
       const existing = tracker.find(
         widget => !widget.isDisposed && widget.id === id
@@ -62,13 +63,9 @@ const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
       themeManager,
       contentsManager: app.serviceManager.contents,
       rendermime,
-      // The launcher polls git status on its own cadence and the
-      // jupyterlab-git panel auto-refreshes on the contents `fileChanged`
-      // signal a hunk-discard save emits, so no extra refresh is needed.
-      onChanged: () => undefined,
       trackDiff: widget => tracker.add(widget),
       onPinned: current => {
-        const existing = findDiff(current.content.change, true);
+        const existing = findDiff(current.change, true);
         if (
           existing !== undefined &&
           existing !== current &&
@@ -78,7 +75,7 @@ const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
           current.close();
           return;
         }
-        current.id = pinnedDiffWidgetId(current.content.change);
+        current.id = pinnedDiffWidgetId(current.change);
         current.title.className = '';
         app.shell.activateById(current.id);
       },

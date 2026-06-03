@@ -20,16 +20,16 @@ import {
 } from './notebookDiff';
 
 /**
- * Shared diff rendering surface used by both diff hosts in this extension:
+ * Shared diff rendering surface. Both diff hosts in this extension — the
+ * launcher dashboard's `xtralab:git:open-diff` command and the
+ * `jupyterlab-git` diff providers registered into the upstream git panel —
+ * render through the same `XtralabDiffWidget` (in `diffWidget.tsx`), which in
+ * turn renders through this surface; they differ only in how the
+ * `Git.Diff.IModel` that widget consumes is built and hosted.
  *
- *   - the launcher dashboard's own `xtralab:git:open-diff` command
- *     (via {@link DiffContentWidget} in `diffWidget.tsx`), and
- *   - the `jupyterlab-git` diff providers registered into the upstream git
- *     panel (via `XtralabDiffWidget` in `diffProvider.tsx`).
- *
- * The surface is deliberately content-source agnostic: callers resolve the
- * old/new text however they like (xtralab's REST helper, or a
- * `Git.Diff.IModel`'s `content()` getters) and hand the resolved strings in.
+ * The surface is deliberately content-source agnostic: the widget resolves
+ * the old/new text from the model's `content()` getters and hands the
+ * resolved strings in.
  * Everything visual — the `@pierre/diffs` split view, the cell-by-cell
  * notebook view, the draggable column resizer, and the per-hunk discard
  * affordance — lives here so the two hosts stay pixel-identical.

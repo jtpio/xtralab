@@ -1,19 +1,15 @@
 import * as React from 'react';
 
-import { IThemeManager, MainAreaWidget } from '@jupyterlab/apputils';
+import { IThemeManager } from '@jupyterlab/apputils';
 import { PathExt } from '@jupyterlab/coreutils';
+import { Git } from '@jupyterlab/git';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { Contents } from '@jupyterlab/services';
-import {
-  ReactWidget,
-  ToolbarButton,
-  launchIcon
-} from '@jupyterlab/ui-components';
+import { ReactWidget } from '@jupyterlab/ui-components';
+import { PromiseDelegate } from '@lumino/coreutils';
 import { ISignal, Signal } from '@lumino/signaling';
+import { Widget } from '@lumino/widgets';
 
-import { getTreeIcon } from '../fileBrowser/icons';
-import { content } from './api';
-import { imageDataType } from './imageDiff';
 import {
   DIFF_WIDGET_CSS_CLASS,
   DiffStyleControl,
@@ -27,228 +23,139 @@ import {
   type DiffStyle,
   type NotebookDiffViewMode
 } from './diffSurface';
-import { GitReference, IFileChange } from './tokens';
+import { imageDataType } from './imageDiff';
 
 export { DIFF_WIDGET_CSS_CLASS };
 
-export const PREVIEW_DIFF_WIDGET_ID = 'xtralab:diff:preview';
-
-export function pinnedDiffWidgetId(change: IFileChange): string {
-  return `xtralab:diff:pinned:${change.group}:${change.path}`;
+/**
+ * `Git.Diff.IModel` plus the extra facts the bare interface cannot carry but
+ * xtralab's diff view needs:
+ *
+ *   - `isBinary` — a non-image binary file shows the "binary" placeholder
+ *     instead of a meaningless text diff,
+ *   - `canDiscard` — whether per-hunk discard applies, and
+ *   - `oldFilename` — the previous path of a renamed file, so the old side is
+ *     labelled (and language-detected) from its real name.
+ *
+ * All three are optional, so a plain `Git.Diff.IModel` handed in by
+ * `jupyterlab-git` is a valid `IXtralabDiffModel`: `isBinary` defaults to
+ * false, the old side falls back to `filename`, and the view derives discard
+ * eligibility from the challenger's `source` when `canDiscard` is absent. The
+ * launcher path fills these in via `fileChangeToDiffModel` (see
+ * `diffModel.ts`).
+ */
+export interface IXtralabDiffModel extends Git.Diff.IModel {
+  isBinary?: boolean;
+  canDiscard?: boolean;
+  oldFilename?: string;
 }
 
 /**
- * Build the deterministic widget id used for a diff against a particular
- * file/group pair. Reused across plugin and command code so reopening a
- * diff for the same file reveals the existing tab instead of opening a
- * second one.
+ * Application-level context the diff view needs but `Git.Diff.IModel` does
+ * not carry: the contents manager (to write hunk-discard results back to the
+ * working tree), the rendermime registry (notebook outputs / markdown) and
+ * the theme manager.
  */
-export function diffWidgetId(change: IFileChange): string {
-  return `xtralab:diff:${change.group}:${change.path}`;
-}
-
-function toServerPath(repoPath: string, filePath: string): string {
-  return repoPath.length > 0 ? PathExt.join(repoPath, filePath) : filePath;
-}
-
-/**
- * Resolve the pair of git references whose `content` should appear on the
- * left and right side of the diff for a given file change. Mirrors VS
- * Code's source control diff: staged-side compares INDEX vs HEAD,
- * unstaged-side compares WORKING vs INDEX, and untracked files have no
- * "previous" version to compare against.
- */
-export function resolveReferences(change: IFileChange): {
-  oldRef: GitReference | null;
-  newRef: GitReference | null;
-} {
-  if (change.status === 'untracked') {
-    return { oldRef: null, newRef: { special: 'WORKING' } };
-  }
-  if (change.group === 'staged') {
-    return { oldRef: { git: 'HEAD' }, newRef: { special: 'INDEX' } };
-  }
-  // Unstaged: WORKING vs INDEX. If the file isn't in the index yet (e.g.
-  // a freshly-`git add`-ed file that has been modified again) the server
-  // returns the HEAD blob for INDEX instead, which is still the right
-  // baseline for the diff.
-  return { oldRef: { special: 'INDEX' }, newRef: { special: 'WORKING' } };
-}
-
-export interface IGitDiffWidgetOptions {
-  repoPath: string;
-  change: IFileChange;
-  themeManager: IThemeManager | null;
+export interface IXtralabDiffContext {
   contentsManager: Contents.IManager;
-  /**
-   * Rendermime registry used by the notebook diff path to render outputs
-   * and markdown cells. May be `null` in stripped-down hosts; the notebook
-   * diff falls back to a textual representation in that case.
-   */
   rendermime: IRenderMimeRegistry | null;
-  /**
-   * Called after a hunk-level operation mutates the working tree, so the
-   * surrounding plugin can refresh the changes panel.
-   */
-  onChanged: () => void;
-  /**
-   * Called when a post-discard reload finds no hunks left in the diff.
-   * Wired by {@link createGitDiffWidget} to close the host
-   * `MainAreaWidget` — there is nothing left to view, so the empty pane
-   * would just be visual noise.
-   */
-  onEmpty?: () => void;
-  onPinned?: (widget: MainAreaWidget<DiffContentWidget>) => void;
-  pinned?: boolean;
+  themeManager: IThemeManager | null;
 }
 
 /**
- * Build a `MainAreaWidget`-hosted diff viewer for a single file change.
- * Wrapping the `ReactWidget` in a `MainAreaWidget` is what gives it the
- * usual document chrome — toolbar slot, focus tracker integration, and
- * spinner-while-loading hooks — and matches the pattern used for other
- * read-only main-area widgets in the JupyterLab ecosystem.
+ * The single diff widget used by both hosts in this extension:
  *
- * This is the launcher dashboard's own diff path
- * (`xtralab:git:open-diff`), kept independent of `jupyterlab-git`. The
- * actual diff rendering is delegated to the shared {@link DiffSurface};
- * `jupyterlab-git`'s panel reaches the same surface through the providers
- * registered in `diffProvider.tsx`.
- */
-export function createGitDiffWidget(
-  options: IGitDiffWidgetOptions
-): MainAreaWidget<DiffContentWidget> {
-  // `widget` is captured by the `onEmpty` closure we pass into the content,
-  // but doesn't exist yet at construction time — declare it up front so the
-  // closure can read it once the widget is wired.
-  let widget: MainAreaWidget<DiffContentWidget> | null = null;
-  const content = new DiffContentWidget({
-    ...options,
-    onEmpty: () => {
-      if (widget !== null && !widget.isDisposed) {
-        widget.close();
-      }
-      options.onEmpty?.();
-    }
-  });
-  widget = new MainAreaWidget<DiffContentWidget>({ content });
-  widget.id =
-    options.pinned === true
-      ? pinnedDiffWidgetId(options.change)
-      : PREVIEW_DIFF_WIDGET_ID;
-  widget.title.label = formatTitle(options.change);
-  widget.title.caption = options.change.path;
-  widget.title.closable = true;
-  widget.title.icon = getTreeIcon(options.change.path);
-  widget.title.className = options.pinned === true ? '' : 'jp-mod-preview';
-  const onPinned = options.onPinned ?? (() => {});
-  widget.addClass(DIFF_WIDGET_CSS_CLASS);
-  // Wire the notebook view-mode selector into the `MainAreaWidget` toolbar
-  // — the proper home for document chrome controls. The toolbar starts
-  // hidden and becomes visible once the React content reports a parsed
-  // notebook diff via `setHasNotebookView`. Plain text / code diffs never
-  // flip that flag, and pin state can hide the toolbar again, so the host
-  // chrome tracks the active mode.
-  const pinButton = new ToolbarButton({
-    icon: launchIcon,
-    tooltip: 'Pin tab',
-    onClick: () => content.pin()
-  });
-  if (content.pinned) {
-    pinButton.hide();
-  }
-  widget.toolbar.addItem('pin', pinButton);
-  widget.toolbar.addItem(
-    'notebook-view-mode',
-    new NotebookViewModeToolbarItem(content)
-  );
-  widget.toolbar.addItem('diff-style', new DiffStyleToolbarItem(content));
-  const syncToolbarVisibility = (): void => {
-    if (widget === null || widget.isDisposed) {
-      return;
-    }
-    if (!content.pinned || content.hasNotebookView || content.fileDiffActive) {
-      widget.toolbar.show();
-    } else {
-      widget.toolbar.hide();
-    }
-  };
-  const onToolbarStateChanged = (): void => {
-    if (widget === null || widget.isDisposed) {
-      return;
-    }
-    syncToolbarVisibility();
-  };
-  const onPinnedChanged = (sender: DiffContentWidget, value: boolean): void => {
-    if (widget === null || widget.isDisposed) {
-      return;
-    }
-    void sender;
-    if (value) {
-      pinButton.hide();
-      // Keep toolbar state and title styling consistent for promoted tabs.
-      onPinned(widget);
-      if (widget.isDisposed) {
-        return;
-      }
-      widget.title.className = '';
-    }
-    syncToolbarVisibility();
-  };
-  content.hasNotebookViewChanged.connect(onToolbarStateChanged);
-  content.fileDiffActiveChanged.connect(onToolbarStateChanged);
-  content.pinnedChanged.connect(onPinnedChanged);
-  syncToolbarVisibility();
-  widget.disposed.connect(() => {
-    content.hasNotebookViewChanged.disconnect(onToolbarStateChanged);
-    content.fileDiffActiveChanged.disconnect(onToolbarStateChanged);
-    content.pinnedChanged.disconnect(onPinnedChanged);
-  });
-  return widget;
-}
-
-export function updateGitDiffWidget(
-  widget: MainAreaWidget<DiffContentWidget>,
-  change: IFileChange
-): void {
-  widget.content.setChange(change);
-  widget.title.label = formatTitle(change);
-  widget.title.caption = change.path;
-  widget.title.icon = getTreeIcon(change.path);
-}
-
-/**
- * The actual React-rendered region of the diff viewer. Held in its own
- * `ReactWidget` so the surrounding `MainAreaWidget` can manage chrome
- * without React having to know about it.
+ *   - `jupyterlab-git`'s panel, via the providers registered in
+ *     `diffProvider.tsx` — jupyterlab-git constructs it through the factory
+ *     and hosts it in its own `PreviewMainAreaWidget`, and
+ *   - the launcher dashboard's `xtralab:git:open-diff` command, via the
+ *     `MainAreaWidget` host in `commands.ts` — xtralab constructs it and
+ *     feeds it a model built by `fileChangeToDiffModel`.
  *
- * Owns the persistent UI state that the surrounding `MainAreaWidget`
- * toolbar needs to read and write (`notebookViewMode` and whether a
- * notebook view is even available for the current file). Storing this on
- * the widget — and exposing change signals — lets the toolbar widget and
- * the React content stay in sync without either side knowing about the
- * other.
+ * It implements `Git.Diff.IDiffWidget` so jupyterlab-git can drive it
+ * (`model` / `refresh()` / `getResolvedFile()` / `isFileResolved`), owns the
+ * toolbar state both hosts mount via {@link addDiffToolbarItems}, and renders
+ * through the shared {@link DiffSurface}.
  */
-export class DiffContentWidget extends ReactWidget {
-  constructor(options: IGitDiffWidgetOptions) {
+export class XtralabDiffWidget
+  extends ReactWidget
+  implements Git.Diff.IDiffWidget
+{
+  constructor(model: Git.Diff.IModel, context: IXtralabDiffContext) {
     super();
-    this._options = options;
-    this._pinned = options.pinned === true;
+    this._model = model;
+    this._context = context;
     this._notebookViewMode = readStoredNotebookViewMode();
     this._diffStyle = readStoredDiffStyle();
+    // `jp-git-diff-root` borrows jupyterlab-git's host sizing (height:100%
+    // flex column inside its PreviewMainAreaWidget); `jp-xtralab-DiffWidget`
+    // brings our diff theming. The launcher's `MainAreaWidget` lays the
+    // widget out to fill too, so the `.jp-xtralab-DiffWidget-content` flex
+    // column resolves the same way in both hosts.
+    this.addClass('jp-git-diff-root');
+    this.addClass(DIFF_WIDGET_CSS_CLASS);
   }
 
-  /** The change this widget renders, used by callers to identify the widget. */
-  get change(): IFileChange {
-    return this._options.change;
+  /** The diff model, as required by `Git.Diff.IDiffWidget`. */
+  get model(): Git.Diff.IModel {
+    return this._model;
   }
 
-  /** The user's current rendered-vs-JSON view choice for notebook diffs. */
+  /**
+   * Swap the rendered model and re-render. Used by the launcher host to reuse
+   * its single preview tab for a different file without disposing the widget;
+   * jupyterlab-git never calls this (it disposes and recreates instead).
+   */
+  setModel(model: IXtralabDiffModel): void {
+    this._model = model;
+    this.update();
+  }
+
+  /**
+   * We render a two-way (reference vs. challenger) view and do not provide a
+   * merge editor, so there is nothing to leave unresolved — report resolved
+   * so jupyterlab-git's merge-conflict flow is not blocked.
+   */
+  get isFileResolved(): boolean {
+    return true;
+  }
+
+  /**
+   * Used by jupyterlab-git's "Mark as resolved" button. For merge conflicts,
+   * jupyterlab-git passes the working-tree result as `base`; keep that content
+   * rather than overwriting it with either compared side.
+   */
+  async getResolvedFile(): Promise<Partial<Contents.IModel>> {
+    const source =
+      this._model.hasConflict === true && this._model.base !== undefined
+        ? this._model.base
+        : this._model.challenger;
+    const content = await source.content();
+    return {
+      type: 'file',
+      format: imageDataType(this._model.filename) !== null ? 'base64' : 'text',
+      content
+    };
+  }
+
+  /**
+   * Re-pull both sides of the model and re-render. jupyterlab-git wires a
+   * "Refresh" toolbar button to this whenever `model.changed` fires; the
+   * launcher's hunk-discard flow calls it to reflect the reverted hunk.
+   */
+  async refresh(): Promise<void> {
+    const done = new PromiseDelegate<void>();
+    this._pendingRefresh = done;
+    this._reloadNonce += 1;
+    this.update();
+    await done.promise;
+  }
+
+  /** The notebook rendered-vs-JSON choice; mirrored into the toolbar. */
   get notebookViewMode(): NotebookDiffViewMode {
     return this._notebookViewMode;
   }
 
-  /** Update the notebook view mode and persist it across sessions. */
   setNotebookViewMode(mode: NotebookDiffViewMode): void {
     if (mode === this._notebookViewMode) {
       return;
@@ -258,16 +165,10 @@ export class DiffContentWidget extends ReactWidget {
     this._notebookViewModeChanged.emit(mode);
   }
 
-  /** Emits whenever {@link notebookViewMode} changes. */
   get notebookViewModeChanged(): ISignal<this, NotebookDiffViewMode> {
     return this._notebookViewModeChanged;
   }
 
-  /**
-   * Whether a rendered notebook view is currently available. Set by the
-   * React content once it has parsed the diff; the toolbar reads this to
-   * decide whether to show the view-mode selector.
-   */
   get hasNotebookView(): boolean {
     return this._hasNotebookView;
   }
@@ -280,7 +181,6 @@ export class DiffContentWidget extends ReactWidget {
     this._hasNotebookViewChanged.emit(value);
   }
 
-  /** Emits whenever {@link hasNotebookView} changes. */
   get hasNotebookViewChanged(): ISignal<this, boolean> {
     return this._hasNotebookViewChanged;
   }
@@ -290,7 +190,6 @@ export class DiffContentWidget extends ReactWidget {
     return this._diffStyle;
   }
 
-  /** Update the diff layout and persist it across sessions. */
   setDiffStyle(style: DiffStyle): void {
     if (style === this._diffStyle) {
       return;
@@ -300,15 +199,14 @@ export class DiffContentWidget extends ReactWidget {
     this._diffStyleChanged.emit(style);
   }
 
-  /** Emits whenever {@link diffStyle} changes. */
   get diffStyleChanged(): ISignal<this, DiffStyle> {
     return this._diffStyleChanged;
   }
 
   /**
    * Whether the textual/code file diff (the only view the split-vs-unified
-   * choice affects) is currently active. Set by the React content; the
-   * toolbar reads it to decide whether to show the Split/Unified selector.
+   * choice affects) is currently active; mirrored into the toolbar so the
+   * Split/Unified selector only shows when it applies.
    */
   get fileDiffActive(): boolean {
     return this._fileDiffActive;
@@ -322,37 +220,46 @@ export class DiffContentWidget extends ReactWidget {
     this._fileDiffActiveChanged.emit(value);
   }
 
-  /** Emits whenever {@link fileDiffActive} changes. */
   get fileDiffActiveChanged(): ISignal<this, boolean> {
     return this._fileDiffActiveChanged;
   }
 
-  get pinned(): boolean {
-    return this._pinned;
+  /**
+   * Emitted when a post-discard reload leaves the diff with no hunks. The
+   * launcher host connects to this to auto-close the emptied tab; the
+   * jupyterlab-git host ignores it (it owns its own tab lifecycle).
+   */
+  get emptied(): ISignal<this, void> {
+    return this._emptied;
   }
 
-  pin(): void {
-    if (this._pinned) {
-      return;
-    }
-    this._pinned = true;
-    this._pinnedChanged.emit(true);
+  notifyEmptied(): void {
+    this._emptied.emit();
   }
 
-  get pinnedChanged(): ISignal<this, boolean> {
-    return this._pinnedChanged;
+  /** Resolve the in-flight {@link refresh} promise, if any. */
+  settleRefresh(): void {
+    const pending = this._pendingRefresh;
+    this._pendingRefresh = null;
+    pending?.resolve();
   }
 
-  setChange(change: IFileChange): void {
-    this._options = { ...this._options, change };
-    this.update();
+  get reloadNonce(): number {
+    return this._reloadNonce;
+  }
+
+  get context(): IXtralabDiffContext {
+    return this._context;
   }
 
   protected render(): React.ReactElement {
-    return <DiffViewer {...this._options} widget={this} />;
+    return <ModelDiffView widget={this} />;
   }
 
-  private _options: IGitDiffWidgetOptions;
+  private _model: IXtralabDiffModel;
+  private _context: IXtralabDiffContext;
+  private _reloadNonce = 0;
+  private _pendingRefresh: PromiseDelegate<void> | null = null;
   private _notebookViewMode: NotebookDiffViewMode;
   private _notebookViewModeChanged = new Signal<this, NotebookDiffViewMode>(
     this
@@ -363,107 +270,50 @@ export class DiffContentWidget extends ReactWidget {
   private _diffStyleChanged = new Signal<this, DiffStyle>(this);
   private _fileDiffActive = false;
   private _fileDiffActiveChanged = new Signal<this, boolean>(this);
-  private _pinned: boolean;
-  private _pinnedChanged = new Signal<this, boolean>(this);
+  private _emptied = new Signal<this, void>(this);
 }
 
-interface IDiffState {
+interface IModelDiffState {
   loading: boolean;
-  /**
-   * Resolved old/reference and new/challenger text. The shared
-   * {@link DiffSurface} turns these into the line/notebook diff; owning
-   * only the raw strings here keeps the fetch path decoupled from how the
-   * diff is rendered.
-   */
   oldText: string;
   newText: string;
-  /**
-   * Server-relative path of the file on disk. Computed from the repo path
-   * + the file's git-root-relative path. We need it to write the file back
-   * via the contents manager when discarding a hunk.
-   */
-  serverPath: string;
-  isBinary: boolean;
   error: string | null;
 }
 
-function DiffViewer(
-  props: IGitDiffWidgetOptions & { widget: DiffContentWidget }
-): React.ReactElement {
-  const {
-    repoPath,
-    change,
-    themeManager,
-    contentsManager,
-    rendermime,
-    onChanged,
-    onEmpty,
-    widget
-  } = props;
-  const [state, setState] = React.useState<IDiffState>({
+function ModelDiffView(props: {
+  widget: XtralabDiffWidget;
+}): React.ReactElement {
+  const { widget } = props;
+  const model = widget.model as IXtralabDiffModel;
+  const { contentsManager, rendermime, themeManager } = widget.context;
+  const nonce = widget.reloadNonce;
+
+  const [state, setState] = React.useState<IModelDiffState>({
     loading: true,
     oldText: '',
     newText: '',
-    serverPath: '',
-    isBinary: false,
     error: null
   });
-  // Bumping `reloadKey` re-enters the fetch effect. Used after a successful
-  // hunk discard, so the diff reflects the new working-tree contents
-  // without the user having to close and reopen the tab.
-  const [reloadKey, setReloadKey] = React.useState(0);
-  // Mirror the widget's notebook view mode into local state so that
-  // toolbar-driven changes re-render the diff. The widget owns the
-  // canonical value (so the toolbar can read and write it without going
-  // through React); the React copy is just a cache for rendering.
-  const [notebookViewMode, setNotebookViewModeLocal] =
+
+  // Mirror the widget's notebook view mode so toolbar-driven changes
+  // re-render the diff. The widget owns the canonical value (so the
+  // toolbar can read/write it without going through React).
+  const [notebookViewMode, setNotebookViewMode] =
     React.useState<NotebookDiffViewMode>(() => widget.notebookViewMode);
   React.useEffect(() => {
     const handler = (
-      _sender: DiffContentWidget,
+      _sender: XtralabDiffWidget,
       mode: NotebookDiffViewMode
     ): void => {
-      setNotebookViewModeLocal(mode);
+      setNotebookViewMode(mode);
     };
     widget.notebookViewModeChanged.connect(handler);
-    // Re-sync in case the widget changed before this effect ran.
-    setNotebookViewModeLocal(widget.notebookViewMode);
+    setNotebookViewMode(widget.notebookViewMode);
     return () => {
       widget.notebookViewModeChanged.disconnect(handler);
     };
   }, [widget]);
 
-  // Mirror the widget's diff-style choice the same way (the widget owns the
-  // canonical value so the toolbar can read and write it without going
-  // through React).
-  const [diffStyle, setDiffStyleLocal] = React.useState<DiffStyle>(
-    () => widget.diffStyle
-  );
-  React.useEffect(() => {
-    const handler = (_sender: DiffContentWidget, style: DiffStyle): void => {
-      setDiffStyleLocal(style);
-    };
-    widget.diffStyleChanged.connect(handler);
-    setDiffStyleLocal(widget.diffStyle);
-    return () => {
-      widget.diffStyleChanged.disconnect(handler);
-    };
-  }, [widget]);
-
-  // Tell the host widget whether the textual/code file diff is the active
-  // view, so the toolbar's Split/Unified selector only shows when it applies.
-  const handleFileDiffActiveChange = React.useCallback(
-    (active: boolean) => {
-      widget.setFileDiffActive(active);
-    },
-    [widget]
-  );
-
-  // Tell the host widget whether a rendered notebook view is currently
-  // available. The toolbar item that lives in the `MainAreaWidget`
-  // toolbar reads this flag to decide whether to show the
-  // Notebook/JSON selector — and the toolbar bar itself stays hidden
-  // when the file isn't a parseable notebook.
   const handleNotebookAvailabilityChange = React.useCallback(
     (available: boolean) => {
       widget.setHasNotebookView(available);
@@ -471,45 +321,32 @@ function DiffViewer(
     [widget]
   );
 
-  // The shared surface reports its hunk count after every (re)computation;
-  // we keep the latest so the auto-close-on-empty effect can fire after a
-  // discard empties the diff.
-  const [hunkCount, setHunkCount] = React.useState<number | null>(null);
-  const handleMetadataChange = React.useCallback(
-    (info: { hunkCount: number | null }) => {
-      setHunkCount(info.hunkCount);
+  // Mirror the widget's diff-style choice so toolbar-driven changes
+  // re-render the diff. The widget owns the canonical value.
+  const [diffStyle, setDiffStyle] = React.useState<DiffStyle>(
+    () => widget.diffStyle
+  );
+  React.useEffect(() => {
+    const handler = (_sender: XtralabDiffWidget, style: DiffStyle): void => {
+      setDiffStyle(style);
+    };
+    widget.diffStyleChanged.connect(handler);
+    setDiffStyle(widget.diffStyle);
+    return () => {
+      widget.diffStyleChanged.disconnect(handler);
+    };
+  }, [widget]);
+
+  const handleFileDiffActiveChange = React.useCallback(
+    (active: boolean) => {
+      widget.setFileDiffActive(active);
     },
-    []
+    [widget]
   );
 
-  // Auto-close after a discard that emptied the diff. Gated on `reloadKey > 0`
-  // so a file that opens already-empty (uncommon but possible) is not closed
-  // before the user has had a chance to look at it.
-  React.useEffect(() => {
-    if (
-      !state.loading &&
-      state.error === null &&
-      !state.isBinary &&
-      hunkCount === 0 &&
-      reloadKey > 0
-    ) {
-      onEmpty?.();
-    }
-  }, [
-    state.loading,
-    state.error,
-    state.isBinary,
-    hunkCount,
-    reloadKey,
-    onEmpty
-  ]);
   const [dark, setDark] = React.useState<boolean>(() =>
     isDarkTheme(themeManager)
   );
-
-  // Track theme changes so the diff viewer recolors with the rest of
-  // JupyterLab. We listen on `IThemeManager.themeChanged` when available
-  // and fall back to a `<body>` attribute observer otherwise.
   React.useEffect(() => {
     if (themeManager !== null) {
       const handler = (): void => setDark(isDarkTheme(themeManager));
@@ -530,56 +367,56 @@ function DiffViewer(
     };
   }, [themeManager]);
 
+  // Raster images are still binary, but the git server base64-encodes them
+  // and the surface renders an image diff from the two encoded sides, so we
+  // fetch them like text. Only non-image binaries get the placeholder.
+  const isImage = React.useMemo(
+    () => imageDataType(model.filename) !== null,
+    [model.filename]
+  );
+  const isBinary = model.isBinary === true && !isImage;
+
+  // The surface reports its hunk count after every (re)computation; we keep
+  // the latest so the auto-close-on-empty effect can fire after a discard
+  // empties the diff.
+  const [hunkCount, setHunkCount] = React.useState<number | null>(null);
+  const handleMetadataChange = React.useCallback(
+    (info: { hunkCount: number | null }) => {
+      setHunkCount(info.hunkCount);
+    },
+    []
+  );
+
+  // Fetch both sides whenever the model or the reload nonce changes. The
+  // model's `content()` getters target the right git refs internally
+  // (working tree, index, a commit, …) so we stay content-source-agnostic.
   React.useEffect(() => {
     let cancelled = false;
-    const serverPath = toServerPath(repoPath, change.path);
-    setState({
-      loading: true,
-      oldText: '',
-      newText: '',
-      serverPath,
-      isBinary: false,
-      error: null
-    });
-    const { oldRef, newRef } = resolveReferences(change);
-    // Raster images are still binary, but the git server base64-encodes
-    // binary content, so we fetch them like text and let the surface render
-    // an image diff. Other binary files have no useful textual diff.
-    const isImage = imageDataType(change.path) !== null;
+    // Non-image binaries have no useful textual diff; skip the fetch and let
+    // the surface show its binary placeholder.
+    if (isBinary) {
+      setState({ loading: false, oldText: '', newText: '', error: null });
+      // No async fetch here, but an in-flight `refresh()` still has to
+      // resolve — jupyterlab-git awaits it to hide its refresh spinner.
+      widget.settleRefresh();
+      return () => {
+        cancelled = true;
+      };
+    }
+    setState({ loading: true, oldText: '', newText: '', error: null });
     void (async () => {
       try {
-        if (change.isBinary === true && !isImage) {
-          if (cancelled) {
-            return;
-          }
-          setState({
-            loading: false,
-            oldText: '',
-            newText: '',
-            serverPath,
-            isBinary: true,
-            error: null
-          });
-          return;
-        }
-        const fetchOld =
-          oldRef === null
-            ? Promise.resolve({ content: '' })
-            : content(repoPath, change.from ?? change.path, oldRef);
-        const fetchNew =
-          newRef === null
-            ? Promise.resolve({ content: '' })
-            : content(repoPath, change.path, newRef);
-        const [oldRes, newRes] = await Promise.all([fetchOld, fetchNew]);
+        const [oldText, newText] = await Promise.all([
+          model.reference.content(),
+          model.challenger.content()
+        ]);
         if (cancelled) {
           return;
         }
         setState({
           loading: false,
-          oldText: oldRes.content ?? '',
-          newText: newRes.content ?? '',
-          serverPath,
-          isBinary: false,
+          oldText: oldText ?? '',
+          newText: newText ?? '',
           error: null
         });
       } catch (err) {
@@ -590,51 +427,81 @@ function DiffViewer(
           loading: false,
           oldText: '',
           newText: '',
-          serverPath,
-          isBinary: false,
           error: err instanceof Error ? err.message : String(err)
         });
+      } finally {
+        if (!cancelled) {
+          // Let an in-flight `widget.refresh()` resolve once the reload has
+          // settled (jupyterlab-git only awaits it to hide its refresh
+          // button).
+          widget.settleRefresh();
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [repoPath, change, reloadKey]);
+  }, [widget, model, nonce, isBinary]);
 
-  // Per-hunk discard buttons are only meaningful for unstaged modifications:
-  // staged-vs-HEAD diffs would need an index manipulation we can't do
-  // through the available endpoints, and untracked files have no previous
-  // version to revert to.
+  // Auto-close after a discard that emptied the diff. Gated on `nonce > 0` so
+  // a file that opens already-empty is not closed before the user has had a
+  // chance to look at it. Only the launcher host listens to `emptied`.
+  React.useEffect(() => {
+    if (
+      !state.loading &&
+      state.error === null &&
+      !isBinary &&
+      hunkCount === 0 &&
+      nonce > 0
+    ) {
+      widget.notifyEmptied();
+    }
+  }, [state.loading, state.error, isBinary, hunkCount, nonce, widget]);
+
+  // Per-hunk discard is only meaningful when the challenger is the working
+  // tree (an unstaged change) and we are not in a three-way merge view. The
+  // launcher path sets `canDiscard` explicitly (so untracked files, which
+  // have no baseline to revert to, are excluded); the jupyterlab-git path
+  // leaves it undefined and we derive it from the challenger's source.
   const canDiscardHunk =
-    change.group === 'unstaged' && change.status !== 'untracked';
+    model.canDiscard ??
+    (model.challenger.source === Git.Diff.SpecialRef.WORKING &&
+      model.hasConflict !== true);
+
+  const serverPath = React.useMemo(
+    () => PathExt.join(model.repositoryPath ?? '', model.filename),
+    [model.repositoryPath, model.filename]
+  );
 
   const hunkDiscard = React.useMemo(
     () => ({
       enabled: canDiscardHunk,
       save: async (text: string) => {
-        await contentsManager.save(state.serverPath, {
+        await contentsManager.save(serverPath, {
           type: 'file',
           format: 'text',
           content: text
         });
       },
       onAfterSave: () => {
-        onChanged();
-        setReloadKey(key => key + 1);
+        // The contents `fileChanged` signal the save emits drives both the
+        // jupyterlab-git panel and the launcher's git status poll; we just
+        // re-pull so the diff reflects the reverted hunk.
+        void widget.refresh();
       }
     }),
-    [canDiscardHunk, contentsManager, onChanged, state.serverPath]
+    [canDiscardHunk, contentsManager, serverPath, widget]
   );
 
   return (
     <DiffSurface
       loading={state.loading}
       error={state.error}
-      isBinary={state.isBinary}
+      isBinary={isBinary}
       oldText={state.oldText}
       newText={state.newText}
-      newName={change.path}
-      oldName={change.from ?? change.path}
+      newName={model.filename}
+      oldName={model.oldFilename ?? model.filename}
       dark={dark}
       rendermime={rendermime}
       notebookViewMode={notebookViewMode}
@@ -648,124 +515,142 @@ function DiffViewer(
 }
 
 /**
- * Segmented Notebook/JSON selector mounted into the `MainAreaWidget`
- * toolbar for `.ipynb` diffs (launcher path). The selector reads from and
- * writes to the {@link DiffContentWidget} so React state changes (via the
- * diff content) and toolbar interactions stay in sync without either side
- * knowing about the other. The host toolbar widget's visibility is toggled
- * by {@link createGitDiffWidget} based on the same `hasNotebookView`
- * signal, so this control is always meaningful when it appears.
+ * Notebook/JSON toggle mounted into whatever toolbar a host owns. Bound to
+ * the widget's signals so it stays in sync with the rendered surface and
+ * only appears for parseable notebooks.
  */
 class NotebookViewModeToolbarItem extends ReactWidget {
-  constructor(content: DiffContentWidget) {
+  constructor(widget: XtralabDiffWidget) {
     super();
-    this._content = content;
+    this._widget = widget;
     this.addClass('jp-xtralab-DiffWidget-viewModeToolbarItem');
   }
 
   protected render(): React.ReactElement {
-    return <NotebookViewModeToolbarControl content={this._content} />;
+    return <NotebookViewModeToolbarControl widget={this._widget} />;
   }
 
-  private _content: DiffContentWidget;
+  private _widget: XtralabDiffWidget;
 }
 
 function NotebookViewModeToolbarControl(props: {
-  content: DiffContentWidget;
+  widget: XtralabDiffWidget;
 }): React.ReactElement {
-  const { content } = props;
+  const { widget } = props;
   const [mode, setMode] = React.useState<NotebookDiffViewMode>(
-    () => content.notebookViewMode
+    () => widget.notebookViewMode
   );
   const [available, setAvailable] = React.useState<boolean>(
-    () => content.hasNotebookView
+    () => widget.hasNotebookView
   );
   React.useEffect(() => {
     const onMode = (
-      _sender: DiffContentWidget,
+      _sender: XtralabDiffWidget,
       next: NotebookDiffViewMode
     ): void => {
       setMode(next);
     };
-    const onAvailable = (_sender: DiffContentWidget, next: boolean): void => {
+    const onAvailable = (_sender: XtralabDiffWidget, next: boolean): void => {
       setAvailable(next);
     };
-    content.notebookViewModeChanged.connect(onMode);
-    content.hasNotebookViewChanged.connect(onAvailable);
-    setMode(content.notebookViewMode);
-    setAvailable(content.hasNotebookView);
+    widget.notebookViewModeChanged.connect(onMode);
+    widget.hasNotebookViewChanged.connect(onAvailable);
+    setMode(widget.notebookViewMode);
+    setAvailable(widget.hasNotebookView);
     return () => {
-      content.notebookViewModeChanged.disconnect(onMode);
-      content.hasNotebookViewChanged.disconnect(onAvailable);
+      widget.notebookViewModeChanged.disconnect(onMode);
+      widget.hasNotebookViewChanged.disconnect(onAvailable);
     };
-  }, [content]);
+  }, [widget]);
 
   return (
     <NotebookViewModeControl
       mode={mode}
       available={available}
-      onChange={next => content.setNotebookViewMode(next)}
+      onChange={next => widget.setNotebookViewMode(next)}
     />
   );
 }
 
 /**
- * Split/Unified selector mounted into the `MainAreaWidget` toolbar. Mirrors
- * {@link NotebookViewModeToolbarItem}: it reads from and writes to the
- * {@link DiffContentWidget} so toolbar interactions and React state stay in
- * sync, and only appears while the textual/code file diff is the active view
- * (driven by the same `fileDiffActive` signal that gates toolbar visibility).
+ * Split/Unified toggle mounted into whatever toolbar a host owns. Mirrors
+ * {@link NotebookViewModeToolbarItem}: bound to the widget's signals so it
+ * stays in sync with the rendered surface and only appears while the
+ * textual/code file diff is the active view.
  */
 class DiffStyleToolbarItem extends ReactWidget {
-  constructor(content: DiffContentWidget) {
+  constructor(widget: XtralabDiffWidget) {
     super();
-    this._content = content;
+    this._widget = widget;
     this.addClass('jp-xtralab-DiffWidget-diffStyleToolbarItem');
   }
 
   protected render(): React.ReactElement {
-    return <DiffStyleToolbarControl content={this._content} />;
+    return <DiffStyleToolbarControl widget={this._widget} />;
   }
 
-  private _content: DiffContentWidget;
+  private _widget: XtralabDiffWidget;
 }
 
 function DiffStyleToolbarControl(props: {
-  content: DiffContentWidget;
+  widget: XtralabDiffWidget;
 }): React.ReactElement {
-  const { content } = props;
-  const [style, setStyle] = React.useState<DiffStyle>(() => content.diffStyle);
+  const { widget } = props;
+  const [style, setStyle] = React.useState<DiffStyle>(() => widget.diffStyle);
   const [available, setAvailable] = React.useState<boolean>(
-    () => content.fileDiffActive
+    () => widget.fileDiffActive
   );
   React.useEffect(() => {
-    const onStyle = (_sender: DiffContentWidget, next: DiffStyle): void => {
+    const onStyle = (_sender: XtralabDiffWidget, next: DiffStyle): void => {
       setStyle(next);
     };
-    const onAvailable = (_sender: DiffContentWidget, next: boolean): void => {
+    const onAvailable = (_sender: XtralabDiffWidget, next: boolean): void => {
       setAvailable(next);
     };
-    content.diffStyleChanged.connect(onStyle);
-    content.fileDiffActiveChanged.connect(onAvailable);
-    setStyle(content.diffStyle);
-    setAvailable(content.fileDiffActive);
+    widget.diffStyleChanged.connect(onStyle);
+    widget.fileDiffActiveChanged.connect(onAvailable);
+    setStyle(widget.diffStyle);
+    setAvailable(widget.fileDiffActive);
     return () => {
-      content.diffStyleChanged.disconnect(onStyle);
-      content.fileDiffActiveChanged.disconnect(onAvailable);
+      widget.diffStyleChanged.disconnect(onStyle);
+      widget.fileDiffActiveChanged.disconnect(onAvailable);
     };
-  }, [content]);
+  }, [widget]);
 
   return (
     <DiffStyleControl
       diffStyle={style}
       available={available}
-      onChange={next => content.setDiffStyle(next)}
+      onChange={next => widget.setDiffStyle(next)}
     />
   );
 }
 
-function formatTitle(change: IFileChange): string {
-  const name = change.path.split('/').pop() ?? change.path;
-  const groupLabel = change.group === 'staged' ? 'Staged' : 'Working';
-  return `${name} (${groupLabel})`;
+/**
+ * The slice of `Toolbar` {@link addDiffToolbarItems} needs. Typed structurally
+ * rather than as `Toolbar` because the two hosts hand us toolbars from two
+ * different `@jupyterlab/ui-components` copies (jupyterlab-git bundles its
+ * own), which are nominally distinct classes; only the public `addItem` is
+ * common to both.
+ */
+interface IDiffToolbar {
+  addItem(name: string, widget: Widget): boolean;
+}
+
+/**
+ * Mount the diff's view-mode toolbar controls (Notebook/JSON, Split/Unified)
+ * into a host-owned toolbar. Both hosts call this with the toolbar they own:
+ * the launcher's `MainAreaWidget` toolbar, or the toolbar `jupyterlab-git`
+ * hands the diff factory. Each control governs its own visibility off the
+ * widget's signals, so they only appear when meaningful.
+ */
+export function addDiffToolbarItems(
+  toolbar: IDiffToolbar,
+  widget: XtralabDiffWidget
+): void {
+  toolbar.addItem(
+    'xtralab-notebook-view-mode',
+    new NotebookViewModeToolbarItem(widget)
+  );
+  toolbar.addItem('xtralab-diff-style', new DiffStyleToolbarItem(widget));
 }
