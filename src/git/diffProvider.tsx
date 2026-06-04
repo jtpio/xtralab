@@ -13,7 +13,9 @@ import {
 } from './diffWidget';
 import { IMAGE_DIFF_EXTENSIONS } from './imageDiff';
 
-/** Build the `Git.Diff.Factory` registered with jupyterlab-git. */
+/**
+ * Build the `Git.Diff.Factory` registered with jupyterlab-git.
+ */
 function makeXtralabDiffFactory(
   context: IXtralabDiffContext
 ): Git.Diff.Factory {

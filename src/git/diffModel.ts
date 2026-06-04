@@ -43,7 +43,9 @@ function referenceSource(ref: GitReference | null): unknown {
   return Git.Diff.SpecialRef.BASE;
 }
 
-/** `Git.Diff.IModel` adapter for launcher file changes. */
+/**
+ * `Git.Diff.IModel` adapter for launcher file changes.
+ */
 class FileChangeDiffModel implements IXtralabDiffModel {
   constructor(repoPath: string, change: IFileChange) {
     const { oldRef, newRef } = resolveReferences(change);
@@ -89,7 +91,9 @@ class FileChangeDiffModel implements IXtralabDiffModel {
   readonly canDiscard: boolean;
 }
 
-/** Build a diff model for a single {@link IFileChange}. */
+/**
+ * Build a diff model for a single {@link IFileChange}.
+ */
 export function fileChangeToDiffModel(
   repoPath: string,
   change: IFileChange

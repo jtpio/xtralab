@@ -78,7 +78,9 @@ const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
   }
 };
 
-/** Plugins contributed by xtralab's git integration. */
+/**
+ * Plugins contributed by xtralab's git integration.
+ */
 const plugins: JupyterFrontEndPlugin<unknown>[] = [
   diffCommandPlugin,
   diffProviderPlugin

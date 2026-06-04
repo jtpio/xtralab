@@ -39,7 +39,9 @@
   background-color: var(--jp-layout-color1);
   color: var(--jp-ui-font-color1);
 
-  /* Feed JupyterLab theme colors into @pierre/diffs. */
+  /*
+   * Feed JupyterLab theme colors into @pierre/diffs.
+   */
   --diffs-bg-override: var(--jp-layout-color1);
   --diffs-bg-buffer-override: var(--jp-layout-color1);
   --diffs-bg-context-override: var(--jp-layout-color1);
@@ -86,7 +88,9 @@
   font-size: var(--jp-ui-font-size0);
 }
 
-/* Breathing room when both toggles appear (notebook diff in JSON view). */
+/*
+ * Breathing room when both toggles appear (notebook diff in JSON view).
+ */
 .jp-xtralab-DiffWidget-diffStyleToolbarItem {
   margin-left: 4px;
 }
@@ -584,7 +588,9 @@
 
 .jp-xtralab-ImageDiff-frame,
 .jp-xtralab-ImageDiff-stack {
-  /* Checkerboard so transparent regions are obvious; theme-neutral. */
+  /*
+   * Checkerboard so transparent regions are obvious; theme-neutral.
+   */
   background-color: #fff;
   background-image:
     linear-gradient(45deg, #c8c8c8 25%, transparent 25%),
@@ -761,7 +767,9 @@
   bottom: -14px;
 }
 
-/* Chevron triangles drawn with borders so no asset is needed. */
+/*
+ * Chevron triangles drawn with borders so no asset is needed.
+ */
 .jp-xtralab-ImageDiff-swipeDividerArrow {
   width: 0;
   height: 0;

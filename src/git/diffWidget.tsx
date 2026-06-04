@@ -28,21 +28,27 @@ import { imageDataType } from './imageDiff';
 
 export { DIFF_WIDGET_CSS_CLASS };
 
-/** `Git.Diff.IModel` plus optional xtralab-only metadata. */
+/**
+ * `Git.Diff.IModel` plus optional xtralab-only metadata.
+ */
 export interface IXtralabDiffModel extends Git.Diff.IModel {
   isBinary?: boolean;
   canDiscard?: boolean;
   oldFilename?: string;
 }
 
-/** Application-level services the diff model does not carry. */
+/**
+ * Application-level services the diff model does not carry.
+ */
 export interface IXtralabDiffContext {
   contentsManager: Contents.IManager;
   rendermime: IRenderMimeRegistry | null;
   themeManager: IThemeManager | null;
 }
 
-/** Shared diff widget used by the launcher and by `jupyterlab-git`. */
+/**
+ * Shared diff widget used by the launcher and by `jupyterlab-git`.
+ */
 export class XtralabDiffWidget
   extends ReactWidget
   implements Git.Diff.IDiffWidget
@@ -62,18 +68,24 @@ export class XtralabDiffWidget
     return this._model;
   }
 
-  /** Swap the rendered model when the launcher reuses its preview tab. */
+  /**
+   * Swap the rendered model when the launcher reuses its preview tab.
+   */
   setModel(model: IXtralabDiffModel): void {
     this._model = model;
     this.update();
   }
 
-  /** This renderer has no merge editor, so it never blocks mark-as-resolved. */
+  /**
+   * This renderer has no merge editor, so it never blocks mark-as-resolved.
+   */
   get isFileResolved(): boolean {
     return true;
   }
 
-  /** Return the content jupyterlab-git should save for mark-as-resolved. */
+  /**
+   * Return the content jupyterlab-git should save for mark-as-resolved.
+   */
   async getResolvedFile(): Promise<Partial<Contents.IModel>> {
     const source =
       this._model.hasConflict === true && this._model.base !== undefined
@@ -87,7 +99,9 @@ export class XtralabDiffWidget
     };
   }
 
-  /** Re-pull both sides of the model and re-render. */
+  /**
+   * Re-pull both sides of the model and re-render.
+   */
   async refresh(): Promise<void> {
     const done = new PromiseDelegate<void>();
     this._pendingRefresh = done;
@@ -146,7 +160,9 @@ export class XtralabDiffWidget
     return this._diffStyleChanged;
   }
 
-  /** Whether the Split/Unified toolbar selector currently applies. */
+  /**
+   * Whether the Split/Unified toolbar selector currently applies.
+   */
   get fileDiffActive(): boolean {
     return this._fileDiffActive;
   }
@@ -163,7 +179,9 @@ export class XtralabDiffWidget
     return this._fileDiffActiveChanged;
   }
 
-  /** Emitted when a post-discard reload leaves the diff with no hunks. */
+  /**
+   * Emitted when a post-discard reload leaves the diff with no hunks.
+   */
   get emptied(): ISignal<this, void> {
     return this._emptied;
   }
@@ -432,7 +450,9 @@ function ModelDiffView(props: {
   );
 }
 
-/** Notebook/JSON toggle mounted into a host-owned toolbar. */
+/**
+ * Notebook/JSON toggle mounted into a host-owned toolbar.
+ */
 class NotebookViewModeToolbarItem extends ReactWidget {
   constructor(widget: XtralabDiffWidget) {
     super();
@@ -486,7 +506,9 @@ function NotebookViewModeToolbarControl(props: {
   );
 }
 
-/** Split/Unified toggle mounted into a host-owned toolbar. */
+/**
+ * Split/Unified toggle mounted into a host-owned toolbar.
+ */
 class DiffStyleToolbarItem extends ReactWidget {
   constructor(widget: XtralabDiffWidget) {
     super();
@@ -535,12 +557,16 @@ function DiffStyleToolbarControl(props: {
   );
 }
 
-/** Structural toolbar type shared across host package boundaries. */
+/**
+ * Structural toolbar type shared across host package boundaries.
+ */
 interface IDiffToolbar {
   addItem(name: string, widget: Widget): boolean;
 }
 
-/** Mount the shared diff toolbar controls into a host-owned toolbar. */
+/**
+ * Mount the shared diff toolbar controls into a host-owned toolbar.
+ */
 export function addDiffToolbarItems(
   toolbar: IDiffToolbar,
   widget: XtralabDiffWidget

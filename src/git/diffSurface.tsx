@@ -181,7 +181,9 @@ export function isDarkTheme(themeManager: IThemeManager | null): boolean {
   return document.body.dataset.jpThemeLight === 'false';
 }
 
-/** Whether the active JupyterLab theme should keep Pierre diff highlighting. */
+/**
+ * Whether the active JupyterLab theme should keep Pierre diff highlighting.
+ */
 export function isPierreTheme(themeManager: IThemeManager | null): boolean {
   const theme = themeManager?.theme ?? null;
   return theme !== null && theme.toLowerCase().includes('pierre');
@@ -202,15 +204,25 @@ export interface IHunkDiscard {
 }
 
 export interface IDiffSurfaceProps {
-  /** Whether the host is still resolving the file contents. */
+  /**
+   * Whether the host is still resolving the file contents.
+   */
   loading: boolean;
-  /** Fatal error message to show instead of a diff, or `null`. */
+  /**
+   * Fatal error message to show instead of a diff, or `null`.
+   */
   error: string | null;
-  /** Whether the file is binary (no textual diff is rendered). */
+  /**
+   * Whether the file is binary (no textual diff is rendered).
+   */
   isBinary: boolean;
-  /** Resolved old/reference text. Ignored while loading/binary/errored. */
+  /**
+   * Resolved old/reference text. Ignored while loading/binary/errored.
+   */
   oldText: string;
-  /** Resolved new/challenger text. Ignored while loading/binary/errored. */
+  /**
+   * Resolved new/challenger text. Ignored while loading/binary/errored.
+   */
   newText: string;
   /**
    * New-side path. Drives notebook detection and the `@pierre/diffs` file
@@ -222,9 +234,13 @@ export interface IDiffSurfaceProps {
    * to {@link newName} when the host does not track a previous path.
    */
   oldName?: string;
-  /** Whether to render with the dark `@pierre/diffs` theme. */
+  /**
+   * Whether to render with the dark `@pierre/diffs` theme.
+   */
   dark: boolean;
-  /** Whether the diff should keep Pierre's own syntax palette. */
+  /**
+   * Whether the diff should keep Pierre's own syntax palette.
+   */
   pierreTheme: boolean;
   /**
    * Rendermime registry used by the notebook view to render outputs and
@@ -232,9 +248,13 @@ export interface IDiffSurfaceProps {
    * diff falls back to a textual representation in that case.
    */
   rendermime: IRenderMimeRegistry | null;
-  /** Current rendered-vs-JSON choice for notebook diffs (host-controlled). */
+  /**
+   * Current rendered-vs-JSON choice for notebook diffs (host-controlled).
+   */
   notebookViewMode: NotebookDiffViewMode;
-  /** Split vs unified layout for the textual/code file diff (host-controlled). */
+  /**
+   * Split vs unified layout for the textual/code file diff (host-controlled).
+   */
   diffStyle: DiffStyle;
   /**
    * Called whenever the availability of a rendered notebook view changes,
@@ -254,11 +274,15 @@ export interface IDiffSurfaceProps {
    * post-discard behaviors such as auto-closing an emptied diff.
    */
   onMetadataChange?: (info: { hunkCount: number | null }) => void;
-  /** Optional per-hunk discard wiring; omit for a read-only diff. */
+  /**
+   * Optional per-hunk discard wiring; omit for a read-only diff.
+   */
   hunkDiscard?: IHunkDiscard;
 }
 
-/** Shared renderer for text, notebook and image diffs. */
+/**
+ * Shared renderer for text, notebook and image diffs.
+ */
 export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
   const {
     loading,

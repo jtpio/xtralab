@@ -197,7 +197,9 @@ function getBuiltInFileIconColor(token: string): string | undefined {
   return `var(--trees-file-icon-color-${token}, var(--trees-file-icon-color, ${fallback}))`;
 }
 
-/** Resolve a tree glyph into a standalone `LabIcon`. */
+/**
+ * Resolve a tree glyph into a standalone `LabIcon`.
+ */
 function resolveTreeIcon(filePath: string): {
   icon: LabIcon | null;
   specific: boolean;
@@ -244,7 +246,9 @@ function resolveTreeIcon(filePath: string): {
   return { icon, specific };
 }
 
-/** Return the icon the xtralab file tree would render for `filePath`. */
+/**
+ * Return the icon the xtralab file tree would render for `filePath`.
+ */
 export function getTreeIcon(filePath: string): LabIcon {
   return resolveTreeIcon(filePath).icon ?? fileIcon;
 }

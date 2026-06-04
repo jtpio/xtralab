@@ -15,12 +15,16 @@ import {
 } from './diffWidget';
 import { IFileChange } from './tokens';
 
-/** Command IDs exposed by the launcher's git diff path. */
+/**
+ * Command IDs exposed by the launcher's git diff path.
+ */
 export namespace CommandIDs {
   export const openDiff = 'xtralab:git:open-diff';
 }
 
-/** Argument shapes used by {@link CommandIDs.openDiff}. */
+/**
+ * Argument shapes used by {@link CommandIDs.openDiff}.
+ */
 export namespace CommandArguments {
   export interface IOpenDiff {
     repoPath: string;
@@ -29,10 +33,14 @@ export namespace CommandArguments {
   }
 }
 
-/** Widget id of the single, reused preview diff tab. */
+/**
+ * Widget id of the single, reused preview diff tab.
+ */
 export const PREVIEW_DIFF_WIDGET_ID = 'xtralab:diff:preview';
 
-/** Deterministic widget id for a pinned file/group pair. */
+/**
+ * Deterministic widget id for a pinned file/group pair.
+ */
 export function pinnedDiffWidgetId(change: IFileChange): string {
   return `xtralab:diff:pinned:${change.group}:${change.path}`;
 }
@@ -43,7 +51,9 @@ function formatTitle(change: IFileChange): string {
   return `${name} (${groupLabel})`;
 }
 
-/** Launcher-owned host for a shared diff widget. */
+/**
+ * Launcher-owned host for a shared diff widget.
+ */
 export class DiffMainAreaWidget extends MainAreaWidget<XtralabDiffWidget> {
   constructor(
     options: MainAreaWidget.IOptions<XtralabDiffWidget>,
@@ -98,7 +108,9 @@ interface ICreateDiffWidgetOptions {
   onPinned?: (widget: DiffMainAreaWidget) => void;
 }
 
-/** Build the launcher's diff tab around the shared diff widget. */
+/**
+ * Build the launcher's diff tab around the shared diff widget.
+ */
 function createDiffWidget(
   options: ICreateDiffWidgetOptions
 ): DiffMainAreaWidget {
@@ -182,13 +194,21 @@ function createDiffWidget(
 export interface IRegisterGitCommandsOptions {
   app: JupyterFrontEnd;
   themeManager: IThemeManager | null;
-  /** Contents manager used to write hunk-discard results. */
+  /**
+   * Contents manager used to write hunk-discard results.
+   */
   contentsManager: Contents.IManager;
-  /** Rendermime registry used by notebook diffs; may be `null`. */
+  /**
+   * Rendermime registry used by notebook diffs; may be `null`.
+   */
   rendermime: IRenderMimeRegistry | null;
-  /** Track newly created diff widgets before they are added to the shell. */
+  /**
+   * Track newly created diff widgets before they are added to the shell.
+   */
   trackDiff(widget: DiffMainAreaWidget): Promise<void>;
-  /** Look up an already-open diff widget for a file change. */
+  /**
+   * Look up an already-open diff widget for a file change.
+   */
   findDiff(change: IFileChange, pin?: boolean): DiffMainAreaWidget | undefined;
   onPinned(widget: DiffMainAreaWidget): void;
 }

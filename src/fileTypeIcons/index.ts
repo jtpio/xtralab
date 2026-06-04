@@ -15,7 +15,9 @@ import { getSpecificTreeIcon } from '../fileBrowser/icons';
 
 const PLUGIN_ID = 'xtralab:file-type-icons';
 
-/** Synthetic path used to resolve a file type's tree glyph. */
+/**
+ * Synthetic path used to resolve a file type's tree glyph.
+ */
 function representativePath(
   fileType: DocumentRegistry.IFileType
 ): string | null {
@@ -27,7 +29,9 @@ function representativePath(
   return `file${extension.startsWith('.') ? extension : `.${extension}`}`;
 }
 
-/** Point a file type's icon at the tree glyph for its extension. */
+/**
+ * Point a file type's icon at the tree glyph for its extension.
+ */
 function applyTreeIcon(fileType: DocumentRegistry.IFileType): void {
   const path = representativePath(fileType);
   if (path === null) {
@@ -41,7 +45,9 @@ function applyTreeIcon(fileType: DocumentRegistry.IFileType): void {
   (fileType as { icon?: LabIcon }).icon = icon;
 }
 
-/** Source extensions with tree glyphs but no default JupyterLab file type. */
+/**
+ * Source extensions with tree glyphs but no default JupyterLab file type.
+ */
 const EXTRA_FILE_TYPE_EXTENSIONS = [
   '.ts',
   '.tsx',
@@ -73,7 +79,9 @@ const EXTRA_FILE_TYPE_EXTENSIONS = [
   '.wasm'
 ];
 
-/** Register icon-only file types for unclaimed source extensions. */
+/**
+ * Register icon-only file types for unclaimed source extensions.
+ */
 function registerExtraFileTypes(docRegistry: DocumentRegistry): void {
   for (const extension of EXTRA_FILE_TYPE_EXTENSIONS) {
     const icon = getSpecificTreeIcon(`file${extension}`);
@@ -98,7 +106,9 @@ function registerExtraFileTypes(docRegistry: DocumentRegistry): void {
   }
 }
 
-/** Share the file browser's tree glyphs with tabs and git file lists. */
+/**
+ * Share the file browser's tree glyphs with tabs and git file lists.
+ */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
   description:

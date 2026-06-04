@@ -3,7 +3,9 @@ import {
   type DiffsThemeNames
 } from '@pierre/diffs';
 
-/** Shiki CSS-variable theme used for non-Pierre JupyterLab themes. */
+/**
+ * Shiki CSS-variable theme used for non-Pierre JupyterLab themes.
+ */
 export const JUPYTERLAB_DIFF_THEME: DiffsThemeNames = 'jupyterlab';
 
 /**
@@ -24,7 +26,9 @@ registerCustomCSSVariableTheme(JUPYTERLAB_DIFF_THEME, {
   'token-link': 'var(--jp-mirror-editor-link-color)'
 });
 
-/** Choose Pierre's palette or the JupyterLab CSS-variable theme. */
+/**
+ * Choose Pierre's palette or the JupyterLab CSS-variable theme.
+ */
 export function resolveDiffTheme(
   dark: boolean,
   pierreTheme: boolean
