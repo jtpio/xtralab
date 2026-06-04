@@ -15,13 +15,7 @@ import { getSpecificTreeIcon } from '../fileBrowser/icons';
 
 const PLUGIN_ID = 'xtralab:file-type-icons';
 
-/**
- * The path the `@pierre/trees` resolver should see for a file type. The
- * resolver keys off the basename, so a synthetic `file<ext>` built from the
- * type's first extension is enough to resolve its language glyph. Types that
- * match only by pattern (no extension, e.g. directories) have no representative
- * path and keep their JupyterLab icon.
- */
+/** Synthetic path used to resolve a file type's tree glyph. */
 function representativePath(
   fileType: DocumentRegistry.IFileType
 ): string | null {
@@ -33,15 +27,7 @@ function representativePath(
   return `file${extension.startsWith('.') ? extension : `.${extension}`}`;
 }
 
-/**
- * Point a file type's icon at the tree glyph for its extension, leaving types
- * the tree has no specific glyph for on their existing icon.
- *
- * `IFileType.icon` is declared `readonly`, but the document registry hands back
- * the very objects it stores, so assigning in place updates the icon the
- * default file browser — which reads the file type live on every render —
- * paints.
- */
+/** Point a file type's icon at the tree glyph for its extension. */
 function applyTreeIcon(fileType: DocumentRegistry.IFileType): void {
   const path = representativePath(fileType);
   if (path === null) {
@@ -51,18 +37,11 @@ function applyTreeIcon(fileType: DocumentRegistry.IFileType): void {
   if (icon === null) {
     return;
   }
+  // The registry owns these objects; `readonly` only blocks the type shape.
   (fileType as { icon?: LabIcon }).icon = icon;
 }
 
-/**
- * Common source extensions `@pierre/trees` has a glyph for but JupyterLab ships
- * no file type for. Registering a file type for each lets the surfaces that
- * resolve icons only through the document registry — including the git history
- * and commit-comparison lists, which load files asynchronously and expose no
- * signal to decorate — paint the tree glyph as well. Extensions an existing
- * file type already claims, or that the tree has no specific glyph for, are
- * skipped.
- */
+/** Source extensions with tree glyphs but no default JupyterLab file type. */
 const EXTRA_FILE_TYPE_EXTENSIONS = [
   '.ts',
   '.tsx',
@@ -94,12 +73,7 @@ const EXTRA_FILE_TYPE_EXTENSIONS = [
   '.wasm'
 ];
 
-/**
- * Register a tree-iconed file type for each extension in
- * {@link EXTRA_FILE_TYPE_EXTENSIONS} the registry does not already cover. The
- * types carry no widget factory, so files still open through JupyterLab's
- * default editor; only the icon (and content type) is contributed.
- */
+/** Register icon-only file types for unclaimed source extensions. */
 function registerExtraFileTypes(docRegistry: DocumentRegistry): void {
   for (const extension of EXTRA_FILE_TYPE_EXTENSIONS) {
     const icon = getSpecificTreeIcon(`file${extension}`);
@@ -124,27 +98,7 @@ function registerExtraFileTypes(docRegistry: DocumentRegistry): void {
   }
 }
 
-/**
- * Give the xtralab file browser's `@pierre/trees` glyphs to the other places
- * JupyterLab paints per-file icons. Each surface resolves a file's icon
- * differently, so each is handled at its own source:
- *
- *   - The default file browser and `jupyterlab-git`'s history and
- *     commit-comparison lists resolve a file's icon from its
- *     `DocumentRegistry` file type, so existing types are re-skinned and types
- *     for extensions JupyterLab ships none for (e.g. `.ts`, `.tsx`) are
- *     registered.
- *   - A document tab takes its icon from its widget factory when the widget is
- *     created, so the glyph is set on the widget's `title` as it opens.
- *   - `jupyterlab-git`'s status panel resolves each file's type once and renders
- *     it through a memoized component, so the glyph is set on the git model's
- *     status files as they change.
- *
- * Only files the tree has a specific glyph for are touched, so an extension's
- * own icon for a type the tree does not know is never replaced with a generic
- * one. The xtralab file browser needs nothing here: it resolves icons through
- * the `@pierre/trees` resolver directly.
- */
+/** Share the file browser's tree glyphs with tabs and git file lists. */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
   description:
@@ -161,8 +115,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       applyTreeIcon(fileType);
     }
     registerExtraFileTypes(docRegistry);
-    // File types other extensions register after this plugin activates still
-    // pick up the tree glyph.
+    // Pick up file types registered after this plugin activates.
     docRegistry.changed.connect((_, args) => {
       if (
         args.type === 'fileType' &&
@@ -185,8 +138,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           }
         };
         setIcon();
-        // Keep the tab icon right when the document is renamed to a new
-        // extension. The connection clears when the context is disposed.
+        // Keep the tab icon right after a rename.
         widget.context.pathChanged.connect(setIcon);
       });
     }
@@ -201,10 +153,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           if (icon === null) {
             continue;
           }
-          // @jupyterlab/git compiles against its own nested copy of
-          // @jupyterlab/ui-components, so its `IFileType.icon` is a nominally
-          // distinct `LabIcon` from `getSpecificTreeIcon`'s; the shared runtime
-          // singleton makes them one. Cast across that package boundary.
+          // Cross jupyterlab-git's nested `LabIcon` package boundary.
           file.type = { ...file.type, icon } as unknown as typeof file.type;
         }
       });

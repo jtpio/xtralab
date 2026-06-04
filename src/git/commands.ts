@@ -15,22 +15,12 @@ import {
 } from './diffWidget';
 import { IFileChange } from './tokens';
 
-/**
- * Command IDs exposed by the launcher's git diff path. The launcher
- * dashboard's "Changes" section drives {@link CommandIDs.openDiff} to open
- * its own diff tab, independent of `jupyterlab-git` (whose panel reaches the
- * same rendering via the providers in `diffProvider.tsx`).
- */
+/** Command IDs exposed by the launcher's git diff path. */
 export namespace CommandIDs {
   export const openDiff = 'xtralab:git:open-diff';
 }
 
-/**
- * Argument shapes used by {@link CommandIDs.openDiff}. Cast to this type
- * inside the execute callback for type safety; the registry itself takes
- * `ReadonlyPartialJSONObject` because Lumino does not know about our
- * extension-specific shapes.
- */
+/** Argument shapes used by {@link CommandIDs.openDiff}. */
 export namespace CommandArguments {
   export interface IOpenDiff {
     repoPath: string;
@@ -39,17 +29,10 @@ export namespace CommandArguments {
   }
 }
 
-/**
- * Widget id of the single, reused preview diff tab. Opening a different file
- * while a preview is showing reuses this tab instead of stacking new ones.
- */
+/** Widget id of the single, reused preview diff tab. */
 export const PREVIEW_DIFF_WIDGET_ID = 'xtralab:diff:preview';
 
-/**
- * Deterministic widget id for a *pinned* diff against a particular file/group
- * pair, so promoting a preview (or reopening the same file pinned) reveals the
- * existing tab instead of opening a duplicate.
- */
+/** Deterministic widget id for a pinned file/group pair. */
 export function pinnedDiffWidgetId(change: IFileChange): string {
   return `xtralab:diff:pinned:${change.group}:${change.path}`;
 }
@@ -60,13 +43,7 @@ function formatTitle(change: IFileChange): string {
   return `${name} (${groupLabel})`;
 }
 
-/**
- * The launcher's `MainAreaWidget` host around the shared
- * {@link XtralabDiffWidget}. It owns the launcher-only state that
- * `jupyterlab-git`'s own host provides on its side: the file-change identity
- * (used to compute pinned ids and reveal an already-open diff) and the
- * preview→pin promotion the toolbar pin button drives.
- */
+/** Launcher-owned host for a shared diff widget. */
 export class DiffMainAreaWidget extends MainAreaWidget<XtralabDiffWidget> {
   constructor(
     options: MainAreaWidget.IOptions<XtralabDiffWidget>,
@@ -78,12 +55,10 @@ export class DiffMainAreaWidget extends MainAreaWidget<XtralabDiffWidget> {
     this._pinned = pinned;
   }
 
-  /** The change this diff renders; identifies the widget for reuse. */
   get change(): IFileChange {
     return this._change;
   }
 
-  /** Whether this tab has been promoted from a preview to a permanent tab. */
   get pinned(): boolean {
     return this._pinned;
   }
@@ -100,7 +75,6 @@ export class DiffMainAreaWidget extends MainAreaWidget<XtralabDiffWidget> {
     return this._pinnedChanged;
   }
 
-  /** Reuse this preview tab for a different file (rebuilds the diff model). */
   setChange(repoPath: string, change: IFileChange): void {
     this._change = change;
     this.content.setModel(fileChangeToDiffModel(repoPath, change));
@@ -124,12 +98,7 @@ interface ICreateDiffWidgetOptions {
   onPinned?: (widget: DiffMainAreaWidget) => void;
 }
 
-/**
- * Build the launcher's diff tab: a {@link DiffMainAreaWidget} hosting the
- * shared {@link XtralabDiffWidget}, with the pin button and view-mode toggles
- * mounted into its toolbar and the preview/pin + auto-close wiring the
- * launcher owns.
- */
+/** Build the launcher's diff tab around the shared diff widget. */
 function createDiffWidget(
   options: ICreateDiffWidgetOptions
 ): DiffMainAreaWidget {
@@ -151,9 +120,6 @@ function createDiffWidget(
 
   const onPinned = options.onPinned ?? ((): void => undefined);
 
-  // The pin button promotes the throwaway preview tab into a permanent one
-  // and hides once pinned. (jupyterlab-git's host pins via a tab-title click
-  // instead, which is why only this launcher host carries the button.)
   const pinButton = new ToolbarButton({
     icon: launchIcon,
     tooltip: 'Pin tab',
@@ -165,9 +131,7 @@ function createDiffWidget(
   widget.toolbar.addItem('pin', pinButton);
   addDiffToolbarItems(widget.toolbar, content);
 
-  // The toolbar stays visible for previews (so the pin button shows) and for
-  // any diff with a relevant view-mode toggle; a pinned diff with no toggles
-  // (image, binary, loading) hides it to keep the chrome quiet.
+  // Keep chrome visible only while there is a relevant toolbar control.
   const syncToolbarVisibility = (): void => {
     if (widget.isDisposed) {
       return;
@@ -195,7 +159,7 @@ function createDiffWidget(
     }
     syncToolbarVisibility();
   };
-  // Auto-close once a discard empties the diff — there is nothing left to view.
+  // Auto-close once a discard leaves nothing to show.
   const onEmptied = (): void => {
     if (!widget.isDisposed) {
       widget.close();
@@ -218,28 +182,13 @@ function createDiffWidget(
 export interface IRegisterGitCommandsOptions {
   app: JupyterFrontEnd;
   themeManager: IThemeManager | null;
-  /**
-   * Contents manager used by the diff widget to write hunk-discard results
-   * back to the working tree.
-   */
+  /** Contents manager used to write hunk-discard results. */
   contentsManager: Contents.IManager;
-  /**
-   * Rendermime registry used by the notebook diff to render outputs and
-   * markdown cells with their actual mime-type renderers. May be `null` in
-   * stripped-down hosts — the notebook diff falls back to a text
-   * representation in that case.
-   */
+  /** Rendermime registry used by notebook diffs; may be `null`. */
   rendermime: IRenderMimeRegistry | null;
-  /**
-   * Called for every diff widget created via the {@link CommandIDs.openDiff}
-   * command, before the widget is added to the shell. Lets the plugin track
-   * the widget for layout restoration and reveal-on-reuse.
-   */
+  /** Track newly created diff widgets before they are added to the shell. */
   trackDiff(widget: DiffMainAreaWidget): Promise<void>;
-  /**
-   * Look up an already-open diff widget for a given file change. Returns
-   * `undefined` when none is open.
-   */
+  /** Look up an already-open diff widget for a file change. */
   findDiff(change: IFileChange, pin?: boolean): DiffMainAreaWidget | undefined;
   onPinned(widget: DiffMainAreaWidget): void;
 }

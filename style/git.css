@@ -39,17 +39,7 @@
   background-color: var(--jp-layout-color1);
   color: var(--jp-ui-font-color1);
 
-  /*
-   * Map JupyterLab's theme variables onto the `--diffs-*-override` properties
-   * the library exposes. The `*-override` variants beat the library's
-   * defaults, so the diff's chrome and its insertion/deletion colors track the
-   * active JupyterLab theme automatically — no JS needed when the theme
-   * switches (the library derives the insertion/deletion line backgrounds from
-   * these base colors via `color-mix`). Syntax highlighting follows the Shiki
-   * theme chosen in `diffSurface.tsx` (see `resolveDiffTheme`): Pierre's rich
-   * palette under a Pierre theme, otherwise a CSS-variable theme that also
-   * reads `--jp-mirror-editor-*`.
-   */
+  /* Feed JupyterLab theme colors into @pierre/diffs. */
   --diffs-bg-override: var(--jp-layout-color1);
   --diffs-bg-buffer-override: var(--jp-layout-color1);
   --diffs-bg-context-override: var(--jp-layout-color1);

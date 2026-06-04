@@ -3,24 +3,12 @@ import {
   type DiffsThemeNames
 } from '@pierre/diffs';
 
-/**
- * Name of the Shiki "CSS variables" theme registered below.
- * {@link resolveDiffTheme} selects it for any non-Pierre JupyterLab theme.
- */
+/** Shiki CSS-variable theme used for non-Pierre JupyterLab themes. */
 export const JUPYTERLAB_DIFF_THEME: DiffsThemeNames = 'jupyterlab';
 
 /**
- * Register a Shiki theme whose token colors resolve to JupyterLab's
- * `--jp-mirror-editor-*` editor variables.
- *
- * `@pierre/diffs` builds on Shiki's CSS-variable theme support: each token is
- * emitted as `var(--diffs-token-<name>, <default>)`. Pointing the defaults at
- * the editor variables makes the diff's syntax highlighting follow the active
- * JupyterLab theme — the same variables the CodeMirror editor reads — instead
- * of Pierre's fixed palette. Because the values are read live from the DOM,
- * switching the JupyterLab theme recolors the diff without re-rendering.
- *
- * Registered once at module load (main thread, before any diff renders).
+ * Register a Shiki theme whose token colors read JupyterLab's editor
+ * variables. The values are CSS variables, so theme changes recolor the diff.
  */
 registerCustomCSSVariableTheme(JUPYTERLAB_DIFF_THEME, {
   foreground: 'var(--jp-content-font-color1)',
@@ -36,12 +24,7 @@ registerCustomCSSVariableTheme(JUPYTERLAB_DIFF_THEME, {
   'token-link': 'var(--jp-mirror-editor-link-color)'
 });
 
-/**
- * Choose the diff viewer's Shiki theme. A Pierre JupyterLab theme keeps
- * Pierre's rich highlighting (`pierre-light` / `pierre-dark`); every other
- * theme uses the CSS-variable theme above so the diff matches the active
- * editor colors.
- */
+/** Choose Pierre's palette or the JupyterLab CSS-variable theme. */
 export function resolveDiffTheme(
   dark: boolean,
   pierreTheme: boolean

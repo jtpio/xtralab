@@ -21,22 +21,6 @@ import {
 import { resolveDiffTheme } from './diffTheme';
 
 /**
- * Shared diff rendering surface. Both diff hosts in this extension — the
- * launcher dashboard's `xtralab:git:open-diff` command and the
- * `jupyterlab-git` diff providers registered into the upstream git panel —
- * render through the same `XtralabDiffWidget` (in `diffWidget.tsx`), which in
- * turn renders through this surface; they differ only in how the
- * `Git.Diff.IModel` that widget consumes is built and hosted.
- *
- * The surface is deliberately content-source agnostic: the widget resolves
- * the old/new text from the model's `content()` getters and hands the
- * resolved strings in.
- * Everything visual — the `@pierre/diffs` split view, the cell-by-cell
- * notebook view, the draggable column resizer, and the per-hunk discard
- * affordance — lives here so the two hosts stay pixel-identical.
- */
-
-/**
  * The CSS class added to the diff main-area widget. The selectors that
  * style the embedded `@pierre/diffs` viewer hang off this class.
  */
@@ -197,13 +181,7 @@ export function isDarkTheme(themeManager: IThemeManager | null): boolean {
   return document.body.dataset.jpThemeLight === 'false';
 }
 
-/**
- * Whether a Pierre JupyterLab theme (`jupyterlab-pierre-light` / `-dark`) is
- * active. Those themes carry Pierre's palette, so the diff keeps Pierre's rich
- * highlighting; under any other theme the diff follows the theme's `--jp-*`
- * variables instead. Matches on the theme name, so any current or future
- * Pierre variant is covered.
- */
+/** Whether the active JupyterLab theme should keep Pierre diff highlighting. */
 export function isPierreTheme(themeManager: IThemeManager | null): boolean {
   const theme = themeManager?.theme ?? null;
   return theme !== null && theme.toLowerCase().includes('pierre');
@@ -246,11 +224,7 @@ export interface IDiffSurfaceProps {
   oldName?: string;
   /** Whether to render with the dark `@pierre/diffs` theme. */
   dark: boolean;
-  /**
-   * Whether a Pierre JupyterLab theme is active. When true the diff keeps
-   * Pierre's rich highlighting; otherwise its syntax follows the active
-   * theme's `--jp-*` variables. See {@link resolveDiffTheme}.
-   */
+  /** Whether the diff should keep Pierre's own syntax palette. */
   pierreTheme: boolean;
   /**
    * Rendermime registry used by the notebook view to render outputs and
@@ -284,10 +258,7 @@ export interface IDiffSurfaceProps {
   hunkDiscard?: IHunkDiscard;
 }
 
-/**
- * The shared, content-source-agnostic diff renderer. See the module
- * docstring for the division of labor between this surface and its hosts.
- */
+/** Shared renderer for text, notebook and image diffs. */
 export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
   const {
     loading,

@@ -22,12 +22,8 @@ const GIT_DIFF_TRACKER_NAMESPACE = 'xtralab-git-diff';
 /**
  * The launcher's git diff command plugin.
  *
- * The `@jupyterlab/git` frontend stays enabled (only its diff plugins are
- * swapped — see `diffProvider.tsx`), so the upstream git panel is what the
- * user sees in the sidebar. This plugin is the launcher dashboard's
- * independent diff path: the `xtralab:git:open-diff` command the dashboard's
- * "Changes" section calls, plus a tracker so reopening a diff reveals the
- * existing tab and the preview/pin behavior keeps working.
+ * The upstream git panel stays enabled; this plugin only gives the launcher
+ * its own `xtralab:git:open-diff` command and preview/pinned-tab tracking.
  */
 const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
   id: GIT_DIFF_COMMAND_PLUGIN_ID,
@@ -40,9 +36,7 @@ const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
     themeManager: IThemeManager | null,
     rendermime: IRenderMimeRegistry | null
   ): void => {
-    // Track open diff widgets so the openDiff handler can reveal an
-    // already-open diff for the same file instead of creating a duplicate
-    // (and so a promoted preview can find its pinned twin).
+    // Track open diffs so repeated opens reveal the existing tab.
     const tracker = new WidgetTracker<DiffMainAreaWidget>({
       namespace: GIT_DIFF_TRACKER_NAMESPACE
     });
@@ -84,14 +78,7 @@ const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
   }
 };
 
-/**
- * Every plugin contributed by xtralab's git integration:
- *
- *   1. {@link diffCommandPlugin} — the launcher's `xtralab:git:open-diff`.
- *   2. `diffProviderPlugin` — registers the `@pierre/diffs` rendering as
- *      jupyterlab-git's diff providers (replacing its disabled
- *      notebook/text diff plugins).
- */
+/** Plugins contributed by xtralab's git integration. */
 const plugins: JupyterFrontEndPlugin<unknown>[] = [
   diffCommandPlugin,
   diffProviderPlugin

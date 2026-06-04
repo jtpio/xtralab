@@ -197,15 +197,7 @@ function getBuiltInFileIconColor(token: string): string | undefined {
   return `var(--trees-file-icon-color-${token}, var(--trees-file-icon-color, ${fallback}))`;
 }
 
-/**
- * Resolve the `@pierre/trees` glyph for `filePath` and build a self-contained
- * `LabIcon` from it, so the icon works outside the tree's shadow DOM. Reports
- * whether the tree resolved a glyph *specific* to the file (a built-in language
- * icon or a custom sprite override) rather than its generic file glyph, so
- * callers re-skinning an existing icon set can upgrade only the entries the
- * tree recognizes. `icon` is `null` only when the resolved symbol is missing
- * from the sprite sheets.
- */
+/** Resolve a tree glyph into a standalone `LabIcon`. */
 function resolveTreeIcon(filePath: string): {
   icon: LabIcon | null;
   specific: boolean;
@@ -214,10 +206,7 @@ function resolveTreeIcon(filePath: string): {
     'file-tree-icon-file',
     filePath
   );
-  // For the `complete` set the resolver tags its catch-all glyph with the
-  // `default` token (and `file-tree-icon-file` is the bare, un-remapped file
-  // slot); any other resolution is a glyph specific to this file's name or
-  // extension.
+  // Anything other than the catch-all glyph is specific to this file.
   const specific =
     resolved.token !== 'default' && resolved.name !== 'file-tree-icon-file';
   const cached = TREE_ICON_CACHE.get(resolved.name);
@@ -255,23 +244,13 @@ function resolveTreeIcon(filePath: string): {
   return { icon, specific };
 }
 
-/**
- * Return a JupyterLab `LabIcon` matching the icon the xtralab file tree would
- * render for the given file path. Used by other plugins (e.g. the git diff
- * viewer) that want their main-area widget tabs to display the same per-file
- * glyph the tree shows in the sidebar. Falls back to JupyterLab's default
- * `fileIcon` when the sprite cannot be located in either sheet.
- */
+/** Return the icon the xtralab file tree would render for `filePath`. */
 export function getTreeIcon(filePath: string): LabIcon {
   return resolveTreeIcon(filePath).icon ?? fileIcon;
 }
 
 /**
- * Like {@link getTreeIcon}, but returns `null` when the tree has no glyph
- * specific to `filePath` (i.e. it would only paint its generic file glyph).
- * Lets callers re-skinning an existing icon set — the document registry's file
- * types, document tabs, the git status panel — upgrade only the entries the
- * tree recognizes and leave everything else on its original icon.
+ * Like {@link getTreeIcon}, but returns `null` for the generic file glyph.
  */
 export function getSpecificTreeIcon(filePath: string): LabIcon | null {
   const { icon, specific } = resolveTreeIcon(filePath);

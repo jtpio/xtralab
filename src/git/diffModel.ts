@@ -6,21 +6,8 @@ import type { IXtralabDiffModel } from './diffWidget';
 import type { GitReference, IFileChange } from './tokens';
 
 /**
- * Builds a `Git.Diff.IModel` from xtralab's own {@link IFileChange} status
- * row, so the launcher dashboard's "Changes" section can open diffs through
- * the very same widget the `jupyterlab-git` panel uses (see `diffWidget.tsx`).
- *
- * `jupyterlab-git` constructs its own models for the panel; this module is
- * the launcher-side adapter that produces an equivalent model from the
- * porcelain-derived change, fetching content through xtralab's REST helper.
- */
-
-/**
- * Resolve the pair of git references whose `content` should appear on the
- * left and right side of the diff for a given file change. Mirrors VS Code's
- * source control diff: the staged side compares INDEX vs HEAD, the unstaged
- * side compares WORKING vs INDEX, and untracked files have no "previous"
- * version to compare against.
+ * Resolve the old/new git refs for a launcher file change. Staged diffs are
+ * INDEX vs HEAD; unstaged diffs are WORKING vs INDEX.
  */
 export function resolveReferences(change: IFileChange): {
   oldRef: GitReference | null;
@@ -32,18 +19,13 @@ export function resolveReferences(change: IFileChange): {
   if (change.group === 'staged') {
     return { oldRef: { git: 'HEAD' }, newRef: { special: 'INDEX' } };
   }
-  // Unstaged: WORKING vs INDEX. If the file isn't in the index yet (e.g. a
-  // freshly-`git add`-ed file modified again) the server returns the HEAD
-  // blob for INDEX, which is still the right baseline for the diff.
+  // If INDEX has no blob, the server falls back to HEAD as the baseline.
   return { oldRef: { special: 'INDEX' }, newRef: { special: 'WORKING' } };
 }
 
 /**
- * Map a {@link GitReference} onto the `source` marker carried by
- * `Git.Diff.IContent`. `null` means there is no baseline (an untracked file's
- * reference side). The working-tree marker has to be the real enum value
- * because it is what the shared diff view keys off when it derives hunk-discard
- * eligibility for `jupyterlab-git`'s own models.
+ * Map a launcher git ref onto `Git.Diff.IContent.source`; keep JupyterLab's
+ * enum values where downstream diff code checks for them.
  */
 function referenceSource(ref: GitReference | null): unknown {
   if (ref === null) {
@@ -61,26 +43,17 @@ function referenceSource(ref: GitReference | null): unknown {
   return Git.Diff.SpecialRef.BASE;
 }
 
-/**
- * A `Git.Diff.IModel` whose two sides are fetched through xtralab's `content`
- * REST helper at the references {@link resolveReferences} picks, carrying the
- * `isBinary` / `canDiscard` facts the bare interface cannot.
- */
+/** `Git.Diff.IModel` adapter for launcher file changes. */
 class FileChangeDiffModel implements IXtralabDiffModel {
   constructor(repoPath: string, change: IFileChange) {
     const { oldRef, newRef } = resolveReferences(change);
-    // Renames diff the new path against the *old* path's previous content.
+    // Renames compare the new path against the old path's previous content.
     const oldName = change.from ?? change.path;
     this.filename = change.path;
-    // Only set for renames (`change.from` is undefined otherwise); the old
-    // side is then labelled / language-detected from its previous path.
     this.oldFilename = change.from;
     this.repositoryPath = repoPath;
     this.isBinary = change.isBinary === true;
-    // Untracked files have no index/HEAD baseline to revert a hunk to, so
-    // per-hunk discard is meaningless for them; every other unstaged change
-    // is discardable. Staged changes compare INDEX vs HEAD and cannot be
-    // un-done through the working-tree write that discard performs.
+    // Only unstaged tracked files can be reverted through a working-tree save.
     this.canDiscard =
       change.group === 'unstaged' && change.status !== 'untracked';
     this.reference = {
