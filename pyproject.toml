@@ -35,9 +35,9 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "ajlab>=0.1.7",
+    "ajlab>=0.1.8",
     "jupyter-server-mcp>=0.3.0a0",
-    "jupyterlab>=4.6.0b0,<4.6.0b1",  # b1 moves @jupyter/ydoc to v4; jupyter-collaboration not yet compatible
+    "jupyterlab>=4.6.0b1",
     "jupyterlab-cursor-light>=1.0.2",
     "jupyterlab-cursor-dark>=1.0.2",
     "jupyterlab-day>=0.2.0",
