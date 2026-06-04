@@ -18,22 +18,7 @@ import {
   NotebookDiffView,
   type INotebookDiffResult
 } from './notebookDiff';
-
-/**
- * Shared diff rendering surface used by both diff hosts in this extension:
- *
- *   - the launcher dashboard's own `xtralab:git:open-diff` command
- *     (via {@link DiffContentWidget} in `diffWidget.tsx`), and
- *   - the `jupyterlab-git` diff providers registered into the upstream git
- *     panel (via `XtralabDiffWidget` in `diffProvider.tsx`).
- *
- * The surface is deliberately content-source agnostic: callers resolve the
- * old/new text however they like (xtralab's REST helper, or a
- * `Git.Diff.IModel`'s `content()` getters) and hand the resolved strings in.
- * Everything visual — the `@pierre/diffs` split view, the cell-by-cell
- * notebook view, the draggable column resizer, and the per-hunk discard
- * affordance — lives here so the two hosts stay pixel-identical.
- */
+import { resolveDiffTheme } from './diffTheme';
 
 /**
  * The CSS class added to the diff main-area widget. The selectors that
@@ -197,6 +182,14 @@ export function isDarkTheme(themeManager: IThemeManager | null): boolean {
 }
 
 /**
+ * Whether the active JupyterLab theme should keep Pierre diff highlighting.
+ */
+export function isPierreTheme(themeManager: IThemeManager | null): boolean {
+  const theme = themeManager?.theme ?? null;
+  return theme !== null && theme.toLowerCase().includes('pierre');
+}
+
+/**
  * Optional per-hunk discard wiring. When supplied and `enabled`, each hunk
  * in a plain-text/code diff gets an inline "discard" button; clicking it
  * reverts that hunk and hands the rebuilt full-file text back to the host
@@ -211,15 +204,25 @@ export interface IHunkDiscard {
 }
 
 export interface IDiffSurfaceProps {
-  /** Whether the host is still resolving the file contents. */
+  /**
+   * Whether the host is still resolving the file contents.
+   */
   loading: boolean;
-  /** Fatal error message to show instead of a diff, or `null`. */
+  /**
+   * Fatal error message to show instead of a diff, or `null`.
+   */
   error: string | null;
-  /** Whether the file is binary (no textual diff is rendered). */
+  /**
+   * Whether the file is binary (no textual diff is rendered).
+   */
   isBinary: boolean;
-  /** Resolved old/reference text. Ignored while loading/binary/errored. */
+  /**
+   * Resolved old/reference text. Ignored while loading/binary/errored.
+   */
   oldText: string;
-  /** Resolved new/challenger text. Ignored while loading/binary/errored. */
+  /**
+   * Resolved new/challenger text. Ignored while loading/binary/errored.
+   */
   newText: string;
   /**
    * New-side path. Drives notebook detection and the `@pierre/diffs` file
@@ -231,17 +234,27 @@ export interface IDiffSurfaceProps {
    * to {@link newName} when the host does not track a previous path.
    */
   oldName?: string;
-  /** Whether to render with the dark `@pierre/diffs` theme. */
+  /**
+   * Whether to render with the dark `@pierre/diffs` theme.
+   */
   dark: boolean;
+  /**
+   * Whether the diff should keep Pierre's own syntax palette.
+   */
+  pierreTheme: boolean;
   /**
    * Rendermime registry used by the notebook view to render outputs and
    * markdown cells. May be `null` in stripped-down hosts; the notebook
    * diff falls back to a textual representation in that case.
    */
   rendermime: IRenderMimeRegistry | null;
-  /** Current rendered-vs-JSON choice for notebook diffs (host-controlled). */
+  /**
+   * Current rendered-vs-JSON choice for notebook diffs (host-controlled).
+   */
   notebookViewMode: NotebookDiffViewMode;
-  /** Split vs unified layout for the textual/code file diff (host-controlled). */
+  /**
+   * Split vs unified layout for the textual/code file diff (host-controlled).
+   */
   diffStyle: DiffStyle;
   /**
    * Called whenever the availability of a rendered notebook view changes,
@@ -261,13 +274,14 @@ export interface IDiffSurfaceProps {
    * post-discard behaviors such as auto-closing an emptied diff.
    */
   onMetadataChange?: (info: { hunkCount: number | null }) => void;
-  /** Optional per-hunk discard wiring; omit for a read-only diff. */
+  /**
+   * Optional per-hunk discard wiring; omit for a read-only diff.
+   */
   hunkDiscard?: IHunkDiscard;
 }
 
 /**
- * The shared, content-source-agnostic diff renderer. See the module
- * docstring for the division of labor between this surface and its hosts.
+ * Shared renderer for text, notebook and image diffs.
  */
 export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
   const {
@@ -279,6 +293,7 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     newName,
     oldName,
     dark,
+    pierreTheme,
     rendermime,
     notebookViewMode,
     diffStyle,
@@ -539,6 +554,7 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
             <NotebookDiffView
               diff={notebookDiff}
               dark={dark}
+              pierreTheme={pierreTheme}
               rendermime={rendermime}
             />
           ) : showFileDiff && metadata !== null ? (
@@ -560,7 +576,7 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
                 // file name and the panel header carries the change
                 // context.
                 disableFileHeader: true,
-                theme: dark ? 'pierre-dark' : 'pierre-light',
+                theme: resolveDiffTheme(dark, pierreTheme),
                 themeType: dark ? 'dark' : 'light',
                 // Inject the column-resize override into the shadow root
                 // via the library's `@layer unsafe` channel. Keeping the

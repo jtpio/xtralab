@@ -13,6 +13,8 @@ import {
   type FileDiffMetadata
 } from '@pierre/diffs';
 
+import { resolveDiffTheme } from './diffTheme';
+
 /**
  * The CSS class added to the root of the notebook diff. Selectors that
  * style cell sections, headers, and the per-cell diff blocks hang off this
@@ -151,7 +153,7 @@ function emptyNotebook(): INotebook {
  * nbformat allows multiline string fields (`source`, stream `text`,
  * `text/plain` outputs, …) to be either a single string or an array of
  * strings. Normalize to one string so equality checks and diffs see the
- * same shape regardless of how the writer chose to serialise it.
+ * same shape regardless of how the writer chose to serialize it.
  */
 export function joinMultiline(value: string | string[] | undefined): string {
   if (value === undefined) {
@@ -836,6 +838,11 @@ function MarkdownPreviewSection(props: {
 interface INotebookDiffViewProps {
   diff: INotebookDiffResult;
   dark: boolean;
+  /**
+   * Whether a Pierre JupyterLab theme is active; selects Pierre's rich
+   * highlighting vs the CSS-variable theme (see {@link resolveDiffTheme}).
+   */
+  pierreTheme: boolean;
   rendermime: IRenderMimeRegistry | null;
 }
 
@@ -852,8 +859,8 @@ interface INotebookDiffViewProps {
 export function NotebookDiffView(
   props: INotebookDiffViewProps
 ): React.ReactElement {
-  const { diff, dark, rendermime } = props;
-  const theme: DiffsThemeNames = dark ? 'pierre-dark' : 'pierre-light';
+  const { diff, dark, pierreTheme, rendermime } = props;
+  const theme: DiffsThemeNames = resolveDiffTheme(dark, pierreTheme);
   const summary = React.useMemo(() => summarize(diff.cells), [diff.cells]);
   return (
     <div className={NOTEBOOK_DIFF_CSS_CLASS}>

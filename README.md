@@ -3,8 +3,8 @@
 An opinionated JupyterLab meta-package for use with coding agents.
 
 It bundles a curated set of JupyterLab extensions, a path-first file browser,
-git diffs rendered by xtralab, an agent launcher, and a quieter default
-workspace.
+rich git diffs for text, notebooks, and images, an agent launcher, and a
+quieter default workspace.
 
 ![xtralab screenshot](./screenshot.png)
 
@@ -46,10 +46,11 @@ themes (`jupyterlab-cursor-light`, `jupyterlab-cursor-dark`,
 
 The bundled xtralab labextension then adds:
 
-- A path-first file browser in the left sidebar.
-- Git diffs rendered by xtralab in the `jupyterlab-git` panel, using
-  `@pierre/diffs` for text and notebooks and a 2-up / swipe / onion-skin view
-  for images.
+- A path-first file browser in the left sidebar, with `@pierre/trees`
+  file-type icons that also carry over to document tabs and the `jupyterlab-git`
+  panel.
+- Rich git diffs in the `jupyterlab-git` panel, using `@pierre/diffs` for text
+  and notebooks and a 2-up / swipe / onion-skin view for images.
 - An agent launcher with a prompt box, buttons for the agents installed on your
   machine (Claude, Codex, Antigravity, Copilot, Goose, OpenCode, Kiro, Mistral
   Vibe), a collapsible list of changed files, and an Open row for a terminal,
@@ -58,6 +59,12 @@ The bundled xtralab labextension then adds:
   agent or editor detected inside it. Open terminal tabs in the main area carry
   the same icon.
 - Sidebar toggle buttons in the top bar for the left and right areas.
+
+xtralab also ships a set of opinionated defaults: unused UI is hidden for a
+quieter workspace, the activity bar sits at the top, and autocompletion,
+continuous LSP hinting, code folding, and gitignore-aware quick open are on by
+default. See [the bundled labconfig overrides](./jupyter-config/labconfig) for
+the full set.
 
 ## Connecting agents to Jupyter (MCP)
 

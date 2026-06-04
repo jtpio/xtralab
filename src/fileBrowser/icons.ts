@@ -198,28 +198,26 @@ function getBuiltInFileIconColor(token: string): string | undefined {
 }
 
 /**
- * Return a JupyterLab `LabIcon` matching the icon the xtralab file tree would
- * render for the given file path. Used by other plugins (e.g. the git diff
- * viewer) that want their main-area widget tabs to display the same per-file
- * glyph the tree shows in the sidebar.
- *
- * Resolves the symbol via the same `@pierre/trees` resolver the tree itself
- * uses, then inlines the symbol's body into a self-contained SVG so the icon
- * works outside the tree's shadow DOM. Falls back to JupyterLab's default
- * `fileIcon` when the sprite cannot be located in either sheet.
+ * Resolve a tree glyph into a standalone `LabIcon`.
  */
-export function getTreeIcon(filePath: string): LabIcon {
+function resolveTreeIcon(filePath: string): {
+  icon: LabIcon | null;
+  specific: boolean;
+} {
   const resolved = treeIconResolver.resolveIcon(
     'file-tree-icon-file',
     filePath
   );
+  // Anything other than the catch-all glyph is specific to this file.
+  const specific =
+    resolved.token !== 'default' && resolved.name !== 'file-tree-icon-file';
   const cached = TREE_ICON_CACHE.get(resolved.name);
   if (cached !== undefined) {
-    return cached;
+    return { icon: cached, specific };
   }
   const symbol = extractSymbol(resolved.name);
   if (symbol === null) {
-    return fileIcon;
+    return { icon: null, specific };
   }
   // Built-in language icons paint with `fill="currentColor"` so the colored
   // tier of the tree can recolor them by setting `color` on the host
@@ -245,5 +243,20 @@ export function getTreeIcon(filePath: string): LabIcon {
     svgstr
   });
   TREE_ICON_CACHE.set(resolved.name, icon);
-  return icon;
+  return { icon, specific };
+}
+
+/**
+ * Return the icon the xtralab file tree would render for `filePath`.
+ */
+export function getTreeIcon(filePath: string): LabIcon {
+  return resolveTreeIcon(filePath).icon ?? fileIcon;
+}
+
+/**
+ * Like {@link getTreeIcon}, but returns `null` for the generic file glyph.
+ */
+export function getSpecificTreeIcon(filePath: string): LabIcon | null {
+  const { icon, specific } = resolveTreeIcon(filePath);
+  return specific ? icon : null;
 }

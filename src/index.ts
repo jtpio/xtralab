@@ -2,6 +2,7 @@ import { JupyterFrontEndPlugin } from '@jupyterlab/application';
 
 import agentSessionsPlugin from './agentSessions';
 import fileBrowserPlugin from './fileBrowser';
+import fileTypeIconsPlugin from './fileTypeIcons';
 import editorBreadcrumbsPlugin from './editorBreadcrumbs';
 import editorIndentPlugin from './editorIndent';
 import gitPlugins from './git';
@@ -25,6 +26,7 @@ const plugins: JupyterFrontEndPlugin<unknown>[] = [
   editorBreadcrumbsPlugin,
   editorIndentPlugin,
   fileBrowserPlugin,
+  fileTypeIconsPlugin,
   ...gitPlugins,
   ...launcherPlugins,
   menusPlugin,

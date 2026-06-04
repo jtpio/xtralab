@@ -40,12 +40,7 @@
   color: var(--jp-ui-font-color1);
 
   /*
-   * Map JupyterLab's theme variables onto the `--diffs-*-override`
-   * properties the library exposes. The `*-override` variants take
-   * precedence over the library's defaults, so these values track the
-   * JupyterLab theme automatically — no JS needed when the theme
-   * switches. Theme-dependent colors (insertion green, deletion red, …)
-   * still come from the active Shiki theme passed via `options.theme`.
+   * Feed JupyterLab theme colors into @pierre/diffs.
    */
   --diffs-bg-override: var(--jp-layout-color1);
   --diffs-bg-buffer-override: var(--jp-layout-color1);
@@ -58,6 +53,8 @@
   --diffs-fg-number-override: var(--jp-ui-font-color3);
   --diffs-fg-conflict-marker-override: var(--jp-warn-color1);
   --diffs-modified-color-override: var(--jp-warn-color1);
+  --diffs-addition-color-override: var(--jp-success-color1);
+  --diffs-deletion-color-override: var(--jp-error-color1);
 }
 
 /*
@@ -91,7 +88,9 @@
   font-size: var(--jp-ui-font-size0);
 }
 
-/* Breathing room when both toggles appear (notebook diff in JSON view). */
+/*
+ * Breathing room when both toggles appear (notebook diff in JSON view).
+ */
 .jp-xtralab-DiffWidget-diffStyleToolbarItem {
   margin-left: 4px;
 }
@@ -589,7 +588,9 @@
 
 .jp-xtralab-ImageDiff-frame,
 .jp-xtralab-ImageDiff-stack {
-  /* Checkerboard so transparent regions are obvious; theme-neutral. */
+  /*
+   * Checkerboard so transparent regions are obvious; theme-neutral.
+   */
   background-color: #fff;
   background-image:
     linear-gradient(45deg, #c8c8c8 25%, transparent 25%),
@@ -766,7 +767,9 @@
   bottom: -14px;
 }
 
-/* Chevron triangles drawn with borders so no asset is needed. */
+/*
+ * Chevron triangles drawn with borders so no asset is needed.
+ */
 .jp-xtralab-ImageDiff-swipeDividerArrow {
   width: 0;
   height: 0;

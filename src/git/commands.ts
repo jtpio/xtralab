@@ -1,31 +1,29 @@
 import { JupyterFrontEnd } from '@jupyterlab/application';
-import { IThemeManager } from '@jupyterlab/apputils';
+import { IThemeManager, MainAreaWidget } from '@jupyterlab/apputils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { Contents } from '@jupyterlab/services';
+import { ToolbarButton, launchIcon } from '@jupyterlab/ui-components';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
+import { ISignal, Signal } from '@lumino/signaling';
 
+import { getTreeIcon } from '../fileBrowser/icons';
+import { fileChangeToDiffModel } from './diffModel';
 import {
-  createGitDiffWidget,
-  diffWidgetId,
-  updateGitDiffWidget
+  DIFF_WIDGET_CSS_CLASS,
+  XtralabDiffWidget,
+  addDiffToolbarItems
 } from './diffWidget';
 import { IFileChange } from './tokens';
 
 /**
- * Command IDs exposed by the launcher's git diff path. The launcher
- * dashboard's "Changes" section drives {@link CommandIDs.openDiff} to open
- * its own diff tab, independent of `jupyterlab-git` (whose panel reaches
- * the same rendering via the providers in `diffProvider.tsx`).
+ * Command IDs exposed by the launcher's git diff path.
  */
 export namespace CommandIDs {
   export const openDiff = 'xtralab:git:open-diff';
 }
 
 /**
- * Argument shapes used by {@link CommandIDs.openDiff}. Cast to this type
- * inside the execute callback for type safety; the registry itself takes
- * `ReadonlyPartialJSONObject` because Lumino does not know about our
- * extension-specific shapes.
+ * Argument shapes used by {@link CommandIDs.openDiff}.
  */
 export namespace CommandArguments {
   export interface IOpenDiff {
@@ -35,44 +33,184 @@ export namespace CommandArguments {
   }
 }
 
+/**
+ * Widget id of the single, reused preview diff tab.
+ */
+export const PREVIEW_DIFF_WIDGET_ID = 'xtralab:diff:preview';
+
+/**
+ * Deterministic widget id for a pinned file/group pair.
+ */
+export function pinnedDiffWidgetId(change: IFileChange): string {
+  return `xtralab:diff:pinned:${change.group}:${change.path}`;
+}
+
+function formatTitle(change: IFileChange): string {
+  const name = change.path.split('/').pop() ?? change.path;
+  const groupLabel = change.group === 'staged' ? 'Staged' : 'Working';
+  return `${name} (${groupLabel})`;
+}
+
+/**
+ * Launcher-owned host for a shared diff widget.
+ */
+export class DiffMainAreaWidget extends MainAreaWidget<XtralabDiffWidget> {
+  constructor(
+    options: MainAreaWidget.IOptions<XtralabDiffWidget>,
+    change: IFileChange,
+    pinned: boolean
+  ) {
+    super(options);
+    this._change = change;
+    this._pinned = pinned;
+  }
+
+  get change(): IFileChange {
+    return this._change;
+  }
+
+  get pinned(): boolean {
+    return this._pinned;
+  }
+
+  pin(): void {
+    if (this._pinned) {
+      return;
+    }
+    this._pinned = true;
+    this._pinnedChanged.emit(true);
+  }
+
+  get pinnedChanged(): ISignal<this, boolean> {
+    return this._pinnedChanged;
+  }
+
+  setChange(repoPath: string, change: IFileChange): void {
+    this._change = change;
+    this.content.setModel(fileChangeToDiffModel(repoPath, change));
+    this.title.label = formatTitle(change);
+    this.title.caption = change.path;
+    this.title.icon = getTreeIcon(change.path);
+  }
+
+  private _change: IFileChange;
+  private _pinned: boolean;
+  private _pinnedChanged = new Signal<this, boolean>(this);
+}
+
+interface ICreateDiffWidgetOptions {
+  repoPath: string;
+  change: IFileChange;
+  themeManager: IThemeManager | null;
+  contentsManager: Contents.IManager;
+  rendermime: IRenderMimeRegistry | null;
+  pinned?: boolean;
+  onPinned?: (widget: DiffMainAreaWidget) => void;
+}
+
+/**
+ * Build the launcher's diff tab around the shared diff widget.
+ */
+function createDiffWidget(
+  options: ICreateDiffWidgetOptions
+): DiffMainAreaWidget {
+  const { repoPath, change, themeManager, contentsManager, rendermime } =
+    options;
+  const pinned = options.pinned === true;
+  const content = new XtralabDiffWidget(
+    fileChangeToDiffModel(repoPath, change),
+    { contentsManager, rendermime, themeManager }
+  );
+  const widget = new DiffMainAreaWidget({ content }, change, pinned);
+  widget.id = pinned ? pinnedDiffWidgetId(change) : PREVIEW_DIFF_WIDGET_ID;
+  widget.title.label = formatTitle(change);
+  widget.title.caption = change.path;
+  widget.title.closable = true;
+  widget.title.icon = getTreeIcon(change.path);
+  widget.title.className = pinned ? '' : 'jp-mod-preview';
+  widget.addClass(DIFF_WIDGET_CSS_CLASS);
+
+  const onPinned = options.onPinned ?? ((): void => undefined);
+
+  const pinButton = new ToolbarButton({
+    icon: launchIcon,
+    tooltip: 'Pin tab',
+    onClick: () => widget.pin()
+  });
+  if (widget.pinned) {
+    pinButton.hide();
+  }
+  widget.toolbar.addItem('pin', pinButton);
+  addDiffToolbarItems(widget.toolbar, content);
+
+  // Keep chrome visible only while there is a relevant toolbar control.
+  const syncToolbarVisibility = (): void => {
+    if (widget.isDisposed) {
+      return;
+    }
+    if (!widget.pinned || content.hasNotebookView || content.fileDiffActive) {
+      widget.toolbar.show();
+    } else {
+      widget.toolbar.hide();
+    }
+  };
+  const onPinnedChanged = (
+    _sender: DiffMainAreaWidget,
+    value: boolean
+  ): void => {
+    if (widget.isDisposed) {
+      return;
+    }
+    if (value) {
+      pinButton.hide();
+      onPinned(widget);
+      if (widget.isDisposed) {
+        return;
+      }
+      widget.title.className = '';
+    }
+    syncToolbarVisibility();
+  };
+  // Auto-close once a discard leaves nothing to show.
+  const onEmptied = (): void => {
+    if (!widget.isDisposed) {
+      widget.close();
+    }
+  };
+  content.hasNotebookViewChanged.connect(syncToolbarVisibility);
+  content.fileDiffActiveChanged.connect(syncToolbarVisibility);
+  content.emptied.connect(onEmptied);
+  widget.pinnedChanged.connect(onPinnedChanged);
+  syncToolbarVisibility();
+  widget.disposed.connect(() => {
+    content.hasNotebookViewChanged.disconnect(syncToolbarVisibility);
+    content.fileDiffActiveChanged.disconnect(syncToolbarVisibility);
+    content.emptied.disconnect(onEmptied);
+    widget.pinnedChanged.disconnect(onPinnedChanged);
+  });
+  return widget;
+}
+
 export interface IRegisterGitCommandsOptions {
   app: JupyterFrontEnd;
   themeManager: IThemeManager | null;
   /**
-   * Contents manager used by the diff widget to write hunk-discard
-   * results back to the working tree.
+   * Contents manager used to write hunk-discard results.
    */
   contentsManager: Contents.IManager;
   /**
-   * Rendermime registry used by the notebook diff to render outputs and
-   * markdown cells with their actual mime-type renderers (images as
-   * images, HTML as HTML, etc.). May be `null` in stripped-down hosts —
-   * the notebook diff falls back to a text representation in that case.
+   * Rendermime registry used by notebook diffs; may be `null`.
    */
   rendermime: IRenderMimeRegistry | null;
   /**
-   * Called whenever the diff widget mutates the working tree (e.g. after
-   * a hunk discard). The launcher dashboard polls git status on its own
-   * cadence and `jupyterlab-git`'s panel auto-refreshes on the contents
-   * `fileChanged` signal the save emits, so this is a hook for any extra
-   * bookkeeping rather than a required refresh.
+   * Track newly created diff widgets before they are added to the shell.
    */
-  onChanged: () => void;
+  trackDiff(widget: DiffMainAreaWidget): Promise<void>;
   /**
-   * Called for every diff widget created via the {@link CommandIDs.openDiff}
-   * command, before the widget is added to the shell. Lets the plugin track
-   * the widget for layout restoration and reveal-on-reuse.
+   * Look up an already-open diff widget for a file change.
    */
-  trackDiff(widget: ReturnType<typeof createGitDiffWidget>): Promise<void>;
-  /**
-   * Look up an already-open diff widget for a given file change. Returns
-   * `undefined` when none is open.
-   */
-  findDiff(
-    change: IFileChange,
-    pin?: boolean
-  ): ReturnType<typeof createGitDiffWidget> | undefined;
-  onPinned(widget: ReturnType<typeof createGitDiffWidget>): void;
+  findDiff(change: IFileChange, pin?: boolean): DiffMainAreaWidget | undefined;
+  onPinned(widget: DiffMainAreaWidget): void;
 }
 
 /**
@@ -87,7 +225,6 @@ export function registerGitCommands(
     themeManager,
     contentsManager,
     rendermime,
-    onChanged,
     trackDiff,
     findDiff,
     onPinned
@@ -106,18 +243,17 @@ export function registerGitCommands(
       const existing = findDiff(typed.change, pin);
       if (existing !== undefined && !existing.isDisposed) {
         if (!pin) {
-          updateGitDiffWidget(existing, typed.change);
+          existing.setChange(typed.repoPath, typed.change);
         }
         app.shell.activateById(existing.id);
         return;
       }
-      const widget = createGitDiffWidget({
+      const widget = createDiffWidget({
         repoPath: typed.repoPath,
         change: typed.change,
         themeManager,
         contentsManager,
         rendermime,
-        onChanged,
         pinned: pin,
         onPinned
       });
@@ -127,5 +263,3 @@ export function registerGitCommands(
     }
   });
 }
-
-export { diffWidgetId };

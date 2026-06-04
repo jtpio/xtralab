@@ -166,8 +166,8 @@
 
 /*
  * Changed files list. Each row is a button so click + keyboard activate
- * both work; the badge on the left mirrors the single-letter status
- * indicator the git panel uses, kept in sync via FileChangeStatus.
+ * both work; the letter on the left is the file's single-letter git status,
+ * colored to match the @pierre/trees file tree's decorations.
  */
 .jp-xtralab-Launcher-changes {
   list-style: none;
@@ -178,6 +178,27 @@
   border: 1px solid var(--jp-border-color2);
   border-radius: 4px;
   overflow: hidden;
+
+  /*
+   * Git status letter palette, mirroring the @pierre/trees `--trees-status-*`
+   * defaults. The file tree resolves those through `light-dark()` under
+   * `color-scheme: light dark` — i.e. by OS appearance — so the
+   * `prefers-color-scheme` override below reproduces that exact resolution
+   * and keeps these letters in lockstep with the tree's.
+   */
+  --xtralab-git-status-added: #16a994;
+  --xtralab-git-status-modified: #1ca1c7;
+  --xtralab-git-status-renamed: #d5a910;
+  --xtralab-git-status-deleted: #ff2e3f;
+}
+
+@media (prefers-color-scheme: dark) {
+  .jp-xtralab-Launcher-changes {
+    --xtralab-git-status-added: #00cab1;
+    --xtralab-git-status-modified: #08c0ef;
+    --xtralab-git-status-renamed: #ffd452;
+    --xtralab-git-status-deleted: #ff6762;
+  }
 }
 
 .jp-xtralab-Launcher-changes > li + li {
@@ -207,35 +228,42 @@
   outline-offset: -1px;
 }
 
+/*
+ * Bare colored letter, not a filled badge — the same treatment the
+ * @pierre/trees file tree gives its git status decorations. The fixed width
+ * keeps the letters in a tidy gutter so the paths stay column-aligned.
+ */
 .jp-xtralab-Launcher-change-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  font-size: 10px;
-  font-weight: 700;
-  border-radius: 3px;
-  font-family: var(--jp-code-font-family);
-  background-color: var(--jp-layout-color2);
-  color: var(--jp-ui-font-color2);
+  width: 14px;
   flex: 0 0 auto;
-}
-
-.jp-xtralab-Launcher-change-modified {
-  background-color: var(--jp-warn-color3, var(--jp-layout-color2));
-  color: var(--jp-warn-color1, var(--jp-ui-font-color1));
+  font-family: var(--jp-code-font-family);
+  font-size: var(--jp-code-font-size);
+  font-weight: 600;
+  color: var(--jp-ui-font-color2);
 }
 
 .jp-xtralab-Launcher-change-added,
 .jp-xtralab-Launcher-change-untracked {
-  background-color: var(--jp-success-color3, var(--jp-layout-color2));
-  color: var(--jp-success-color1, var(--jp-ui-font-color1));
+  color: var(--xtralab-git-status-added);
+}
+
+/* The file tree folds unmerged/typechange/unknown onto modified; match it. */
+.jp-xtralab-Launcher-change-modified,
+.jp-xtralab-Launcher-change-unmerged,
+.jp-xtralab-Launcher-change-typechange,
+.jp-xtralab-Launcher-change-unknown {
+  color: var(--xtralab-git-status-modified);
+}
+
+.jp-xtralab-Launcher-change-renamed {
+  color: var(--xtralab-git-status-renamed);
 }
 
 .jp-xtralab-Launcher-change-deleted {
-  background-color: var(--jp-error-color3, var(--jp-layout-color2));
-  color: var(--jp-error-color1, var(--jp-ui-font-color1));
+  color: var(--xtralab-git-status-deleted);
 }
 
 .jp-xtralab-Launcher-change-path {
