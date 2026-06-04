@@ -55,10 +55,16 @@ jobs:
             "jupyterlab-cursor-dark" \
             "jupyterlab-quickopen" \
             "jupyterlab-search-replace" \
-            "jupyterlab-commands-toolkit" \
-            "@jupyter/docprovider-extension"; do
+            "jupyterlab-commands-toolkit"; do
             grep -e "${ext}.*OK" labextensions.txt
           done
+
+          # @jupyter/docprovider-extension (via ajlab's jupyter-docprovider)
+          # requests @jupyter/ydoc ^3 while JupyterLab 4.6.0b1 ships v4, so it
+          # reports "enabled" with an incompatible flag rather than "OK". It
+          # still loads against the host's v4 and collaboration works, so
+          # require it to be enabled.
+          grep -e "@jupyter/docprovider-extension.*enabled" labextensions.txt
 
           # xtralab keeps the @jupyterlab/git frontend enabled and only
           # disables its diff plugins (xtralab registers its own diff
