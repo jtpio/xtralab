@@ -1223,6 +1223,24 @@ wheels = [
 ]
 
 [[package]]
+name = "jupyterlab-pierre-dark"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/a9/2f5f4b9324bf884911cb18b51bd5212facd698f94c9857feec7a4b5f0eac/jupyterlab_pierre_dark-0.1.1.tar.gz", hash = "sha256:432d001490d2dc900123c2698924e321bcd1e7e1fb8c969ec907e045399a8cd2", size = 45528, upload-time = "2026-06-04T06:49:17.435Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0e/a2/9cd53d902e1471600698ff9645d4edf7050b9baaffd599a9acb4204ae414/jupyterlab_pierre_dark-0.1.1-py3-none-any.whl", hash = "sha256:fb04c7490333549449d9b1b104231177cd5e031431b60ff11654cf72f23bfcca", size = 83974, upload-time = "2026-06-04T06:49:15.789Z" },
+]
+
+[[package]]
+name = "jupyterlab-pierre-light"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a5/51/ead4740ddd0cf9d22f79798e0a9f8a96716743f50d8ada88ccde6e64b572/jupyterlab_pierre_light-0.1.1.tar.gz", hash = "sha256:57f9bc40d05ded6489771fad74a70ba48ac675846efe937bd2b0ce503f57c8f1", size = 45511, upload-time = "2026-06-04T06:49:21.506Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/83/29/7e4e0883620bf14cc401eb5c51f19173784384ea46b59520649beae5b772/jupyterlab_pierre_light-0.1.1-py3-none-any.whl", hash = "sha256:a881f346329ae90ac64ee54638c46bfae401206608ad0ef8a5bf1b4ce9f1bbe2", size = 84035, upload-time = "2026-06-04T06:49:19.818Z" },
+]
+
+[[package]]
 name = "jupyterlab-pygments"
 version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2610,6 +2628,8 @@ dependencies = [
     { name = "jupyterlab-git-core" },
     { name = "jupyterlab-lsp" },
     { name = "jupyterlab-night" },
+    { name = "jupyterlab-pierre-dark" },
+    { name = "jupyterlab-pierre-light" },
     { name = "jupyterlab-quickopen" },
     { name = "jupyterlab-search-replace" },
     { name = "jupyterlab-vim" },
@@ -2629,6 +2649,8 @@ requires-dist = [
     { name = "jupyterlab-git-core", specifier = ">=0.54.0a1" },
     { name = "jupyterlab-lsp", specifier = ">=5.3.0" },
     { name = "jupyterlab-night", specifier = ">=0.5.2" },
+    { name = "jupyterlab-pierre-dark", specifier = ">=0.1.1" },
+    { name = "jupyterlab-pierre-light", specifier = ">=0.1.1" },
     { name = "jupyterlab-quickopen", specifier = ">=2.3.0" },
     { name = "jupyterlab-search-replace", specifier = ">=1.1.3" },
     { name = "jupyterlab-vim", specifier = ">=4.1.4" },
