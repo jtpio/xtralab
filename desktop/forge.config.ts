@@ -51,7 +51,10 @@ const config: ForgeConfig = {
             // Local self-signed build: skip the Apple timestamp server (a
             // network round-trip per file) and hardened runtime (the latter is
             // a notarization requirement, not needed here).
-            optionsForFile: () => ({ hardenedRuntime: false, timestamp: 'none' })
+            optionsForFile: () => ({
+              hardenedRuntime: false,
+              timestamp: 'none'
+            })
           }
         }
       : {}),
