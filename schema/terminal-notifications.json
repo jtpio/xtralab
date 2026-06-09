@@ -1,0 +1,21 @@
+{
+  "title": "xtralab terminal notifications",
+  "description": "Desktop notifications from coding agents running in xtralab terminals.",
+  "jupyter.lab.shortcuts": [],
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Enable terminal notifications",
+      "description": "When true, a desktop notification is shown when a program in a terminal asks for one (the iTerm2/Ghostty OSC sequences or the bell) — for example when a coding agent finishes or needs input. Notifications are suppressed while you are looking at that terminal.",
+      "default": true
+    },
+    "notifyOnBell": {
+      "type": "boolean",
+      "title": "Notify on the terminal bell",
+      "description": "When true, a plain terminal bell also raises a notification. The richer OSC 9 / OSC 777 sequences are always handled; disable this if the bell alone proves too noisy.",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}
