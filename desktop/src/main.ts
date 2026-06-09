@@ -103,6 +103,10 @@ const launcherMinContentWidth = 560;
 const launcherMinContentHeight = 480;
 const labSessions = new Map<number, LabSession>();
 const pendingSupervisors = new Set<SupervisorHandle>();
+// Lab windows share this identifier so macOS follows the user's "Prefer tabs
+// when opening documents" setting when grouping them, and so the Window menu
+// and tab bar can merge or split them on demand.
+const labWindowTabbingIdentifier = 'xtralab-project';
 
 let launcherWindow: BrowserWindow | null = null;
 let logStream: WriteStream | null = null;
@@ -257,10 +261,28 @@ function configureApplicationMenu(): void {
       ]
     },
     {
-      label: 'Window',
+      role: 'windowMenu',
       submenu:
         process.platform === 'darwin'
-          ? [{ role: 'minimize' }, { role: 'zoom' }, { role: 'front' }]
+          ? [
+              { role: 'minimize' },
+              { role: 'zoom' },
+              { type: 'separator' },
+              {
+                role: 'selectPreviousTab',
+                label: 'Show Previous Tab',
+                accelerator: 'Control+Shift+Tab'
+              },
+              {
+                role: 'selectNextTab',
+                label: 'Show Next Tab',
+                accelerator: 'Control+Tab'
+              },
+              { role: 'moveTabToNewWindow', label: 'Move Tab to New Window' },
+              { role: 'mergeAllWindows', label: 'Merge All Windows' },
+              { type: 'separator' },
+              { role: 'front' }
+            ]
           : [{ role: 'minimize' }, { role: 'close' }]
     },
     {
@@ -1221,6 +1243,7 @@ function createLabWindow(
     show: false,
     backgroundColor: '#111111',
     icon: getPngIconPath(),
+    tabbingIdentifier: labWindowTabbingIdentifier,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -1310,6 +1333,13 @@ function createLabWindow(
   window.once('ready-to-show', () => {
     windowEverShown = true;
     window.show();
+  });
+
+  // The native macOS "+" in the tab bar opens the launcher to pick a folder.
+  // The button appears because the window sets a tabbingIdentifier; AppKit
+  // expects this handler to open a window.
+  window.on('new-window-for-tab', () => {
+    showLauncherWindow();
   });
 
   window.on('closed', () => {
