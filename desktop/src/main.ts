@@ -25,6 +25,7 @@ import {
   Menu,
   nativeImage,
   nativeTheme,
+  Notification,
   shell,
   type IpcMainInvokeEvent,
   type MenuItemConstructorOptions
@@ -454,6 +455,34 @@ function registerIpcHandlers(): void {
   ipcMain.handle('xtralab:show-logs', async () => {
     await shell.openPath(getLogsDir());
   });
+  ipcMain.handle(
+    'xtralab:notify',
+    (
+      event: IpcMainInvokeEvent,
+      title: unknown,
+      body: unknown,
+      session: unknown
+    ) => {
+      if (typeof title !== 'string' || typeof body !== 'string') {
+        return;
+      }
+      const senderWindow = BrowserWindow.fromWebContents(event.sender);
+      // Only a live lab window may post, and only within a rate limit: the
+      // renderer throttle is bypassable by any script on the page.
+      if (senderWindow === null || !labSessions.has(senderWindow.id)) {
+        return;
+      }
+      if (!allowNotification(senderWindow.id)) {
+        return;
+      }
+      deliverDesktopNotification(
+        title,
+        body,
+        senderWindow,
+        typeof session === 'string' ? session : null
+      );
+    }
+  );
   ipcMain.handle('xtralab:open-folder-dialog', async event => {
     return prepareFolderFromDialog(BrowserWindow.fromWebContents(event.sender));
   });
@@ -519,6 +548,153 @@ function registerIpcHandlers(): void {
       );
     }
   );
+}
+
+// Recent notification timestamps per lab-window id, consulted by
+// `allowNotification`. Pruned when a lab window closes.
+const notificationTimestamps = new Map<number, number[]>();
+const NOTIFICATION_RATE_WINDOW_MS = 10_000;
+const NOTIFICATION_RATE_MAX = 6;
+
+// Sliding-window rate limit per window. The renderer already throttles per
+// terminal, so this only trips on a runaway loop or a direct bridge caller.
+function allowNotification(windowId: number): boolean {
+  const now = Date.now();
+  const recent = (notificationTimestamps.get(windowId) ?? []).filter(
+    timestamp => now - timestamp < NOTIFICATION_RATE_WINDOW_MS
+  );
+  if (recent.length >= NOTIFICATION_RATE_MAX) {
+    notificationTimestamps.set(windowId, recent);
+    return false;
+  }
+  recent.push(now);
+  notificationTimestamps.set(windowId, recent);
+  return true;
+}
+
+// Whether the running app bundle carries a real (non-ad-hoc) code signature.
+// macOS only delivers native notifications from a stably-signed bundle, so this
+// decides between the native Notification and the osascript fallback. codesign
+// is a subprocess, so the result is cached.
+let cachedAppSigned: boolean | null = null;
+function isAppProperlySigned(): boolean {
+  if (cachedAppSigned !== null) {
+    return cachedAppSigned;
+  }
+  cachedAppSigned = false;
+  try {
+    // process.execPath is <app>.app/Contents/MacOS/<exe>; the bundle is 3 up.
+    const bundlePath = path.resolve(process.execPath, '..', '..', '..');
+    const result = spawnSync('codesign', ['-dvv', bundlePath], {
+      encoding: 'utf8',
+      timeout: 5000
+    });
+    const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+    cachedAppSigned =
+      result.status === 0 &&
+      /Authority=/.test(output) &&
+      !/Signature=adhoc/.test(output);
+  } catch {
+    cachedAppSigned = false;
+  }
+  return cachedAppSigned;
+}
+
+// Deliver a desktop notification forwarded from a terminal.
+//
+// macOS only delivers a native Notification from a real (non-ad-hoc) signature;
+// an unsigned bundle is silently dropped. So a signed packaged build (Developer
+// ID, or a self-signed cert) uses the native Notification (xtralab's icon and
+// click-to-focus), while everything else on macOS (`pnpm dev`, or an unsigned
+// release) falls back to `osascript`, which always delivers but carries no click
+// action. Linux/Windows always use native.
+function deliverDesktopNotification(
+  rawTitle: string,
+  rawBody: string,
+  senderWindow: BrowserWindow | null,
+  session: string | null
+): void {
+  const title = sanitizeNotificationText(rawTitle);
+  const body = sanitizeNotificationText(rawBody);
+  const useOsascript =
+    process.platform === 'darwin' && !(app.isPackaged && isAppProperlySigned());
+
+  if (useOsascript) {
+    // `display notification` needs body text (the title is only the secondary
+    // line), so fold a body-less notification down into the body. This is an
+    // AppleScript requirement, so it stays scoped to the osascript path.
+    let osaTitle = title;
+    let osaBody = body;
+    if (osaBody.length === 0) {
+      osaBody = osaTitle || app.getName();
+      osaTitle = app.getName();
+    }
+    if (osaTitle.length === 0) {
+      osaTitle = app.getName();
+    }
+
+    // Pass the strings as AppleScript arguments (`on run argv`) instead of
+    // interpolating them into the script source, so a title/body containing
+    // quotes or backslashes can neither break the script nor inject into it.
+    const child = spawn(
+      'osascript',
+      [
+        '-e',
+        'on run argv',
+        '-e',
+        'display notification (item 2 of argv) with title (item 1 of argv)',
+        '-e',
+        'end run',
+        '--',
+        osaTitle,
+        osaBody
+      ],
+      { stdio: 'ignore' }
+    );
+    child.on('error', error => {
+      log(
+        `Unable to deliver notification via osascript: ${formatError(error)}`
+      );
+    });
+    child.unref();
+    return;
+  }
+
+  if (!Notification.isSupported()) {
+    return;
+  }
+  // Native notifications allow an empty body (the title shows alone), so no
+  // folding is needed here.
+  const notification = new Notification({
+    title: title || app.getName(),
+    body
+  });
+  notification.on('click', () => {
+    if (senderWindow !== null && !senderWindow.isDestroyed()) {
+      if (senderWindow.isMinimized()) {
+        senderWindow.restore();
+      }
+      senderWindow.focus();
+      // Activate the terminal that fired this notification, not just the window.
+      if (session !== null) {
+        senderWindow.webContents.send('xtralab:focus-terminal', session);
+      }
+    }
+  });
+  notification.show();
+}
+
+function sanitizeNotificationText(value: string): string {
+  // Drop control characters (so a notification can't carry terminal escape
+  // sequences), collapse whitespace, and clamp the length so a runaway message
+  // can't flood Notification Center.
+  let result = '';
+  for (const char of value) {
+    const code = char.codePointAt(0) ?? 0;
+    const isControl = code < 0x20 || (code >= 0x7f && code <= 0x9f);
+    result += isControl ? ' ' : char;
+  }
+  return result.replace(/\s+/g, ' ').trim().slice(0, 256);
 }
 
 function showLauncherWindow(): void {
@@ -1077,6 +1253,13 @@ function getSupervisorEnvironment(
   clearInheritedPythonEnvironment(environment);
   environment.VIRTUAL_ENV = managedEnvironment.envDir;
 
+  // Advertise an iTerm2-class terminal so coding agents (Claude Code, Codex, …)
+  // take their OSC 9 notification path on the default `auto` setting; without a
+  // recognized TERM_PROGRAM they emit nothing. The renderer intercepts the OSC 9
+  // and forwards it to the OS. TERM stays xterm-256color (what real iTerm2 uses).
+  environment.TERM_PROGRAM = 'iTerm.app';
+  environment.TERM_PROGRAM_VERSION = '3.5.0';
+
   const jupyterStateRoot = path.join(app.getPath('userData'), 'jupyter');
   const jupyterDataDir = path.join(jupyterStateRoot, 'data');
   const jupyterConfigDir = path.join(jupyterStateRoot, 'config');
@@ -1245,6 +1428,7 @@ function createLabWindow(
     icon: getPngIconPath(),
     tabbingIdentifier: labWindowTabbingIdentifier,
     webPreferences: {
+      preload: getLabPreloadPath(),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
@@ -1346,6 +1530,7 @@ function createLabWindow(
     sessionAborted = true;
     const session = labSessions.get(window.id);
     labSessions.delete(window.id);
+    notificationTimestamps.delete(window.id);
     if (session !== undefined && !quitInProgress) {
       void session.supervisor.stop();
     }
@@ -1727,6 +1912,10 @@ function getLauncherHtmlPath(): string {
 
 function getPreloadPath(): string {
   return path.join(__dirname, 'preload.js');
+}
+
+function getLabPreloadPath(): string {
+  return path.join(__dirname, 'preload-lab.js');
 }
 
 function getPngIconPath(): string {

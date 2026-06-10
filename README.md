@@ -34,6 +34,23 @@ from `main` are uploaded as workflow artifacts on the
 [CONTRIBUTING.md](./CONTRIBUTING.md) for the desktop app architecture and local
 build instructions.
 
+On macOS the build is not notarized yet (it has no Apple Developer ID), so
+Gatekeeper blocks it on first launch, and agent notifications fall back to
+`osascript`, appearing as "Script Editor". In the meantime you can self-sign it
+for free: this lets it launch and gives native notifications instead, branded as
+xtralab and clickable to jump to the terminal that fired them. Create a
+code-signing certificate once in Keychain Access (Certificate Assistant, Create
+a Certificate, with Identity Type "Self Signed Root" and Certificate Type "Code
+Signing") named `xtralab-selfsign`, then sign the app you copied out of the DMG:
+
+```bash
+codesign --force --deep --sign "xtralab-selfsign" --timestamp=none "/Applications/xtralab.app"
+xattr -dr com.apple.quarantine "/Applications/xtralab.app"
+```
+
+macOS prompts once to let `codesign` use the key; choose Always Allow. None of
+this will be needed once the app ships with a Developer ID signature.
+
 ## What's included
 
 xtralab builds on [`ajlab`](https://github.com/jtpio/ajlab), the agent-ready

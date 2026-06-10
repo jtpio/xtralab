@@ -16,6 +16,12 @@ const appBundleId = isDev
   ? 'io.github.jtpio.xtralab.dev'
   : 'io.github.jtpio.xtralab';
 
+// Optional macOS code-signing identity (a Keychain certificate name). When set,
+// the packaged app is signed with it: a Developer ID, or a self-signed cert for
+// personal use. A stable signature is what lets native (clickable) notifications
+// register; an unsigned build falls back to osascript.
+const signIdentity = process.env.XTRALAB_SIGN_IDENTITY;
+
 const config: ForgeConfig = {
   packagerConfig: {
     name: productName,
@@ -25,6 +31,28 @@ const config: ForgeConfig = {
     icon: './assets/jupyter',
     asar: true,
     extraResource: ['python/runtime'],
+    ...(signIdentity
+      ? {
+          osxSign: {
+            identity: signIdentity,
+            // Let a self-signed cert (flagged CSSMERR_TP_NOT_TRUSTED) sign
+            // directly; codesign signs with it regardless, only verification
+            // needs trust.
+            identityValidation: false,
+            // Skip the bundled Python runtime: only the app shell needs a
+            // signature to register for notifications, and the runtime is a
+            // subprocess with its own signatures.
+            ignore: (file: string) =>
+              file.includes('/Contents/Resources/runtime/'),
+            // Skip the Apple timestamp server (a network round-trip per file)
+            // and hardened runtime; both are only needed for notarization.
+            optionsForFile: () => ({
+              hardenedRuntime: false,
+              timestamp: 'none'
+            })
+          }
+        }
+      : {}),
     ignore: [
       /^\/out($|\/)/,
       /^\/forge\.config\.(ts|js)$/,

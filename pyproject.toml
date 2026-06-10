@@ -110,6 +110,14 @@ build_dir = "xtralab/labextension"
 [tool.uv]
 prerelease = "allow"
 
+[tool.jupyter-releaser]
+# Skip check-npm: it runs a fresh `npm install` on the built tarball (no
+# lockfile), so a floating dependency range can pull a broken upstream release
+# (e.g. @pierre/diffs 1.2.9 requiring the unpublished @pierre/theming). Our
+# builds are reproducible from pnpm-lock.yaml, but a published package can't ship
+# that lock. Revisit if the npm package must install standalone.
+skip = ["check-npm"]
+
 [tool.jupyter-releaser.options]
 version_cmd = "hatch version"
 

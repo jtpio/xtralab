@@ -9,6 +9,7 @@ import gitPlugins from './git';
 import launcherPlugins from './launcher';
 import menusPlugin from './menus';
 import sidebarPlugin from './sidebar';
+import terminalNotificationsPlugin from './terminalNotifications';
 import terminalsPlugin from './terminals';
 import topBarPlugin from './topBar';
 
@@ -31,6 +32,7 @@ const plugins: JupyterFrontEndPlugin<unknown>[] = [
   ...launcherPlugins,
   menusPlugin,
   sidebarPlugin,
+  terminalNotificationsPlugin,
   terminalsPlugin,
   topBarPlugin
 ];
