@@ -648,9 +648,10 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     [leftPercent]
   );
 
-  // Options shared by the read-only and editable file-diff renders. Memoized
-  // so the editable subtree only re-hydrates the underlying editor when the
-  // layout or theme actually changes.
+  // Options shared by the read-only and editable file-diff renders. A stable
+  // identity lets the library short-circuit its option-equality check on
+  // unrelated re-renders; the editable session captures the mount-time value
+  // for its whole lifetime.
   const fileDiffOptions = React.useMemo<FileDiffOptions<IHunkActionAnnotation>>(
     () => ({
       diffStyle,
@@ -746,8 +747,8 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
           ) : showFileDiff && metadata !== null ? (
             effectiveEditing && edit !== undefined ? (
               <EditableFileDiff
-                fileDiff={metadata}
-                options={fileDiffOptions}
+                initialFileDiff={metadata}
+                initialOptions={fileDiffOptions}
                 hostStyle={hostStyle}
                 initialText={newText}
                 save={edit.save}
@@ -807,33 +808,38 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
  * re-hydrate it mid-edit.
  */
 function EditableFileDiff(props: {
-  fileDiff: FileDiffMetadata;
-  options: FileDiffOptions<IHunkActionAnnotation>;
+  initialFileDiff: FileDiffMetadata;
+  initialOptions: FileDiffOptions<IHunkActionAnnotation>;
   hostStyle: React.CSSProperties;
   initialText: string;
   save: (fullText: string) => Promise<void>;
   onSaved?: (fullText: string) => void;
 }): React.ReactElement {
-  const { fileDiff, options, hostStyle, initialText, save, onSaved } = props;
+  const {
+    initialFileDiff,
+    initialOptions,
+    hostStyle,
+    initialText,
+    save,
+    onSaved
+  } = props;
 
   // The diff is frozen to its mount-time snapshot: the editor takes over live
-  // rendering of edits, and the host re-deriving `fileDiff` from newly-saved
-  // text must not re-hydrate it. The initial on-disk text is the save baseline.
-  const fileDiffRef = React.useRef(fileDiff);
-  // Options are frozen for the session too. A diffStyle/theme change would
-  // otherwise force the library to repaint from the frozen snapshot while the
-  // editor is attached, desyncing the view from the live document — so the host
-  // hides the layout toggle while editing, and theme changes apply on exit.
-  const optionsRef = React.useRef(options);
+  // rendering of edits, and the host re-deriving the diff from newly-saved
+  // text must not re-hydrate it. Options are frozen for the session too — a
+  // diffStyle/theme change would otherwise force the library to repaint from
+  // the frozen snapshot while the editor is attached, desyncing the view from
+  // the live document — so the host hides the layout toggle while editing,
+  // and theme changes apply on exit.
+  const [fileDiff] = React.useState(initialFileDiff);
+  const [options] = React.useState(initialOptions);
 
   // The text currently in the editor and the text last *confirmed* on disk.
-  // Held in refs so neither typing nor save bookkeeping re-renders this widget.
+  // Held in refs so neither typing nor save bookkeeping re-renders this
+  // widget. The initial on-disk text is the save baseline.
   const latestTextRef = React.useRef(initialText);
   const savedTextRef = React.useRef(initialText);
 
-  // Whether this session is still mounted, so callbacks that outlive it (a
-  // pending onChange, an in-flight save) skip state updates but still persist.
-  const mountedRef = React.useRef(true);
   // Guards the single-flight save loop in `persist`.
   const savingRef = React.useRef(false);
 
@@ -847,24 +853,13 @@ function EditableFileDiff(props: {
   }, [save, onSaved]);
 
   const [saveState, setSaveState] = React.useState<EditSaveState>('idle');
-  // Mirror of `saveState` for async/closure reads, and so post-unmount updates
-  // are cheaply skipped.
-  const saveStateRef = React.useRef<EditSaveState>('idle');
-  const applySaveState = React.useCallback((next: EditSaveState) => {
-    if (saveStateRef.current === next) {
-      return;
-    }
-    saveStateRef.current = next;
-    if (mountedRef.current) {
-      setSaveState(next);
-    }
-  }, []);
 
   // Persist edits to disk, single-flight: at most one save runs at a time and
   // the loop drains to the latest text, so writes can never overlap or land
   // out of order. The on-disk baseline (and the host's, via onSaved) only
   // advances for text a write actually confirmed, so a failed save never reads
-  // back as saved.
+  // back as saved. Stable, so the once-created editor and the teardown flush
+  // call it directly; its state updates after unmount are React no-ops.
   const persist = React.useCallback(async () => {
     if (savingRef.current) {
       return;
@@ -874,12 +869,12 @@ function EditableFileDiff(props: {
       let didSave = false;
       while (latestTextRef.current !== savedTextRef.current) {
         const text = latestTextRef.current;
-        applySaveState('saving');
+        setSaveState('saving');
         try {
           await saveRef.current(text);
         } catch (err) {
           console.error('xtralab: failed to save edited file', err);
-          applySaveState('error');
+          setSaveState('error');
           return;
         }
         savedTextRef.current = text;
@@ -887,24 +882,18 @@ function EditableFileDiff(props: {
         didSave = true;
       }
       if (didSave) {
-        applySaveState('saved');
+        setSaveState('saved');
       }
     } finally {
       savingRef.current = false;
     }
-  }, [applySaveState]);
-
-  // Stable handle to `persist` for closures created once (the editor) or that
-  // outlive the latest render.
-  const persistRef = React.useRef(persist);
-  React.useEffect(() => {
-    persistRef.current = persist;
-  }, [persist]);
+  }, []);
 
   // One editor per session, created lazily so it survives status re-renders.
   // The library already debounces onChange (~500ms), so each call is a settled
-  // edit we can persist directly. `file.contents` is a getter over the live
-  // document; reading it can throw once the editor is torn down, so guard it.
+  // edit we can persist directly. `file.contents` lazily reads the library's
+  // document; if that ever fails there is nothing readable to persist, so skip
+  // rather than let the error escape into the library's debounce timer.
   const [editor] = React.useState(
     () =>
       new Editor<IHunkActionAnnotation>({
@@ -921,11 +910,11 @@ function EditableFileDiff(props: {
             // Don't override a save still draining — its loop settles state,
             // and may still need a corrective write back to this content.
             if (!savingRef.current) {
-              applySaveState('idle');
+              setSaveState('idle');
             }
             return;
           }
-          void persistRef.current();
+          void persist();
         }
       })
   );
@@ -933,15 +922,13 @@ function EditableFileDiff(props: {
   // On teardown (toggle off, file swap, tab close): flush whatever the last
   // onChange delivered, then drop the editor. The library does not cancel its
   // pending onChange debounce on cleanUp and the contents getter stays valid,
-  // so a final onChange can still fire afterwards and persist the last edits;
-  // the mounted guard keeps that from touching unmounted React state.
+  // so a final onChange can still fire afterwards and persist the last edits.
   React.useEffect(() => {
     return () => {
-      mountedRef.current = false;
-      void persistRef.current();
+      void persist();
       editor.cleanUp();
     };
-  }, [editor]);
+  }, [editor, persist]);
 
   // Let the "Saved" confirmation fade back to the steady state on its own; a
   // persistent badge would just be noise once the write has landed.
@@ -949,9 +936,9 @@ function EditableFileDiff(props: {
     if (saveState !== 'saved') {
       return;
     }
-    const timer = setTimeout(() => applySaveState('idle'), 1500);
+    const timer = setTimeout(() => setSaveState('idle'), 1500);
     return () => clearTimeout(timer);
-  }, [saveState, applySaveState]);
+  }, [saveState]);
 
   // Ctrl/Cmd+S persists immediately. Together with `data-lm-suppress-shortcuts`
   // below — which makes Lumino skip its own keybindings for events from here,
@@ -962,30 +949,31 @@ function EditableFileDiff(props: {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
         event.preventDefault();
         event.stopPropagation();
-        void persistRef.current();
+        void persist();
       }
     },
-    []
+    [persist]
   );
 
-  // Memoized off the frozen snapshot so only a layout/theme change re-renders
-  // the editor; status and host-baseline updates leave it untouched.
+  // Memoized so only a split-resize (a hostStyle change) re-renders the
+  // library component — which then early-returns off the unchanged snapshot —
+  // while status and host-baseline updates leave it untouched.
   const diffElement = React.useMemo(
     () => (
       <EditorProvider editor={editor}>
         <FileDiff<IHunkActionAnnotation>
-          fileDiff={fileDiffRef.current}
+          fileDiff={fileDiff}
           contentEditable={true}
           // As in the read-only render, the worker pool can't bootstrap under
           // JupyterLab's federation, so the editor tokenizes on the main
           // thread.
           disableWorkerPool={true}
           style={hostStyle}
-          options={optionsRef.current}
+          options={options}
         />
       </EditorProvider>
     ),
-    [editor, hostStyle]
+    [editor, fileDiff, options, hostStyle]
   );
 
   return (
@@ -1198,24 +1186,18 @@ export function EditModeControl(props: {
     return <></>;
   }
   return (
-    <div
-      className="jp-xtralab-DiffWidget-editToggle"
-      role="group"
-      aria-label="Edit file"
-    >
-      <div className="jp-xtralab-DiffWidget-segmented">
-        <button
-          type="button"
-          aria-pressed={editing}
-          data-active={editing}
-          className="jp-xtralab-DiffWidget-segmentedButton jp-xtralab-DiffWidget-segmentedButton-icon"
-          title={editing ? 'Done editing' : 'Edit the file directly'}
-          aria-label={editing ? 'Done editing' : 'Edit the file directly'}
-          onClick={() => onChange(!editing)}
-        >
-          <EditModeIcon />
-        </button>
-      </div>
+    <div className="jp-xtralab-DiffWidget-segmented">
+      <button
+        type="button"
+        aria-pressed={editing}
+        data-active={editing}
+        className="jp-xtralab-DiffWidget-segmentedButton jp-xtralab-DiffWidget-segmentedButton-icon"
+        title={editing ? 'Done editing' : 'Edit the file directly'}
+        aria-label={editing ? 'Done editing' : 'Edit the file directly'}
+        onClick={() => onChange(!editing)}
+      >
+        <EditModeIcon />
+      </button>
     </div>
   );
 }

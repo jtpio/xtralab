@@ -507,22 +507,29 @@ function ModelDiffView(props: {
     [model.repositoryPath, model.filename]
   );
 
+  // Both hunk discard and direct editing persist by rewriting the whole
+  // working-tree file through the contents API.
+  const saveWorkingFile = React.useCallback(
+    async (text: string) => {
+      await contentsManager.save(serverPath, {
+        type: 'file',
+        format: 'text',
+        content: text
+      });
+    },
+    [contentsManager, serverPath]
+  );
+
   const hunkDiscard = React.useMemo(
     () => ({
       enabled: canDiscardHunk,
-      save: async (text: string) => {
-        await contentsManager.save(serverPath, {
-          type: 'file',
-          format: 'text',
-          content: text
-        });
-      },
+      save: saveWorkingFile,
       onAfterSave: () => {
         // Re-pull so the diff reflects the reverted hunk.
         void widget.refresh();
       }
     }),
-    [canDiscardHunk, contentsManager, serverPath, widget]
+    [canDiscardHunk, saveWorkingFile, widget]
   );
 
   const handleLineAsk = React.useMemo(() => {
@@ -558,11 +565,7 @@ function ModelDiffView(props: {
         // Persist without re-pulling: the editor owns the live view during a
         // session, and a reload would discard the cursor and in-flight edit.
         try {
-          await contentsManager.save(serverPath, {
-            type: 'file',
-            format: 'text',
-            content: text
-          });
+          await saveWorkingFile(text);
         } catch (err) {
           // Surface failures — including tail saves that land after the session
           // ended, when the inline indicator is already gone — so a failed
@@ -589,7 +592,7 @@ function ModelDiffView(props: {
         );
       }
     }),
-    [canEdit, contentsManager, serverPath, widget, model]
+    [canEdit, saveWorkingFile, widget, model]
   );
 
   return (
