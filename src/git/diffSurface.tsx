@@ -4,13 +4,15 @@ import { IThemeManager } from '@jupyterlab/apputils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import type { TranslationBundle } from '@jupyterlab/translation';
 import { undoIcon } from '@jupyterlab/ui-components';
-import { FileDiff } from '@pierre/diffs/react';
+import { EditorProvider, FileDiff } from '@pierre/diffs/react';
+import { Editor } from '@pierre/diffs/editor';
 import {
   diffAcceptRejectHunk,
   parseDiffFromFile,
   type DiffLineAnnotation,
   type FileContents,
   type FileDiffMetadata,
+  type FileDiffOptions,
   type SelectedLineRange
 } from '@pierre/diffs';
 
@@ -205,6 +207,38 @@ interface IHunkDiscard {
   onAfterSave: () => void;
 }
 
+/**
+ * Optional direct-editing wiring. When supplied and {@link IDiffEdit.canEdit}
+ * holds, the new (additions) side of the textual diff becomes an in-place
+ * editor: edits autosave to the working-tree file through {@link IDiffEdit.save}
+ * (the host owns the on-disk path), and {@link IDiffEdit.onSaved} reports the
+ * text after each confirmed write so the host can keep the read-only baseline
+ * in sync without a server round-trip.
+ */
+export interface IDiffEdit {
+  /**
+   * Whether the new side maps to a savable working-tree text file. Editing is
+   * only offered when this holds (e.g. not for staged/index or binary diffs).
+   */
+  canEdit: boolean;
+  /**
+   * Persist the full edited text to disk. Must not trigger a diff reload — the
+   * editor owns the live view while a session is active.
+   */
+  save: (fullText: string) => Promise<void>;
+  /**
+   * Called with the full text after each *confirmed* disk write (a failed save
+   * never advances it). The host adopts it as the read-only baseline so that
+   * view tracks disk both during and after the session.
+   */
+  onSaved?: (fullText: string) => void;
+}
+
+/**
+ * Live save state surfaced to the user while an edit session is active.
+ */
+type EditSaveState = 'idle' | 'saving' | 'saved' | 'error';
+
 interface IDiffSurfaceProps {
   /**
    * Whether the host is still resolving the file contents.
@@ -289,6 +323,21 @@ interface IDiffSurfaceProps {
    */
   onLineAsk?: (range: SelectedLineRange, anchor: DOMRect | null) => void;
   /**
+   * Whether the host has the edit toggle switched on. Only takes effect while
+   * the editable file diff is the active view (see {@link IDiffEdit.canEdit}
+   * and {@link onEditActiveChange}).
+   */
+  editing?: boolean;
+  /**
+   * Optional direct-editing wiring; omit for a non-editable diff.
+   */
+  edit?: IDiffEdit;
+  /**
+   * Called whenever the diff becomes (un)editable, so the host can show/hide
+   * its Edit toggle. True only for a working-tree textual/code file diff.
+   */
+  onEditActiveChange?: (active: boolean) => void;
+  /**
    * Translation bundle for user-facing strings.
    */
   trans: TranslationBundle;
@@ -316,6 +365,9 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     onMetadataChange,
     hunkDiscard,
     onLineAsk,
+    editing,
+    edit,
+    onEditActiveChange,
     trans
   } = props;
 
@@ -380,6 +432,19 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
   React.useEffect(() => {
     onFileDiffActiveChange?.(showFileDiff);
   }, [onFileDiffActiveChange, showFileDiff]);
+
+  // Editing applies only to a working-tree textual/code file diff: not the
+  // rendered notebook view, and not a notebook's raw JSON (editing nbformat by
+  // hand is too easy to corrupt), and only when the host wired a save path.
+  const editActive =
+    edit?.canEdit === true && showFileDiff && !isNotebookPath(newName);
+
+  React.useEffect(() => {
+    onEditActiveChange?.(editActive);
+  }, [onEditActiveChange, editActive]);
+
+  // The toggle only does anything while the file is actually editable.
+  const effectiveEditing = editActive && editing === true;
 
   // Split ratio for the diff columns: fraction of width given to the
   // deletions (left) pane. Persisted across sessions so the user only
@@ -567,6 +632,61 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     []
   );
 
+  // Fraction of width given to the deletions (left) pane, expressed as a
+  // percentage for both the shadow-root column override and the resizer.
+  const leftPercent = leftRatio * 100;
+
+  // Custom property the library's shadow-root rule consumes via
+  // `var(--xtralab-split-cols, …)` (see SPLIT_RESIZE_CSS) to recompute the
+  // column tracks instantly. Memoized so its identity only changes on resize,
+  // which keeps the editable diff subtree (below) from re-rendering needlessly.
+  const hostStyle = React.useMemo<React.CSSProperties>(
+    () =>
+      ({
+        '--xtralab-split-cols': `${leftPercent}% ${100 - leftPercent}%`
+      }) as React.CSSProperties,
+    [leftPercent]
+  );
+
+  // Options shared by the read-only and editable file-diff renders. Memoized
+  // so the editable subtree only re-hydrates the underlying editor when the
+  // layout or theme actually changes.
+  const fileDiffOptions = React.useMemo<FileDiffOptions<IHunkActionAnnotation>>(
+    () => ({
+      diffStyle,
+      // Drop the file header — the tab title already shows the file name and
+      // the panel header carries the change context.
+      disableFileHeader: true,
+      theme: resolveDiffTheme(dark, pierreTheme),
+      themeType: dark ? 'dark' : 'light',
+      // Inject the column-resize override into the shadow root via the
+      // library's `@layer unsafe` channel. Keeping the string constant lets
+      // the library short-circuit its re-render path when this is unchanged.
+      unsafeCSS: SPLIT_RESIZE_CSS
+    }),
+    [diffStyle, dark, pierreTheme]
+  );
+
+  // The read-only render additionally wires line selection + the gutter "+"
+  // button that feed the ask-agent popup; only when a handler exists so a
+  // plain diff keeps its passive gutter. Kept out of the shared options so an
+  // editable session (which freezes its options at mount) never captures it.
+  const readOnlyFileDiffOptions = React.useMemo<
+    FileDiffOptions<IHunkActionAnnotation>
+  >(
+    () => ({
+      ...fileDiffOptions,
+      ...(onLineAsk !== undefined
+        ? {
+            enableLineSelection: true,
+            enableGutterUtility: true,
+            onGutterUtilityClick: handleGutterUtilityClick
+          }
+        : {})
+    }),
+    [fileDiffOptions, onLineAsk, handleGutterUtilityClick]
+  );
+
   if (loading) {
     return (
       <div className="jp-xtralab-DiffWidget-status">
@@ -611,15 +731,6 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     );
   }
 
-  // Custom property set on the diffs-container host. The library's
-  // shadow-root rule consumes it via `var(--xtralab-split-cols, …)` (see
-  // SPLIT_RESIZE_CSS) and recomputes the column tracks instantly. Only
-  // relevant in the file-diff path; the notebook view doesn't use it.
-  const leftPercent = leftRatio * 100;
-  const hostStyle = {
-    '--xtralab-split-cols': `${leftPercent}% ${100 - leftPercent}%`
-  } as React.CSSProperties;
-
   return (
     <div className="jp-xtralab-DiffWidget-content">
       <div ref={wrapperRef} className="jp-xtralab-DiffWidget-body">
@@ -633,44 +744,31 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
               trans={trans}
             />
           ) : showFileDiff && metadata !== null ? (
-            <FileDiff<IHunkActionAnnotation>
-              fileDiff={metadata}
-              lineAnnotations={lineAnnotations}
-              renderAnnotation={renderAnnotation}
-              style={hostStyle}
-              // Disable the worker pool: JupyterLab's webpack federation
-              // pipeline doesn't ship the library's
-              // `@pierre/diffs/worker/worker.js` file at a URL the worker
-              // bootstrap can resolve from, so leaving the pool enabled
-              // crashes on instantiation. Running on the main thread is
-              // fine for the small files git diffs typically operate on.
-              disableWorkerPool={true}
-              options={{
-                diffStyle,
-                // Drop the file header — the tab title already shows the
-                // file name and the panel header carries the change
-                // context.
-                disableFileHeader: true,
-                theme: resolveDiffTheme(dark, pierreTheme),
-                themeType: dark ? 'dark' : 'light',
-                // Inject the column-resize override into the shadow root
-                // via the library's `@layer unsafe` channel. Keeping the
-                // string constant lets the library short-circuit the
-                // re-render path it uses when this option actually
-                // changes.
-                unsafeCSS: SPLIT_RESIZE_CSS,
-                // Line selection + the gutter "+" button feed the
-                // ask-agent popup; only wired up when a handler exists so
-                // a plain diff keeps its passive gutter.
-                ...(onLineAsk !== undefined
-                  ? {
-                      enableLineSelection: true,
-                      enableGutterUtility: true,
-                      onGutterUtilityClick: handleGutterUtilityClick
-                    }
-                  : {})
-              }}
-            />
+            effectiveEditing && edit !== undefined ? (
+              <EditableFileDiff
+                fileDiff={metadata}
+                options={fileDiffOptions}
+                hostStyle={hostStyle}
+                initialText={newText}
+                save={edit.save}
+                onSaved={edit.onSaved}
+              />
+            ) : (
+              <FileDiff<IHunkActionAnnotation>
+                fileDiff={metadata}
+                lineAnnotations={lineAnnotations}
+                renderAnnotation={renderAnnotation}
+                style={hostStyle}
+                // Disable the worker pool: JupyterLab's webpack federation
+                // pipeline doesn't ship the library's
+                // `@pierre/diffs/worker/worker.js` file at a URL the worker
+                // bootstrap can resolve from, so leaving the pool enabled
+                // crashes on instantiation. Running on the main thread is
+                // fine for the small files git diffs typically operate on.
+                disableWorkerPool={true}
+                options={readOnlyFileDiffOptions}
+              />
+            )
           ) : null}
         </div>
         {showFileDiff && diffStyle === 'split' ? (
@@ -693,6 +791,245 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
           />
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The new (additions) side of a textual file diff, rendered as an in-place
+ * editor. Wires a `@pierre/diffs` {@link Editor} into the {@link FileDiff}
+ * through {@link EditorProvider} (which the library requires whenever
+ * `contentEditable` is set) and autosaves edits to the working-tree file.
+ *
+ * The editor owns the live DOM while mounted, so the rendered diff is frozen to
+ * its mount-time snapshot and memoized: neither save-status re-renders nor the
+ * host adopting newly-saved text (which it does via {@link onSaved}) can
+ * re-hydrate it mid-edit.
+ */
+function EditableFileDiff(props: {
+  fileDiff: FileDiffMetadata;
+  options: FileDiffOptions<IHunkActionAnnotation>;
+  hostStyle: React.CSSProperties;
+  initialText: string;
+  save: (fullText: string) => Promise<void>;
+  onSaved?: (fullText: string) => void;
+}): React.ReactElement {
+  const { fileDiff, options, hostStyle, initialText, save, onSaved } = props;
+
+  // The diff is frozen to its mount-time snapshot: the editor takes over live
+  // rendering of edits, and the host re-deriving `fileDiff` from newly-saved
+  // text must not re-hydrate it. The initial on-disk text is the save baseline.
+  const fileDiffRef = React.useRef(fileDiff);
+  // Options are frozen for the session too. A diffStyle/theme change would
+  // otherwise force the library to repaint from the frozen snapshot while the
+  // editor is attached, desyncing the view from the live document — so the host
+  // hides the layout toggle while editing, and theme changes apply on exit.
+  const optionsRef = React.useRef(options);
+
+  // The text currently in the editor and the text last *confirmed* on disk.
+  // Held in refs so neither typing nor save bookkeeping re-renders this widget.
+  const latestTextRef = React.useRef(initialText);
+  const savedTextRef = React.useRef(initialText);
+
+  // Whether this session is still mounted, so callbacks that outlive it (a
+  // pending onChange, an in-flight save) skip state updates but still persist.
+  const mountedRef = React.useRef(true);
+  // Guards the single-flight save loop in `persist`.
+  const savingRef = React.useRef(false);
+
+  // Latest callbacks behind refs so the once-created editor and any callback
+  // that fires after unmount always see the current props.
+  const saveRef = React.useRef(save);
+  const onSavedRef = React.useRef(onSaved);
+  React.useEffect(() => {
+    saveRef.current = save;
+    onSavedRef.current = onSaved;
+  }, [save, onSaved]);
+
+  const [saveState, setSaveState] = React.useState<EditSaveState>('idle');
+  // Mirror of `saveState` for async/closure reads, and so post-unmount updates
+  // are cheaply skipped.
+  const saveStateRef = React.useRef<EditSaveState>('idle');
+  const applySaveState = React.useCallback((next: EditSaveState) => {
+    if (saveStateRef.current === next) {
+      return;
+    }
+    saveStateRef.current = next;
+    if (mountedRef.current) {
+      setSaveState(next);
+    }
+  }, []);
+
+  // Persist edits to disk, single-flight: at most one save runs at a time and
+  // the loop drains to the latest text, so writes can never overlap or land
+  // out of order. The on-disk baseline (and the host's, via onSaved) only
+  // advances for text a write actually confirmed, so a failed save never reads
+  // back as saved.
+  const persist = React.useCallback(async () => {
+    if (savingRef.current) {
+      return;
+    }
+    savingRef.current = true;
+    try {
+      let didSave = false;
+      while (latestTextRef.current !== savedTextRef.current) {
+        const text = latestTextRef.current;
+        applySaveState('saving');
+        try {
+          await saveRef.current(text);
+        } catch (err) {
+          console.error('xtralab: failed to save edited file', err);
+          applySaveState('error');
+          return;
+        }
+        savedTextRef.current = text;
+        onSavedRef.current?.(text);
+        didSave = true;
+      }
+      if (didSave) {
+        applySaveState('saved');
+      }
+    } finally {
+      savingRef.current = false;
+    }
+  }, [applySaveState]);
+
+  // Stable handle to `persist` for closures created once (the editor) or that
+  // outlive the latest render.
+  const persistRef = React.useRef(persist);
+  React.useEffect(() => {
+    persistRef.current = persist;
+  }, [persist]);
+
+  // One editor per session, created lazily so it survives status re-renders.
+  // The library already debounces onChange (~500ms), so each call is a settled
+  // edit we can persist directly. `file.contents` is a getter over the live
+  // document; reading it can throw once the editor is torn down, so guard it.
+  const [editor] = React.useState(
+    () =>
+      new Editor<IHunkActionAnnotation>({
+        onChange: (file: FileContents) => {
+          let contents: string;
+          try {
+            contents = file.contents;
+          } catch {
+            return;
+          }
+          latestTextRef.current = contents;
+          if (contents === savedTextRef.current) {
+            // Back in sync with disk (the attach echo, or an undo to it).
+            // Don't override a save still draining — its loop settles state,
+            // and may still need a corrective write back to this content.
+            if (!savingRef.current) {
+              applySaveState('idle');
+            }
+            return;
+          }
+          void persistRef.current();
+        }
+      })
+  );
+
+  // On teardown (toggle off, file swap, tab close): flush whatever the last
+  // onChange delivered, then drop the editor. The library does not cancel its
+  // pending onChange debounce on cleanUp and the contents getter stays valid,
+  // so a final onChange can still fire afterwards and persist the last edits;
+  // the mounted guard keeps that from touching unmounted React state.
+  React.useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      void persistRef.current();
+      editor.cleanUp();
+    };
+  }, [editor]);
+
+  // Let the "Saved" confirmation fade back to the steady state on its own; a
+  // persistent badge would just be noise once the write has landed.
+  React.useEffect(() => {
+    if (saveState !== 'saved') {
+      return;
+    }
+    const timer = setTimeout(() => applySaveState('idle'), 1500);
+    return () => clearTimeout(timer);
+  }, [saveState, applySaveState]);
+
+  // Ctrl/Cmd+S persists immediately. Together with `data-lm-suppress-shortcuts`
+  // below — which makes Lumino skip its own keybindings for events from here,
+  // so its document-level handler can't run first — this keeps the keystroke
+  // from reaching JupyterLab's save command or the browser's save dialog.
+  const handleKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        event.stopPropagation();
+        void persistRef.current();
+      }
+    },
+    []
+  );
+
+  // Memoized off the frozen snapshot so only a layout/theme change re-renders
+  // the editor; status and host-baseline updates leave it untouched.
+  const diffElement = React.useMemo(
+    () => (
+      <EditorProvider editor={editor}>
+        <FileDiff<IHunkActionAnnotation>
+          fileDiff={fileDiffRef.current}
+          contentEditable={true}
+          // As in the read-only render, the worker pool can't bootstrap under
+          // JupyterLab's federation, so the editor tokenizes on the main
+          // thread.
+          disableWorkerPool={true}
+          style={hostStyle}
+          options={optionsRef.current}
+        />
+      </EditorProvider>
+    ),
+    [editor, hostStyle]
+  );
+
+  return (
+    <div
+      className="jp-xtralab-DiffWidget-editRegion"
+      data-lm-suppress-shortcuts="true"
+      onKeyDownCapture={handleKeyDown}
+    >
+      {/* Sticky, zero-height bar so the save indicator stays pinned to the top
+          of the viewport while the file scrolls, without displacing the diff. */}
+      <div className="jp-xtralab-DiffWidget-saveStatusBar">
+        <EditSaveStatus state={saveState} />
+      </div>
+      {diffElement}
+    </div>
+  );
+}
+
+/**
+ * Small, unobtrusive save-state indicator shown while editing. Renders nothing
+ * in the steady (`idle`) state so it only appears when there is something to
+ * report.
+ */
+function EditSaveStatus(props: {
+  state: EditSaveState;
+}): React.ReactElement | null {
+  const { state } = props;
+  if (state === 'idle') {
+    return null;
+  }
+  const label =
+    state === 'saving'
+      ? 'Saving…'
+      : state === 'saved'
+        ? 'Saved'
+        : 'Save failed';
+  return (
+    <div
+      className="jp-xtralab-DiffWidget-saveStatus"
+      data-state={state}
+      role="status"
+      aria-live="polite"
+    >
+      {label}
     </div>
   );
 }
@@ -827,6 +1164,58 @@ export function DiffStyleControl(props: {
       >
         <DiffUnifiedIcon />
       </button>
+    </div>
+  );
+}
+
+/**
+ * Pencil glyph for the edit toggle, inlined in the same style as the
+ * split/unified icons so the control needs no injected sprite sheet.
+ * `currentColor` lets the segmented-button styling drive the fill.
+ */
+function EditModeIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zm.708 1.061L11.207 2.854 13.146 4.793l1.647-1.646zM12.439 5.5 10.5 3.561 4 10.061V10.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.439zm-9.263 4.323-.214.214-1.234 3.086 3.086-1.234.214-.214A.5.5 0 0 1 5 11.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.5.5 0 0 1-.5-.5z" />
+    </svg>
+  );
+}
+
+/**
+ * Edit toggle. Mirrors {@link DiffStyleControl}: the host mounts it into its
+ * own toolbar and drives value/visibility from the same state it passes to
+ * {@link DiffSurface}. Only meaningful while a working-tree textual/code file
+ * diff is the active view, so `available` mirrors the surface's
+ * `onEditActiveChange`.
+ */
+export function EditModeControl(props: {
+  editing: boolean;
+  available: boolean;
+  onChange: (editing: boolean) => void;
+}): React.ReactElement {
+  const { editing, available, onChange } = props;
+  if (!available) {
+    return <></>;
+  }
+  return (
+    <div
+      className="jp-xtralab-DiffWidget-editToggle"
+      role="group"
+      aria-label="Edit file"
+    >
+      <div className="jp-xtralab-DiffWidget-segmented">
+        <button
+          type="button"
+          aria-pressed={editing}
+          data-active={editing}
+          className="jp-xtralab-DiffWidget-segmentedButton jp-xtralab-DiffWidget-segmentedButton-icon"
+          title={editing ? 'Done editing' : 'Edit the file directly'}
+          aria-label={editing ? 'Done editing' : 'Edit the file directly'}
+          onClick={() => onChange(!editing)}
+        >
+          <EditModeIcon />
+        </button>
+      </div>
     </div>
   );
 }

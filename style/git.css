@@ -80,18 +80,18 @@
  * toggle (for textual/code diffs). The host toolbar provides its own
  * background and border, so these are just the segmented controls.
  */
+.jp-xtralab-DiffWidget-editModeToolbarItem,
 .jp-xtralab-DiffWidget-viewModeToolbarItem,
 .jp-xtralab-DiffWidget-diffStyleToolbarItem {
   display: flex;
   align-items: center;
-  font-size: var(--jp-ui-font-size0);
-}
 
-/*
- * Breathing room when both toggles appear (notebook diff in JSON view).
- */
-.jp-xtralab-DiffWidget-diffStyleToolbarItem {
+  /*
+   * Consistent gap from the preceding toolbar item (the pin button or another
+   * toggle), and from each other when several toggles appear at once.
+   */
   margin-left: 4px;
+  font-size: var(--jp-ui-font-size0);
 }
 
 .jp-xtralab-DiffWidget-segmented {
@@ -232,6 +232,50 @@
   display: inline-flex;
   width: 14px;
   height: 14px;
+}
+
+/*
+ * Editable file diff. The library renders the (now editable) additions side
+ * into its own shadow root, so this wrapper only provides a positioning
+ * context for the save indicator and fills the scroll area like the read-only
+ * diff does.
+ */
+.jp-xtralab-DiffWidget-editRegion {
+  position: relative;
+  min-height: 100%;
+}
+
+/*
+ * Zero-height sticky bar that keeps the autosave indicator pinned to the top
+ * of the scroll viewport while the file scrolls underneath. It takes no
+ * vertical space, and `pointer-events: none` lets clicks fall through to the
+ * editor below.
+ */
+.jp-xtralab-DiffWidget-saveStatusBar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: flex-end;
+  height: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.jp-xtralab-DiffWidget-saveStatus {
+  margin: 6px 12px 0 0;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background-color: var(--jp-layout-color3);
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size0);
+  line-height: 1.6;
+  user-select: none;
+}
+
+.jp-xtralab-DiffWidget-saveStatus[data-state='error'] {
+  background-color: var(--jp-error-color1);
+  color: var(--jp-ui-inverse-font-color1);
 }
 
 /*
