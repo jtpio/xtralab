@@ -9,37 +9,23 @@ import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 
 const PLUGIN_ID = 'xtralab:terminal-notifications';
 
-/**
- * Minimum gap between two notifications from the same terminal. Coding agents
- * that use the "iterm2 with bell" channel emit an OSC 9 sequence *and* ring the
- * bell back-to-back; collapsing both into one notification is the main reason
- * for the throttle, which also keeps a chatty program from flooding the OS.
- */
+// Per-terminal gap between notifications, so the OSC-9-plus-bell agents emit
+// together collapses into one and a chatty program cannot flood the OS.
 const NOTIFY_THROTTLE_MS = 3000;
 
-/**
- * iTerm2 "growl" notification: `ESC ] 9 ; <message> BEL`. The whole payload is
- * the notification text. This is what Claude Code (and most agents) emit on
- * their default `auto` setting once the terminal advertises `TERM_PROGRAM`.
- */
+// iTerm2 growl notification: `ESC ] 9 ; <message> BEL`. What Claude Code and
+// most agents emit on their default `auto` setting once TERM_PROGRAM is set.
 const OSC_ITERM2_GROWL = 9;
 
-/**
- * rxvt/Ghostty notification: `ESC ] 777 ; notify ; <title> ; <body> BEL`. The
- * payload carries an explicit title and body.
- */
+// rxvt/Ghostty notification: `ESC ] 777 ; notify ; <title> ; <body> BEL`.
 const OSC_RXVT_NOTIFY = 777;
 
-/** Longest title/body kept; the main process clamps again before delivery. */
 const MAX_TEXT_LENGTH = 256;
 
-/**
- * The bits of an xterm.js `Terminal` this plugin reaches into. The JupyterLab
- * terminal widget keeps its xterm instance in a private field (see below), and
- * xterm's notification hooks are not surfaced on JupyterLab's `ITerminal`
- * interface, so a structural type keeps the access honest without depending on
- * `@xterm/xterm` directly.
- */
+// The bits of an xterm.js `Terminal` we reach into. JupyterLab's terminal
+// widget keeps its xterm in a private `_term` field and does not expose these
+// hooks, so a structural type uses them without depending on `@xterm/xterm`. If
+// the field is ever renamed, `_term` is `undefined` and notifications stop.
 interface IXtermDisposable {
   dispose(): void;
 }
@@ -52,13 +38,6 @@ interface IXtermTerminal {
     ): IXtermDisposable;
   };
 }
-
-/**
- * The JupyterLab terminal widget's content exposes a `ready` promise (resolved
- * once the xterm instance exists) and stores that instance in the private
- * `_term` field. xterm's field name has been stable for years; if it ever
- * changes, `_term` is simply `undefined` and notifications quietly turn off.
- */
 interface ITerminalContentInternals extends ITerminal.ITerminal {
   ready: Promise<void>;
   _term?: IXtermTerminal;
@@ -66,11 +45,8 @@ interface ITerminalContentInternals extends ITerminal.ITerminal {
 
 type TerminalWidget = MainAreaWidget<ITerminal.ITerminal>;
 
-/**
- * The renderer→main bridge the desktop shell injects on the lab window
- * (`desktop/src/preload-lab.ts`). Absent for plain `pip install` users running
- * in a browser, who fall back to the Web Notifications API.
- */
+// The renderer→main bridge the desktop shell injects on the lab window. Absent
+// for pip-install users in a browser, who fall back to web Notifications.
 interface IDesktopBridge {
   notify?: (
     title: string,
@@ -81,32 +57,16 @@ interface IDesktopBridge {
 }
 
 /**
- * Turns the notifications coding agents already emit (Claude Code, Codex, …)
- * into real desktop notifications.
+ * Turns the notifications coding agents already emit (OSC 9, OSC 777, the bell)
+ * into desktop notifications. JupyterLab's xterm renders these sequences but
+ * never forwards them to the OS, so this plugin hooks each terminal and bridges
+ * them through `window.xtralab.notify` (desktop) or the web Notifications API.
  *
- * Terminals like iTerm2 and Ghostty show a system notification when a program
- * asks for one — via an OSC escape sequence or the bell — and agents use that
- * on their default `auto` setting to tell you they finished or need input.
- * JupyterLab's xterm renders the sequences but never forwards them to the OS,
- * so this plugin hooks each terminal's xterm and bridges them:
- *
- *   - OSC 9  (`ESC ] 9 ; msg BEL`)            — iTerm2 growl
- *   - OSC 777 (`ESC ] 777 ; notify ; t ; b`)  — rxvt/Ghostty
- *   - the bell                                — the universal fallback
- *
- * Delivery goes through the desktop shell's `window.xtralab.notify` bridge —
- * the main process posts a native notification (signed builds) or falls back to
- * `osascript` (unsigned dev builds) — or the Web Notifications API in a plain
- * browser. The terminal's session name is forwarded so that clicking a native
- * notification focuses the exact terminal that fired it (see `onFocusTerminal`).
- *
- * A notification is suppressed while its terminal is the focused, active tab —
- * if you are already looking at it, the banner is noise — and throttled per
- * terminal so the "OSC 9 plus a bell" combo agents emit becomes one banner.
- *
- * The desktop shell also advertises `TERM_PROGRAM=iTerm.app` to the terminal so
- * agents take their iTerm2 notification path; without a recognized
- * `TERM_PROGRAM` their `auto` setting emits nothing at all.
+ * A notification is suppressed while its terminal is the focused, active tab,
+ * and throttled per terminal. The desktop shell advertises
+ * `TERM_PROGRAM=iTerm.app` so agents emit OSC 9 in the first place, and the
+ * session name is forwarded so clicking a notification focuses the terminal
+ * that fired it.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
@@ -126,17 +86,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
     let enabled = true;
     let notifyOnBell = true;
 
-    // Last time we notified for a given terminal, used by the throttle. A
-    // WeakMap lets disposed widgets (and their timestamps) be collected.
+    // Per-widget throttle timestamps and xterm hooks. WeakMaps let disposed
+    // widgets be collected; hooks are torn down when a tab closes.
     const lastNotified = new WeakMap<TerminalWidget, number>();
-    // The xterm hooks registered per widget, torn down when the tab closes.
     const hooks = new WeakMap<TerminalWidget, IXtermDisposable[]>();
 
-    /**
-     * Whether the user is already looking at this terminal: the window has
-     * focus and the terminal is the active main-area tab. In that case its
-     * output is visible, so a banner would only be noise.
-     */
+    // True when the user is already looking at this terminal, so a banner would
+    // just be noise.
     const isActivelyViewing = (widget: TerminalWidget): boolean =>
       document.hasFocus() && app.shell.currentWidget === widget;
 
@@ -150,10 +106,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         );
         return;
       }
-
-      // Plain-browser fallback (pip install): the Web Notifications API. The
-      // desktop lab window blocks web notifications by policy and uses the
-      // bridge above instead, so this path only runs outside Electron.
+      // Plain-browser fallback (pip install): the Web Notifications API.
       if (typeof Notification === 'undefined') {
         return;
       }
@@ -182,24 +135,19 @@ const plugin: JupyterFrontEndPlugin<void> = {
         return;
       }
       lastNotified.set(widget, now);
-      // The session name lets the desktop shell focus this exact terminal when
-      // its notification is clicked (see the onFocusTerminal wiring below).
       const session = widget.content.session?.name;
       deliver(sanitize(title) || 'xtralab', sanitize(body), session);
     };
 
-    // The terminal's tab label is the agent's name (Claude, Codex, …) once the
-    // launcher or an xterm title sequence sets it, so it reads well as the
-    // notification title for sequences that carry only a body (OSC 9, bell).
+    // The tab label is the agent's name once the launcher or an xterm title sets
+    // it, so it reads well as the title for body-only sequences (OSC 9, bell).
     const labelOf = (widget: TerminalWidget): string =>
       widget.title.label || trans.__('Terminal');
 
     const onOsc9 = (widget: TerminalWidget, data: string): boolean => {
-      // OSC 9 is overloaded: iTerm2 uses `9 ; <message>` for a notification,
-      // while ConEmu/Windows Terminal use `9 ; <n> ; …` subcommands — most
-      // notably `9 ; 4` progress reports. Ignore anything that opens with a
-      // numeric subcommand so a progress bar can't masquerade as a
-      // notification, and leave it unconsumed for any progress handler.
+      // OSC 9 is overloaded: ConEmu/Windows Terminal use `9 ; <n> ; …`
+      // subcommands (e.g. `9 ; 4` progress), so skip a numeric-subcommand
+      // payload and leave it unconsumed rather than treat it as a notification.
       if (/^\d(;|$)/.test(data)) {
         return false;
       }
@@ -207,15 +155,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
       if (message) {
         notify(widget, labelOf(widget), message);
       }
-      // OSC 9 is iTerm2's notification namespace; consume it.
       return true;
     };
 
     const onOsc777 = (widget: TerminalWidget, data: string): boolean => {
-      // `notify ; <title> ; <body>` — a body may itself contain ';', so only
-      // the first two separators are structural. Anything that is not a
-      // `notify` command (other rxvt/tmux OSC 777 extensions) is left for any
-      // other handler by reporting the sequence as not consumed.
+      // `notify ; <title> ; <body>`; a body may contain ';'. Other OSC 777
+      // subcommands are left unconsumed.
       const parts = data.split(';');
       if (parts.shift() !== 'notify') {
         return false;
@@ -245,9 +190,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
           if (widget.isDisposed || !term) {
             return;
           }
-          // An OSC handler returns `true` to mark the sequence consumed. Each
-          // is wrapped so a parse slip can never break the terminal's parser
-          // (and a thrown handler reports "not consumed").
+          // Handlers are wrapped so a parse slip cannot break xterm's parser; an
+          // OSC handler returns whether it consumed the sequence.
           const disposables: IXtermDisposable[] = [
             term.onBell(() => guard(() => onBell(widget))),
             term.parser.registerOscHandler(OSC_ITERM2_GROWL, data =>
@@ -276,10 +220,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
     tracker.forEach(hookWidget);
     tracker.widgetAdded.connect((_, widget) => hookWidget(widget));
 
-    // When the desktop shell reports that a (native) notification was clicked,
-    // activate the terminal that fired it. `terminal:open` focuses the existing
-    // tab, or reopens the session if its tab was closed — the same entry point
-    // the running-terminals panel uses. Absent outside the desktop shell.
+    // Focus the terminal that fired a notification when the desktop shell
+    // reports a click. `terminal:open` activates its tab or reopens the session.
     const desktopBridge = (window as Window & { xtralab?: IDesktopBridge })
       .xtralab;
     desktopBridge?.onFocusTerminal?.(session => {
@@ -307,10 +249,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
   }
 };
 
-/**
- * Run `fn`, swallowing any error so a malformed escape sequence can never take
- * the terminal's parser or bell handler down with it.
- */
+// Run `fn`, swallowing errors so a malformed escape sequence cannot take the
+// terminal's parser or bell handler down with it.
 function guard(fn: () => void): void {
   try {
     fn();
@@ -319,10 +259,7 @@ function guard(fn: () => void): void {
   }
 }
 
-/**
- * Like {@link guard}, for an OSC handler that returns whether it consumed the
- * sequence. A thrown handler reports "not consumed" so xterm can fall through.
- */
+// `guard` for an OSC handler that reports whether it consumed the sequence.
 function guardOsc(fn: () => boolean): boolean {
   try {
     return fn();
@@ -332,10 +269,8 @@ function guardOsc(fn: () => boolean): boolean {
   }
 }
 
-/**
- * Replace control characters with spaces (so a notification can't smuggle
- * escape sequences), collapse whitespace, and clamp the length.
- */
+// Replace control characters with spaces (so a notification cannot carry escape
+// sequences), collapse whitespace, and clamp the length.
 function sanitize(value: string): string {
   let result = '';
   for (const char of value) {

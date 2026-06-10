@@ -467,17 +467,12 @@ function registerIpcHandlers(): void {
         return;
       }
       const senderWindow = BrowserWindow.fromWebContents(event.sender);
-      log(`xtralab:notify received: ${JSON.stringify(title).slice(0, 100)}`);
-      // Only a live lab window may post notifications, and only within a rate
-      // limit. The renderer throttles per terminal, but any script on the page
-      // could call the bridge directly, so the main process independently caps
-      // how fast it will spawn osascript children.
+      // Only a live lab window may post, and only within a rate limit: the
+      // renderer throttle is bypassable by any script on the page.
       if (senderWindow === null || !labSessions.has(senderWindow.id)) {
-        log('xtralab:notify ignored: sender is not a live lab window');
         return;
       }
       if (!allowNotification(senderWindow.id)) {
-        log('xtralab:notify ignored: rate limit');
         return;
       }
       deliverDesktopNotification(
@@ -561,10 +556,8 @@ const notificationTimestamps = new Map<number, number[]>();
 const NOTIFICATION_RATE_WINDOW_MS = 10_000;
 const NOTIFICATION_RATE_MAX = 6;
 
-// Sliding-window rate limit: at most NOTIFICATION_RATE_MAX notifications from a
-// window in any NOTIFICATION_RATE_WINDOW_MS span. The renderer already throttles
-// per terminal (~1 per 3 s), so legitimate traffic stays well under this; the
-// cap only trips on a runaway loop or a direct bridge caller.
+// Sliding-window rate limit per window. The renderer already throttles per
+// terminal, so this only trips on a runaway loop or a direct bridge caller.
 function allowNotification(windowId: number): boolean {
   const now = Date.now();
   const recent = (notificationTimestamps.get(windowId) ?? []).filter(
@@ -607,17 +600,14 @@ function isAppProperlySigned(): boolean {
   return cachedAppSigned;
 }
 
-// Deliver a desktop notification forwarded from a terminal (an agent's OSC 9 /
-// OSC 777 / bell, bridged through `window.xtralab.notify`).
+// Deliver a desktop notification forwarded from a terminal.
 //
-// macOS only delivers a native Notification from a bundle with a real (non
-// ad-hoc) code signature; an unsigned/ad-hoc bundle is silently dropped by
-// Notification Center. So a properly signed packaged build (Developer ID, or a
-// self-signed cert for personal use) uses the native Notification — xtralab's
-// own name/icon, click-to-focus — while everything else on macOS (a `pnpm dev`
-// run, or an unsigned release the user has not signed) falls back to `osascript`,
-// which delivers regardless of signing at the cost of no click action.
-// Linux/Windows always use native.
+// macOS only delivers a native Notification from a real (non-ad-hoc) signature;
+// an unsigned bundle is silently dropped. So a signed packaged build (Developer
+// ID, or a self-signed cert) uses the native Notification (xtralab's icon and
+// click-to-focus), while everything else on macOS (`pnpm dev`, or an unsigned
+// release) falls back to `osascript`, which always delivers but carries no click
+// action. Linux/Windows always use native.
 function deliverDesktopNotification(
   rawTitle: string,
   rawBody: string,
@@ -628,9 +618,6 @@ function deliverDesktopNotification(
   const body = sanitizeNotificationText(rawBody);
   const useOsascript =
     process.platform === 'darwin' && !(app.isPackaged && isAppProperlySigned());
-  log(
-    `Delivering notification via ${useOsascript ? 'osascript' : 'native'}: ${title} / ${body}`
-  );
 
   if (useOsascript) {
     // `display notification` needs body text (the title is only the secondary
@@ -669,11 +656,6 @@ function deliverDesktopNotification(
         `Unable to deliver notification via osascript: ${formatError(error)}`
       );
     });
-    child.on('exit', code => {
-      if (code !== null && code !== 0) {
-        log(`osascript notification exited with code ${code}`);
-      }
-    });
     child.unref();
     return;
   }
@@ -693,9 +675,7 @@ function deliverDesktopNotification(
         senderWindow.restore();
       }
       senderWindow.focus();
-      // Tell the lab page to activate the terminal that fired this notification
-      // (its tab, or reopen the session) — the bonus over just focusing the
-      // window.
+      // Activate the terminal that fired this notification, not just the window.
       if (session !== null) {
         senderWindow.webContents.send('xtralab:focus-terminal', session);
       }
@@ -1274,12 +1254,9 @@ function getSupervisorEnvironment(
   environment.VIRTUAL_ENV = managedEnvironment.envDir;
 
   // Advertise an iTerm2-class terminal so coding agents (Claude Code, Codex, …)
-  // take their iTerm2 notification path on the default `auto` setting: they key
-  // off TERM_PROGRAM and, with nothing recognized, emit no notification at all.
-  // xtralab's renderer intercepts the resulting OSC 9 sequence and forwards it
-  // to the OS (see the xtralab:terminal-notifications plugin and preload-lab).
-  // TERM itself stays xterm-256color (terminado sets it) — exactly what real
-  // iTerm2 reports — so no terminfo capability is implied that xterm.js lacks.
+  // take their OSC 9 notification path on the default `auto` setting; without a
+  // recognized TERM_PROGRAM they emit nothing. The renderer intercepts the OSC 9
+  // and forwards it to the OS. TERM stays xterm-256color (what real iTerm2 uses).
   environment.TERM_PROGRAM = 'iTerm.app';
   environment.TERM_PROGRAM_VERSION = '3.5.0';
 
