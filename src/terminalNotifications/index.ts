@@ -25,7 +25,8 @@ const MAX_TEXT_LENGTH = 256;
 // The bits of an xterm.js `Terminal` we reach into. JupyterLab's terminal
 // widget keeps its xterm in a private `_term` field and does not expose these
 // hooks, so a structural type uses them without depending on `@xterm/xterm`. If
-// the field is ever renamed, `_term` is `undefined` and notifications stop.
+// the field is ever renamed, `_term` is `undefined` and notifications stop, with
+// a console warning per terminal.
 interface IXtermDisposable {
   dispose(): void;
 }
@@ -148,7 +149,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       // OSC 9 is overloaded: ConEmu/Windows Terminal use `9 ; <n> ; …`
       // subcommands (e.g. `9 ; 4` progress), so skip a numeric-subcommand
       // payload and leave it unconsumed rather than treat it as a notification.
-      if (/^\d(;|$)/.test(data)) {
+      if (/^\d+(;|$)/.test(data)) {
         return false;
       }
       const message = sanitize(data);
@@ -187,7 +188,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
       void content.ready
         .then(() => {
           const term = content._term;
-          if (widget.isDisposed || !term) {
+          if (widget.isDisposed) {
+            return;
+          }
+          if (!term) {
+            console.warn(
+              'xtralab: xterm internals not found; terminal notifications are disabled for this terminal'
+            );
             return;
           }
           // Handlers are wrapped so a parse slip cannot break xterm's parser; an
