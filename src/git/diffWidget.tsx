@@ -118,8 +118,8 @@ export class XtralabDiffWidget
    * Re-pull both sides of the model and re-render.
    */
   async refresh(): Promise<void> {
-    // Settle any refresh still awaiting so a rapid second call cannot orphan
-    // the earlier caller's promise.
+    // The fetch effect only settles the latest delegate, so release any
+    // in-flight waiter now that a newer reload supersedes it.
     this.settleRefresh();
     const done = new PromiseDelegate<void>();
     this._pendingRefresh = done;
@@ -431,6 +431,11 @@ function ModelDiffView(props: {
     []
   );
 
+  // Tracks the model whose content is currently on screen, so a `refresh()`
+  // of the same model reloads in place (keeping the rendered diff up until
+  // the new text lands) while a model swap shows the loading placeholder.
+  const loadedModelRef = React.useRef<IXtralabDiffModel | null>(null);
+
   // Fetch both sides whenever the model or reload nonce changes.
   React.useEffect(() => {
     let cancelled = false;
@@ -443,7 +448,9 @@ function ModelDiffView(props: {
         cancelled = true;
       };
     }
-    setState({ loading: true, oldText: '', newText: '', error: null });
+    if (loadedModelRef.current !== model) {
+      setState({ loading: true, oldText: '', newText: '', error: null });
+    }
     void (async () => {
       try {
         const [oldText, newText] = await Promise.all([
@@ -453,6 +460,7 @@ function ModelDiffView(props: {
         if (cancelled) {
           return;
         }
+        loadedModelRef.current = model;
         setState({
           loading: false,
           oldText: oldText ?? '',
@@ -463,6 +471,9 @@ function ModelDiffView(props: {
         if (cancelled) {
           return;
         }
+        // Force the next attempt back through the loading placeholder: with
+        // the content cleared there is nothing sensible to keep on screen.
+        loadedModelRef.current = null;
         setState({
           loading: false,
           oldText: '',
@@ -733,9 +744,10 @@ function DiffStyleToolbarControl(props: {
   return (
     <DiffStyleControl
       diffStyle={style}
+      available={fileDiffActive}
       // The layout is frozen while editing (changing it would repaint the
-      // attached editor), so hide the toggle until the session ends.
-      available={fileDiffActive && !editing}
+      // attached editor), so the toggle is inert until the session ends.
+      disabled={editing}
       onChange={next => widget.setDiffStyle(next)}
       trans={trans}
     />

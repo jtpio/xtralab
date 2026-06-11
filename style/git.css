@@ -23,6 +23,11 @@
   font-style: italic;
 }
 
+/* xtralab's diff provider re-pulls automatically (see diffProvider.tsx). */
+.jp-git-diff-parent-widget .jp-git-diff-refresh {
+  display: none;
+}
+
 /*
  * Flex-column container: an optional toolbar at the top (notebook view
  * mode toggle) plus a body that hosts the scrollable diff and the
@@ -112,7 +117,17 @@
   cursor: pointer;
 }
 
-.jp-xtralab-DiffWidget-segmentedButton:hover {
+/*
+ * Disabled segments (the Split/Unified toggle while an edit session is
+ * active) stay in place but dim; the active segment keeps its highlight so
+ * the current mode stays readable.
+ */
+.jp-xtralab-DiffWidget-segmentedButton:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.jp-xtralab-DiffWidget-segmentedButton:hover:not(:disabled) {
   background-color: var(--jp-layout-color2);
 }
 

@@ -1110,15 +1110,17 @@ function DiffUnifiedIcon(): React.ReactElement {
  * hosts mount it into their own toolbar and drive its value/visibility from
  * the same state they pass to {@link DiffSurface}. Only meaningful while the
  * textual/code file diff is the active view, so `available` mirrors the
- * surface's `onFileDiffActiveChange`.
+ * surface's `onFileDiffActiveChange`. `disabled` keeps the toggle visible
+ * but inert; hiding it would make the toolbar jump.
  */
 export function DiffStyleControl(props: {
   diffStyle: DiffStyle;
   available: boolean;
+  disabled?: boolean;
   onChange: (style: DiffStyle) => void;
   trans: TranslationBundle;
 }): React.ReactElement {
-  const { diffStyle, available, onChange, trans } = props;
+  const { diffStyle, available, disabled = false, onChange, trans } = props;
   if (!available) {
     return <></>;
   }
@@ -1134,8 +1136,13 @@ export function DiffStyleControl(props: {
         aria-selected={diffStyle === 'split'}
         data-active={diffStyle === 'split'}
         className="jp-xtralab-DiffWidget-segmentedButton jp-xtralab-DiffWidget-segmentedButton-icon"
-        title={trans.__('Split (side-by-side) view')}
+        title={
+          disabled
+            ? trans.__('Unavailable while editing')
+            : trans.__('Split (side-by-side) view')
+        }
         aria-label={trans.__('Split view')}
+        disabled={disabled}
         onClick={() => onChange('split')}
       >
         <DiffSplitIcon />
@@ -1146,8 +1153,13 @@ export function DiffStyleControl(props: {
         aria-selected={diffStyle === 'unified'}
         data-active={diffStyle === 'unified'}
         className="jp-xtralab-DiffWidget-segmentedButton jp-xtralab-DiffWidget-segmentedButton-icon"
-        title={trans.__('Unified (inline) view')}
+        title={
+          disabled
+            ? trans.__('Unavailable while editing')
+            : trans.__('Unified (inline) view')
+        }
         aria-label={trans.__('Unified view')}
+        disabled={disabled}
         onClick={() => onChange('unified')}
       >
         <DiffUnifiedIcon />
