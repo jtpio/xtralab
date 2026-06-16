@@ -2,6 +2,26 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.10.0
+
+([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.9.0...760125602edaef7bc2b6a5e9c27e9db1861a7018))
+
+### Enhancements made
+
+- Notifications [#42](https://github.com/jtpio/xtralab/pull/42) ([@jtpio](https://github.com/jtpio))
+- Support tabs [#41](https://github.com/jtpio/xtralab/pull/41) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-06-04&to=2026-06-16&type=c))
+
+@jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-06-04..2026-06-16&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.9.0
 
 ([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.8.0...b5cfaac2fba3ace60714ca880f9157073e22c46a))
@@ -24,8 +44,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-05-29&to=2026-06-04&type=c))
 
 @jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-05-29..2026-06-04&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.8.0
 
