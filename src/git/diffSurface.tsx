@@ -23,6 +23,7 @@ import {
   type INotebookDiffResult
 } from './notebookDiff';
 import { resolveDiffTheme } from './diffTheme';
+import { DiffWorkerPoolProvider } from './diffWorkerPool';
 
 /**
  * The CSS class added to the diff main-area widget. The selectors that
@@ -347,6 +348,18 @@ interface IDiffSurfaceProps {
  * Shared renderer for text, notebook and image diffs.
  */
 export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
+  return (
+    <DiffWorkerPoolProvider dark={props.dark} pierreTheme={props.pierreTheme}>
+      <DiffSurfaceContent {...props} />
+    </DiffWorkerPoolProvider>
+  );
+}
+
+/**
+ * The diff views themselves, mounted inside the worker-pool provider so
+ * every `FileDiff` below picks the pool up from context.
+ */
+function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
   const {
     loading,
     error,
@@ -760,13 +773,6 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
                 lineAnnotations={lineAnnotations}
                 renderAnnotation={renderAnnotation}
                 style={hostStyle}
-                // Disable the worker pool: JupyterLab's webpack federation
-                // pipeline doesn't ship the library's
-                // `@pierre/diffs/worker/worker.js` file at a URL the worker
-                // bootstrap can resolve from, so leaving the pool enabled
-                // crashes on instantiation. Running on the main thread is
-                // fine for the small files git diffs typically operate on.
-                disableWorkerPool={true}
                 options={readOnlyFileDiffOptions}
               />
             )
@@ -964,9 +970,12 @@ function EditableFileDiff(props: {
         <FileDiff<IHunkActionAnnotation>
           fileDiff={fileDiff}
           contentEditable={true}
-          // As in the read-only render, the worker pool can't bootstrap under
-          // JupyterLab's federation, so the editor tokenizes on the main
-          // thread.
+          // The editable view opts out of the worker pool: on attach the
+          // library hands the editor its main-thread highlighter for live
+          // tokenization, the editor render relies on `useTokenTransformer`
+          // (which pooled rendering replaces with the pool-wide options),
+          // and an async worker repaint would rebuild the DOM under the
+          // attached editor.
           disableWorkerPool={true}
           style={hostStyle}
           options={options}

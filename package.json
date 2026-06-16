@@ -130,6 +130,7 @@
     },
     "jupyterlab": {
         "extension": true,
+        "webpackConfig": "./webpack.config.js",
         "outputDir": "xtralab/labextension",
         "schemaDir": "schema",
         "sharedPackages": {
