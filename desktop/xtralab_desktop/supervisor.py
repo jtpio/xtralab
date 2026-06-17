@@ -11,6 +11,7 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -145,6 +146,7 @@ class JupyterLabSupervisor:
         env: dict[str, str] | None = None,
         ready_timeout: float = 30.0,
         extra_args: Sequence[str] = (),
+        workspace: str | None = None,
     ) -> None:
         self.python = python
         self.cwd = cwd
@@ -156,8 +158,17 @@ class JupyterLabSupervisor:
         self.token = secrets.token_hex(19)
         self.base_url = f"http://127.0.0.1:{self.port}"
         self.mcp_url = f"http://127.0.0.1:{self.mcp_port}/mcp"
+        # Load each folder into its own named workspace so its open tabs and
+        # panel layout persist to a dedicated ``<name>.jupyterlab-workspace``
+        # file. Plain ``/lab`` uses the implicit ``default`` workspace shared by
+        # every window, which makes opening one folder restore the tabs left by
+        # another. ``quote`` keeps the URL well-formed; jupyterlab_server only
+        # routes ``[A-Za-z0-9_-]`` workspace names.
+        app_path = "/lab"
+        if workspace:
+            app_path = f"/lab/workspaces/{urllib.parse.quote(workspace, safe='')}"
         self.info = ServerInfo(
-            url=f"{self.base_url}/lab?token={self.token}",
+            url=f"{self.base_url}{app_path}?token={self.token}",
             base_url=self.base_url,
             token=self.token,
         )

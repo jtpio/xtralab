@@ -21,6 +21,16 @@
       }
     }
   },
+  "@jupyterlab/shortcuts-extension:shortcuts": {
+    "shortcuts": [
+      {
+        "command": "filebrowser:toggle-main",
+        "keys": ["Accel Shift F"],
+        "selector": "body",
+        "disabled": true
+      }
+    ]
+  },
   "@jupyterlab/git:plugin": {
     "fileClickAction": "diff-on-single"
   },
@@ -44,6 +54,11 @@
       "highlightActiveLine": true,
       "highlightTrailingWhitespace": true,
       "scrollPastEnd": true
+    }
+  },
+  "@jupyterlab/docmanager-extension:plugin": {
+    "defaultViewers": {
+      "json": "Editor"
     }
   },
   "@jupyterlab/notebook-extension:tracker": {

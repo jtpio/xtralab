@@ -1295,7 +1295,9 @@ function startSupervisor(
     '--cwd',
     folderPath,
     '--collab-ystore-db',
-    path.join(collabDir, 'ystore.db')
+    path.join(collabDir, 'ystore.db'),
+    '--workspace',
+    getProjectWorkspaceName(folderPath)
   ];
 
   log(`Starting supervisor: ${command} ${args.join(' ')}`);
@@ -1869,12 +1871,20 @@ function getManagedEnvironmentExecutablePath(
   return path.join(getManagedEnvironmentBinDir(envDir), platformExecutableName);
 }
 
+// A short, stable identifier for one opened folder, derived from its absolute
+// path. Keys the per-folder state xtralab keeps under app data (kernels,
+// collaboration history, JupyterLab workspace) so two folders never collide
+// and the same folder maps back to its own state on every launch.
+function getProjectHash(folderPath: string): string {
+  return createHash('sha256').update(folderPath).digest('hex').slice(0, 16);
+}
+
 function getProjectKernelDataPath(folderPath: string): string {
-  const hash = createHash('sha256')
-    .update(folderPath)
-    .digest('hex')
-    .slice(0, 16);
-  return path.join(app.getPath('userData'), 'project-kernels', hash);
+  return path.join(
+    app.getPath('userData'),
+    'project-kernels',
+    getProjectHash(folderPath)
+  );
 }
 
 // Per-folder collaboration state directory. jupyter-server-ydoc creates two
@@ -1884,11 +1894,29 @@ function getProjectKernelDataPath(folderPath: string): string {
 // git). The directory is keyed by a hash of the folder path so each opened
 // folder gets its own isolated Y-history and session set.
 function getProjectCollabDir(folderPath: string): string {
-  const hash = createHash('sha256')
-    .update(folderPath)
-    .digest('hex')
-    .slice(0, 16);
-  return path.join(app.getPath('userData'), 'jupyter', 'collab', hash);
+  return path.join(
+    app.getPath('userData'),
+    'jupyter',
+    'collab',
+    getProjectHash(folderPath)
+  );
+}
+
+// The JupyterLab workspace name for one folder. JupyterLab persists each
+// window's open tabs and panel layout into a server-side workspace; loading a
+// folder as `/lab/workspaces/<name>` keeps that layout in its own file rather
+// than the `default` workspace every window would otherwise share, where one
+// folder restores another's tabs. The folder hash makes the name unique and
+// stable across launches; the readable slug only aids debugging. The lowercase
+// slug and hex hash satisfy jupyterlab_server's `[A-Za-z0-9_-]` workspace route.
+function getProjectWorkspaceName(folderPath: string): string {
+  const slug = path
+    .basename(folderPath)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const hash = getProjectHash(folderPath);
+  return slug ? `${slug}-${hash}` : hash;
 }
 
 function isPathInside(parentPath: string, childPath: string): boolean {

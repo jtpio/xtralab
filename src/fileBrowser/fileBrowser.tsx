@@ -93,6 +93,12 @@ const GIT_REPO_PATH = '';
  */
 const FILE_TREE_TAG = 'file-tree-container';
 
+const FILE_TREE_UNSAFE_CSS =
+  '[data-type="item"][data-item-selected="true"] ' +
+  '[data-item-section="spacing-item"] {' +
+  'border-left-color: transparent;' +
+  '}';
+
 export interface IFileBrowserProps {
   contentsManager: Contents.IManager;
   docManager: IDocumentManager;
@@ -123,7 +129,8 @@ export function FileBrowserComponent(
     initialExpansion: 'closed',
     search: true,
     icons: FILE_BROWSER_ICONS,
-    itemHeight: 24
+    itemHeight: 24,
+    unsafeCSS: FILE_TREE_UNSAFE_CSS
   });
 
   React.useEffect(() => {

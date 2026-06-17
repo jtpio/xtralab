@@ -8,6 +8,7 @@ import editorIndentPlugin from './editorIndent';
 import gitPlugins from './git';
 import launcherPlugins from './launcher';
 import menusPlugin from './menus';
+import searchReplacePlugin from './searchReplace';
 import sidebarPlugin from './sidebar';
 import terminalNotificationsPlugin from './terminalNotifications';
 import terminalsPlugin from './terminals';
@@ -31,6 +32,7 @@ const plugins: JupyterFrontEndPlugin<unknown>[] = [
   ...gitPlugins,
   ...launcherPlugins,
   menusPlugin,
+  searchReplacePlugin,
   sidebarPlugin,
   terminalNotificationsPlugin,
   terminalsPlugin,

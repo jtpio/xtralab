@@ -22,7 +22,10 @@ The Electron app lives in `desktop/`. It opens a lightweight launcher window,
 lets you pick a local folder, starts a JupyterLab server for that folder from
 an app-managed Python environment, waits for the ready URL, and loads it into
 a hardened Electron `BrowserWindow`. Each opened folder gets its own Jupyter
-server and window. On macOS the per-folder windows share a `tabbingIdentifier`,
+server and window, and loads its own named JupyterLab workspace
+(`/lab/workspaces/<folder>`) so its open tabs and panel layout stay scoped to
+that folder instead of leaking through the shared `default` workspace. On macOS
+the per-folder windows share a `tabbingIdentifier`,
 so they follow the system "Prefer tabs when opening documents" setting: they
 open as native tabs when that is set to Always, and otherwise as separate
 windows that can still be combined from the Window menu (Merge All Windows) or
