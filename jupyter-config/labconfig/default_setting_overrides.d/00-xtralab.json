@@ -46,6 +46,11 @@
       "scrollPastEnd": true
     }
   },
+  "@jupyterlab/docmanager-extension:plugin": {
+    "defaultViewers": {
+      "json": "Editor"
+    }
+  },
   "@jupyterlab/notebook-extension:tracker": {
     "recordTiming": true
   }
