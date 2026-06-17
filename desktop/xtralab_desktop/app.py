@@ -52,6 +52,7 @@ def _serve_main(args: argparse.Namespace) -> int:
             cwd=cwd,
             ready_timeout=args.timeout,
             extra_args=extra_args,
+            workspace=args.workspace,
         )
         info = supervisor.start(stdout=sys.stderr, stderr=sys.stderr)
     except (OSError, RuntimeError) as error:
@@ -110,6 +111,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "path to the jupyter-server-ydoc SQLite database "
             "(default: '.jupyter_ystore.db' under --cwd)"
+        ),
+    )
+    serve.add_argument(
+        "--workspace",
+        help=(
+            "JupyterLab workspace name to load as '/lab/workspaces/<name>' so "
+            "the folder keeps its own tabs and layout (default: the shared "
+            "'/lab' workspace)"
         ),
     )
     serve.set_defaults(func=_serve_main)
