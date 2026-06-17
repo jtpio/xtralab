@@ -17,6 +17,10 @@ Two endpoints, both thin and opinion-free — the frontend owns the agent list
     prompt. The Terminals panel uses this to badge each row with the running
     agent's logo — including agents the user started by hand, which the
     frontend could not otherwise know about.
+
+On load the extension also swaps the contents manager's checkpoints for a no-op
+(see :mod:`xtralab.checkpoints`) so opening or saving a file no longer scatters
+``.ipynb_checkpoints`` directories through the working tree and file browser.
 """
 
 from __future__ import annotations
@@ -29,6 +33,8 @@ from jupyter_server.base.handlers import APIHandler
 from jupyter_server.serverapp import ServerApp
 from jupyter_server.utils import url_path_join
 from tornado.web import authenticated
+
+from .checkpoints import NullCheckpoints
 
 try:
     import psutil
@@ -180,6 +186,25 @@ def _setup_handlers(server_app: ServerApp) -> None:
     server_app.web_app.add_handlers(".*$", handlers)
 
 
+def _disable_checkpoints(server_app: ServerApp) -> None:
+    """Replace the contents manager's checkpoints with a no-op manager.
+
+    The contents manager is already built by the time server extensions load,
+    so its ``checkpoints`` instance may have been created from the default
+    ``checkpoints_class``. We set the class for any later rebuild and replace
+    the live instance, constructing it from the manager's own
+    ``checkpoints_kwargs`` (parent + logger) exactly as the default does.
+    """
+    contents_manager = server_app.contents_manager
+    if not hasattr(contents_manager, "checkpoints_class"):
+        return
+    contents_manager.checkpoints_class = NullCheckpoints
+    contents_manager.checkpoints = NullCheckpoints(
+        **contents_manager.checkpoints_kwargs
+    )
+
+
 def _load_jupyter_server_extension(server_app: ServerApp) -> None:
     _setup_handlers(server_app)
+    _disable_checkpoints(server_app)
     server_app.log.info("Registered xtralab server extension")
