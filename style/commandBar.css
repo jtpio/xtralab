@@ -77,6 +77,13 @@
   height: 14px;
 }
 
+/* The built-in JupyterLab search icon (@jupyterlab/ui-components) paints with a
+   fixed `jp-icon3` theme gray; override it to currentColor so the magnifier
+   tracks the pill's text color and brightens with the label on hover. */
+.xtralab-CommandBar-button .jp-icon3[fill] {
+  fill: currentColor;
+}
+
 .xtralab-CommandBar-label {
   flex: 1 1 auto;
   overflow: hidden;

@@ -4,11 +4,11 @@ import {
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
+import { searchIcon } from '@jupyterlab/ui-components';
 import { CommandRegistry } from '@lumino/commands';
 import { Widget } from '@lumino/widgets';
 
 import { IOmnibox, OMNIBOX_OPEN_COMMAND } from '../omnibox/tokens';
-import { searchIcon } from './icons';
 
 const PLUGIN_ID = 'xtralab:command-bar';
 
