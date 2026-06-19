@@ -1,0 +1,119 @@
+/* Omnibox overlay (xtralab:omnibox): a centered search box over the shell. */
+
+/*
+ * The widget node is attached to `document.body` (outside the shell) and only
+ * carries theme variables via `jp-ThemedContainer`; the React tree renders the
+ * fixed full-screen overlay below it.
+ */
+.xtralab-Omnibox {
+  position: absolute;
+}
+
+.xtralab-Omnibox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: rgb(0 0 0 / 18%);
+}
+
+.xtralab-Omnibox-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(640px, 92vw);
+  max-height: 60vh;
+  overflow: hidden;
+
+  /* Drop just below the top bar so it reads as a command-center dropdown. */
+  margin-top: calc(var(--jp-private-menubar-height, 28px) + 4px);
+  background: var(--jp-layout-color1);
+  border: var(--jp-border-width) solid var(--jp-border-color1);
+  border-radius: 6px;
+  box-shadow: var(--jp-elevation-z8);
+}
+
+.xtralab-Omnibox-input {
+  padding: 11px 14px;
+  font-family: var(--jp-ui-font-family);
+  font-size: var(--jp-ui-font-size2);
+  color: var(--jp-ui-font-color0);
+  background: transparent;
+  border: none;
+  border-bottom: var(--jp-border-width) solid var(--jp-border-color2);
+  outline: none;
+}
+
+.xtralab-Omnibox-input::placeholder {
+  color: var(--jp-ui-font-color3);
+}
+
+.xtralab-Omnibox-results {
+  padding: 4px 0;
+  overflow-y: auto;
+}
+
+.xtralab-Omnibox-sectionHeader {
+  padding: 6px 14px 2px;
+  font-size: var(--jp-ui-font-size0);
+  font-weight: 600;
+  color: var(--jp-ui-font-color2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.xtralab-Omnibox-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 14px;
+  font-size: var(--jp-ui-font-size1);
+  color: var(--jp-ui-font-color1);
+  cursor: pointer;
+}
+
+.xtralab-Omnibox-item.xtralab-mod-active {
+  background: var(--jp-layout-color2);
+}
+
+.xtralab-Omnibox-itemIcon {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  width: 16px;
+  height: 16px;
+}
+
+.xtralab-Omnibox-itemIcon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.xtralab-Omnibox-itemLabel {
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.xtralab-Omnibox-match {
+  font-weight: 600;
+  color: var(--jp-ui-font-color0);
+}
+
+.xtralab-Omnibox-itemCaption {
+  flex: 0 1 auto;
+  max-width: 45%;
+  overflow: hidden;
+  font-size: var(--jp-ui-font-size0);
+  color: var(--jp-ui-font-color3);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.xtralab-Omnibox-empty {
+  padding: 14px;
+  font-size: var(--jp-ui-font-size1);
+  color: var(--jp-ui-font-color2);
+}
