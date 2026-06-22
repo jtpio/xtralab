@@ -1,6 +1,8 @@
 import './base.css';
+import './commandBar.css';
 import './git.css';
 import './launcher.css';
+import './omnibox.css';
 import './sidebar.css';
 import './tabs.css';
 import './terminals.css';

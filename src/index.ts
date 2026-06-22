@@ -1,6 +1,7 @@
 import { JupyterFrontEndPlugin } from '@jupyterlab/application';
 
 import agentSessionsPlugin from './agentSessions';
+import commandBarPlugin from './commandBar';
 import fileBrowserPlugin from './fileBrowser';
 import fileTypeIconsPlugin from './fileTypeIcons';
 import editorBreadcrumbsPlugin from './editorBreadcrumbs';
@@ -8,6 +9,7 @@ import editorIndentPlugin from './editorIndent';
 import gitPlugins from './git';
 import launcherPlugins from './launcher';
 import menusPlugin from './menus';
+import omniboxPlugin from './omnibox';
 import searchReplacePlugin from './searchReplace';
 import sidebarPlugin from './sidebar';
 import terminalNotificationsPlugin from './terminalNotifications';
@@ -25,6 +27,7 @@ import topBarPlugin from './topBar';
  */
 const plugins: JupyterFrontEndPlugin<unknown>[] = [
   agentSessionsPlugin,
+  commandBarPlugin,
   editorBreadcrumbsPlugin,
   editorIndentPlugin,
   fileBrowserPlugin,
@@ -32,6 +35,7 @@ const plugins: JupyterFrontEndPlugin<unknown>[] = [
   ...gitPlugins,
   ...launcherPlugins,
   menusPlugin,
+  omniboxPlugin,
   searchReplacePlugin,
   sidebarPlugin,
   terminalNotificationsPlugin,
