@@ -1,0 +1,15 @@
+{
+  "title": "xtralab Terminals panel",
+  "description": "The left-sidebar panel that lists running terminal sessions.",
+  "jupyter.lab.shortcuts": [],
+  "type": "object",
+  "properties": {
+    "showAgentActivity": {
+      "type": "boolean",
+      "title": "Show agent activity under each terminal",
+      "description": "When true, every terminal running a coding agent shows a smaller line below its title with the agent's latest line of output, so you can see what a backgrounded agent is doing without switching to it. Turn this off to list terminals by title alone.",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

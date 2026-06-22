@@ -27,7 +27,9 @@ export const RUNNING_TERMINALS_ID = 'xtralab-running-terminals';
  * launcher *starts* sessions, this panel surfaces the ones already
  * running so the user can jump back to a backgrounded agent — including
  * sessions whose tab has been closed but which are still alive on the
- * server.
+ * server. Each row is labelled with the session's title and, for a session
+ * running a coding agent, a smaller line below it showing the agent's latest
+ * line of output (from {@link SessionRegistry.activityFor}).
  *
  * Backed by {@link SessionRegistry}: a `UseSignal` re-renders the list
  * whenever the registry emits `stateChanged`, so it tracks
@@ -199,6 +201,10 @@ function RunningTerminalsComponent(props: {
               registry.agentCommandFor(name)
             ).react;
             const isCurrent = name === currentName;
+            // The latest line of output from the session's agent, shown as a
+            // smaller line under the title; `null` for rows with nothing to
+            // surface (no agent running, or no open tab to read a live buffer).
+            const activity = registry.activityFor(name);
             return (
               <li
                 key={name}
@@ -216,9 +222,20 @@ function RunningTerminalsComponent(props: {
                   aria-label={tooltip}
                   aria-current={isCurrent || undefined}
                 >
-                  <RowIcon tag="span" verticalAlign="middle" />
-                  <span className="jp-xtralab-Terminals-item-label">
-                    {label}
+                  <RowIcon
+                    tag="span"
+                    className="jp-xtralab-Terminals-item-icon"
+                    verticalAlign="middle"
+                  />
+                  <span className="jp-xtralab-Terminals-item-text">
+                    <span className="jp-xtralab-Terminals-item-label">
+                      {label}
+                    </span>
+                    {activity ? (
+                      <span className="jp-xtralab-Terminals-item-detail">
+                        {activity}
+                      </span>
+                    ) : null}
                   </span>
                 </button>
                 <button

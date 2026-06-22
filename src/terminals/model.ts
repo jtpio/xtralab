@@ -17,6 +17,30 @@ import { fetchRunningAgents } from './detection';
 export type TerminalWidget = MainAreaWidget<ITerminal.ITerminal>;
 
 /**
+ * The slice of an xterm.js `Terminal` the registry reads to surface a
+ * session's most recent line of output. JupyterLab keeps its xterm in the
+ * terminal widget's private `_term` field, so a structural type reaches the
+ * buffer without taking a dependency on `@xterm/xterm` — the same access the
+ * terminal-notifications plugin already relies on. If the field is ever
+ * renamed, `_term` reads back `undefined` and the activity line is simply
+ * omitted: the row falls back to its title alone.
+ */
+interface IXtermBufferLine {
+  translateToString(trimRight?: boolean): string;
+}
+interface IXtermBuffer {
+  readonly baseY: number;
+  readonly cursorY: number;
+  getLine(index: number): IXtermBufferLine | undefined;
+}
+interface IXtermTerminal {
+  readonly buffer: { readonly active: IXtermBuffer };
+}
+interface ITerminalContentInternals extends ITerminal.ITerminal {
+  _term?: IXtermTerminal;
+}
+
+/**
  * How often to ask the server which agent (if any) is running in each
  * terminal. Snappy enough that a manually-started agent's logo shows up
  * within a few seconds, light enough that walking the shells' process trees
@@ -42,11 +66,24 @@ const DETECT_POLL_MAX_MS = 300_000;
 const LAUNCH_GRACE_MS = 4000;
 
 /**
+ * How often to re-read each open coding-agent terminal's output buffer to
+ * refresh the "latest activity" line shown under its row. Brisk enough to feel
+ * live while an agent works, cheap because it only walks the last screenful of
+ * a handful of terminals and emits only when a line actually changes.
+ */
+const ACTIVITY_POLL_INTERVAL_MS = 1500;
+
+/**
  * Source-of-truth model for the running-terminals panel. Each running
  * terminal session known to the server is one entry; the registry caches
  * the last `widget.title.label` we observed so the agent name (or any
  * xterm-published title) survives the user closing the tab while the
  * session continues running on the backend.
+ *
+ * For sessions running a coding agent it also surfaces a *latest activity*
+ * line — the freshest meaningful line of the terminal's output, read from the
+ * open tab's xterm buffer on a poll (see {@link activityFor}) — so each row
+ * shows what its agent is doing, not just its name.
  *
  * It also resolves *which agent is running* in each session, so the panel can
  * badge rows with the agent's logo. Two inputs feed that, reconciled by
@@ -103,6 +140,17 @@ export class SessionRegistry implements IDisposable {
         backoff: true,
         max: DETECT_POLL_MAX_MS
       },
+      standby: 'when-hidden'
+    });
+
+    // A second, faster poll reads the live output buffer of each open
+    // coding-agent terminal to keep its "latest activity" line current. Kept
+    // separate from the detection poll so reading xterm buffers neither delays
+    // nor is delayed by the server round-trip that drives the agent badges.
+    this._activityPoll = new Poll({
+      name: '@xtralab/terminals:activity',
+      factory: () => this._refreshActivity(),
+      frequency: { interval: ACTIVITY_POLL_INTERVAL_MS, backoff: false },
       standby: 'when-hidden'
     });
   }
@@ -162,7 +210,10 @@ export class SessionRegistry implements IDisposable {
   }
 
   /**
-   * The command of the agent running in the session, or `null` if none.
+   * An identifier for the agent running in the session — its configured
+   * command, or its canonical id when detection matched the spawned process by
+   * id rather than by an aliased command — or `null` if none. Callers resolve
+   * it to a logo through the plugin's `iconForCommand`, which accepts either.
    *
    * Server-side detection is authoritative whenever it reports a running
    * agent. A launch tag fills two gaps: the startup grace window right after
@@ -190,6 +241,44 @@ export class SessionRegistry implements IDisposable {
       }
     }
     return null;
+  }
+
+  /**
+   * The most recent meaningful line of output from the session's terminal, or
+   * `null` when there is nothing to surface — no coding agent is running in the
+   * session, its tab is closed (so there is no live buffer to read), or the
+   * buffer holds only the agent's input box and chrome. Refreshed on a poll by
+   * {@link _refreshActivity}; shown as a smaller line under the row's title.
+   * Always `null` while the activity line is disabled (see
+   * {@link setActivityEnabled}).
+   */
+  activityFor(name: string): string | null {
+    if (!this._activityEnabled) {
+      return null;
+    }
+    return this._activity.get(name) ?? null;
+  }
+
+  /**
+   * Turn the per-row latest-activity line on or off, driven by the
+   * `xtralab:terminals` `showAgentActivity` setting. When turned off the
+   * activity poll stops reading terminal buffers and any cached lines are
+   * dropped, so rows fall back to their title alone; when turned back on the
+   * lines are repopulated on the spot. A no-op when the value is unchanged.
+   */
+  setActivityEnabled(enabled: boolean): void {
+    if (enabled === this._activityEnabled) {
+      return;
+    }
+    this._activityEnabled = enabled;
+    if (enabled) {
+      // Repopulate immediately rather than waiting for the next poll tick;
+      // `_refreshActivity` emits `stateChanged` if it finds anything to show.
+      void this._refreshActivity();
+    } else {
+      this._activity.clear();
+      this._stateChanged.emit();
+    }
   }
 
   /**
@@ -236,6 +325,7 @@ export class SessionRegistry implements IDisposable {
     }
     this._isDisposed = true;
     this._poll.dispose();
+    this._activityPoll.dispose();
     this._terminals.runningChanged.disconnect(this._onRunningChanged, this);
     this._tracker.widgetAdded.disconnect(this._onWidgetAdded, this);
     this._agentSessions?.changed.disconnect(this._onTagChanged, this);
@@ -296,6 +386,11 @@ export class SessionRegistry implements IDisposable {
         this._detected.delete(name);
       }
     }
+    for (const name of Array.from(this._activity.keys())) {
+      if (!next.has(name)) {
+        this._activity.delete(name);
+      }
+    }
     // Forget launch tags for sessions that have gone away. This matters for
     // correctness as well as bookkeeping: terminado reuses session names, so
     // a stale tag could otherwise mislabel a brand-new terminal that happens
@@ -333,6 +428,51 @@ export class SessionRegistry implements IDisposable {
     }
     if (!Private.detectedEqual(this._detected, next)) {
       this._detected = next;
+      this._stateChanged.emit();
+    }
+  }
+
+  /**
+   * Poll body: re-read the buffer of each open coding-agent terminal and cache
+   * its latest meaningful line of output. Only sessions that have a running
+   * agent and an open tab qualify — a closed tab has no live buffer, and plain
+   * shells would only echo their prompt. A line is left untouched on a tick
+   * that happens to read nothing (so a momentary blank doesn't blink the row),
+   * but cached lines for sessions that no longer qualify are dropped so a stale
+   * line never lingers. Emits only when something actually changed.
+   */
+  private async _refreshActivity(): Promise<void> {
+    if (!this._activityEnabled) {
+      return;
+    }
+    let changed = false;
+    const qualifying = new Set<string>();
+    for (const name of this._live) {
+      if (this.agentCommandFor(name) === null) {
+        continue;
+      }
+      const widget = this.widgetFor(name);
+      if (!widget) {
+        continue;
+      }
+      qualifying.add(name);
+      const term = (widget.content as ITerminalContentInternals)._term;
+      if (!term) {
+        continue;
+      }
+      const line = Private.readActivity(term);
+      if (line && this._activity.get(name) !== line) {
+        this._activity.set(name, line);
+        changed = true;
+      }
+    }
+    for (const name of Array.from(this._activity.keys())) {
+      if (!qualifying.has(name)) {
+        this._activity.delete(name);
+        changed = true;
+      }
+    }
+    if (changed) {
       this._stateChanged.emit();
     }
   }
@@ -436,10 +576,13 @@ export class SessionRegistry implements IDisposable {
   private _detectCommands: () => string[];
   private _shell: JupyterFrontEnd.IShell | null;
   private _poll: Poll;
+  private _activityPoll: Poll;
   private _labels = new Map<string, string>();
   private _ranks = new Map<string, number>();
   private _firstSeen = new Map<string, number>();
   private _detected = new Map<string, string | null>();
+  private _activity = new Map<string, string>();
+  private _activityEnabled = true;
   private _live = new Set<string>();
   private _currentName: string | null = null;
   private _nextRank = 100;
@@ -468,8 +611,11 @@ export namespace SessionRegistry {
      */
     agentSessions?: IAgentSessions | null;
     /**
-     * Returns the agent commands the server should look for when detecting
-     * running agents. Read on every poll so it tracks the live agent list.
+     * Returns the names the server should look for when detecting running
+     * agents — each agent's command together with its canonical id, so a
+     * command pointed at an alias (e.g. `ccm` running `claude`) is still
+     * matched by the process it spawns. Read on every poll so it tracks the
+     * live agent list.
      */
     detectCommands?: () => string[];
   }
@@ -493,5 +639,73 @@ namespace Private {
       }
     }
     return true;
+  }
+
+  /** Rows above the cursor to scan when looking for the latest output line. */
+  const ACTIVITY_SCAN_ROWS = 64;
+
+  /** Clamp for the activity string so one runaway line can't bloat a row. */
+  const ACTIVITY_MAX_LENGTH = 160;
+
+  /**
+   * The most recent meaningful line of an xterm buffer, or `null` if none is
+   * found. Scans upward from the cursor row: coding agents park the cursor in
+   * an input box drawn at the bottom of the screen, so starting there skips
+   * that box and any hint line rendered beneath it and lands on the freshest
+   * line of real output or status above it (an agent's "Running…" line, or its
+   * last reply).
+   */
+  export function readActivity(term: IXtermTerminal): string | null {
+    const buffer = term.buffer?.active;
+    if (!buffer) {
+      return null;
+    }
+    const start = buffer.baseY + buffer.cursorY;
+    const limit = Math.max(0, start - ACTIVITY_SCAN_ROWS);
+    for (let row = start; row >= limit; row--) {
+      const text = sanitizeActivity(
+        buffer.getLine(row)?.translateToString(true) ?? ''
+      );
+      if (isMeaningfulActivity(text)) {
+        return text.length > ACTIVITY_MAX_LENGTH
+          ? `${text.slice(0, ACTIVITY_MAX_LENGTH - 1)}…`
+          : text;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Collapse a raw buffer line into displayable text: replace control
+   * characters with spaces (so no stray escape sequence rides along), squeeze
+   * runs of whitespace, and trim. Length is clamped by the caller.
+   */
+  export function sanitizeActivity(value: string): string {
+    let result = '';
+    for (const char of value) {
+      const code = char.codePointAt(0) ?? 0;
+      const isControl = code < 0x20 || (code >= 0x7f && code <= 0x9f);
+      result += isControl ? ' ' : char;
+    }
+    return result.replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Whether a sanitized line is worth showing as activity. It must carry an
+   * actual letter or digit (so blank lines and pure box-drawing borders are
+   * skipped) and not be part of the agent's input area rather than its output:
+   * a line that begins with a vertical box-drawing bar (the contents of an
+   * input or quote box) or a prompt chevron (the input line itself, including
+   * the ghost suggestion an agent shows there) is skipped, so the scan falls
+   * through to the freshest real line of output above it.
+   */
+  export function isMeaningfulActivity(text: string): boolean {
+    if (!text) {
+      return false;
+    }
+    if (/^[│┃❯❮›‹]/u.test(text)) {
+      return false;
+    }
+    return /[\p{L}\p{N}]/u.test(text);
   }
 }
