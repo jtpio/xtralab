@@ -4,6 +4,7 @@ import {
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
 import { Dialog, showDialog } from '@jupyterlab/apputils';
+import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ITerminalTracker } from '@jupyterlab/terminal';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { LabIcon, MenuSvg, terminalIcon } from '@jupyterlab/ui-components';
@@ -26,6 +27,10 @@ const PLUGIN_ID = 'xtralab:terminals';
  * JupyterLab's built-in "Running Terminals and Kernels" panel lists the
  * same sessions but only by their `terminals/<n>` name, so this panel
  * resolves and caches the published title to show something meaningful.
+ * Rows running a coding agent carry a smaller second line below the
+ * title with the agent's latest line of output, so the panel shows what
+ * each agent is doing at a glance — on by default, and switchable off
+ * through the `showAgentActivity` setting.
  *
  * Clicking a row activates the existing tab if one is open, or reopens
  * the session in a fresh terminal widget (`terminal:open`). The inline
@@ -51,7 +56,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
     ITranslator,
     IAgentRegistry,
     IEditorRegistry,
-    IAgentSessions
+    IAgentSessions,
+    ISettingRegistry
   ],
   activate: (
     app: JupyterFrontEnd,
@@ -60,25 +66,33 @@ const plugin: JupyterFrontEndPlugin<void> = {
     translator: ITranslator | null,
     agentRegistry: IAgentRegistry | null,
     editorRegistry: IEditorRegistry | null,
-    agentSessions: IAgentSessions | null
+    agentSessions: IAgentSessions | null,
+    settingRegistry: ISettingRegistry | null
   ): void => {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
-    // Resolve a session's running command to an icon: the matching agent's
-    // logo, the matching editor's logo (Neovim/Vim), or the plain terminal
-    // icon when nothing recognised is running. Reads `agentRegistry.agents`
-    // live so it tracks settings changes. Used by the panel to badge each row.
+    // Resolve a running agent/editor identifier to an icon: the matching
+    // agent's logo, the matching editor's logo (Neovim/Vim), or the plain
+    // terminal icon when nothing recognised is running. Detection reports
+    // either the configured `command` or the canonical `id` (see
+    // `detectCommands`), so a row whose command is an alias — e.g. `ccm` for
+    // `claude` — still resolves to the right logo via its id. Reads the
+    // registries live so it tracks settings changes. Used to badge each row.
     const iconForCommand = (command: string | null): LabIcon => {
       if (!command) {
         return terminalIcon;
       }
-      const agent = agentRegistry?.agents.find(a => a.command === command);
+      const agent = agentRegistry?.agents.find(
+        a => a.command === command || a.id === command
+      );
       if (agent) {
         return agent.icon;
       }
       // A terminal running an editor (Neovim/Vim, or a user-configured one) is
       // badged with its logo, the same as an agent.
-      const editor = editorRegistry?.editors.find(e => e.command === command);
+      const editor = editorRegistry?.editors.find(
+        e => e.command === command || e.id === command
+      );
       return editor?.icon ?? terminalIcon;
     };
 
@@ -90,14 +104,32 @@ const plugin: JupyterFrontEndPlugin<void> = {
       // nothing while a notebook or other widget is current instead).
       shell: app.shell,
       agentSessions,
-      // The commands the server should look for: the current agent and editor
-      // lists, each read live from its registry so they track settings changes
-      // — a terminal running an agent or an editor (Neovim/Vim, or a configured
-      // one) is badged.
-      detectCommands: () => [
-        ...(agentRegistry?.agents.map(a => a.command) ?? []),
-        ...(editorRegistry?.editors.map(e => e.command) ?? [])
-      ]
+      // The names the server should look for in each terminal's process tree:
+      // for every agent and editor, its configured `command` plus its canonical
+      // `id`. The id is the real CLI name (e.g. `claude`, `nvim`), so an agent
+      // whose command points at an alias — e.g. `ccm` running `claude` — is
+      // still recognised by the process it actually spawns. Read live so the
+      // list tracks settings changes; deduplicated since command and id usually
+      // coincide.
+      detectCommands: () => {
+        const names = new Set<string>();
+        for (const agent of agentRegistry?.agents ?? []) {
+          names.add(agent.command);
+          names.add(agent.id);
+        }
+        for (const editor of editorRegistry?.editors ?? []) {
+          names.add(editor.command);
+          names.add(editor.id);
+        }
+        return Array.from(names);
+      },
+      // Only coding agents (not editors) get a latest-activity line, so the
+      // registry asks this whether a detected command/id is an agent before
+      // reading its output buffer — editor terminals stay badge-only.
+      isAgentCommand: (command: string) =>
+        agentRegistry?.agents.some(
+          a => a.command === command || a.id === command
+        ) ?? false
     });
 
     // Mirror the agent/editor detected in each open terminal onto its main-area
@@ -216,7 +248,38 @@ const plugin: JupyterFrontEndPlugin<void> = {
     if (restorer) {
       restorer.add(panel, panel.id);
     }
+
+    // The latest-activity line under each agent row is on by default; honour
+    // the `showAgentActivity` setting so it can be turned off. Read on load and
+    // re-applied on every change.
+    if (settingRegistry) {
+      settingRegistry
+        .load(PLUGIN_ID)
+        .then(settings => {
+          const applyActivitySetting = (): void => {
+            registry.setActivityEnabled(
+              boolOption(settings.composite.showAgentActivity, true)
+            );
+          };
+          applyActivitySetting();
+          // Bind the slot to the panel so disposing the panel (which clears
+          // its signal data) drops the connection — the disposed registry is
+          // then never reached on a later settings change.
+          settings.changed.connect(applyActivitySetting, panel);
+        })
+        .catch(reason => {
+          console.error(
+            `xtralab: failed to load ${PLUGIN_ID} settings`,
+            reason
+          );
+        });
+    }
   }
 };
+
+/** Read a boolean setting value, falling back when it is missing or invalid. */
+function boolOption(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
 
 export default plugin;

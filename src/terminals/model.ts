@@ -17,6 +17,31 @@ import { fetchRunningAgents } from './detection';
 export type TerminalWidget = MainAreaWidget<ITerminal.ITerminal>;
 
 /**
+ * The slice of an xterm.js `Terminal` the registry reads to surface a
+ * session's most recent line of output. JupyterLab keeps its xterm in the
+ * terminal widget's private `_term` field, so a structural type reaches the
+ * buffer without taking a dependency on `@xterm/xterm` — the same access the
+ * terminal-notifications plugin already relies on. If the field is ever
+ * renamed, `_term` reads back `undefined` and the activity line is simply
+ * omitted: the row falls back to its title alone.
+ */
+interface IXtermBufferLine {
+  readonly isWrapped: boolean;
+  translateToString(trimRight?: boolean): string;
+}
+interface IXtermBuffer {
+  readonly baseY: number;
+  readonly cursorY: number;
+  getLine(index: number): IXtermBufferLine | undefined;
+}
+interface IXtermTerminal {
+  readonly buffer: { readonly active: IXtermBuffer };
+}
+interface ITerminalContentInternals extends ITerminal.ITerminal {
+  _term?: IXtermTerminal;
+}
+
+/**
  * How often to ask the server which agent (if any) is running in each
  * terminal. Snappy enough that a manually-started agent's logo shows up
  * within a few seconds, light enough that walking the shells' process trees
@@ -42,11 +67,24 @@ const DETECT_POLL_MAX_MS = 300_000;
 const LAUNCH_GRACE_MS = 4000;
 
 /**
+ * How often to re-read each open coding-agent terminal's output buffer to
+ * refresh the "latest activity" line shown under its row. Brisk enough to feel
+ * live while an agent works, cheap because it only walks the last screenful of
+ * a handful of terminals and emits only when a line actually changes.
+ */
+const ACTIVITY_POLL_INTERVAL_MS = 1500;
+
+/**
  * Source-of-truth model for the running-terminals panel. Each running
  * terminal session known to the server is one entry; the registry caches
  * the last `widget.title.label` we observed so the agent name (or any
  * xterm-published title) survives the user closing the tab while the
  * session continues running on the backend.
+ *
+ * For sessions running a coding agent it also surfaces a *latest activity*
+ * line — the freshest meaningful line of the terminal's output, read from the
+ * open tab's xterm buffer on a poll (see {@link activityFor}) — so each row
+ * shows what its agent is doing, not just its name.
  *
  * It also resolves *which agent is running* in each session, so the panel can
  * badge rows with the agent's logo. Two inputs feed that, reconciled by
@@ -74,6 +112,7 @@ export class SessionRegistry implements IDisposable {
     this._tracker = options.tracker;
     this._agentSessions = options.agentSessions ?? null;
     this._detectCommands = options.detectCommands ?? (() => []);
+    this._isAgentCommand = options.isAgentCommand ?? (() => true);
     this._shell = options.shell ?? null;
 
     this._terminals.runningChanged.connect(this._onRunningChanged, this);
@@ -103,6 +142,17 @@ export class SessionRegistry implements IDisposable {
         backoff: true,
         max: DETECT_POLL_MAX_MS
       },
+      standby: 'when-hidden'
+    });
+
+    // A second, faster poll reads the live output buffer of each open
+    // coding-agent terminal to keep its "latest activity" line current. Kept
+    // separate from the detection poll so reading xterm buffers neither delays
+    // nor is delayed by the server round-trip that drives the agent badges.
+    this._activityPoll = new Poll({
+      name: '@xtralab/terminals:activity',
+      factory: () => this._refreshActivity(),
+      frequency: { interval: ACTIVITY_POLL_INTERVAL_MS, backoff: false },
       standby: 'when-hidden'
     });
   }
@@ -162,7 +212,10 @@ export class SessionRegistry implements IDisposable {
   }
 
   /**
-   * The command of the agent running in the session, or `null` if none.
+   * An identifier for the agent running in the session — its configured
+   * command, or its canonical id when detection matched the spawned process by
+   * id rather than by an aliased command — or `null` if none. Callers resolve
+   * it to a logo through the plugin's `iconForCommand`, which accepts either.
    *
    * Server-side detection is authoritative whenever it reports a running
    * agent. A launch tag fills two gaps: the startup grace window right after
@@ -190,6 +243,44 @@ export class SessionRegistry implements IDisposable {
       }
     }
     return null;
+  }
+
+  /**
+   * The most recent meaningful line of output from the session's terminal, or
+   * `null` when there is nothing to surface — no coding agent is running in the
+   * session, its tab is closed (so there is no live buffer to read), or the
+   * buffer holds only the agent's input box and chrome. Refreshed on a poll by
+   * {@link _refreshActivity}; shown as a smaller line under the row's title.
+   * Always `null` while the activity line is disabled (see
+   * {@link setActivityEnabled}).
+   */
+  activityFor(name: string): string | null {
+    if (!this._activityEnabled) {
+      return null;
+    }
+    return this._activity.get(name) ?? null;
+  }
+
+  /**
+   * Turn the per-row latest-activity line on or off, driven by the
+   * `xtralab:terminals` `showAgentActivity` setting. When turned off the
+   * activity poll stops reading terminal buffers and any cached lines are
+   * dropped, so rows fall back to their title alone; when turned back on the
+   * lines are repopulated on the spot. A no-op when the value is unchanged.
+   */
+  setActivityEnabled(enabled: boolean): void {
+    if (enabled === this._activityEnabled) {
+      return;
+    }
+    this._activityEnabled = enabled;
+    if (enabled) {
+      // Repopulate immediately rather than waiting for the next poll tick;
+      // `_refreshActivity` emits `stateChanged` if it finds anything to show.
+      void this._refreshActivity();
+    } else {
+      this._activity.clear();
+      this._stateChanged.emit();
+    }
   }
 
   /**
@@ -236,6 +327,7 @@ export class SessionRegistry implements IDisposable {
     }
     this._isDisposed = true;
     this._poll.dispose();
+    this._activityPoll.dispose();
     this._terminals.runningChanged.disconnect(this._onRunningChanged, this);
     this._tracker.widgetAdded.disconnect(this._onWidgetAdded, this);
     this._agentSessions?.changed.disconnect(this._onTagChanged, this);
@@ -296,6 +388,11 @@ export class SessionRegistry implements IDisposable {
         this._detected.delete(name);
       }
     }
+    for (const name of Array.from(this._activity.keys())) {
+      if (!next.has(name)) {
+        this._activity.delete(name);
+      }
+    }
     // Forget launch tags for sessions that have gone away. This matters for
     // correctness as well as bookkeeping: terminado reuses session names, so
     // a stale tag could otherwise mislabel a brand-new terminal that happens
@@ -333,6 +430,62 @@ export class SessionRegistry implements IDisposable {
     }
     if (!Private.detectedEqual(this._detected, next)) {
       this._detected = next;
+      this._stateChanged.emit();
+    }
+  }
+
+  /**
+   * Poll body: re-read the buffer of each open coding-agent terminal and cache
+   * its latest meaningful line of output. Only sessions that have a running
+   * *agent* (not an editor) and an open tab qualify — a closed tab has no live
+   * buffer, editors run full-screen UIs that are not "activity", and plain
+   * shells would only echo their prompt. While a tab is reopening (its xterm
+   * is not ready yet) any existing line is kept; once the buffer is readable
+   * but has nothing worth showing the line is dropped, so a screen the agent
+   * has cleared doesn't leave a frozen line behind. Cached lines for sessions
+   * that no longer qualify are pruned. Emits only when something changed.
+   */
+  private async _refreshActivity(): Promise<void> {
+    if (!this._activityEnabled) {
+      return;
+    }
+    let changed = false;
+    const qualifying = new Set<string>();
+    for (const name of this._live) {
+      const command = this.agentCommandFor(name);
+      if (command === null || !this._isAgentCommand(command)) {
+        continue;
+      }
+      const widget = this.widgetFor(name);
+      if (!widget) {
+        continue;
+      }
+      qualifying.add(name);
+      const term = (widget.content as ITerminalContentInternals)._term;
+      if (!term) {
+        // The tab is reopening and its xterm is not ready; keep any existing
+        // line until the buffer can be read again.
+        continue;
+      }
+      const line = Private.readActivity(term);
+      if (line) {
+        if (this._activity.get(name) !== line) {
+          this._activity.set(name, line);
+          changed = true;
+        }
+      } else if (this._activity.delete(name)) {
+        // Readable buffer with nothing to surface (e.g. the agent cleared its
+        // screen) — drop the now-stale line instead of freezing it.
+        changed = true;
+      }
+    }
+    for (const name of Array.from(this._activity.keys())) {
+      if (!qualifying.has(name)) {
+        this._activity.delete(name);
+        changed = true;
+      }
+    }
+    if (changed) {
       this._stateChanged.emit();
     }
   }
@@ -434,12 +587,16 @@ export class SessionRegistry implements IDisposable {
   private _tracker: ITerminalTracker;
   private _agentSessions: IAgentSessions | null;
   private _detectCommands: () => string[];
+  private _isAgentCommand: (command: string) => boolean;
   private _shell: JupyterFrontEnd.IShell | null;
   private _poll: Poll;
+  private _activityPoll: Poll;
   private _labels = new Map<string, string>();
   private _ranks = new Map<string, number>();
   private _firstSeen = new Map<string, number>();
   private _detected = new Map<string, string | null>();
+  private _activity = new Map<string, string>();
+  private _activityEnabled = true;
   private _live = new Set<string>();
   private _currentName: string | null = null;
   private _nextRank = 100;
@@ -468,10 +625,21 @@ export namespace SessionRegistry {
      */
     agentSessions?: IAgentSessions | null;
     /**
-     * Returns the agent commands the server should look for when detecting
-     * running agents. Read on every poll so it tracks the live agent list.
+     * Returns the names the server should look for when detecting running
+     * agents — each agent's command together with its canonical id, so a
+     * command pointed at an alias (e.g. `ccm` running `claude`) is still
+     * matched by the process it spawns. Read on every poll so it tracks the
+     * live agent list.
      */
     detectCommands?: () => string[];
+    /**
+     * Whether a detected command (or id) belongs to a coding agent rather than
+     * an editor. Only agent sessions get a latest-activity line — editors
+     * (Neovim/Vim) are badged too, but run full-screen UIs whose buffer is not
+     * meaningfully "activity". Defaults to treating every detected command as an
+     * agent.
+     */
+    isAgentCommand?: (command: string) => boolean;
   }
 }
 
@@ -493,5 +661,138 @@ namespace Private {
       }
     }
     return true;
+  }
+
+  /** Rows above the cursor to scan when looking for the latest output. */
+  const ACTIVITY_SCAN_ROWS = 64;
+
+  /** Clamp for the activity string so one runaway block can't bloat a row. */
+  const ACTIVITY_MAX_LENGTH = 160;
+
+  /**
+   * Horizontal box-drawing / rule characters, treated as blanks when
+   * sanitizing. Agents pad a status line or draw a separator with these (e.g.
+   * `Worked for 1m 06s ────`), which is chrome, not text. Vertical bars are
+   * deliberately excluded — {@link isMeaningfulActivity} relies on them to
+   * recognise (and skip) the contents of an input/quote box.
+   */
+  const RULE_CHARS = new Set([
+    0x2500, 0x2501, 0x2504, 0x2505, 0x2508, 0x2509, 0x254c, 0x254d, 0x2550
+  ]);
+
+  /**
+   * The most recent meaningful line of agent output, or `null` if none is
+   * found. Agents park the cursor in an input box at the bottom of the screen,
+   * so the scan starts there and walks *up*, skipping that box, any hint or
+   * footer beneath it, blank lines and separators, until it reaches the block
+   * of real output nearest the input. It then rewinds to that block's first row
+   * and stitches the block back together (see {@link joinBlock}), so a reply
+   * the agent hard-wrapped across several rows reads as its opening sentence
+   * rather than the trailing fragment left next to the cursor.
+   */
+  export function readActivity(term: IXtermTerminal): string | null {
+    const buffer = term.buffer?.active;
+    if (!buffer) {
+      return null;
+    }
+    const cursorRow = buffer.baseY + buffer.cursorY;
+    const limit = Math.max(0, cursorRow - ACTIVITY_SCAN_ROWS);
+    for (let row = cursorRow; row >= limit; row--) {
+      if (!isMeaningfulActivity(lineText(buffer, row))) {
+        continue;
+      }
+      // `row` is the bottom of the output block nearest the input; walk up
+      // while rows stay meaningful to find the block's first row.
+      let topRow = row;
+      while (
+        topRow > limit &&
+        isMeaningfulActivity(lineText(buffer, topRow - 1))
+      ) {
+        topRow--;
+      }
+      return clampActivity(joinBlock(buffer, topRow, row));
+    }
+    return null;
+  }
+
+  /** Sanitized text of one buffer row. */
+  export function lineText(buffer: IXtermBuffer, row: number): string {
+    return sanitizeActivity(buffer.getLine(row)?.translateToString(true) ?? '');
+  }
+
+  /**
+   * Stitch rows `[topRow, lastRow]` of one output block into a single string,
+   * stopping once it is long enough to fill the row. A soft-wrapped row
+   * continues the previous one mid-word, so it is appended directly; a hard
+   * newline is a word boundary, so it is joined with a space.
+   */
+  export function joinBlock(
+    buffer: IXtermBuffer,
+    topRow: number,
+    lastRow: number
+  ): string {
+    let result = lineText(buffer, topRow);
+    for (let row = topRow + 1; row <= lastRow; row++) {
+      if (Array.from(result).length >= ACTIVITY_MAX_LENGTH) {
+        break;
+      }
+      const bufferLine = buffer.getLine(row);
+      const text = sanitizeActivity(bufferLine?.translateToString(true) ?? '');
+      if (!text) {
+        continue;
+      }
+      result += bufferLine?.isWrapped ? text : ` ${text}`;
+    }
+    return result;
+  }
+
+  /** Truncate by code point (never splitting an emoji) with an ellipsis. */
+  export function clampActivity(text: string): string {
+    const points = Array.from(text);
+    return points.length > ACTIVITY_MAX_LENGTH
+      ? `${points.slice(0, ACTIVITY_MAX_LENGTH - 1).join('')}…`
+      : text;
+  }
+
+  /**
+   * Collapse a raw buffer row into displayable text: replace control characters
+   * and horizontal rule characters with spaces (so no escape sequence or drawn
+   * separator rides along), squeeze runs of whitespace, and trim.
+   */
+  export function sanitizeActivity(value: string): string {
+    let result = '';
+    for (const char of value) {
+      const code = char.codePointAt(0) ?? 0;
+      const isControl = code < 0x20 || (code >= 0x7f && code <= 0x9f);
+      result += isControl || RULE_CHARS.has(code) ? ' ' : char;
+    }
+    return result.replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Whether a sanitized row is worth showing as activity, i.e. real output
+   * rather than chrome. Doubles as the block-boundary test for
+   * {@link readActivity}'s walk up. A row is skipped when it:
+   *   - is blank or pure box-drawing (carries no letter or digit);
+   *   - begins with a vertical box-drawing bar (the contents of an input or
+   *     quote box), a prompt chevron (the input row and its ghost suggestion),
+   *     or Claude's tool-result / tip marker `⎿`; or
+   *   - is a transient status footer — one carrying a `for <time>` / `(<time>`
+   *     elapsed-time stamp, as agents print while and after they work
+   *     ("✻ Churned for 17s", "Working… (8s · …)", "— Worked for 1m 06s"). This
+   *     carries no real content, so skipping it lets the scan reach the reply
+   *     the agent wrote just above it.
+   */
+  export function isMeaningfulActivity(text: string): boolean {
+    if (!text) {
+      return false;
+    }
+    if (/^[│┃║❯❮›‹⎿]/u.test(text)) {
+      return false;
+    }
+    if (/(?:for |\()\d+(?:\s?m\s?\d+)?s\b/u.test(text)) {
+      return false;
+    }
+    return /[\p{L}\p{N}]/u.test(text);
   }
 }
