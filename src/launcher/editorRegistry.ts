@@ -13,6 +13,10 @@ import {
   type IEditor,
   type IEditorSettings
 } from './editors';
+import {
+  LAUNCHER_PLUGIN_ID,
+  registerLauncherSchemaDefaults
+} from './schemaDefaults';
 
 /**
  * A read-only, observable view of the launcher's terminal editors: xtralab's
@@ -80,9 +84,6 @@ class EditorRegistry implements IEditorRegistry {
   private _changed = new Signal<IEditorRegistry, void>(this);
 }
 
-/** Schema id the `editors` setting lives under (shared with the launcher). */
-const LAUNCHER_SETTINGS_ID = 'xtralab:launcher';
-
 /**
  * Provides {@link IEditorRegistry}: merges xtralab's built-in editors with the
  * user's `editors` setting, probes the server's `$PATH` to resolve the launcher
@@ -124,8 +125,11 @@ export const editorRegistryPlugin: JupyterFrontEndPlugin<IEditorRegistry> = {
     };
 
     if (settingRegistry) {
+      // Must precede the first `load`: the schema defers loading until a
+      // transform is registered.
+      registerLauncherSchemaDefaults(settingRegistry);
       try {
-        const settings = await settingRegistry.load(LAUNCHER_SETTINGS_ID);
+        const settings = await settingRegistry.load(LAUNCHER_PLUGIN_ID);
         await apply(readOverrides(settings));
         settings.changed.connect(async () => {
           try {

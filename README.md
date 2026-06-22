@@ -184,7 +184,11 @@ See the [`jupyterlab-lsp` documentation][lsp-config] for the full spec.
 ## Customizing the launcher
 
 Open `Settings → Settings Editor → xtralab launcher` to override, hide, or add
-launcher entries. Both lists below merge with xtralab's defaults by `id`.
+launcher entries. The editor shows xtralab's full built-in list as the default
+for both the agents and editors settings, so you can read every shipped entry
+and copy one into your user preferences to tweak in place. Both lists merge with
+xtralab's defaults by `id`, so an override only needs the `id` plus the fields
+you want to change.
 
 ### Agents
 
