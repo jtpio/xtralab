@@ -88,6 +88,24 @@ const DEFAULTS: IEditor[] = [
   }
 ];
 
+/**
+ * The built-in editors projected into the JSON settings shape
+ * ({@link IEditorSettings}), dropping the runtime-only {@link LabIcon}. Mirrors
+ * {@link defaultAgentSettings}: {@link registerLauncherSchemaDefaults} injects
+ * this as the `editors` setting's schema default so the Settings Editor shows
+ * the shipped list.
+ */
+export function defaultEditorSettings(): IEditorSettings[] {
+  return DEFAULTS.map(editor => ({
+    id: editor.id,
+    label: editor.label,
+    caption: editor.caption,
+    command: editor.command,
+    rank: editor.rank,
+    requireAvailable: editor.requireAvailable
+  }));
+}
+
 function resolveEditorIcon(id: string, iconSvg: string | undefined): LabIcon {
   if (iconSvg) {
     return new LabIcon({

@@ -19,6 +19,7 @@ import { CREATE_LAUNCHER_COMMAND, registerAgentCommands } from './commands';
 import { LauncherDashboard } from './dashboard';
 import { editorRegistryPlugin, IEditorRegistry } from './editorRegistry';
 import { AgentRegistry } from './registry';
+import { registerLauncherSchemaDefaults } from './schemaDefaults';
 import { IAgentRegistry } from './tokens';
 
 const PLUGIN_ID = 'xtralab:launcher';
@@ -110,6 +111,9 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
     };
 
     if (settingRegistry) {
+      // Must precede the first `load`: the schema defers loading until a
+      // transform is registered.
+      registerLauncherSchemaDefaults(settingRegistry);
       try {
         const settings = await settingRegistry.load(PLUGIN_ID);
         await applyAgents(readOverrides(settings));

@@ -178,6 +178,31 @@ const DEFAULTS: IAgent[] = [
   }
 ];
 
+/**
+ * The built-in agents projected into the JSON settings shape
+ * ({@link IAgentSettings}), dropping the runtime-only {@link LabIcon}.
+ * {@link registerLauncherSchemaDefaults} injects this as the `agents` setting's
+ * schema default so the Settings Editor shows the shipped list.
+ */
+export function defaultAgentSettings(): IAgentSettings[] {
+  return DEFAULTS.map(agent => {
+    const entry: IAgentSettings = {
+      id: agent.id,
+      label: agent.label,
+      caption: agent.caption,
+      command: agent.command,
+      rank: agent.rank,
+      requireAvailable: agent.requireAvailable
+    };
+    // Omit `promptArgs` for agents that don't take an inline prompt, so the
+    // default doesn't show a prompt form they lack.
+    if (agent.promptArgs !== undefined) {
+      entry.promptArgs = agent.promptArgs;
+    }
+    return entry;
+  });
+}
+
 function resolveIcon(id: string, iconSvg: string | undefined): LabIcon {
   if (iconSvg) {
     return new LabIcon({ name: `xtralab:agent-custom-${id}`, svgstr: iconSvg });
