@@ -663,76 +663,134 @@ namespace Private {
     return true;
   }
 
-  /** Rows above the cursor to scan when looking for the latest output line. */
+  /** Rows above the cursor to scan when looking for the latest output. */
   const ACTIVITY_SCAN_ROWS = 64;
 
-  /** Clamp for the activity string so one runaway line can't bloat a row. */
+  /** Clamp for the activity string so one runaway block can't bloat a row. */
   const ACTIVITY_MAX_LENGTH = 160;
 
   /**
-   * The most recent meaningful line of an xterm buffer, or `null` if none is
-   * found. Scans upward from the cursor row: coding agents park the cursor in
-   * an input box drawn at the bottom of the screen, so starting there skips
-   * that box and any hint line rendered beneath it and lands on the freshest
-   * line of real output or status above it (an agent's "Running…" line, or its
-   * last reply). Soft-wrap continuation rows are skipped so a long output line
-   * yields its readable start rather than the trailing fragment nearest the
-   * cursor.
+   * Horizontal box-drawing / rule characters, treated as blanks when
+   * sanitizing. Agents pad a status line or draw a separator with these (e.g.
+   * `Worked for 1m 06s ────`), which is chrome, not text. Vertical bars are
+   * deliberately excluded — {@link isMeaningfulActivity} relies on them to
+   * recognise (and skip) the contents of an input/quote box.
+   */
+  const RULE_CHARS = new Set([
+    0x2500, 0x2501, 0x2504, 0x2505, 0x2508, 0x2509, 0x254c, 0x254d, 0x2550
+  ]);
+
+  /**
+   * The most recent meaningful line of agent output, or `null` if none is
+   * found. Agents park the cursor in an input box at the bottom of the screen,
+   * so the scan starts there and walks *up*, skipping that box, any hint or
+   * footer beneath it, blank lines and separators, until it reaches the block
+   * of real output nearest the input. It then rewinds to that block's first row
+   * and stitches the block back together (see {@link joinBlock}), so a reply
+   * the agent hard-wrapped across several rows reads as its opening sentence
+   * rather than the trailing fragment left next to the cursor.
    */
   export function readActivity(term: IXtermTerminal): string | null {
     const buffer = term.buffer?.active;
     if (!buffer) {
       return null;
     }
-    const start = buffer.baseY + buffer.cursorY;
-    const limit = Math.max(0, start - ACTIVITY_SCAN_ROWS);
-    for (let row = start; row >= limit; row--) {
-      const bufferLine = buffer.getLine(row);
-      if (!bufferLine || bufferLine.isWrapped) {
+    const cursorRow = buffer.baseY + buffer.cursorY;
+    const limit = Math.max(0, cursorRow - ACTIVITY_SCAN_ROWS);
+    for (let row = cursorRow; row >= limit; row--) {
+      if (!isMeaningfulActivity(lineText(buffer, row))) {
         continue;
       }
-      const text = sanitizeActivity(bufferLine.translateToString(true));
-      if (isMeaningfulActivity(text)) {
-        // Truncate by code point, not UTF-16 unit, so an emoji or other
-        // astral character at the boundary is never split into junk.
-        const points = Array.from(text);
-        return points.length > ACTIVITY_MAX_LENGTH
-          ? `${points.slice(0, ACTIVITY_MAX_LENGTH - 1).join('')}…`
-          : text;
+      // `row` is the bottom of the output block nearest the input; walk up
+      // while rows stay meaningful to find the block's first row.
+      let topRow = row;
+      while (
+        topRow > limit &&
+        isMeaningfulActivity(lineText(buffer, topRow - 1))
+      ) {
+        topRow--;
       }
+      return clampActivity(joinBlock(buffer, topRow, row));
     }
     return null;
   }
 
+  /** Sanitized text of one buffer row. */
+  export function lineText(buffer: IXtermBuffer, row: number): string {
+    return sanitizeActivity(buffer.getLine(row)?.translateToString(true) ?? '');
+  }
+
   /**
-   * Collapse a raw buffer line into displayable text: replace control
-   * characters with spaces (so no stray escape sequence rides along), squeeze
-   * runs of whitespace, and trim. Length is clamped by the caller.
+   * Stitch rows `[topRow, lastRow]` of one output block into a single string,
+   * stopping once it is long enough to fill the row. A soft-wrapped row
+   * continues the previous one mid-word, so it is appended directly; a hard
+   * newline is a word boundary, so it is joined with a space.
+   */
+  export function joinBlock(
+    buffer: IXtermBuffer,
+    topRow: number,
+    lastRow: number
+  ): string {
+    let result = lineText(buffer, topRow);
+    for (let row = topRow + 1; row <= lastRow; row++) {
+      if (Array.from(result).length >= ACTIVITY_MAX_LENGTH) {
+        break;
+      }
+      const bufferLine = buffer.getLine(row);
+      const text = sanitizeActivity(bufferLine?.translateToString(true) ?? '');
+      if (!text) {
+        continue;
+      }
+      result += bufferLine?.isWrapped ? text : ` ${text}`;
+    }
+    return result;
+  }
+
+  /** Truncate by code point (never splitting an emoji) with an ellipsis. */
+  export function clampActivity(text: string): string {
+    const points = Array.from(text);
+    return points.length > ACTIVITY_MAX_LENGTH
+      ? `${points.slice(0, ACTIVITY_MAX_LENGTH - 1).join('')}…`
+      : text;
+  }
+
+  /**
+   * Collapse a raw buffer row into displayable text: replace control characters
+   * and horizontal rule characters with spaces (so no escape sequence or drawn
+   * separator rides along), squeeze runs of whitespace, and trim.
    */
   export function sanitizeActivity(value: string): string {
     let result = '';
     for (const char of value) {
       const code = char.codePointAt(0) ?? 0;
       const isControl = code < 0x20 || (code >= 0x7f && code <= 0x9f);
-      result += isControl ? ' ' : char;
+      result += isControl || RULE_CHARS.has(code) ? ' ' : char;
     }
     return result.replace(/\s+/g, ' ').trim();
   }
 
   /**
-   * Whether a sanitized line is worth showing as activity. It must carry an
-   * actual letter or digit (so blank lines and pure box-drawing borders are
-   * skipped) and not be part of the agent's input area rather than its output:
-   * a line that begins with a vertical box-drawing bar (the contents of an
-   * input or quote box) or a prompt chevron (the input line itself, including
-   * the ghost suggestion an agent shows there) is skipped, so the scan falls
-   * through to the freshest real line of output above it.
+   * Whether a sanitized row is worth showing as activity, i.e. real output
+   * rather than chrome. Doubles as the block-boundary test for
+   * {@link readActivity}'s walk up. A row is skipped when it:
+   *   - is blank or pure box-drawing (carries no letter or digit);
+   *   - begins with a vertical box-drawing bar (the contents of an input or
+   *     quote box), a prompt chevron (the input row and its ghost suggestion),
+   *     or Claude's tool-result / tip marker `⎿`; or
+   *   - is a transient status footer — one carrying a `for <time>` / `(<time>`
+   *     elapsed-time stamp, as agents print while and after they work
+   *     ("✻ Churned for 17s", "Working… (8s · …)", "— Worked for 1m 06s"). This
+   *     carries no real content, so skipping it lets the scan reach the reply
+   *     the agent wrote just above it.
    */
   export function isMeaningfulActivity(text: string): boolean {
     if (!text) {
       return false;
     }
-    if (/^[│┃❯❮›‹]/u.test(text)) {
+    if (/^[│┃║❯❮›‹⎿]/u.test(text)) {
+      return false;
+    }
+    if (/(?:for |\()\d+(?:\s?m\s?\d+)?s\b/u.test(text)) {
       return false;
     }
     return /[\p{L}\p{N}]/u.test(text);
