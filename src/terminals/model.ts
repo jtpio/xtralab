@@ -26,6 +26,7 @@ export type TerminalWidget = MainAreaWidget<ITerminal.ITerminal>;
  * omitted: the row falls back to its title alone.
  */
 interface IXtermBufferLine {
+  readonly isWrapped: boolean;
   translateToString(trimRight?: boolean): string;
 }
 interface IXtermBuffer {
@@ -111,6 +112,7 @@ export class SessionRegistry implements IDisposable {
     this._tracker = options.tracker;
     this._agentSessions = options.agentSessions ?? null;
     this._detectCommands = options.detectCommands ?? (() => []);
+    this._isAgentCommand = options.isAgentCommand ?? (() => true);
     this._shell = options.shell ?? null;
 
     this._terminals.runningChanged.connect(this._onRunningChanged, this);
@@ -435,11 +437,13 @@ export class SessionRegistry implements IDisposable {
   /**
    * Poll body: re-read the buffer of each open coding-agent terminal and cache
    * its latest meaningful line of output. Only sessions that have a running
-   * agent and an open tab qualify — a closed tab has no live buffer, and plain
-   * shells would only echo their prompt. A line is left untouched on a tick
-   * that happens to read nothing (so a momentary blank doesn't blink the row),
-   * but cached lines for sessions that no longer qualify are dropped so a stale
-   * line never lingers. Emits only when something actually changed.
+   * *agent* (not an editor) and an open tab qualify — a closed tab has no live
+   * buffer, editors run full-screen UIs that are not "activity", and plain
+   * shells would only echo their prompt. While a tab is reopening (its xterm
+   * is not ready yet) any existing line is kept; once the buffer is readable
+   * but has nothing worth showing the line is dropped, so a screen the agent
+   * has cleared doesn't leave a frozen line behind. Cached lines for sessions
+   * that no longer qualify are pruned. Emits only when something changed.
    */
   private async _refreshActivity(): Promise<void> {
     if (!this._activityEnabled) {
@@ -448,7 +452,8 @@ export class SessionRegistry implements IDisposable {
     let changed = false;
     const qualifying = new Set<string>();
     for (const name of this._live) {
-      if (this.agentCommandFor(name) === null) {
+      const command = this.agentCommandFor(name);
+      if (command === null || !this._isAgentCommand(command)) {
         continue;
       }
       const widget = this.widgetFor(name);
@@ -458,11 +463,19 @@ export class SessionRegistry implements IDisposable {
       qualifying.add(name);
       const term = (widget.content as ITerminalContentInternals)._term;
       if (!term) {
+        // The tab is reopening and its xterm is not ready; keep any existing
+        // line until the buffer can be read again.
         continue;
       }
       const line = Private.readActivity(term);
-      if (line && this._activity.get(name) !== line) {
-        this._activity.set(name, line);
+      if (line) {
+        if (this._activity.get(name) !== line) {
+          this._activity.set(name, line);
+          changed = true;
+        }
+      } else if (this._activity.delete(name)) {
+        // Readable buffer with nothing to surface (e.g. the agent cleared its
+        // screen) — drop the now-stale line instead of freezing it.
         changed = true;
       }
     }
@@ -574,6 +587,7 @@ export class SessionRegistry implements IDisposable {
   private _tracker: ITerminalTracker;
   private _agentSessions: IAgentSessions | null;
   private _detectCommands: () => string[];
+  private _isAgentCommand: (command: string) => boolean;
   private _shell: JupyterFrontEnd.IShell | null;
   private _poll: Poll;
   private _activityPoll: Poll;
@@ -618,6 +632,14 @@ export namespace SessionRegistry {
      * live agent list.
      */
     detectCommands?: () => string[];
+    /**
+     * Whether a detected command (or id) belongs to a coding agent rather than
+     * an editor. Only agent sessions get a latest-activity line — editors
+     * (Neovim/Vim) are badged too, but run full-screen UIs whose buffer is not
+     * meaningfully "activity". Defaults to treating every detected command as an
+     * agent.
+     */
+    isAgentCommand?: (command: string) => boolean;
   }
 }
 
@@ -653,7 +675,9 @@ namespace Private {
    * an input box drawn at the bottom of the screen, so starting there skips
    * that box and any hint line rendered beneath it and lands on the freshest
    * line of real output or status above it (an agent's "Running…" line, or its
-   * last reply).
+   * last reply). Soft-wrap continuation rows are skipped so a long output line
+   * yields its readable start rather than the trailing fragment nearest the
+   * cursor.
    */
   export function readActivity(term: IXtermTerminal): string | null {
     const buffer = term.buffer?.active;
@@ -663,12 +687,17 @@ namespace Private {
     const start = buffer.baseY + buffer.cursorY;
     const limit = Math.max(0, start - ACTIVITY_SCAN_ROWS);
     for (let row = start; row >= limit; row--) {
-      const text = sanitizeActivity(
-        buffer.getLine(row)?.translateToString(true) ?? ''
-      );
+      const bufferLine = buffer.getLine(row);
+      if (!bufferLine || bufferLine.isWrapped) {
+        continue;
+      }
+      const text = sanitizeActivity(bufferLine.translateToString(true));
       if (isMeaningfulActivity(text)) {
-        return text.length > ACTIVITY_MAX_LENGTH
-          ? `${text.slice(0, ACTIVITY_MAX_LENGTH - 1)}…`
+        // Truncate by code point, not UTF-16 unit, so an emoji or other
+        // astral character at the boundary is never split into junk.
+        const points = Array.from(text);
+        return points.length > ACTIVITY_MAX_LENGTH
+          ? `${points.slice(0, ACTIVITY_MAX_LENGTH - 1).join('')}…`
           : text;
       }
     }

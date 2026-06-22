@@ -105,12 +105,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
       shell: app.shell,
       agentSessions,
       // The names the server should look for in each terminal's process tree:
-      // for every agent and editor, both its configured `command` and its
-      // canonical `id`. The id is the real CLI name (e.g. `claude`, `nvim`), so
-      // an agent whose command points at an alias — e.g. `ccm` running
-      // `claude` — is still recognised by the process it actually spawns. Read
-      // live from the registries so the list tracks settings changes;
-      // deduplicated since command and id usually coincide.
+      // for every agent and editor, its configured `command` plus its canonical
+      // `id`. The id is the real CLI name (e.g. `claude`, `nvim`), so an agent
+      // whose command points at an alias — e.g. `ccm` running `claude` — is
+      // still recognised by the process it actually spawns. Read live so the
+      // list tracks settings changes; deduplicated since command and id usually
+      // coincide.
       detectCommands: () => {
         const names = new Set<string>();
         for (const agent of agentRegistry?.agents ?? []) {
@@ -122,7 +122,14 @@ const plugin: JupyterFrontEndPlugin<void> = {
           names.add(editor.id);
         }
         return Array.from(names);
-      }
+      },
+      // Only coding agents (not editors) get a latest-activity line, so the
+      // registry asks this whether a detected command/id is an agent before
+      // reading its output buffer — editor terminals stay badge-only.
+      isAgentCommand: (command: string) =>
+        agentRegistry?.agents.some(
+          a => a.command === command || a.id === command
+        ) ?? false
     });
 
     // Mirror the agent/editor detected in each open terminal onto its main-area
@@ -255,7 +262,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
             );
           };
           applyActivitySetting();
-          settings.changed.connect(applyActivitySetting);
+          // Bind the slot to the panel so disposing the panel (which clears
+          // its signal data) drops the connection — the disposed registry is
+          // then never reached on a later settings change.
+          settings.changed.connect(applyActivitySetting, panel);
         })
         .catch(reason => {
           console.error(
