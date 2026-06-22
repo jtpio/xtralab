@@ -11,6 +11,7 @@
     "@jupyterlab/notebook-extension:update-raw-mimetype": true,
     "@jupyterlab/metadataform-extension:metadataforms": true,
     "@jupyterlab/debugger-extension:main": true,
-    "@axlair/jupyterlab_vim": true
+    "@axlair/jupyterlab_vim": true,
+    "@jupyter/docprovider-extension:statusBarTimeline": true
   }
 }
