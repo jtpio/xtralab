@@ -1,4 +1,5 @@
 import type { DocumentRegistry } from '@jupyterlab/docregistry';
+import type { TranslationBundle } from '@jupyterlab/translation';
 import { LabIcon, ReactWidget } from '@jupyterlab/ui-components';
 import type { CommandRegistry } from '@lumino/commands';
 import * as React from 'react';
@@ -8,18 +9,12 @@ import type { IAgent } from '../launcher/agents';
 import { computeSections, IOmniboxItem } from './model';
 import { loadWorkspaceFiles } from './files';
 
-/** Construction options for {@link OmniboxWidget}. */
-export interface IOmniboxOptions {
-  commands: CommandRegistry;
-  docRegistry: DocumentRegistry;
-  /** Snapshot of the available agents, read once when the overlay opens. */
-  agents: IAgent[];
-  /** Placeholder text for the input. */
-  placeholder: string;
-  /** Seed text for the input. */
-  initialQuery: string;
-  /** Dismiss the overlay (the plugin disposes the widget). */
-  onClose: () => void;
+/** DOM id of the results listbox, referenced by the input's `aria-controls`. */
+const LIST_ID = 'jp-xtralab-Omnibox-list';
+
+/** Stable DOM id for the result row at `index`, for `aria-activedescendant`. */
+function optionId(index: number): string {
+  return `jp-xtralab-Omnibox-option-${index}`;
 }
 
 /**
@@ -45,7 +40,7 @@ function renderHighlight(
     const chunk = text.slice(i, j);
     nodes.push(
       isMatch ? (
-        <span className="xtralab-Omnibox-match" key={i}>
+        <span className="jp-xtralab-Omnibox-match" key={i}>
           {chunk}
         </span>
       ) : (
@@ -59,15 +54,22 @@ function renderHighlight(
 
 function renderIcon(icon?: LabIcon): React.ReactNode {
   return icon ? (
-    <icon.react tag="span" className="xtralab-Omnibox-itemIcon" />
+    <icon.react tag="span" className="jp-xtralab-Omnibox-itemIcon" />
   ) : (
-    <span className="xtralab-Omnibox-itemIcon" />
+    <span className="jp-xtralab-Omnibox-itemIcon" />
   );
 }
 
-function OmniboxComponent(props: IOmniboxOptions): JSX.Element {
-  const { commands, docRegistry, agents, placeholder, initialQuery, onClose } =
-    props;
+function OmniboxComponent(props: OmniboxWidget.IOptions): JSX.Element {
+  const {
+    commands,
+    docRegistry,
+    agents,
+    placeholder,
+    initialQuery,
+    trans,
+    onClose
+  } = props;
   const [query, setQuery] = React.useState(initialQuery);
   const [files, setFiles] = React.useState<string[]>([]);
   const [active, setActive] = React.useState(0);
@@ -91,13 +93,15 @@ function OmniboxComponent(props: IOmniboxOptions): JSX.Element {
   }, []);
 
   const sections = React.useMemo(
-    () => computeSections({ query, commands, docRegistry, agents, files }),
-    [query, commands, docRegistry, agents, files]
+    () =>
+      computeSections({ query, commands, docRegistry, agents, files, trans }),
+    [query, commands, docRegistry, agents, files, trans]
   );
   const flat = React.useMemo(
     () => [...sections.commands, ...sections.files, ...sections.agents],
     [sections]
   );
+  const hasResults = flat.length > 0;
 
   // Reset the highlighted row whenever the result set changes, and keep the
   // index in range when results shrink.
@@ -108,7 +112,7 @@ function OmniboxComponent(props: IOmniboxOptions): JSX.Element {
   // Keep the highlighted row scrolled into view as it moves.
   React.useEffect(() => {
     listRef.current
-      ?.querySelector('.xtralab-mod-active')
+      ?.querySelector('.jp-mod-active')
       ?.scrollIntoView({ block: 'nearest' });
   }, [active, flat]);
 
@@ -168,26 +172,36 @@ function OmniboxComponent(props: IOmniboxOptions): JSX.Element {
       return null;
     }
     return (
-      <div className="xtralab-Omnibox-section" key={title}>
-        <div className="xtralab-Omnibox-sectionHeader">{title}</div>
+      <div
+        className="jp-xtralab-Omnibox-section"
+        role="group"
+        aria-label={title}
+        key={title}
+      >
+        <div className="jp-xtralab-Omnibox-sectionHeader" aria-hidden="true">
+          {title}
+        </div>
         {items.map((item, offset) => {
           const index = startIndex + offset;
           const isActive = index === active;
           return (
             <div
               key={item.key}
+              id={optionId(index)}
+              role="option"
+              aria-selected={isActive}
               className={
-                'xtralab-Omnibox-item' + (isActive ? ' xtralab-mod-active' : '')
+                'jp-xtralab-Omnibox-item' + (isActive ? ' jp-mod-active' : '')
               }
               onMouseEnter={() => setActive(index)}
               onClick={() => run(item)}
             >
               {renderIcon(item.icon)}
-              <span className="xtralab-Omnibox-itemLabel">
+              <span className="jp-xtralab-Omnibox-itemLabel">
                 {renderHighlight(item.label, item.matchIndices)}
               </span>
               {item.caption ? (
-                <span className="xtralab-Omnibox-itemCaption">
+                <span className="jp-xtralab-Omnibox-itemCaption">
                   {item.caption}
                 </span>
               ) : null}
@@ -203,7 +217,7 @@ function OmniboxComponent(props: IOmniboxOptions): JSX.Element {
 
   return (
     <div
-      className="xtralab-Omnibox-overlay"
+      className="jp-xtralab-Omnibox-overlay"
       onMouseDown={event => {
         if (event.target === event.currentTarget) {
           dismiss();
@@ -211,31 +225,51 @@ function OmniboxComponent(props: IOmniboxOptions): JSX.Element {
       }}
     >
       <div
-        className="xtralab-Omnibox-panel"
+        className="jp-xtralab-Omnibox-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label={placeholder}
         onMouseDown={event => event.stopPropagation()}
       >
         <input
           ref={inputRef}
-          className="xtralab-Omnibox-input"
+          className="jp-xtralab-Omnibox-input"
           type="text"
           spellCheck={false}
           placeholder={placeholder}
+          aria-label={placeholder}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={hasResults}
+          aria-controls={LIST_ID}
+          aria-activedescendant={hasResults ? optionId(active) : undefined}
           value={query}
           onChange={event => setQuery(event.target.value)}
           onKeyDown={onKeyDown}
         />
-        <div className="xtralab-Omnibox-results" ref={listRef}>
-          {flat.length > 0 ? (
+        <div
+          className="jp-xtralab-Omnibox-results"
+          id={LIST_ID}
+          role={hasResults ? 'listbox' : undefined}
+          ref={listRef}
+        >
+          {hasResults ? (
             <>
-              {renderSection('Commands', sections.commands, 0)}
-              {renderSection('Files', sections.files, filesStart)}
-              {renderSection('Ask an agent', sections.agents, agentsStart)}
+              {renderSection(trans.__('Commands'), sections.commands, 0)}
+              {renderSection(trans.__('Files'), sections.files, filesStart)}
+              {renderSection(
+                trans.__('Ask an agent'),
+                sections.agents,
+                agentsStart
+              )}
             </>
           ) : (
-            <div className="xtralab-Omnibox-empty">
+            <div className="jp-xtralab-Omnibox-empty">
               {query.trim()
-                ? 'No matches.'
-                : 'Search files and commands, or type a prompt and pick an agent. Prefix with > for commands or / for files.'}
+                ? trans.__('No matches.')
+                : trans.__(
+                    'Search files and commands, or type a prompt and pick an agent. Prefix with > for commands or / for files.'
+                  )}
             </div>
           )}
         </div>
@@ -247,15 +281,15 @@ function OmniboxComponent(props: IOmniboxOptions): JSX.Element {
 /**
  * The omnibox overlay widget. Hosts {@link OmniboxComponent} in a React root
  * attached to `document.body`. It carries `jp-ThemedContainer` so JupyterLab's
- * theme CSS variables resolve outside the shell, and its own `xtralab-Omnibox`
+ * theme CSS variables resolve outside the shell, and its own `jp-xtralab-Omnibox`
  * class for the overlay/panel styling (style/omnibox.css).
  */
 export class OmniboxWidget extends ReactWidget {
-  constructor(options: IOmniboxOptions) {
+  constructor(options: OmniboxWidget.IOptions) {
     super();
     this._options = options;
     this.id = 'xtralab-omnibox';
-    this.addClass('xtralab-Omnibox');
+    this.addClass('jp-xtralab-Omnibox');
     this.addClass('jp-ThemedContainer');
   }
 
@@ -263,5 +297,26 @@ export class OmniboxWidget extends ReactWidget {
     return <OmniboxComponent {...this._options} />;
   }
 
-  private _options: IOmniboxOptions;
+  private _options: OmniboxWidget.IOptions;
+}
+
+/**
+ * A namespace for `OmniboxWidget` statics.
+ */
+export namespace OmniboxWidget {
+  /** Construction options for {@link OmniboxWidget}. */
+  export interface IOptions {
+    commands: CommandRegistry;
+    docRegistry: DocumentRegistry;
+    /** Snapshot of the available agents, read once when the overlay opens. */
+    agents: IAgent[];
+    /** Placeholder text for the input. */
+    placeholder: string;
+    /** Seed text for the input. */
+    initialQuery: string;
+    /** Translation bundle for the overlay's own labels. */
+    trans: TranslationBundle;
+    /** Dismiss the overlay (the plugin disposes the widget). */
+    onClose: () => void;
+  }
 }

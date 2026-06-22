@@ -1,4 +1,5 @@
 import type { DocumentRegistry } from '@jupyterlab/docregistry';
+import type { TranslationBundle } from '@jupyterlab/translation';
 import { fileIcon, LabIcon } from '@jupyterlab/ui-components';
 import { StringExt } from '@lumino/algorithm';
 import type { CommandRegistry } from '@lumino/commands';
@@ -39,6 +40,7 @@ export interface IComputeOptions {
   docRegistry: DocumentRegistry;
   agents: IAgent[];
   files: string[];
+  trans: TranslationBundle;
 }
 
 const COMMAND_LIMIT = 7;
@@ -62,7 +64,7 @@ type Mode = 'all' | 'commands' | 'files';
  * shows a hint instead).
  */
 export function computeSections(options: IComputeOptions): IOmniboxSections {
-  const { query, commands, docRegistry, agents, files } = options;
+  const { query, commands, docRegistry, agents, files, trans } = options;
   const trimmed = query.trim();
 
   let mode: Mode = 'all';
@@ -84,7 +86,7 @@ export function computeSections(options: IComputeOptions): IOmniboxSections {
     files:
       mode === 'commands' ? [] : matchFiles(commands, docRegistry, files, term),
     // Agents only in the unprefixed view; the prompt is the full typed query.
-    agents: mode === 'all' ? buildAgentItems(commands, agents, term) : []
+    agents: mode === 'all' ? buildAgentItems(commands, agents, term, trans) : []
   };
 }
 
@@ -175,7 +177,8 @@ function fileIconForPath(docRegistry: DocumentRegistry, path: string): LabIcon {
 function buildAgentItems(
   commands: CommandRegistry,
   agents: IAgent[],
-  prompt: string
+  prompt: string,
+  trans: TranslationBundle
 ): IOmniboxItem[] {
   const items: IOmniboxItem[] = [];
   for (const agent of agents) {
@@ -187,9 +190,9 @@ function buildAgentItems(
     items.push({
       kind: 'agent',
       key: `agent:${agent.id}`,
-      label: `Ask ${agent.label}`,
+      label: trans.__('Ask %1', agent.label),
       matchIndices: [],
-      caption: 'Run prompt in a new terminal',
+      caption: trans.__('Run prompt in a new terminal'),
       icon: agent.icon,
       execute: () => {
         void commands

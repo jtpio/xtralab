@@ -32,7 +32,7 @@ class CommandBar extends Widget {
         options.shortcut
       )
     });
-    this.addClass('xtralab-CommandBar');
+    this.addClass('jp-xtralab-CommandBar');
     this._onActivate = options.onActivate;
   }
 
@@ -77,17 +77,17 @@ namespace CommandBar {
 
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'xtralab-CommandBar-button';
+    button.className = 'jp-xtralab-CommandBar-button';
     button.title = caption;
     button.setAttribute('aria-label', caption);
 
     const icon = searchIcon.element({
       tag: 'span',
-      className: 'xtralab-CommandBar-icon'
+      className: 'jp-xtralab-CommandBar-icon'
     });
 
     const text = document.createElement('span');
-    text.className = 'xtralab-CommandBar-label';
+    text.className = 'jp-xtralab-CommandBar-label';
     text.textContent = label;
 
     button.appendChild(icon);
@@ -95,7 +95,7 @@ namespace CommandBar {
 
     if (shortcut) {
       const hint = document.createElement('span');
-      hint.className = 'xtralab-CommandBar-shortcut';
+      hint.className = 'jp-xtralab-CommandBar-shortcut';
       hint.textContent = shortcut;
       // Decorative: the button's aria-label already names the action.
       hint.setAttribute('aria-hidden', 'true');

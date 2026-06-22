@@ -18,7 +18,7 @@
  * through; that toolbar is empty by default, so the overlay covers blank
  * space rather than hiding any toolbar items.
  */
-.xtralab-CommandBar {
+.jp-xtralab-CommandBar {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -30,7 +30,7 @@
   pointer-events: none;
 }
 
-.xtralab-CommandBar-button {
+.jp-xtralab-CommandBar-button {
   display: flex;
   flex: 0 0 auto;
   gap: 6px;
@@ -56,23 +56,23 @@
   pointer-events: auto;
 }
 
-.xtralab-CommandBar-button:hover {
+.jp-xtralab-CommandBar-button:hover {
   color: var(--jp-ui-font-color1);
   border-color: var(--jp-border-color0);
 }
 
-.xtralab-CommandBar-button:focus-visible {
+.jp-xtralab-CommandBar-button:focus-visible {
   outline: var(--jp-border-width) solid var(--jp-brand-color1);
   outline-offset: 1px;
 }
 
-.xtralab-CommandBar-icon {
+.jp-xtralab-CommandBar-icon {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
 }
 
-.xtralab-CommandBar-icon svg {
+.jp-xtralab-CommandBar-icon svg {
   width: 14px;
   height: 14px;
 }
@@ -80,11 +80,11 @@
 /* The built-in JupyterLab search icon (@jupyterlab/ui-components) paints with a
    fixed `jp-icon3` theme gray; override it to currentColor so the magnifier
    tracks the pill's text color and brightens with the label on hover. */
-.xtralab-CommandBar-button .jp-icon3[fill] {
+.jp-xtralab-CommandBar-button .jp-icon3[fill] {
   fill: currentcolor;
 }
 
-.xtralab-CommandBar-label {
+.jp-xtralab-CommandBar-label {
   flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -92,7 +92,7 @@
 }
 
 /* Keyboard-shortcut hint, pushed to the trailing edge by the growing label. */
-.xtralab-CommandBar-shortcut {
+.jp-xtralab-CommandBar-shortcut {
   flex: 0 0 auto;
   margin-left: 6px;
   padding: 1px 4px;

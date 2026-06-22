@@ -5,11 +5,11 @@
  * carries theme variables via `jp-ThemedContainer`; the React tree renders the
  * fixed full-screen overlay below it.
  */
-.xtralab-Omnibox {
+.jp-xtralab-Omnibox {
   position: absolute;
 }
 
-.xtralab-Omnibox-overlay {
+.jp-xtralab-Omnibox-overlay {
   position: fixed;
   inset: 0;
   z-index: 10001;
@@ -19,7 +19,7 @@
   background: rgb(0 0 0 / 18%);
 }
 
-.xtralab-Omnibox-panel {
+.jp-xtralab-Omnibox-panel {
   display: flex;
   flex-direction: column;
   width: min(640px, 92vw);
@@ -34,7 +34,7 @@
   box-shadow: var(--jp-elevation-z8);
 }
 
-.xtralab-Omnibox-input {
+.jp-xtralab-Omnibox-input {
   padding: 11px 14px;
   font-family: var(--jp-ui-font-family);
   font-size: var(--jp-ui-font-size2);
@@ -45,16 +45,16 @@
   outline: none;
 }
 
-.xtralab-Omnibox-input::placeholder {
+.jp-xtralab-Omnibox-input::placeholder {
   color: var(--jp-ui-font-color3);
 }
 
-.xtralab-Omnibox-results {
+.jp-xtralab-Omnibox-results {
   padding: 4px 0;
   overflow-y: auto;
 }
 
-.xtralab-Omnibox-sectionHeader {
+.jp-xtralab-Omnibox-sectionHeader {
   padding: 6px 14px 2px;
   font-size: var(--jp-ui-font-size0);
   font-weight: 600;
@@ -63,7 +63,7 @@
   letter-spacing: 0.04em;
 }
 
-.xtralab-Omnibox-item {
+.jp-xtralab-Omnibox-item {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -73,11 +73,11 @@
   cursor: pointer;
 }
 
-.xtralab-Omnibox-item.xtralab-mod-active {
+.jp-xtralab-Omnibox-item.jp-mod-active {
   background: var(--jp-layout-color2);
 }
 
-.xtralab-Omnibox-itemIcon {
+.jp-xtralab-Omnibox-itemIcon {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
@@ -85,24 +85,24 @@
   height: 16px;
 }
 
-.xtralab-Omnibox-itemIcon svg {
+.jp-xtralab-Omnibox-itemIcon svg {
   width: 16px;
   height: 16px;
 }
 
-.xtralab-Omnibox-itemLabel {
+.jp-xtralab-Omnibox-itemLabel {
   flex: 1 1 auto;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.xtralab-Omnibox-match {
+.jp-xtralab-Omnibox-match {
   font-weight: 600;
   color: var(--jp-ui-font-color0);
 }
 
-.xtralab-Omnibox-itemCaption {
+.jp-xtralab-Omnibox-itemCaption {
   flex: 0 1 auto;
   max-width: 45%;
   overflow: hidden;
@@ -112,7 +112,7 @@
   text-overflow: ellipsis;
 }
 
-.xtralab-Omnibox-empty {
+.jp-xtralab-Omnibox-empty {
   padding: 14px;
   font-size: var(--jp-ui-font-size1);
   color: var(--jp-ui-font-color2);

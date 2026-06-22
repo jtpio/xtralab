@@ -13,9 +13,6 @@ import { OmniboxWidget } from './widget';
 
 const PLUGIN_ID = 'xtralab:omnibox';
 
-/** Command that opens the omnibox; bindable to a shortcut, listed in the palette. */
-const OPEN_COMMAND = OMNIBOX_OPEN_COMMAND;
-
 /**
  * The omnibox: a single launcher overlay that fuzzy-searches workspace files
  * (via jupyterlab-quickopen's gitignore-aware endpoint) and JupyterLab
@@ -61,6 +58,7 @@ const plugin: JupyterFrontEndPlugin<IOmnibox> = {
         agents: agentRegistry ? agentRegistry.agents : [],
         placeholder,
         initialQuery: query ?? '',
+        trans,
         onClose: close
       });
       current = widget;
@@ -72,7 +70,7 @@ const plugin: JupyterFrontEndPlugin<IOmnibox> = {
       Widget.attach(widget, document.body);
     };
 
-    commands.addCommand(OPEN_COMMAND, {
+    commands.addCommand(OMNIBOX_OPEN_COMMAND, {
       label: trans.__('Search…'),
       caption: trans.__('Search files and commands, or ask an agent'),
       execute: args => {
@@ -88,13 +86,16 @@ const plugin: JupyterFrontEndPlugin<IOmnibox> = {
 
     // Open the omnibox with Cmd/Ctrl+K, the common "command center" chord.
     commands.addKeyBinding({
-      command: OPEN_COMMAND,
+      command: OMNIBOX_OPEN_COMMAND,
       keys: ['Accel K'],
       selector: 'body'
     });
 
     if (palette) {
-      palette.addItem({ command: OPEN_COMMAND, category: trans.__('Other') });
+      palette.addItem({
+        command: OMNIBOX_OPEN_COMMAND,
+        category: trans.__('Other')
+      });
     }
 
     return { open, close };
