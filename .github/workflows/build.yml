@@ -25,7 +25,7 @@ jobs:
         uses: pnpm/action-setup@v4
 
       - name: Install dependencies
-        run: python -m pip install "jupyter-builder>=1.0.0b1,<2.0.0a0"
+        run: python -m pip install "jupyter-builder>=1.0.2,<2.0.0a0"
 
       - name: Lint the extension
         run: |
@@ -59,12 +59,10 @@ jobs:
             grep -e "${ext}.*OK" labextensions.txt
           done
 
-          # @jupyter/docprovider-extension (via ajlab's jupyter-docprovider)
-          # requests @jupyter/ydoc ^3 while JupyterLab 4.6.0b1 ships v4, so it
-          # reports "enabled" with an incompatible flag rather than "OK". It
-          # still loads against the host's v4 and collaboration works, so
-          # require it to be enabled.
-          grep -e "@jupyter/docprovider-extension.*enabled" labextensions.txt
+          # @jupyter/docprovider-extension comes from ajlab's jupyter-docprovider
+          # (3.0.0a0), which targets @jupyter/ydoc ^4 to match JupyterLab 4.6, so
+          # it resolves cleanly against the host. Require the strict OK.
+          grep -e "@jupyter/docprovider-extension.*OK" labextensions.txt
 
           # xtralab keeps the @jupyterlab/git frontend enabled and only
           # disables its diff plugins (xtralab registers its own diff
