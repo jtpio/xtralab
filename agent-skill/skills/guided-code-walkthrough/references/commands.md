@@ -94,16 +94,25 @@ line numbers from reading the file. Use `documentsearch:start` for "every place
 this symbol appears". They are independent; clear each with its own command
 (`xtralab:clear-highlights` and `documentsearch:end`).
 
-## Show rich content
+## Build a guided tour (recommended)
 
-The primary way to show a chart, diagram, table, or explainer is `xtralab:show`:
-you generate the content and it renders into a panel with no file and no kernel.
-See [rich-display.md](rich-display.md) for the full treatment and the MIME types
-that render.
+The recommended way to walk a user through code is the `xtralab:walkthrough`
+command: it accumulates a read-only tour in the side area so the explanation
+persists beside the code instead of racing ahead in chat.
 
-| Command        | Key args (required in **bold**)                   | What it does                                                                                                                                                                                                                                                                                                                                                                                                                |
-| -------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `xtralab:show` | **`mimeType`**, **`data`**, `label`, `id`, `mode` | **xtralab command.** Render one MIME bundle into a main-area panel. `mimeType` is e.g. `"text/markdown"` (Markdown, including Mermaid), `"application/vnd.vegalite.v5+json"` (interactive chart), `"text/html"`, `"image/svg+xml"`, `"image/png"`. `data` is a string for text/image types (base64 for PNG) or an object for JSON specs. Calls sharing an `id` reuse one panel; `mode` places it (default `"split-right"`). |
+| Command               | Key args                                                               | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `xtralab:walkthrough` | `title`, `body`, `path`, `line`, `endLine`, `media`, `reveal`, `reset` | **xtralab command.** Append a step to the side-area Walkthrough panel. `body` is Markdown (snippets, lists, math, Mermaid). With `path` (+`line`/`endLine`) the editor opens the file **full-width and highlights it** (no split), and the step keeps an "Open …" button. `media` is `{ mimeType, data }` to embed a visual (e.g. a Vega-Lite spec). `reset: true` clears the panel for a new tour; `reveal: false` adds the step without moving the editor. Needs at least one of title/body/media/path. |
+
+## Show a standalone panel
+
+For a one-off chart, diagram, or note (outside a tour), `xtralab:show` renders a
+single MIME bundle into a panel with no file and no kernel. See
+[rich-display.md](rich-display.md) for the MIME types that render.
+
+| Command        | Key args (required in **bold**)                           | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| -------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `xtralab:show` | **`mimeType`**, **`data`**, `label`, `id`, `area`, `mode` | **xtralab command.** Render one MIME bundle into a panel. `mimeType` is e.g. `"text/markdown"` (Markdown, incl. Mermaid), `"application/vnd.vegalite.v5+json"` (interactive chart), `"text/html"`, `"image/svg+xml"`, `"image/png"`. `data` is a string for text/image types (base64 for PNG) or an object for JSON specs. `area` defaults to `"right"` (side area, no editor split); pass `"main"` (with `mode`) to split the document area. Calls sharing an `id` reuse one panel. |
 
 ### Running code for computed output (fallback)
 

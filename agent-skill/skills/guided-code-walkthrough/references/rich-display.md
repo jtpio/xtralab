@@ -1,9 +1,11 @@
 # Rich display: charts, diagrams, tables, explainers
 
-To show the user something visual beside the code, render it into a panel with
-the xtralab command **`xtralab:show`**. You generate the content yourself and
-hand it over; JupyterLab renders it with the same renderers it uses for cell
-output, but with no notebook file and no kernel.
+The same rich content described here renders in two places, with no notebook
+file and no kernel: as a **step's `body`/`media` in the Walkthrough panel**
+(`xtralab:walkthrough`, the recommended home during a tour) or as a **standalone
+panel** with `xtralab:show`. Both use the same renderers JupyterLab uses for
+cell output. This page covers what renders and how to author it; the MIME types
+below apply to a walkthrough step's `media` too.
 
 ## `xtralab:show`
 
@@ -12,8 +14,7 @@ execute_command("xtralab:show", {
   "mimeType": "application/vnd.vegalite.v5+json",
   "data": { /* a Vega-Lite spec object */ },
   "label": "Plugin count",
-  "id": "chart",          // optional; calls sharing an id reuse one panel
-  "mode": "split-right"   // optional; where to dock it (default split-right)
+  "id": "chart"   // optional; calls sharing an id reuse one panel
 })
 ```
 
@@ -26,8 +27,9 @@ Arguments (also discoverable via `list_all_commands(query="xtralab:show")`):
 - `id`: a panel identifier. Repeated `xtralab:show` calls with the same `id`
   refresh that one panel in place instead of opening new tabs (default
   `"default"`). Use distinct ids to show several panels at once.
-- `mode`: placement relative to the active tab: `split-right` (default),
-  `split-left`, `split-bottom`, `split-top`, `tab-after`, `tab-before`.
+- `area`: `"right"` (default) docks it in the side area, so the editor keeps
+  full width and never splits. Pass `"main"` (with `mode`: `split-right`,
+  `split-bottom`, `tab-after`, ...) only to split the document area instead.
 
 It returns a short confirmation string, or an error if the MIME type has no
 renderer.

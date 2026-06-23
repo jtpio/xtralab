@@ -117,9 +117,10 @@ teach any coding agent how to work with the app:
   config-file edits.
 - **guided-code-walkthrough** drives the running app over the MCP command
   bridge (see the section above) to open files, jump to and highlight specific
-  lines (`xtralab:highlight-lines`), and render a chart, diagram, or explainer
-  into a panel beside the code (`xtralab:show`, no notebook or kernel needed),
-  so the agent can _show_ you something instead of only describing it.
+  lines (`xtralab:highlight-lines`), and build a read-only Walkthrough panel of
+  prose, snippets, diagrams, and clickable code links beside the editor
+  (`xtralab:walkthrough`, no notebook or kernel needed), so the agent can _show_
+  you something at your own pace instead of only describing it in chat.
 
 The same SKILL.md files work with Claude Code, Codex CLI, Gemini CLI, GitHub
 Copilot, and other tools that read the Agent Skills format.

@@ -17,6 +17,7 @@ import sidebarPlugin from './sidebar';
 import terminalNotificationsPlugin from './terminalNotifications';
 import terminalsPlugin from './terminals';
 import topBarPlugin from './topBar';
+import walkthroughPlugin from './walkthrough';
 
 /**
  * Every plugin contributed by `xtralab`. The entry point of the
@@ -44,7 +45,8 @@ const plugins: JupyterFrontEndPlugin<unknown>[] = [
   sidebarPlugin,
   terminalNotificationsPlugin,
   terminalsPlugin,
-  topBarPlugin
+  topBarPlugin,
+  walkthroughPlugin
 ];
 
 export default plugins;

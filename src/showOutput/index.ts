@@ -94,10 +94,15 @@ const plugin: JupyterFrontEndPlugin<void> = {
               description:
                 'Panel identifier. Calls sharing an `id` reuse one panel; defaults to "default".'
             },
+            area: {
+              type: 'string',
+              description:
+                'Where the panel docks: "right" (default) puts it in the side area so the editor stays full width; "main" puts it in the document area (split with `mode`).'
+            },
             mode: {
               type: 'string',
               description:
-                'Where to place the panel relative to the active tab: "split-right" (default), "split-left", "split-bottom", "split-top", "tab-after", "tab-before".'
+                'Only when `area` is "main": placement relative to the active tab, e.g. "split-right" (default), "split-bottom", "tab-after".'
             }
           }
         }
@@ -114,6 +119,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
             ? args['label']
             : trans.__('Output');
         const id = typeof args['id'] === 'string' ? args['id'] : 'default';
+        const area = args['area'] === 'main' ? 'main' : 'right';
         const mode =
           typeof args['mode'] === 'string' ? args['mode'] : 'split-right';
 
@@ -145,11 +151,16 @@ const plugin: JupyterFrontEndPlugin<void> = {
         });
 
         // Attach before rendering so renderers that need layout (Vega) size
-        // correctly.
-        labShell.add(widget, 'main', {
-          mode: mode as DocumentMode,
-          activate: true
-        });
+        // correctly. Default to the side area so the editor keeps full width;
+        // only split the document area when `area` is "main".
+        if (area === 'main') {
+          labShell.add(widget, 'main', {
+            mode: mode as DocumentMode,
+            activate: true
+          });
+        } else {
+          labShell.add(widget, 'right', { rank: 900, activate: true });
+        }
 
         try {
           await renderer.renderModel(model);

@@ -8,3 +8,4 @@ import './sidebar.css';
 import './tabs.css';
 import './terminals.css';
 import './topBar.css';
+import './walkthrough.css';

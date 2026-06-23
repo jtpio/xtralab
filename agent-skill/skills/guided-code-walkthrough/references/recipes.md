@@ -38,30 +38,41 @@ To point at a single line, pass just `line` (e.g. the one line you want):
 execute_command("xtralab:highlight-lines", { "path": "src/index.ts", "line": 30 })
 ```
 
-## 2. A multi-stop guided tour
+## 2. A guided tour in the Walkthrough panel (recommended)
 
-Walk through several files, pausing on each. Narrate between steps. The line
-numbers below are placeholders; read each block's real range from the file
-before you call.
+For "walk me through ...", build the tour up in the side panel with
+`xtralab:walkthrough` so it persists for the user to read at their own pace.
+Each step's `path`/`line`/`endLine` opens the file full-width and highlights it;
+the line numbers below are placeholders, so read each block's real range from
+the file first.
 
-```jsonc
-// Stop 1: the entry point (e.g. the plugin array in src/index.ts).
-execute_command("xtralab:highlight-lines", { "path": "src/index.ts", "line": 30, "endLine": 46 })
-// (narrate: "Everything starts here, an array of plugins...")
+````jsonc
+// Step 1: reset clears any prior tour. The editor opens src/index.ts and
+// highlights the array; the step shows prose + an "Open src/index.ts:30" button.
+execute_command("xtralab:walkthrough", {
+  "reset": true,
+  "title": "1. The plugin array",
+  "body": "`src/index.ts` exports an **array** of plugins, each activated independently.",
+  "path": "src/index.ts", "line": 30, "endLine": 46
+})
 
-// Stop 2: one plugin's implementation.
-execute_command("xtralab:highlight-lines", { "path": "src/commandBar/index.ts", "line": 121, "endLine": 163 })
-// (narrate: "commandBarPlugin adds the search pill to the top bar...")
+// Step 2: the editor follows to the next file and highlights it.
+execute_command("xtralab:walkthrough", {
+  "title": "2. The command bar",
+  "body": "`commandBarPlugin` adds the search pill to the top bar.",
+  "path": "src/commandBar/index.ts", "line": 121, "endLine": 163
+})
 
-// Stop 3: a related token.
-execute_command("xtralab:highlight-lines", { "path": "src/omnibox/tokens.ts", "line": 1, "endLine": 20 })
+// Step 3: a step can be pure prose + an embedded diagram, with no code target.
+execute_command("xtralab:walkthrough", {
+  "title": "3. How they connect",
+  "body": "The bar opens the omnibox:\n\n```mermaid\ngraph LR; bar-->omnibox-->agent;\n```"
+})
+````
 
-// Done: clear the last highlight.
-execute_command("xtralab:clear-highlights")
-```
-
-Each `xtralab:highlight-lines` switches the active editor to that file and
-scrolls, so the tour drives itself.
+The panel accumulates all three steps; the user can scroll back and click any
+"Open …" button to revisit that spot. Narrate a single "here's the tour →" in
+chat rather than repeating the whole thing.
 
 Optionally set a focused stage at the start and restore it at the end:
 
@@ -101,11 +112,16 @@ execute_command("xtralab:show", {
 
 For a raw, syntax-highlighted snippet (not rendered Markdown), use
 `code-viewer:open` `{ content, label, mimeType: "text/x-python" }` instead.
+Inside a tour, pass the same Markdown as a `xtralab:walkthrough` step's `body`
+so it joins the rest of the walkthrough; reach for `xtralab:show` for a one-off
+panel outside a tour.
 
 ## 5. A chart beside the code
 
-Render data or structure as a chart, docked beside the source, with `xtralab:show`
-and a Vega-Lite spec. No notebook, no kernel.
+Render data or structure as a chart with a Vega-Lite spec. No notebook, no
+kernel. Inside a tour, pass the spec as a step's `media`
+(`{ "mimeType": "application/vnd.vegalite.v5+json", "data": <spec> }`); for a
+standalone chart use `xtralab:show` as below.
 
 When the chart is _about_ the code (say, how many plugins a file registers),
 compute the number from the source you just read, and **resolve spreads**: an
@@ -135,20 +151,24 @@ execute_command("xtralab:show", {
 Full renderer details (and the notebook fallback for output you must compute by
 running code) are in [rich-display.md](rich-display.md).
 
-## 6. Full tour: narrate, highlight, and visualize
+## 6. Full tour: one panel, narrated and visualized
 
-Combine the pieces for a complete "walk me through this module" answer:
+The complete "walk me through this module" answer is recipe 2 with a closing
+summary step. Build it entirely in the Walkthrough panel:
 
-1. `application:set-mode` `{ "mode": "single-document" }` to clear the stage.
-2. `xtralab:highlight-lines` on the entry point; narrate.
-3. `xtralab:highlight-lines` on each subsequent stop; narrate between them.
-4. `xtralab:show` a panel that summarizes what you walked through: a Markdown
-   explainer with a Mermaid data-flow diagram, or a Vega-Lite chart of a figure
-   you computed from the source.
-5. `xtralab:clear-highlights` and `application:set-mode` `{ "mode": "multiple-document" }` to restore.
+1. `xtralab:walkthrough` with `reset: true` and step 1 (the entry point, with its
+   `path`/`line`/`endLine`).
+2. A `xtralab:walkthrough` step per stop, each with a `body` and the code it is
+   about, so the editor follows full-width and highlights.
+3. A closing `xtralab:walkthrough` step that summarizes: a `body` with a Mermaid
+   data-flow diagram, or a `media` Vega-Lite chart of a figure you computed from
+   the source.
+4. Optionally bracket the tour with `application:set-mode`
+   `{ "mode": "single-document" }` at the start and `"multiple-document"` at the
+   end for a focused stage.
 
-Keep the chat narration in step with the UI: the user is watching their own
-editor move, and your words are the voice-over.
+The whole tour now lives in one read-only panel beside the code, so a one-line
+"here's the walkthrough →" in chat is all the narration you need.
 
 ## Before you start any recipe
 

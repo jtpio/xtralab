@@ -1,0 +1,52 @@
+/*
+ * The read-only walkthrough panel (`xtralab:walkthrough`) in the side area. A
+ * scrollable column of step cards, each holding rendered Markdown, an optional
+ * embedded visual, and an optional "jump to code" button.
+ */
+
+.jp-xtralab-Walkthrough {
+  overflow-y: auto;
+  padding: 4px 0;
+  background: var(--jp-layout-color1);
+  color: var(--jp-ui-font-color1);
+  font-size: var(--jp-ui-font-size1);
+}
+
+.jp-xtralab-Walkthrough-step {
+  padding: 10px 12px 14px;
+  border-bottom: 1px solid var(--jp-border-color2);
+}
+
+.jp-xtralab-Walkthrough-stepTitle {
+  margin: 0 0 6px;
+  font-size: var(--jp-ui-font-size2);
+  font-weight: 600;
+  color: var(--jp-ui-font-color0);
+}
+
+.jp-xtralab-Walkthrough-content {
+  overflow-x: auto;
+}
+
+.jp-xtralab-Walkthrough-jumpRow {
+  margin-top: 8px;
+}
+
+.jp-xtralab-Walkthrough-jump {
+  cursor: pointer;
+  padding: 3px 8px;
+  border: 1px solid var(--jp-border-color1);
+  border-radius: var(--jp-border-radius);
+  background: var(--jp-layout-color2);
+  color: var(--jp-brand-color1);
+  font-family: var(--jp-code-font-family);
+  font-size: var(--jp-ui-font-size0);
+}
+
+.jp-xtralab-Walkthrough-jump:hover {
+  background: var(--jp-layout-color3);
+}
+
+.jp-xtralab-Walkthrough-jump:focus-visible {
+  outline: 2px solid var(--jp-brand-color1);
+}

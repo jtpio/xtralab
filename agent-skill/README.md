@@ -3,7 +3,7 @@
 Agent skills that teach a coding agent how to work with JupyterLab and xtralab. There are two:
 
 - **customize-jupyterlab** turns plain-English requests like "hide the status bar", "change the theme", "add a language server", or "rearrange the activity bar" into the right config-file edits.
-- **guided-code-walkthrough** drives the _running_ app over xtralab's MCP command bridge: open files, jump to and highlight specific lines, and render charts, diagrams, or explainers into a panel beside the code, so the agent can _show_ the user something instead of only describing it.
+- **guided-code-walkthrough** drives the _running_ app over xtralab's MCP command bridge: open files, jump to and highlight specific lines, and build a read-only Walkthrough panel of prose, snippets, diagrams, and clickable code links beside the editor, so the agent can _show_ the user something at their own pace instead of only describing it in chat.
 
 Both are built on the [Agent Skills open standard](https://agentskills.io) so the same files work in Claude Code, Codex CLI, Gemini CLI, GitHub Copilot, Cursor, Goose, OpenCode, and any other skills-compatible client.
 
@@ -106,9 +106,10 @@ Try it after install: open a project and ask "change my JupyterLab theme to dark
 
 - Drive the running app through the `jupyter` MCP server, using only `list_all_commands` and `execute_command` (no edits on disk except notebooks it authors).
 - Reach for a curated subset of the 480+ frontend commands rather than scanning them all, so it acts precisely.
-- Open files, jump to lines, and paint a persistent highlight on a range with `xtralab:highlight-lines` (clearing with `xtralab:clear-highlights`).
-- Render charts, diagrams, and explainers beside the code with the `xtralab:show` command, which paints a Markdown (incl. Mermaid), Vega-Lite, HTML, or image panel with no notebook file and no kernel, and fall back to running a notebook only when output must be computed by code.
-- Check that a frontend is connected before starting, and narrate each step as the UI moves.
+- Build a read-only **Walkthrough panel** in the side area with `xtralab:walkthrough`: each step carries prose, an optional embedded visual, and an optional code reference that opens the file full-width (no editor split) and highlights it. The tour persists beside the code so the user reads at their own pace instead of chasing the chat.
+- Open files and paint a persistent line-range highlight with `xtralab:highlight-lines` (clearing with `xtralab:clear-highlights`).
+- Render Markdown (incl. Mermaid), Vega-Lite charts, HTML, or images into a side panel with `xtralab:show`, with no notebook file and no kernel, and fall back to running a notebook only when output must be computed by code.
+- Check that a frontend is connected before starting.
 
 Try it after install: open a project and ask "walk me through how this module fits together" or "open src/index.ts and highlight the plugin list".
 
@@ -138,4 +139,4 @@ A reasonable order of operations:
 - `SKILL.md` is intentionally short. Detail lives in `references/*.md` so the agent only loads what it needs.
 - Recipes prefer xtralab-native settings (`xtralab:sidebar`, `xtralab:launcher`) when they exist, and fall back to upstream JupyterLab plugin IDs otherwise.
 - The customize-jupyterlab recipes match xtralab's _shipped_ defaults: if you change `page_config.d/00-xtralab.json` or `default_setting_overrides.d/00-xtralab.json` in this repo, update [`recipes.md`](skills/customize-jupyterlab/references/recipes.md) and [`known-plugin-ids.md`](skills/customize-jupyterlab/references/known-plugin-ids.md) in the same change.
-- The guided-code-walkthrough catalog matches the commands xtralab and JupyterLab register today, including the `xtralab:highlight-lines` / `xtralab:clear-highlights` (`src/highlight/`) and `xtralab:show` (`src/showOutput/`) commands this repo contributes. If you add, rename, or change a walkthrough command, update [`commands.md`](skills/guided-code-walkthrough/references/commands.md) in the same change.
+- The guided-code-walkthrough catalog matches the commands xtralab and JupyterLab register today, including the `xtralab:walkthrough` (`src/walkthrough/`), `xtralab:highlight-lines` / `xtralab:clear-highlights` (`src/highlight/`), and `xtralab:show` (`src/showOutput/`) commands this repo contributes. If you add, rename, or change a walkthrough command, update [`commands.md`](skills/guided-code-walkthrough/references/commands.md) in the same change.

@@ -1,17 +1,16 @@
 ---
 name: guided-code-walkthrough
-description: Use this skill when the user wants you to *show* them something inside the running xtralab (or JupyterLab) app rather than just describe it in chat: open a file in the editor, jump to and highlight specific lines, give a visual tour of the codebase, or render a chart, diagram, table, or explainer into a panel beside the code. Triggers include "walk me through", "show me where", "give me a tour", "open and highlight", "point at", "visualize this", "plot this", "draw a chart of", "explain this code visually", or any request to drive the live UI. Works by sending JupyterLab commands to the connected frontend over the MCP command bridge (the `jupyter` MCP server's `list_all_commands` and `execute_command` tools). This is distinct from the customize-jupyterlab skill, which edits config files to change defaults; this skill drives the app that is already open and writes nothing to disk (rich content renders straight into a panel, no file needed).
-compatibility: Requires xtralab (or ajlab / a JupyterLab with `jupyterlab-commands-toolkit` and `jupyter-server-mcp` installed), a JupyterLab tab open in a browser and connected to the server, and the `jupyter` MCP server configured in the agent. In xtralab these are wired by default. Rendering into a panel with `xtralab:show` needs no kernel; only the optional notebook fallback (for output you must compute by running code) needs a kernel.
+description: Use this skill when the user wants you to *show* them something inside the running xtralab (or JupyterLab) app rather than just describe it in chat: open a file in the editor, jump to and highlight specific lines, give a visual tour of the codebase, or render a chart, diagram, table, or explainer beside the code. Triggers include "walk me through", "show me where", "give me a tour", "open and highlight", "point at", "visualize this", "plot this", "draw a chart of", "explain this code visually", or any request to drive the live UI. The recommended way is to build a read-only Walkthrough panel in the side area (`xtralab:walkthrough`) so the explanation persists beside the code for the user to read at their own pace, instead of racing ahead in chat. Works by sending JupyterLab commands to the connected frontend over the MCP command bridge (the `jupyter` MCP server's `list_all_commands` and `execute_command` tools). This is distinct from the customize-jupyterlab skill, which edits config files to change defaults; this skill drives the app that is already open and writes nothing to disk.
+compatibility: Requires xtralab (or ajlab / a JupyterLab with `jupyterlab-commands-toolkit` and `jupyter-server-mcp` installed), a JupyterLab tab open in a browser and connected to the server, and the `jupyter` MCP server configured in the agent. In xtralab these are wired by default. The Walkthrough panel and `xtralab:show` need no kernel; only the optional notebook fallback (for output you must compute by running code) needs one.
 ---
 
 # Guided code walkthrough
 
 xtralab exposes the running JupyterLab frontend to coding agents through an MCP
-command bridge. You can open files, move and highlight lines, lay widgets out
-side by side, and render rich content into panels, all by sending the same
-commands the UI itself dispatches. This turns a chat answer into a guided tour:
-the user watches their editor open the right file, jump to the right line, and a
-chart appear next to it.
+command bridge. You can open files, highlight lines, and render rich content
+into side panels by sending the same commands the UI itself dispatches. This
+turns a chat answer into a guided tour: the user watches their editor open the
+right file and jump to the right line, with the explanation beside it.
 
 The catch is scale. The frontend registers more than 480 commands, far too many
 to scan each time. This skill gives you the ~25 that matter for walkthroughs,
@@ -37,35 +36,60 @@ ones. Pass arguments to `execute_command` as a plain object:
 Read **[references/commands.md](references/commands.md)** for the curated
 catalog with each command's verified argument shape.
 
+## Prefer the Walkthrough panel
+
+When the user asks you to walk them through something, **build it up in the
+Walkthrough panel** with `xtralab:walkthrough` instead of narrating only in
+chat. The panel is a read-only column in the side area that accumulates the
+whole tour, so the user reads at their own pace and can scroll back; the agent's
+chat can otherwise race ahead of what they are reading.
+
+```jsonc
+execute_command("xtralab:walkthrough", {
+  "title": "1. The plugin array",
+  "body": "`src/index.ts` exports an **array** of plugins. Each is activated independently.",
+  "path": "src/index.ts",       // optional: opens it full-width and highlights
+  "line": 30,
+  "endLine": 48
+})
+```
+
+Each step can carry:
+
+- `title` and `body` (Markdown: prose, code snippets, lists, math, and Mermaid
+  diagrams from a ` ```mermaid ` block).
+- `path` + `line`/`endLine`: a code reference. Adding it opens the file
+  **full-width in the editor (no split)** and highlights the lines, and the step
+  keeps an "Open …" button so the user can jump back later.
+- `media`: an embedded visual, `{ mimeType, data }` (e.g. a Vega-Lite spec).
+- `reset: true` to clear the panel and start a fresh tour (use it on step 1).
+
+So a tour is a sequence of `xtralab:walkthrough` calls. Narrate briefly in chat
+too, but the panel is the durable artifact the user follows.
+
 ## What you can do
 
-| Goal                              | Command                                                         | Notes                                                                                                                                                                                          |
-| --------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Open a file in the editor         | `docmanager:open` `{ path }`                                    | Opens with the right viewer. Add `options: { mode: "split-right" }` to place it beside the current tab.                                                                                        |
-| Reveal a file in the file browser | `filebrowser:go-to-path` `{ path }`                             | Selects and scrolls to it without opening.                                                                                                                                                     |
-| Move the cursor to a line         | `fileeditor:go-to-line` `{ line, column }`                      | 1-indexed. Scrolls and places the cursor; no lasting mark.                                                                                                                                     |
-| **Highlight a range of lines**    | `xtralab:highlight-lines` `{ path?, line, endLine?, reveal? }`  | xtralab command. Opens the file if needed, scrolls, and paints a persistent overlay on the lines. Clear with `xtralab:clear-highlights`.                                                       |
-| Highlight text matches            | `documentsearch:start` `{ searchText }`                         | Opens the find overlay and highlights every match. Clear with `documentsearch:end`.                                                                                                            |
-| **Show rich content in a panel**  | `xtralab:show` `{ mimeType, data, label?, id?, mode? }`         | xtralab command. Renders Markdown (incl. Mermaid), a Vega-Lite chart, HTML, or an SVG/PNG into a side panel. No file, no kernel. See [references/rich-display.md](references/rich-display.md). |
-| Show ad-hoc raw text/code         | `code-viewer:open` `{ content, label?, mimeType? }`             | Read-only viewer for a snippet, diff, or log. Shows raw text highlighted by `mimeType`; it does not render Markdown.                                                                           |
-| Focus the layout                  | `application:set-mode` `{ mode: "single-document" }`            | Hides tabs and panels for a clean stage. `"multiple-document"` restores.                                                                                                                       |
-| Toggle side panels                | `application:toggle-left-area`, `application:toggle-right-area` |                                                                                                                                                                                                |
-| Switch theme                      | `apputils:change-theme` `{ theme }`                             | The value is the theme's registered display name, e.g. `"Pierre Dark"`, not the package id.                                                                                                    |
-
-The two starred capabilities (line highlight, panel display) are the heart of a
-walkthrough. Recipes that chain these into a full tour are in
-**[references/recipes.md](references/recipes.md)**.
+| Goal                                  | Command                                                                           | Notes                                                                                                                                |
+| ------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Build a guided tour (recommended)** | `xtralab:walkthrough` `{ title?, body?, path?, line?, endLine?, media?, reset? }` | xtralab command. Appends a step to the read-only side panel; a step with a path opens the file full-width and highlights it.         |
+| Open a file in the editor             | `docmanager:open` `{ path }`                                                      | Opens full-width with the right viewer.                                                                                              |
+| **Highlight a range of lines**        | `xtralab:highlight-lines` `{ path?, line, endLine?, reveal? }`                    | xtralab command. Opens the file if needed, scrolls, and paints a persistent overlay. Clear with `xtralab:clear-highlights`.          |
+| Highlight text matches                | `documentsearch:start` `{ searchText }`                                           | Opens the find overlay and highlights every match. Clear with `documentsearch:end`.                                                  |
+| Show a standalone panel               | `xtralab:show` `{ mimeType, data, label?, id? }`                                  | xtralab command. Renders Markdown/Vega-Lite/HTML/image into a side panel (defaults to the side area, so it never splits the editor). |
+| Show ad-hoc raw text/code             | `code-viewer:open` `{ content, label?, mimeType? }`                               | Read-only viewer for a snippet, diff, or log. Raw text only; does not render Markdown.                                               |
+| Focus the layout                      | `application:set-mode` `{ mode: "single-document" }`                              | Hides tabs and side panels for a clean stage. `"multiple-document"` restores.                                                        |
+| Switch theme                          | `apputils:change-theme` `{ theme }`                                               | The value is the theme's registered display name, e.g. `"Pierre Dark"`, not the package id.                                          |
 
 ## Workflow
 
 For any "show me / walk me through" request:
 
 1. **Confirm the frontend is reachable.** Call `list_all_commands(query="docmanager:open")`. A normal result means a JupyterLab tab is connected. A timeout means no frontend is listening (see Gotchas); tell the user to open or focus their xtralab window, and stop.
-2. **Plan the tour as a short sequence of commands**, narrating each step in chat as you run it ("Opening `src/index.ts`...", "Highlighting the plugin array..."). Keep the user oriented; the UI motion plus your words is the walkthrough.
-3. **Open before you act.** Most commands operate on the _active_ widget. Open or activate the target first (`docmanager:open`), then navigate, highlight, or show.
-4. **Highlight precisely.** Use `xtralab:highlight-lines` for a line range you read out of the source yourself (you have the file open as a coding agent, so you know the exact lines; do not trust remembered numbers, files drift). Clear with `xtralab:clear-highlights` before moving to an unrelated spot, or let the next highlight in the same file replace it.
-5. **Show rich content with `xtralab:show`.** Generate the content yourself (a Vega-Lite spec for a chart, Markdown with a Mermaid block for a diagram, HTML for a table) and render it into a side panel. No notebook, no kernel. Only drop to authoring and running a notebook when the output must be _computed_ by running code; see [references/rich-display.md](references/rich-display.md).
-6. **Clean up if asked.** Highlights clear with `xtralab:clear-highlights`; panels close like any tab. Delete any throwaway notebook you authored unless the user wants to keep it.
+2. **Start the tour:** `xtralab:walkthrough` with `reset: true` and your first step.
+3. **Add a step per stop.** Read the real line numbers out of the file yourself (you have it open as a coding agent; do not trust remembered numbers, code drifts). Give each stop a `title`, a short `body`, and the `path`/`line`/`endLine` it is about; the editor follows along full-width and highlights, and the step is saved with a jump-back button.
+4. **Embed visuals where they help** by passing `media` (a Vega-Lite chart, an SVG diagram) on a step, or a Mermaid block inside `body`.
+5. **Keep chat narration light.** A one-line "here's the tour →" plus the panel is enough; the durable explanation lives in the panel.
+6. **Clean up if asked.** `xtralab:clear-highlights` removes highlights; the panel and any `xtralab:show` panels close like any tab.
 
 ## Gotchas
 
@@ -73,9 +97,10 @@ These are verified behaviors of the bridge, not guesses:
 
 - **A frontend must be connected.** Commands round-trip through the browser. With no JupyterLab tab open and connected to the server, every call fails with `"Command timed out after 10.0 seconds"`. This is the first thing to check.
 - **`success` is the signal, not `result`.** Commands that return a widget or other non-JSON value come back as `{ success: true, result: "[Complex object - cannot serialize]" }`. Treat `success: true` as "it worked"; do not parse `result` for those.
-- **Commands act on the active widget unless given a path.** Open or activate the target before you navigate or highlight, or you may act on whatever happens to be focused.
-- **Highlights are for text and code editors.** `xtralab:highlight-lines` works in CodeMirror file editors. It does not highlight inside notebooks, terminals, or the settings editor; for those, narrate and use `code-viewer:open` or open the underlying source file.
-- **Prefer `xtralab:show` over a kernel for visuals.** It renders Markdown, Vega-Lite, HTML, and images with no kernel. Reach for a notebook only when the result must be computed by running code, and note the shipped kernel is minimal (matplotlib/pandas are not guaranteed). Opening a `.ipynb` also pops a modal kernel dialog that blocks the bridge unless you pass a `kernelPreference`; [references/rich-display.md](references/rich-display.md) covers both.
+- **Rich content goes to the side, files stay full-width.** The Walkthrough panel and `xtralab:show` dock in the side area, so opening files never splits the editor. Pass `area: "main"` to `xtralab:show` only if you deliberately want a document-area split.
+- **Commands act on the active widget unless given a path.** Open or activate the target before you navigate or highlight.
+- **Highlights are for text and code editors.** `xtralab:highlight-lines` works in CodeMirror file editors, not notebooks, terminals, or the settings editor.
+- **Prefer rendering over a kernel for visuals.** The Walkthrough panel and `xtralab:show` render Markdown, Vega-Lite, HTML, and images with no kernel. Reach for a notebook only when the result must be computed by running code, and note the shipped kernel is minimal (matplotlib/pandas not guaranteed); see [references/rich-display.md](references/rich-display.md).
 
 ## When to use this skill vs. customize-jupyterlab
 
@@ -89,5 +114,5 @@ If the user says "show me", "walk me through", "open", "highlight", "plot", or
 ## References
 
 - [references/commands.md](references/commands.md) - the curated command catalog with verified argument schemas, grouped by what they do, plus how to discover more with `list_all_commands`.
-- [references/recipes.md](references/recipes.md) - copy-adaptable walkthrough sequences: open and highlight a region, an explainer or chart panel, and a full multi-stop tour.
-- [references/rich-display.md](references/rich-display.md) - rendering rich content with `xtralab:show` (Markdown, Vega-Lite, HTML, images), which MIME types render, and the notebook fallback for kernel-computed output.
+- [references/recipes.md](references/recipes.md) - copy-adaptable walkthrough sequences built on `xtralab:walkthrough`, plus the lower-level highlight and panel moves.
+- [references/rich-display.md](references/rich-display.md) - rendering rich content (Markdown, Vega-Lite, HTML, images) with no kernel, embedding it in walkthrough steps or `xtralab:show`, and the notebook fallback for computed output.
