@@ -4,6 +4,7 @@ import './git.css';
 import './highlight.css';
 import './launcher.css';
 import './omnibox.css';
+import './showOutput.css';
 import './sidebar.css';
 import './tabs.css';
 import './terminals.css';

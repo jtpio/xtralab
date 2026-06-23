@@ -3,10 +3,11 @@ import {
   JupyterFrontEnd,
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
-import { ICommandPalette, MainAreaWidget } from '@jupyterlab/apputils';
+import { ICommandPalette } from '@jupyterlab/apputils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import type { ReadonlyPartialJSONValue } from '@lumino/coreutils';
+import { Panel } from '@lumino/widgets';
 
 const PLUGIN_ID = 'xtralab:show-output';
 
@@ -64,7 +65,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
     // One reusable panel per `id`, so repeated shows refresh in place.
-    const panels = new Map<string, MainAreaWidget>();
+    const panels = new Map<string, Panel>();
 
     commands.addCommand(SHOW_COMMAND, {
       label: trans.__('Show Rich Output'),
@@ -133,10 +134,15 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
         const model = rendermime.createModel({ data: bundle, trusted: true });
         const renderer = rendermime.createRenderer(chosen);
-        const widget = new MainAreaWidget({ content: renderer });
+        // A scrollable Panel, not a MainAreaWidget: MainAreaWidget does not lay
+        // out its content in the side area, and the panel needs to scroll when
+        // the content is taller than it (style/showOutput.css).
+        const widget = new Panel();
+        widget.addClass('jp-xtralab-ShowPanel');
         widget.id = `xtralab-show-${id}`;
         widget.title.label = label;
         widget.title.closable = true;
+        widget.addWidget(renderer);
 
         // Replace any existing panel with this id so shows refresh in place.
         const existing = panels.get(id);
@@ -159,8 +165,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
             activate: true
           });
         } else {
-          labShell.add(widget, 'right', { rank: 900, activate: true });
+          labShell.add(widget, 'right', { rank: 900 });
         }
+        // Reveal the panel (the side area does not open from `add` alone).
+        labShell.activateById(widget.id);
 
         try {
           await renderer.renderModel(model);
