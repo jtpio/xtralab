@@ -3,6 +3,7 @@ import type { TranslationBundle } from '@jupyterlab/translation';
 import { fileIcon } from '@jupyterlab/ui-components';
 import type { CommandRegistry } from '@lumino/commands';
 import type { ReadonlyPartialJSONValue } from '@lumino/coreutils';
+import type { Message } from '@lumino/messaging';
 import { Panel, Widget } from '@lumino/widgets';
 
 /** Command the jump links dispatch; keeps the panel decoupled from the plugin. */
@@ -55,6 +56,16 @@ export class WalkthroughPanel extends Panel {
     while (this.widgets.length > 0) {
       this.widgets[0].dispose();
     }
+  }
+
+  /**
+   * Dispose on close (e.g. the close button when the panel has been dragged to
+   * the main area) rather than leaving a detached, reusable widget behind. The
+   * next `xtralab:walkthrough` call recreates the panel in the side area.
+   */
+  protected onCloseRequest(msg: Message): void {
+    super.onCloseRequest(msg);
+    this.dispose();
   }
 
   /** Append a step and scroll it into view. */

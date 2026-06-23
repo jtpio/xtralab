@@ -72,7 +72,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
         panel = new WalkthroughPanel({ rendermime, commands, trans });
         panel.id = PANEL_ID;
         panel.title.icon = tocIcon;
+        panel.title.label = trans.__('Walkthrough');
         panel.title.caption = trans.__('Walkthrough');
+        // Closable so it gets a close button if the user drags it out of the
+        // side area into the main document area. Closing disposes it; the next
+        // xtralab:walkthrough call recreates it back in the side area.
+        panel.title.closable = true;
         labShell.add(panel, 'right', { rank: 1000, type: 'Walkthrough' });
         const created = panel;
         created.disposed.connect(() => {
