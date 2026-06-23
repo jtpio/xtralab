@@ -1,0 +1,80 @@
+/*
+ * The read-only walkthrough panel (`xtralab:walkthrough`) in the side area. A
+ * scrollable column of step cards, each holding rendered Markdown, an optional
+ * embedded visual, and an optional "jump to code" button.
+ */
+
+.jp-xtralab-Walkthrough {
+  overflow-y: auto;
+  padding: 4px 0;
+  background: var(--jp-layout-color1);
+  color: var(--jp-ui-font-color1);
+  font-size: var(--jp-ui-font-size1);
+}
+
+.jp-xtralab-Walkthrough-step {
+  padding: 10px 12px 14px;
+  border-bottom: 1px solid var(--jp-border-color2);
+}
+
+.jp-xtralab-Walkthrough-stepTitle {
+  margin: 0 0 6px;
+  font-size: var(--jp-ui-font-size2);
+  font-weight: 600;
+  color: var(--jp-ui-font-color0);
+}
+
+.jp-xtralab-Walkthrough-content {
+  overflow-x: auto;
+}
+
+.jp-xtralab-Walkthrough-jumpRow {
+  margin-top: 8px;
+}
+
+/* A subtle native-feeling button: UI font and neutral colors, like the rest of
+   the JupyterLab chrome, with a leading file icon and a hover background. */
+.jp-xtralab-Walkthrough-jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 2px 8px 2px 5px;
+  border: var(--jp-border-width) solid var(--jp-border-color2);
+  border-radius: var(--jp-border-radius);
+  background: none;
+  color: var(--jp-ui-font-color1);
+  font-family: var(--jp-ui-font-family);
+  font-size: var(--jp-ui-font-size1);
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.jp-xtralab-Walkthrough-jump:hover {
+  background-color: var(--jp-layout-color2);
+  border-color: var(--jp-border-color1);
+}
+
+.jp-xtralab-Walkthrough-jump:focus-visible {
+  outline: none;
+  border-color: var(--jp-brand-color1);
+  box-shadow: inset 0 0 0 1px var(--jp-brand-color1);
+}
+
+.jp-xtralab-Walkthrough-jumpIcon {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.jp-xtralab-Walkthrough-jumpIcon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.jp-xtralab-Walkthrough-jumpLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -2,9 +2,12 @@
 @import url('commandBar.css');
 @import url('editorBreadcrumbs.css');
 @import url('git.css');
+@import url('highlight.css');
 @import url('launcher.css');
 @import url('omnibox.css');
+@import url('showOutput.css');
 @import url('sidebar.css');
 @import url('tabs.css');
 @import url('terminals.css');
 @import url('topBar.css');
+@import url('walkthrough.css');

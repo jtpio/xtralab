@@ -1,0 +1,11 @@
+/*
+ * Line highlight applied by `xtralab:highlight-lines`. The class lands on the
+ * CodeMirror line wrapper (`.cm-line`), so the tint spans the full editor width
+ * and a left accent bar marks the run. The translucent background keeps the
+ * code legible on both light and dark themes.
+ */
+
+.jp-xtralab-highlightLine {
+  background-color: rgb(250 204 21 / 18%);
+  box-shadow: inset 2px 0 0 0 var(--jp-brand-color1);
+}

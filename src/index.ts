@@ -7,14 +7,17 @@ import fileTypeIconsPlugin from './fileTypeIcons';
 import editorBreadcrumbsPlugin from './editorBreadcrumbs';
 import editorIndentPlugin from './editorIndent';
 import gitPlugins from './git';
+import highlightPlugin from './highlight';
 import launcherPlugins from './launcher';
 import menusPlugin from './menus';
 import omniboxPlugin from './omnibox';
 import searchReplacePlugin from './searchReplace';
+import showOutputPlugin from './showOutput';
 import sidebarPlugin from './sidebar';
 import terminalNotificationsPlugin from './terminalNotifications';
 import terminalsPlugin from './terminals';
 import topBarPlugin from './topBar';
+import walkthroughPlugin from './walkthrough';
 
 /**
  * Every plugin contributed by `xtralab`. The entry point of the
@@ -33,14 +36,17 @@ const plugins: JupyterFrontEndPlugin<unknown>[] = [
   fileBrowserPlugin,
   fileTypeIconsPlugin,
   ...gitPlugins,
+  highlightPlugin,
   ...launcherPlugins,
   menusPlugin,
   omniboxPlugin,
   searchReplacePlugin,
+  showOutputPlugin,
   sidebarPlugin,
   terminalNotificationsPlugin,
   terminalsPlugin,
-  topBarPlugin
+  topBarPlugin,
+  walkthroughPlugin
 ];
 
 export default plugins;

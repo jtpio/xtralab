@@ -107,13 +107,23 @@ See the [`jupyter-server-mcp` README][mcp] for other MCP clients.
 [mcp]: https://github.com/jupyter-ai-contrib/jupyter-server-mcp
 [mcp-spec]: https://modelcontextprotocol.io
 
-## Agent skill
+## Agent skills
 
-xtralab ships an [Agent Skills][skills] entry at [`agent-skill/`](./agent-skill)
-that teaches any coding agent how to customize JupyterLab from plain-English
-requests like "hide the status bar", "change the theme", or "add a language
-server". The same SKILL.md file works with Claude Code, Codex CLI, Gemini CLI,
-GitHub Copilot, and other tools that read the Agent Skills format.
+xtralab ships [Agent Skills][skills] at [`agent-skill/`](./agent-skill) that
+teach any coding agent how to work with the app:
+
+- **customize-jupyterlab** turns plain-English requests like "hide the status
+  bar", "change the theme", or "add a language server" into the right
+  config-file edits.
+- **guided-code-walkthrough** drives the running app over the MCP command
+  bridge (see the section above) to open files, jump to and highlight specific
+  lines (`xtralab:highlight-lines`), and build a read-only Walkthrough panel of
+  prose, snippets, diagrams, and clickable code links beside the editor
+  (`xtralab:walkthrough`, no notebook or kernel needed), so the agent can _show_
+  you something at your own pace instead of only describing it in chat.
+
+The same SKILL.md files work with Claude Code, Codex CLI, Gemini CLI, GitHub
+Copilot, and other tools that read the Agent Skills format.
 
 For Claude Code, this repository doubles as a one-plugin marketplace. Inside a
 Claude Code session:
@@ -124,12 +134,12 @@ Claude Code session:
 ```
 
 For agents that read from `~/.agents/skills/`, such as Codex CLI or Gemini CLI,
-clone and copy the skill directory:
+clone and copy the skill directories:
 
 ```bash
 git clone --depth=1 https://github.com/jtpio/xtralab.git /tmp/xtralab
 mkdir -p ~/.agents/skills
-cp -r /tmp/xtralab/agent-skill/skills/customize-jupyterlab ~/.agents/skills/
+cp -r /tmp/xtralab/agent-skill/skills/* ~/.agents/skills/
 ```
 
 See [`agent-skill/README.md`](./agent-skill/README.md) for additional install
