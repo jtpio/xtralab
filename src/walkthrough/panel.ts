@@ -1,5 +1,6 @@
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import type { TranslationBundle } from '@jupyterlab/translation';
+import { fileIcon } from '@jupyterlab/ui-components';
 import type { CommandRegistry } from '@lumino/commands';
 import type { ReadonlyPartialJSONValue } from '@lumino/coreutils';
 import { Panel, Widget } from '@lumino/widgets';
@@ -106,14 +107,24 @@ export class WalkthroughPanel extends Panel {
   private _jumpButton(path: string, line?: number, endLine?: number): Widget {
     const node = document.createElement('div');
     node.className = 'jp-xtralab-Walkthrough-jumpRow';
+    const where = line ? `${path}:${line}` : path;
+
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'jp-xtralab-Walkthrough-jump';
-    button.textContent = this._trans.__(
-      'Open %1',
-      line ? `${path}:${line}` : path
-    );
+    button.title = this._trans.__('Open %1 in the editor', where);
+
+    const icon = fileIcon.element({
+      tag: 'span',
+      className: 'jp-xtralab-Walkthrough-jumpIcon'
+    });
+    const label = document.createElement('span');
+    label.className = 'jp-xtralab-Walkthrough-jumpLabel';
+    label.textContent = where;
+    button.appendChild(icon);
+    button.appendChild(label);
     node.appendChild(button);
+
     button.addEventListener('click', () => {
       void this._commands.execute(HIGHLIGHT_LINES_COMMAND, {
         path,
