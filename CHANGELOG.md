@@ -2,6 +2,30 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.11.0
+
+([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.10.0...4e608621dda0cfaca7057b7b6d47694a8a0a2e76))
+
+### Enhancements made
+
+- More skills [#53](https://github.com/jtpio/xtralab/pull/53) ([@jtpio](https://github.com/jtpio))
+- User friendly agent configuration [#52](https://github.com/jtpio/xtralab/pull/52) ([@jtpio](https://github.com/jtpio))
+- Terminal panel improvements [#51](https://github.com/jtpio/xtralab/pull/51) ([@jtpio](https://github.com/jtpio))
+- Disable the RTC timeline slider in the status bar [#49](https://github.com/jtpio/xtralab/pull/49) ([@jtpio](https://github.com/jtpio))
+- Omnibox [#48](https://github.com/jtpio/xtralab/pull/48) ([@jtpio](https://github.com/jtpio))
+- Defaults and fixes [#45](https://github.com/jtpio/xtralab/pull/45) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-06-16&to=2026-06-23&type=c))
+
+@jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-06-16..2026-06-23&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.10.0
 
 ([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.9.0...760125602edaef7bc2b6a5e9c27e9db1861a7018))
@@ -19,8 +43,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-06-04&to=2026-06-16&type=c))
 
 @jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-06-04..2026-06-16&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.9.0
 
