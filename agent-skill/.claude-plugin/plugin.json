@@ -1,7 +1,7 @@
 {
   "name": "xtralab-skills",
   "version": "0.1.0",
-  "description": "Agent skills for customizing JupyterLab and xtralab — themes, sidebars, status bar, language servers, launcher, and more.",
+  "description": "Agent skills for xtralab and JupyterLab: customize the UI (themes, sidebars, language servers, launcher) and drive the live app for guided code walkthroughs.",
   "author": {
     "name": "Jeremy Tuloup"
   },

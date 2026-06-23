@@ -7,7 +7,7 @@
     {
       "name": "xtralab-skills",
       "source": "./agent-skill",
-      "description": "Agent skills for customizing JupyterLab and xtralab — themes, sidebars, status bar, language servers, launcher, and more.",
+      "description": "Agent skills for xtralab and JupyterLab: customize the UI (themes, sidebars, language servers, launcher) and drive the live app for guided code walkthroughs.",
       "version": "0.1.0",
       "homepage": "https://github.com/jtpio/xtralab",
       "license": "BSD-3-Clause"
