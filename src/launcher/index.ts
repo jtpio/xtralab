@@ -37,7 +37,9 @@ const PLUGIN_ID = 'xtralab:launcher';
  * The agent list is the merge of xtralab's defaults with the user's
  * `xtralab:launcher` settings, then filtered by a server-side `which`
  * check so users only see agents that are actually installed. Agents with
- * `requireAvailable: false` (e.g. shell aliases) skip the filter.
+ * `requireAvailable: false` skip the filter, as does any built-in whose
+ * `command` the user has overridden (a user-chosen command — often a shell
+ * alias the server can't resolve — is trusted and always shown).
  *
  * The plugin deliberately does NOT provide the `ILauncher` token: other
  * extensions register notebook/console/terminal cards on it as a side

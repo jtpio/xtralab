@@ -210,8 +210,10 @@ Edit the `agents` array:
     // Hide an agent
     { "id": "kiro", "enabled": false },
 
-    // Override an agent's command (e.g. point Claude at a shell alias)
-    { "id": "claude", "command": "cl", "requireAvailable": false },
+    // Override an agent's command, e.g. point Claude at a shell alias.
+    // Changing the command keeps the card visible even when the alias is
+    // not on PATH, so requireAvailable: false is no longer needed here.
+    { "id": "claude", "command": "cl" },
 
     // Add a new agent; promptArgs: [] appends the prompt as a positional arg
     { "id": "aider", "label": "Aider", "command": "aider", "promptArgs": [] }

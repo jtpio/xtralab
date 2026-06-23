@@ -57,7 +57,12 @@ export interface IEditorSettings {
    * the editor tile entirely. Defaults to true.
    */
   enabled?: boolean;
-  /** See {@link IEditor.requireAvailable}. */
+  /**
+   * See {@link IEditor.requireAvailable}. Defaults to true for a built-in
+   * editor that still uses its shipped command, and to false once you override
+   * the `command` (a user-chosen command — often a shell alias — is trusted and
+   * always shown). Set it explicitly to force the check on or off.
+   */
   requireAvailable?: boolean;
 }
 
@@ -121,7 +126,9 @@ function resolveEditorIcon(id: string, iconSvg: string | undefined): LabIcon {
  * entries keep their fields unless explicitly overridden; user-only entries are
  * appended. `enabled: false` filters an entry out of the result entirely (so
  * callers don't need to re-check the flag). The result is sorted by rank, which
- * is also the launcher's tile-preference order. Mirrors `mergeAgents`.
+ * is also the launcher's tile-preference order. Mirrors `mergeAgents`, including
+ * turning `requireAvailable` off when the user overrides a built-in's `command`
+ * so an aliased editor still shows.
  */
 export function mergeEditors(overrides: IEditorSettings[]): IEditor[] {
   const overrideById = new Map(overrides.map(entry => [entry.id, entry]));
@@ -137,16 +144,24 @@ export function mergeEditors(overrides: IEditorSettings[]): IEditor[] {
     if (override.enabled === false) {
       continue;
     }
+    const command = override.command ?? base.command;
     merged.push({
       id: base.id,
       label: override.label ?? base.label,
       caption: override.caption ?? base.caption,
-      command: override.command ?? base.command,
+      command,
       icon: override.iconSvg
         ? resolveEditorIcon(base.id, override.iconSvg)
         : base.icon,
       rank: override.rank ?? base.rank,
-      requireAvailable: override.requireAvailable ?? base.requireAvailable
+      // See `mergeAgents`: once the user points a built-in editor at their own
+      // command (e.g. a shell alias `which` can't resolve), stop requiring
+      // availability so the tile still shows. The check stays on only while the
+      // command is xtralab's default.
+      requireAvailable:
+        command === base.command
+          ? (override.requireAvailable ?? base.requireAvailable)
+          : false
     });
   }
 

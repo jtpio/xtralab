@@ -8,7 +8,7 @@
   "properties": {
     "agents": {
       "title": "Agents",
-      "description": "Override or extend the built-in list of agents shown on the launcher. Each entry must include an `id`. When the id matches a built-in (claude, codex, antigravity, copilot, goose, opencode, kiro, mistral-vibe), the fields you set override the corresponding defaults; leave a field out to keep the default. New ids define brand-new cards. Set `enabled: false` to hide a default. Set `requireAvailable: false` for shell aliases that should always show even though they aren't on PATH. The full built-in list is shown as the default below, so you can copy an entry and tweak it in place.",
+      "description": "Override or extend the built-in list of agents shown on the launcher. Each entry must include an `id`. When the id matches a built-in (claude, codex, antigravity, copilot, goose, opencode, kiro, mistral-vibe), the fields you set override the corresponding defaults; leave a field out to keep the default. New ids define brand-new cards. Set `enabled: false` to hide a default. Changing a built-in's `command` (for example to a shell alias like `ccm`) keeps the card visible even though the alias isn't on PATH; use `requireAvailable: false` only when you want to skip the check without changing the command. The full built-in list is shown as the default below, so you can copy an entry and tweak it in place.",
       "type": "array",
       "default": [],
       "items": {
@@ -54,7 +54,7 @@
           },
           "requireAvailable": {
             "title": "Require available",
-            "description": "When false, the launcher skips the availability check for this entry (useful for shell aliases that aren't on PATH but resolve in an interactive shell).",
+            "description": "When false, the launcher skips the availability check for this entry (useful for shell aliases that aren't on PATH but resolve in an interactive shell). Overriding a built-in agent's command turns this off automatically, so an aliased command still shows; set it explicitly to force the check on or off.",
             "type": "boolean",
             "default": true
           },
@@ -69,7 +69,7 @@
     },
     "editors": {
       "title": "Editors",
-      "description": "Override or extend the terminal editors offered in the launcher's Open section (and recognized in the Terminals panel). Each entry must include an `id`. When the id matches a built-in (nvim, vim), the fields you set override the corresponding defaults; leave a field out to keep the default. New ids define additional editors. The launcher shows a single tile — the first editor, by `rank`, whose `command` is on PATH (Neovim before Vim by default). Set `enabled: false` to hide a built-in; disable both to remove the tile entirely. Set `requireAvailable: false` for a shell alias that should show even though it isn't on PATH. The full built-in list is shown as the default below, so you can copy an entry and tweak it in place.",
+      "description": "Override or extend the terminal editors offered in the launcher's Open section (and recognized in the Terminals panel). Each entry must include an `id`. When the id matches a built-in (nvim, vim), the fields you set override the corresponding defaults; leave a field out to keep the default. New ids define additional editors. The launcher shows a single tile — the first editor, by `rank`, whose `command` is on PATH (Neovim before Vim by default). Set `enabled: false` to hide a built-in; disable both to remove the tile entirely. Changing a built-in's `command` (for example to a shell alias) keeps the tile visible even though the alias isn't on PATH; use `requireAvailable: false` only when you want to skip the check without changing the command. The full built-in list is shown as the default below, so you can copy an entry and tweak it in place.",
       "type": "array",
       "default": [],
       "items": {
@@ -115,7 +115,7 @@
           },
           "requireAvailable": {
             "title": "Require available",
-            "description": "When false, the launcher skips the availability check for this entry (useful for a shell alias that isn't on PATH but resolves in an interactive shell).",
+            "description": "When false, the launcher skips the availability check for this entry (useful for a shell alias that isn't on PATH but resolves in an interactive shell). Overriding a built-in editor's command turns this off automatically, so an aliased command still shows; set it explicitly to force the check on or off.",
             "type": "boolean",
             "default": true
           }
