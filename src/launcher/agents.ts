@@ -63,7 +63,12 @@ export interface IAgentSettings {
    * palette. Defaults to true.
    */
   enabled?: boolean;
-  /** See `IAgent.requireAvailable`. */
+  /**
+   * See `IAgent.requireAvailable`. Defaults to true for a built-in agent that
+   * still uses its shipped command, and to false once you override the
+   * `command` (a user-chosen command — often a shell alias — is trusted and
+   * always shown). Set it explicitly to force the check on or off.
+   */
   requireAvailable?: boolean;
   /**
    * See `IAgent.promptArgs`. Pass an empty array to mark the agent as
@@ -215,6 +220,11 @@ function resolveIcon(id: string, iconSvg: string | undefined): LabIcon {
  * their built-in fields unless explicitly overridden; user-only entries are
  * appended. `enabled: false` filters an entry out of the result entirely
  * (so callers don't need to check the flag again).
+ *
+ * Overriding a built-in agent's `command` also turns its `requireAvailable`
+ * off, so the card survives the launcher's `which`-based availability filter
+ * even when the new command is a shell alias the server can't resolve. See the
+ * built-in branch below for the rationale.
  */
 export function mergeAgents(overrides: IAgentSettings[]): IAgent[] {
   const overrideById = new Map(overrides.map(entry => [entry.id, entry]));
@@ -230,16 +240,31 @@ export function mergeAgents(overrides: IAgentSettings[]): IAgent[] {
     if (override.enabled === false) {
       continue;
     }
+    const command = override.command ?? base.command;
     merged.push({
       id: base.id,
       label: override.label ?? base.label,
       caption: override.caption ?? base.caption,
-      command: override.command ?? base.command,
+      command,
       icon: override.iconSvg
         ? resolveIcon(base.id, override.iconSvg)
         : base.icon,
       rank: override.rank ?? base.rank,
-      requireAvailable: override.requireAvailable ?? base.requireAvailable,
+      // The availability filter exists to prune xtralab's *built-in* command
+      // from the launcher when it isn't installed. Once the user points the
+      // agent at their own command — e.g. the `ccm` alias wrapping `claude
+      // --effort=max …` — the server's `shutil.which` probe can't see it
+      // (aliases and shell functions only exist inside an interactive shell),
+      // so keeping the check on would wrongly hide the card. We therefore only
+      // require availability while the command is still xtralab's default; a
+      // user-chosen command is trusted and always shown. An explicit
+      // `requireAvailable` still applies to the unchanged default command, so a
+      // user can alias `claude` itself and set `requireAvailable: false` (or
+      // force the check back on).
+      requireAvailable:
+        command === base.command
+          ? (override.requireAvailable ?? base.requireAvailable)
+          : false,
       // `null` is the explicit way to opt out of an agent's default prompt
       // support; an absent key keeps the default. `undefined` from `??` is
       // pruned below.

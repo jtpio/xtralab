@@ -412,8 +412,14 @@ xtralab already disables noisy plugins (announcements, extension manager, ToC, n
 ### Point Claude at a shell alias
 
 ```json5
-{ agents: [{ id: 'claude', command: 'cl', requireAvailable: false }] }
+{ agents: [{ id: 'claude', command: 'cl' }] }
 ```
+
+Overriding a built-in agent's `command` skips the launcher's PATH availability
+check for that card, so an aliased command (e.g. `cl`, or `ccm` for
+`claude --effort=max …`) stays visible even though the alias is not on PATH. Use
+`requireAvailable: false` only to skip the check without changing the command
+(e.g. when you alias the `claude` binary name itself).
 
 ### Add a new agent card (Aider)
 
