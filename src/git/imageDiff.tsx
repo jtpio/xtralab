@@ -299,10 +299,78 @@ function RangeSlider(props: {
   );
 }
 
+/**
+ * Fit a `naturalWidth × naturalHeight` image inside an `areaWidth ×
+ * areaHeight` box without upscaling past its intrinsic size — the same
+ * "contain, never enlarge" rule the 2-up and onion views get for free from
+ * `max-width/height: 100%; width/height: auto`. Returns the displayed pixel
+ * box, or `null` until both the image and the area have been measured.
+ */
+function containBox(
+  naturalWidth: number,
+  naturalHeight: number,
+  areaWidth: number,
+  areaHeight: number
+): { width: number; height: number } | null {
+  if (
+    naturalWidth <= 0 ||
+    naturalHeight <= 0 ||
+    areaWidth <= 0 ||
+    areaHeight <= 0
+  ) {
+    return null;
+  }
+  const scale = Math.min(
+    areaWidth / naturalWidth,
+    areaHeight / naturalHeight,
+    1
+  );
+  return { width: naturalWidth * scale, height: naturalHeight * scale };
+}
+
+/** Track an element's content-box size, kept current across layout changes. */
+function useElementSize(): readonly [
+  React.RefObject<HTMLDivElement>,
+  { width: number; height: number }
+] {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [size, setSize] = React.useState({ width: 0, height: 0 });
+  React.useEffect(() => {
+    const el = ref.current;
+    if (el === null) {
+      return;
+    }
+    const measure = () => {
+      setSize({ width: el.clientWidth, height: el.clientHeight });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+  return [ref, size] as const;
+}
+
 function Swipe({ reference, challenger }: ISideViewProps): React.ReactElement {
   const [position, setPosition] = React.useState(50);
   const [dragging, setDragging] = React.useState(false);
+  const [refSize, onRefLoad] = useNaturalSize();
+  const [challSize, onChallLoad] = useNaturalSize();
+  const [areaRef, area] = useElementSize();
   const frameRef = React.useRef<HTMLDivElement>(null);
+
+  // Display both revisions in a single box — the union of their intrinsic
+  // sizes, scaled down to fit but never enlarged — and size the frame to
+  // exactly that box. The divider's `left: N%`, the pointer-to-percent
+  // mapping (below) and each image's `clip-path` inset then all resolve
+  // against the same width, so the white line sits precisely on the seam
+  // between the two revisions at every position. A full-width frame instead
+  // let the line drift off the seam by as much as half the letterbox.
+  const naturalWidth = Math.max(refSize?.[0] ?? 0, challSize?.[0] ?? 0);
+  const naturalHeight = Math.max(refSize?.[1] ?? 0, challSize?.[1] ?? 0);
+  const box = containBox(naturalWidth, naturalHeight, area.width, area.height);
 
   const setFromClientX = React.useCallback((clientX: number) => {
     const frame = frameRef.current;
@@ -379,19 +447,25 @@ function Swipe({ reference, challenger }: ISideViewProps): React.ReactElement {
 
   return (
     <div className="jp-xtralab-ImageDiff-interactive">
-      <div
-        className="jp-xtralab-ImageDiff-swipeFrame"
-        ref={frameRef}
-        onPointerDown={onPointerDown}
-        data-dragging={dragging ? 'true' : undefined}
-      >
-        <div className="jp-xtralab-ImageDiff-stack">
+      <div className="jp-xtralab-ImageDiff-swipeArea" ref={areaRef}>
+        <div
+          className="jp-xtralab-ImageDiff-swipeFrame"
+          ref={frameRef}
+          style={
+            box !== null
+              ? { width: `${box.width}px`, height: `${box.height}px` }
+              : { width: 0, height: 0, visibility: 'hidden' }
+          }
+          onPointerDown={onPointerDown}
+          data-dragging={dragging ? 'true' : undefined}
+        >
           {reference.uri !== null ? (
             <img
-              className="jp-xtralab-ImageDiff-stackImg"
+              className="jp-xtralab-ImageDiff-swipeImg"
               src={reference.uri}
               alt="Reference revision"
               draggable={false}
+              onLoad={onRefLoad}
               style={{
                 clipPath: `inset(0 ${100 - position}% 0 0)`
               }}
@@ -399,35 +473,36 @@ function Swipe({ reference, challenger }: ISideViewProps): React.ReactElement {
           ) : null}
           {challenger.uri !== null ? (
             <img
-              className="jp-xtralab-ImageDiff-stackImg"
+              className="jp-xtralab-ImageDiff-swipeImg"
               src={challenger.uri}
               alt="Challenger revision"
               draggable={false}
+              onLoad={onChallLoad}
               style={{
                 clipPath: `inset(0 0 0 ${position}%)`
               }}
             />
           ) : null}
-        </div>
-        <div
-          className="jp-xtralab-ImageDiff-swipeDivider"
-          style={{ left: `${position}%` }}
-          role="slider"
-          aria-label="Swipe between reference and challenger"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(position)}
-          aria-orientation="vertical"
-          tabIndex={0}
-          onKeyDown={onKeyDown}
-        >
-          <div className="jp-xtralab-ImageDiff-swipeDividerHandle jp-mod-top">
-            <div className="jp-xtralab-ImageDiff-swipeDividerArrow jp-mod-left" />
-            <div className="jp-xtralab-ImageDiff-swipeDividerArrow jp-mod-right" />
-          </div>
-          <div className="jp-xtralab-ImageDiff-swipeDividerHandle jp-mod-bottom">
-            <div className="jp-xtralab-ImageDiff-swipeDividerArrow jp-mod-left" />
-            <div className="jp-xtralab-ImageDiff-swipeDividerArrow jp-mod-right" />
+          <div
+            className="jp-xtralab-ImageDiff-swipeDivider"
+            style={{ left: `${position}%` }}
+            role="slider"
+            aria-label="Swipe between reference and challenger"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(position)}
+            aria-orientation="vertical"
+            tabIndex={0}
+            onKeyDown={onKeyDown}
+          >
+            <div className="jp-xtralab-ImageDiff-swipeDividerHandle jp-mod-top">
+              <div className="jp-xtralab-ImageDiff-swipeDividerArrow jp-mod-left" />
+              <div className="jp-xtralab-ImageDiff-swipeDividerArrow jp-mod-right" />
+            </div>
+            <div className="jp-xtralab-ImageDiff-swipeDividerHandle jp-mod-bottom">
+              <div className="jp-xtralab-ImageDiff-swipeDividerArrow jp-mod-left" />
+              <div className="jp-xtralab-ImageDiff-swipeDividerArrow jp-mod-right" />
+            </div>
           </div>
         </div>
       </div>
