@@ -97,8 +97,8 @@
 
 .jp-xtralab-DiffWidget-segmented {
   display: inline-flex;
-  border: 1px solid var(--jp-border-color2);
-  border-radius: 3px;
+  border: var(--jp-border-width) solid var(--jp-border-color2);
+  border-radius: var(--jp-border-radius);
   overflow: hidden;
   background-color: var(--jp-layout-color1);
 }
@@ -109,14 +109,20 @@
   background: transparent;
   color: var(--jp-ui-font-color1);
   font-size: var(--jp-ui-font-size0);
-  cursor: pointer;
   line-height: 1.4;
+  cursor: pointer;
 }
 
 .jp-xtralab-DiffWidget-segmentedButton:hover {
   background-color: var(--jp-layout-color2);
 }
 
+/*
+ * Active segment: brand-colour fill with the inverse UI font colour — the
+ * same pair JupyterLab uses to mark selected items (the command palette
+ * active item, the file browser selection). The inverse font colour adapts
+ * per theme, so the label stays legible on the brand fill in both themes.
+ */
 .jp-xtralab-DiffWidget-segmentedButton[data-active='true'] {
   background-color: var(--jp-brand-color1);
   color: var(--jp-ui-inverse-font-color1);
