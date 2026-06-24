@@ -1,8 +1,7 @@
 /*
  * Styles for xtralab's @pierre/diffs viewer. The same surface is used by
  * the launcher dashboard's own diff tab and by the jupyterlab-git diff
- * providers, so these rules cover both hosts. (xtralab no longer ships a
- * git changes panel — the upstream jupyterlab-git panel is reused.)
+ * providers, so these rules cover both hosts.
  */
 
 /*

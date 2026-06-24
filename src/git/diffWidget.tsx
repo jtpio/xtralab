@@ -5,6 +5,7 @@ import { PathExt } from '@jupyterlab/coreutils';
 import { Git } from '@jupyterlab/git';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { Contents } from '@jupyterlab/services';
+import type { TranslationBundle } from '@jupyterlab/translation';
 import { ReactWidget } from '@jupyterlab/ui-components';
 import { PromiseDelegate } from '@lumino/coreutils';
 import { ISignal, Signal } from '@lumino/signaling';
@@ -44,6 +45,7 @@ export interface IXtralabDiffContext {
   contentsManager: Contents.IManager;
   rendermime: IRenderMimeRegistry | null;
   themeManager: IThemeManager | null;
+  trans: TranslationBundle;
 }
 
 /**
@@ -103,6 +105,9 @@ export class XtralabDiffWidget
    * Re-pull both sides of the model and re-render.
    */
   async refresh(): Promise<void> {
+    // Settle any refresh still awaiting so a rapid second call cannot orphan
+    // the earlier caller's promise.
+    this.settleRefresh();
     const done = new PromiseDelegate<void>();
     this._pendingRefresh = done;
     this._reloadNonce += 1;
@@ -196,6 +201,14 @@ export class XtralabDiffWidget
     pending?.resolve();
   }
 
+  dispose(): void {
+    // Release any in-flight refresh awaiter so a host that awaits refresh()
+    // (jupyterlab-git re-shows its diff button only once it resolves) does not
+    // hang when the widget is torn down mid-fetch.
+    this.settleRefresh();
+    super.dispose();
+  }
+
   get reloadNonce(): number {
     return this._reloadNonce;
   }
@@ -237,7 +250,7 @@ function ModelDiffView(props: {
 }): React.ReactElement {
   const { widget } = props;
   const model = widget.model as IXtralabDiffModel;
-  const { contentsManager, rendermime, themeManager } = widget.context;
+  const { contentsManager, rendermime, themeManager, trans } = widget.context;
   const nonce = widget.reloadNonce;
 
   const [state, setState] = React.useState<IModelDiffState>({
@@ -252,7 +265,7 @@ function ModelDiffView(props: {
     React.useState<NotebookDiffViewMode>(() => widget.notebookViewMode);
   React.useEffect(() => {
     const handler = (
-      _sender: XtralabDiffWidget,
+      sender: XtralabDiffWidget,
       mode: NotebookDiffViewMode
     ): void => {
       setNotebookViewMode(mode);
@@ -276,7 +289,7 @@ function ModelDiffView(props: {
     () => widget.diffStyle
   );
   React.useEffect(() => {
-    const handler = (_sender: XtralabDiffWidget, style: DiffStyle): void => {
+    const handler = (sender: XtralabDiffWidget, style: DiffStyle): void => {
       setDiffStyle(style);
     };
     widget.diffStyleChanged.connect(handler);
@@ -446,6 +459,7 @@ function ModelDiffView(props: {
       onFileDiffActiveChange={handleFileDiffActiveChange}
       onMetadataChange={handleMetadataChange}
       hunkDiscard={hunkDiscard}
+      trans={trans}
     />
   );
 }
@@ -479,12 +493,12 @@ function NotebookViewModeToolbarControl(props: {
   );
   React.useEffect(() => {
     const onMode = (
-      _sender: XtralabDiffWidget,
+      sender: XtralabDiffWidget,
       next: NotebookDiffViewMode
     ): void => {
       setMode(next);
     };
-    const onAvailable = (_sender: XtralabDiffWidget, next: boolean): void => {
+    const onAvailable = (sender: XtralabDiffWidget, next: boolean): void => {
       setAvailable(next);
     };
     widget.notebookViewModeChanged.connect(onMode);
@@ -497,11 +511,13 @@ function NotebookViewModeToolbarControl(props: {
     };
   }, [widget]);
 
+  const trans = widget.context.trans;
   return (
     <NotebookViewModeControl
       mode={mode}
       available={available}
       onChange={next => widget.setNotebookViewMode(next)}
+      trans={trans}
     />
   );
 }
@@ -532,10 +548,10 @@ function DiffStyleToolbarControl(props: {
     () => widget.fileDiffActive
   );
   React.useEffect(() => {
-    const onStyle = (_sender: XtralabDiffWidget, next: DiffStyle): void => {
+    const onStyle = (sender: XtralabDiffWidget, next: DiffStyle): void => {
       setStyle(next);
     };
-    const onAvailable = (_sender: XtralabDiffWidget, next: boolean): void => {
+    const onAvailable = (sender: XtralabDiffWidget, next: boolean): void => {
       setAvailable(next);
     };
     widget.diffStyleChanged.connect(onStyle);
@@ -548,11 +564,13 @@ function DiffStyleToolbarControl(props: {
     };
   }, [widget]);
 
+  const trans = widget.context.trans;
   return (
     <DiffStyleControl
       diffStyle={style}
       available={available}
       onChange={next => widget.setDiffStyle(next)}
+      trans={trans}
     />
   );
 }

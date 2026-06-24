@@ -542,7 +542,7 @@ export class SessionRegistry implements IDisposable {
 
   private _onTitleChanged(title: Title<Widget>): void {
     const owner = title.owner as TerminalWidget;
-    const session = owner.content?.session;
+    const session = owner.content.session;
     if (!session) {
       return;
     }
@@ -558,8 +558,7 @@ export class SessionRegistry implements IDisposable {
    * `_initialConnection` fires). Without the filter, briefly
    * reopening a tab while an agent has yet to re-emit its xterm
    * title escape sequence would clobber the cached agent name with
-   * `Terminal 1`, which is exactly the regression we are guarding
-   * against. Live widget titles still display whatever the widget
+   * `Terminal 1`. Live widget titles still display whatever the widget
    * currently holds because `labelFor` consults the widget first;
    * the filter only affects what survives a tab close.
    */

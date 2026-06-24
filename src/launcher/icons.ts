@@ -6,8 +6,7 @@ import { LabIcon } from '@jupyterlab/ui-components';
  * (`jupyter_ai_acp_client/static/*.svg`, BSD-3-Clause); Antigravity post-dates
  * that set, so its mark is the official glyph from `@lobehub/icons-static-svg`
  * (MIT) — we ship the brand-colored `antigravity-color` variant so Antigravity
- * reads as a multi-color Google mark, occupying the slot the Gemini icon used
- * to fill before the upstream Gemini CLI sunset. Small adjustments are applied
+ * reads as a multi-color Google mark. Small adjustments are applied
  * to play nicely with JupyterLab themes:
  *   - Monochrome marks (Codex, Copilot, Goose) use `currentColor` so they
  *     inherit the surrounding launcher card's text color rather than

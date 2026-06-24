@@ -4,6 +4,7 @@ import type { CommandRegistry } from '@lumino/commands';
 import type { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { Poll } from '@lumino/polling';
 import type { IDocumentWidget } from '@jupyterlab/docregistry';
+import type { TranslationBundle } from '@jupyterlab/translation';
 import {
   LabIcon,
   ReactWidget,
@@ -74,6 +75,11 @@ export interface ILauncherDashboardOptions {
    * Empty string lets the terminal extension default to the server root.
    */
   cwd: string;
+  /**
+   * The translation bundle used to localize the dashboard's user-facing
+   * strings.
+   */
+  trans: TranslationBundle;
 }
 
 /**
@@ -125,7 +131,8 @@ function LauncherDashboardComponent(
     agentSessions,
     onAgentLaunch,
     repoPath,
-    cwd
+    cwd,
+    trans
   } = props;
   const [prompt, setPrompt] = React.useState('');
   const [git, setGit] = React.useState<IGitState>({
@@ -264,19 +271,22 @@ function LauncherDashboardComponent(
         prompt={prompt}
         onPromptChange={setPrompt}
         onLaunch={launch}
+        trans={trans}
       />
-      <McpSection agents={agents} />
+      <McpSection agents={agents} trans={trans} />
       <OpenSection
         editor={editor}
         onLaunchTerminal={launchTerminal}
         onLaunchNotebook={launchNotebook}
         onLaunchConsole={launchConsole}
         onLaunchEditor={launchEditor}
+        trans={trans}
       />
       <ChangesSection
         git={git}
         onOpen={openDiff}
         onRefresh={() => void refresh()}
+        trans={trans}
       />
     </div>
   );
@@ -286,8 +296,9 @@ function ChangesSection(props: {
   git: IGitState;
   onOpen: (change: IFileChange) => void;
   onRefresh: () => void;
+  trans: TranslationBundle;
 }): React.ReactElement {
-  const { git, onOpen, onRefresh } = props;
+  const { git, onOpen, onRefresh, trans } = props;
   const files = git.result ? expandStatusFiles(git.result.files) : [];
 
   // Native `<details>` rather than a hand-rolled toggle: we get the
@@ -300,11 +311,17 @@ function ChangesSection(props: {
       open
     >
       <summary className="jp-xtralab-Launcher-section-summary">
-        <span className="jp-xtralab-Launcher-section-title">Changes</span>
+        <span className="jp-xtralab-Launcher-section-title">
+          {trans.__('Changes')}
+        </span>
         {files.length > 0 && (
           <span
             className="jp-xtralab-Launcher-section-count"
-            aria-label={`${files.length} changed file${files.length === 1 ? '' : 's'}`}
+            aria-label={trans._n(
+              '%1 changed file',
+              '%1 changed files',
+              files.length
+            )}
           >
             {files.length}
           </span>
@@ -312,7 +329,7 @@ function ChangesSection(props: {
         <button
           type="button"
           className="jp-xtralab-Launcher-section-action"
-          aria-label="Refresh changes"
+          aria-label={trans.__('Refresh changes')}
           // Stop the click from toggling the surrounding `<details>` —
           // refreshing while the section is open shouldn't collapse it.
           onClick={event => {
@@ -326,13 +343,13 @@ function ChangesSection(props: {
       </summary>
       <div className="jp-xtralab-Launcher-section-body">
         {git.loading && files.length === 0 && (
-          <p className="jp-xtralab-Launcher-empty">Loading…</p>
+          <p className="jp-xtralab-Launcher-empty">{trans.__('Loading…')}</p>
         )}
         {!git.loading && git.error !== null && (
           <p className="jp-xtralab-Launcher-empty">{git.error}</p>
         )}
         {!git.loading && git.error === null && files.length === 0 && (
-          <p className="jp-xtralab-Launcher-empty">No changes.</p>
+          <p className="jp-xtralab-Launcher-empty">{trans.__('No changes.')}</p>
         )}
         {files.length > 0 && (
           <ul className="jp-xtralab-Launcher-changes">
@@ -342,7 +359,7 @@ function ChangesSection(props: {
                   type="button"
                   className="jp-xtralab-Launcher-change"
                   onClick={() => onOpen(change)}
-                  title={`Open diff for ${change.path}`}
+                  title={trans.__('Open diff for %1', change.path)}
                 >
                   <span
                     className={`jp-xtralab-Launcher-change-badge jp-xtralab-Launcher-change-${change.status}`}
@@ -357,7 +374,7 @@ function ChangesSection(props: {
                     className="jp-xtralab-Launcher-change-group"
                     aria-hidden="true"
                   >
-                    {change.group === 'staged' ? 'staged' : ''}
+                    {change.group === 'staged' ? trans.__('staged') : ''}
                   </span>
                 </button>
               </li>
@@ -395,8 +412,9 @@ function AgentSection(props: {
   prompt: string;
   onPromptChange: (value: string) => void;
   onLaunch: (agent: IAgent) => void;
+  trans: TranslationBundle;
 }): React.ReactElement {
-  const { agents, prompt, onPromptChange, onLaunch } = props;
+  const { agents, prompt, onPromptChange, onLaunch, trans } = props;
   const trimmed = prompt.trim();
   const promptActive = trimmed.length > 0;
   // The first prompt-capable agent is what Cmd/Ctrl+Enter fires; the hint
@@ -407,10 +425,14 @@ function AgentSection(props: {
 
   return (
     <section className="jp-xtralab-Launcher-section">
-      <h2 className="jp-xtralab-Launcher-section-title">Start an agent</h2>
+      <h2 className="jp-xtralab-Launcher-section-title">
+        {trans.__('Start an agent')}
+      </h2>
       <textarea
         className="jp-xtralab-Launcher-prompt"
-        placeholder="Initial prompt (optional) — passed to the selected agent."
+        placeholder={trans.__(
+          'Initial prompt (optional) — passed to the selected agent.'
+        )}
         value={prompt}
         spellCheck={false}
         rows={3}
@@ -433,15 +455,23 @@ function AgentSection(props: {
         aria-live="polite"
       >
         {promptActive
-          ? `Cmd/Ctrl+Enter launches ${primaryAgent?.label ?? 'the first prompt-capable agent'}. Agents that don't accept an initial prompt are dimmed.`
-          : 'Type a prompt to send it to the chosen agent. Some agents only launch without a prompt.'}
+          ? trans.__(
+              "Cmd/Ctrl+Enter launches %1. Agents that don't accept an initial prompt are dimmed.",
+              primaryAgent?.label ?? trans.__('the first prompt-capable agent')
+            )
+          : trans.__(
+              'Type a prompt to send it to the chosen agent. Some agents only launch without a prompt.'
+            )}
       </p>
       <div className="jp-xtralab-Launcher-agents">
         {agents.map(agent => {
           const supportsPrompt = agent.promptArgs !== undefined;
           const disabled = promptActive && !supportsPrompt;
           const tooltip = disabled
-            ? `${agent.label} doesn't accept an initial prompt — clear the prompt to launch.`
+            ? trans.__(
+                "%1 doesn't accept an initial prompt — clear the prompt to launch.",
+                agent.label
+              )
             : agent.caption;
           return (
             <button
@@ -515,7 +545,11 @@ function legacyCopy(text: string): boolean {
  * proxy discover the server from its runtime file. Renders nothing when none
  * of those agents are on `$PATH`.
  */
-function McpSection(props: { agents: IAgent[] }): React.ReactElement | null {
+function McpSection(props: {
+  agents: IAgent[];
+  trans: TranslationBundle;
+}): React.ReactElement | null {
+  const { trans } = props;
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
   const registerable = props.agents.filter(agent =>
     MCP_ADD_AGENT_IDS.has(agent.id)
@@ -555,13 +589,14 @@ function McpSection(props: { agents: IAgent[] }): React.ReactElement | null {
     <details className="jp-xtralab-Launcher-section jp-xtralab-Launcher-mcp-section">
       <summary className="jp-xtralab-Launcher-section-summary">
         <span className="jp-xtralab-Launcher-section-title">
-          Connect agents to JupyterLab (MCP)
+          {trans.__('Connect agents to JupyterLab (MCP)')}
         </span>
       </summary>
       <div className="jp-xtralab-Launcher-section-body">
         <p className="jp-xtralab-Launcher-agent-hint">
-          Run once per agent to let it drive this JupyterLab over MCP. No port
-          needed — the proxy finds this server on its own.
+          {trans.__(
+            'Run once per agent to let it drive this JupyterLab over MCP. No port needed — the proxy finds this server on its own.'
+          )}
         </p>
         <ul className="jp-xtralab-Launcher-mcp-list">
           {registerable.map(agent => {
@@ -578,19 +613,22 @@ function McpSection(props: { agents: IAgent[] }): React.ReactElement | null {
                       ? 'jp-xtralab-Launcher-mcp-copy jp-mod-copied'
                       : 'jp-xtralab-Launcher-mcp-copy'
                   }
-                  aria-label={`Copy the ${agent.label} command`}
+                  aria-label={trans.__('Copy the %1 command', agent.label)}
                   onClick={() => copy(command, agent.id)}
                 >
-                  {copiedId === agent.id ? 'Copied!' : 'Copy'}
+                  {copiedId === agent.id
+                    ? trans.__('Copied!')
+                    : trans.__('Copy')}
                 </button>
               </li>
             );
           })}
         </ul>
         <p className="jp-xtralab-Launcher-mcp-note">
-          Other agents (Goose, OpenCode, Kiro, Mistral Vibe, Antigravity)
-          register MCP through their own config — point them at the same{' '}
-          <code>{MCP_PROXY_COMMAND}</code> command.
+          {trans.__(
+            'Other agents (Goose, OpenCode, Kiro, Mistral Vibe, Antigravity) register MCP through their own config — point them at the same'
+          )}{' '}
+          <code>{MCP_PROXY_COMMAND}</code> {trans.__('command.')}
         </p>
       </div>
     </details>
@@ -615,23 +653,25 @@ function OpenSection(props: {
   onLaunchNotebook: () => void;
   onLaunchConsole: () => void;
   onLaunchEditor: () => void;
+  trans: TranslationBundle;
 }): React.ReactElement {
   const {
     editor,
     onLaunchTerminal,
     onLaunchNotebook,
     onLaunchConsole,
-    onLaunchEditor
+    onLaunchEditor,
+    trans
   } = props;
   return (
     <section className="jp-xtralab-Launcher-section">
-      <h2 className="jp-xtralab-Launcher-section-title">Open</h2>
+      <h2 className="jp-xtralab-Launcher-section-title">{trans.__('Open')}</h2>
       <div className="jp-xtralab-Launcher-agents">
         <button
           type="button"
           className="jp-xtralab-Launcher-agent"
-          title="Open a new terminal."
-          aria-label="Open a new terminal"
+          title={trans.__('Open a new terminal.')}
+          aria-label={trans.__('Open a new terminal')}
           onClick={onLaunchTerminal}
         >
           <LabIcon.resolveReact
@@ -639,13 +679,15 @@ function OpenSection(props: {
             tag="span"
             className="jp-xtralab-Launcher-agent-icon"
           />
-          <span className="jp-xtralab-Launcher-agent-label">Terminal</span>
+          <span className="jp-xtralab-Launcher-agent-label">
+            {trans.__('Terminal')}
+          </span>
         </button>
         <button
           type="button"
           className="jp-xtralab-Launcher-agent"
-          title="Create a new notebook."
-          aria-label="Create a new notebook"
+          title={trans.__('Create a new notebook.')}
+          aria-label={trans.__('Create a new notebook')}
           onClick={onLaunchNotebook}
         >
           <LabIcon.resolveReact
@@ -653,13 +695,15 @@ function OpenSection(props: {
             tag="span"
             className="jp-xtralab-Launcher-agent-icon"
           />
-          <span className="jp-xtralab-Launcher-agent-label">Notebook</span>
+          <span className="jp-xtralab-Launcher-agent-label">
+            {trans.__('Notebook')}
+          </span>
         </button>
         <button
           type="button"
           className="jp-xtralab-Launcher-agent"
-          title="Create a new console."
-          aria-label="Create a new console"
+          title={trans.__('Create a new console.')}
+          aria-label={trans.__('Create a new console')}
           onClick={onLaunchConsole}
         >
           <LabIcon.resolveReact
@@ -667,7 +711,9 @@ function OpenSection(props: {
             tag="span"
             className="jp-xtralab-Launcher-agent-icon"
           />
-          <span className="jp-xtralab-Launcher-agent-label">Console</span>
+          <span className="jp-xtralab-Launcher-agent-label">
+            {trans.__('Console')}
+          </span>
         </button>
         {editor && (
           <button

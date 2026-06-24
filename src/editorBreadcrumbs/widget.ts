@@ -1,5 +1,6 @@
 import { PageConfig } from '@jupyterlab/coreutils';
 import type { DocumentRegistry } from '@jupyterlab/docregistry';
+import type { TranslationBundle } from '@jupyterlab/translation';
 import { homeIcon as rootIcon } from '@jupyterlab/ui-components';
 import type { CommandRegistry } from '@lumino/commands';
 import { Widget } from '@lumino/widgets';
@@ -22,23 +23,21 @@ const REVEAL_COMMAND = 'xtralab:reveal-path';
 export interface IEditorBreadcrumbsOptions {
   context: DocumentRegistry.IContext<DocumentRegistry.IModel>;
   commands: CommandRegistry;
+  trans: TranslationBundle;
 }
 
 /**
- * Read-only breadcrumb path for file editor toolbars.
- *
- * The upstream `@jupyterlab/filebrowser` BreadCrumbs widget is coupled to
- * FileBrowserModel navigation, drag/drop, and path editing. If that code
- * becomes reusable upstream, replace this local display-only renderer with
- * the shared implementation.
+ * Read-only breadcrumb path for file editor toolbars: renders the open
+ * file's path as clickable segments, each dispatching the reveal command.
  */
 export class EditorBreadcrumbs extends Widget {
   constructor(options: IEditorBreadcrumbsOptions) {
     super({ node: document.createElement('nav') });
     this._context = options.context;
     this._commands = options.commands;
+    this._trans = options.trans;
     this.addClass(EDITOR_BREADCRUMBS_CLASS);
-    this.node.setAttribute('aria-label', 'Editor file path');
+    this.node.setAttribute('aria-label', this._trans.__('Editor file path'));
 
     this._container = document.createElement('span');
     this._container.className = BREADCRUMBS_CONTAINER_CLASS;
@@ -105,7 +104,9 @@ export class EditorBreadcrumbs extends Widget {
     const item = rootIcon.element({
       className: ROOT_CLASS,
       tag: 'span',
-      title: PageConfig.getOption('serverRoot') || 'Jupyter Server Root',
+      title:
+        PageConfig.getOption('serverRoot') ||
+        this._trans.__('Jupyter Server Root'),
       stylesheet: 'breadCrumb'
     });
     item.dataset.path = '/';
@@ -153,6 +154,7 @@ export class EditorBreadcrumbs extends Widget {
 
   private _context: DocumentRegistry.IContext<DocumentRegistry.IModel>;
   private _commands: CommandRegistry;
+  private _trans: TranslationBundle;
   private _container: HTMLElement;
   private _content: HTMLElement;
 }

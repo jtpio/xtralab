@@ -7,7 +7,9 @@ import { ICommandPalette } from '@jupyterlab/apputils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { tocIcon } from '@jupyterlab/ui-components';
+import type { ReadonlyPartialJSONValue } from '@lumino/coreutils';
 
+import { coerceData } from '../mimeData';
 import { IWalkthroughMedia, IWalkthroughStep, WalkthroughPanel } from './panel';
 
 const PLUGIN_ID = 'xtralab:walkthrough';
@@ -27,8 +29,17 @@ function readMedia(value: unknown): IWalkthroughMedia | undefined {
     !Array.isArray(value) &&
     typeof (value as { mimeType?: unknown }).mimeType === 'string'
   ) {
-    const media = value as { mimeType: string; data?: unknown };
-    return { mimeType: media.mimeType, data: media.data as never };
+    const media = value as {
+      mimeType: string;
+      data?: ReadonlyPartialJSONValue;
+    };
+    if (media.data === undefined) {
+      return undefined;
+    }
+    return {
+      mimeType: media.mimeType,
+      data: coerceData(media.mimeType, media.data)
+    };
   }
   return undefined;
 }

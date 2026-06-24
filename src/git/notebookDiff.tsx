@@ -3,6 +3,7 @@ import * as React from 'react';
 import type * as nbformat from '@jupyterlab/nbformat';
 import { OutputAreaModel, SimplifiedOutputArea } from '@jupyterlab/outputarea';
 import { IRenderMimeRegistry, MimeModel } from '@jupyterlab/rendermime';
+import type { TranslationBundle } from '@jupyterlab/translation';
 import { MessageLoop } from '@lumino/messaging';
 import { Widget } from '@lumino/widgets';
 import { FileDiff } from '@pierre/diffs/react';
@@ -266,11 +267,11 @@ function stableStringify(value: unknown): string {
   return JSON.stringify(value, sortKeysReplacer, 2);
 }
 
-function sortKeysReplacer(_key: string, value: unknown): unknown {
+function sortKeysReplacer(key: string, value: unknown): unknown {
   if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
     const sorted: Record<string, unknown> = {};
-    for (const key of Object.keys(value).sort()) {
-      sorted[key] = (value as Record<string, unknown>)[key];
+    for (const name of Object.keys(value).sort()) {
+      sorted[name] = (value as Record<string, unknown>)[name];
     }
     return sorted;
   }
@@ -754,8 +755,9 @@ function OutputsSection(props: {
   entry: NotebookCellDiff;
   rendermime: IRenderMimeRegistry | null;
   placement: CellPlacement;
+  trans: TranslationBundle;
 }): React.ReactElement | null {
-  const { entry, rendermime, placement } = props;
+  const { entry, rendermime, placement, trans } = props;
   const oldCell = 'oldCell' in entry ? entry.oldCell : null;
   const newCell = 'newCell' in entry ? entry.newCell : null;
   const oldOutputs = oldCell?.outputs ?? [];
@@ -775,7 +777,7 @@ function OutputsSection(props: {
   if (rendermime === null) {
     return (
       <SideBySidePanes
-        label="Outputs"
+        label={trans.__('Outputs')}
         hasOld={showOld}
         hasNew={showNew}
         oldNode={
@@ -793,7 +795,7 @@ function OutputsSection(props: {
   }
   return (
     <SideBySidePanes
-      label="Outputs"
+      label={trans.__('Outputs')}
       hasOld={showOld}
       hasNew={showNew}
       oldNode={<OutputsPreview outputs={oldOutputs} rendermime={rendermime} />}
@@ -811,8 +813,9 @@ function MarkdownPreviewSection(props: {
   entry: NotebookCellDiff;
   rendermime: IRenderMimeRegistry | null;
   placement: CellPlacement;
+  trans: TranslationBundle;
 }): React.ReactElement | null {
-  const { entry, rendermime, placement } = props;
+  const { entry, rendermime, placement, trans } = props;
   const isMarkdown = referenceCellType(entry) === 'markdown';
   if (!isMarkdown || rendermime === null) {
     return null;
@@ -826,7 +829,7 @@ function MarkdownPreviewSection(props: {
   }
   return (
     <SideBySidePanes
-      label="Rendered"
+      label={trans.__('Rendered')}
       hasOld={showOld}
       hasNew={showNew}
       oldNode={<MarkdownPreview source={oldSource} rendermime={rendermime} />}
@@ -844,6 +847,10 @@ interface INotebookDiffViewProps {
    */
   pierreTheme: boolean;
   rendermime: IRenderMimeRegistry | null;
+  /**
+   * Translation bundle for user-facing strings.
+   */
+  trans: TranslationBundle;
 }
 
 /**
@@ -859,12 +866,12 @@ interface INotebookDiffViewProps {
 export function NotebookDiffView(
   props: INotebookDiffViewProps
 ): React.ReactElement {
-  const { diff, dark, pierreTheme, rendermime } = props;
+  const { diff, dark, pierreTheme, rendermime, trans } = props;
   const theme: DiffsThemeNames = resolveDiffTheme(dark, pierreTheme);
   const summary = React.useMemo(() => summarize(diff.cells), [diff.cells]);
   return (
     <div className={NOTEBOOK_DIFF_CSS_CLASS}>
-      <NotebookDiffHeader summary={summary} />
+      <NotebookDiffHeader summary={summary} trans={trans} />
       <div className={`${NOTEBOOK_DIFF_CSS_CLASS}-grid`}>
         {diff.cells.map(entry => (
           <CellEntryRow
@@ -874,6 +881,7 @@ export function NotebookDiffView(
             theme={theme}
             dark={dark}
             rendermime={rendermime}
+            trans={trans}
           />
         ))}
       </div>
@@ -882,6 +890,7 @@ export function NotebookDiffView(
           metadata={diff.notebookMetadataDiff}
           theme={theme}
           dark={dark}
+          trans={trans}
         />
       ) : null}
     </div>
@@ -897,11 +906,11 @@ export function NotebookDiffView(
  * cell was inserted or removed relative to the other side.
  */
 function CellEntryRow(props: ICellDiffBlockProps): React.ReactElement {
-  const { entry } = props;
+  const { entry, trans } = props;
   if (entry.kind === 'added') {
     return (
       <>
-        <EmptyCellPlaceholder side="old" reason="added" />
+        <EmptyCellPlaceholder side="old" reason="added" trans={trans} />
         <CellDiffBlock {...props} placement="right" />
       </>
     );
@@ -910,7 +919,7 @@ function CellEntryRow(props: ICellDiffBlockProps): React.ReactElement {
     return (
       <>
         <CellDiffBlock {...props} placement="left" />
-        <EmptyCellPlaceholder side="new" reason="removed" />
+        <EmptyCellPlaceholder side="new" reason="removed" trans={trans} />
       </>
     );
   }
@@ -920,9 +929,13 @@ function CellEntryRow(props: ICellDiffBlockProps): React.ReactElement {
 function EmptyCellPlaceholder(props: {
   side: 'old' | 'new';
   reason: 'added' | 'removed';
+  trans: TranslationBundle;
 }): React.ReactElement {
-  const { side, reason } = props;
-  const label = reason === 'added' ? 'cell added on the right' : 'cell removed';
+  const { side, reason, trans } = props;
+  const label =
+    reason === 'added'
+      ? trans.__('cell added on the right')
+      : trans.__('cell removed');
   return (
     <div
       className={`${NOTEBOOK_DIFF_CSS_CLASS}-empty`}
@@ -930,7 +943,9 @@ function EmptyCellPlaceholder(props: {
       aria-label={label}
     >
       <span className={`${NOTEBOOK_DIFF_CSS_CLASS}-emptyLabel`}>
-        {reason === 'added' ? '— no cell —' : '— cell removed —'}
+        {reason === 'added'
+          ? trans.__('— no cell —')
+          : trans.__('— cell removed —')}
       </span>
     </div>
   );
@@ -958,31 +973,32 @@ function summarize(cells: NotebookCellDiff[]): INotebookDiffSummary {
 
 function NotebookDiffHeader(props: {
   summary: INotebookDiffSummary;
+  trans: TranslationBundle;
 }): React.ReactElement {
-  const { summary } = props;
+  const { summary, trans } = props;
   const total =
     summary.added + summary.removed + summary.modified + summary.unchanged;
   return (
     <div className={`${NOTEBOOK_DIFF_CSS_CLASS}-header`}>
       <span className={`${NOTEBOOK_DIFF_CSS_CLASS}-headerCount`}>
-        {total} cell{total === 1 ? '' : 's'}
+        {trans._n('%1 cell', '%1 cells', total)}
       </span>
       {summary.modified > 0 ? (
         <span
           className={`${NOTEBOOK_DIFF_CSS_CLASS}-stat`}
           data-kind="modified"
         >
-          {summary.modified} modified
+          {trans.__('%1 modified', summary.modified)}
         </span>
       ) : null}
       {summary.added > 0 ? (
         <span className={`${NOTEBOOK_DIFF_CSS_CLASS}-stat`} data-kind="added">
-          {summary.added} added
+          {trans.__('%1 added', summary.added)}
         </span>
       ) : null}
       {summary.removed > 0 ? (
         <span className={`${NOTEBOOK_DIFF_CSS_CLASS}-stat`} data-kind="removed">
-          {summary.removed} removed
+          {trans.__('%1 removed', summary.removed)}
         </span>
       ) : null}
       {summary.unchanged > 0 ? (
@@ -990,7 +1006,7 @@ function NotebookDiffHeader(props: {
           className={`${NOTEBOOK_DIFF_CSS_CLASS}-stat`}
           data-kind="unchanged"
         >
-          {summary.unchanged} unchanged
+          {trans.__('%1 unchanged', summary.unchanged)}
         </span>
       ) : null}
     </div>
@@ -1013,6 +1029,7 @@ interface ICellDiffBlockProps {
   theme: DiffsThemeNames;
   dark: boolean;
   rendermime: IRenderMimeRegistry | null;
+  trans: TranslationBundle;
 }
 
 /**
@@ -1034,7 +1051,7 @@ interface IPlacedCellDiffBlockProps extends ICellDiffBlockProps {
 }
 
 function CellDiffBlock(props: IPlacedCellDiffBlockProps): React.ReactElement {
-  const { entry, language, theme, dark, rendermime, placement } = props;
+  const { entry, language, theme, dark, rendermime, placement, trans } = props;
   // Unchanged cells start collapsed — the user opted out of seeing those
   // sections by virtue of them being unchanged. A toggle lets them peek if
   // they want.
@@ -1081,21 +1098,25 @@ function CellDiffBlock(props: IPlacedCellDiffBlockProps): React.ReactElement {
           className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellBadge`}
           data-kind={entry.kind}
         >
-          {kindBadge(entry.kind)}
+          {kindBadge(entry.kind, trans)}
         </span>
         <span className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellLabel`}>
           {indexLabel} · {cellType}
         </span>
         {entry.kind === 'unchanged' ? (
           <span className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellHint`}>
-            unchanged
+            {trans.__('unchanged')}
           </span>
         ) : null}
       </header>
       {!collapsed ? (
         <div className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellBody`}>
           {entry.kind === 'unchanged' ? (
-            <UnchangedCellBody entry={entry} rendermime={rendermime} />
+            <UnchangedCellBody
+              entry={entry}
+              rendermime={rendermime}
+              trans={trans}
+            />
           ) : (
             <>
               {subdiffs.map(sub => (
@@ -1106,18 +1127,21 @@ function CellDiffBlock(props: IPlacedCellDiffBlockProps): React.ReactElement {
                   theme={theme}
                   dark={dark}
                   placement={placement}
+                  trans={trans}
                 />
               ))}
               <MarkdownPreviewSection
                 entry={entry}
                 rendermime={rendermime}
                 placement={placement}
+                trans={trans}
               />
               {showOutputs ? (
                 <OutputsSection
                   entry={entry}
                   rendermime={rendermime}
                   placement={placement}
+                  trans={trans}
                 />
               ) : null}
               {subdiffs.length === 0 &&
@@ -1127,7 +1151,7 @@ function CellDiffBlock(props: IPlacedCellDiffBlockProps): React.ReactElement {
                   ('newCell' in entry && entry.newCell.outputs?.length))
               ) ? (
                 <div className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellEmpty`}>
-                  No content differences detected.
+                  {trans.__('No content differences detected.')}
                 </div>
               ) : null}
             </>
@@ -1144,8 +1168,9 @@ function CellSubDiff(props: {
   theme: DiffsThemeNames;
   dark: boolean;
   placement: CellPlacement;
+  trans: TranslationBundle;
 }): React.ReactElement {
-  const { kind, metadata, theme, dark, placement } = props;
+  const { kind, metadata, theme, dark, placement, trans } = props;
   // For modified / unchanged cells the diff spans both outer columns, and
   // split mode lets it visually align with the outer old | new lanes. For
   // added / removed cells the diff sits inside a single outer column, so
@@ -1156,7 +1181,7 @@ function CellSubDiff(props: {
   return (
     <div className={`${NOTEBOOK_DIFF_CSS_CLASS}-subdiff`} data-section={kind}>
       <div className={`${NOTEBOOK_DIFF_CSS_CLASS}-subdiffLabel`}>
-        {subdiffLabel(kind)}
+        {subdiffLabel(kind, trans)}
       </div>
       <FileDiff
         fileDiff={metadata}
@@ -1175,8 +1200,9 @@ function NotebookMetadataBlock(props: {
   metadata: FileDiffMetadata;
   theme: DiffsThemeNames;
   dark: boolean;
+  trans: TranslationBundle;
 }): React.ReactElement {
-  const { metadata, theme, dark } = props;
+  const { metadata, theme, dark, trans } = props;
   return (
     <section
       className={`${NOTEBOOK_DIFF_CSS_CLASS}-cell`}
@@ -1185,17 +1211,17 @@ function NotebookMetadataBlock(props: {
     >
       <header
         className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellHeader`}
-        aria-label="Notebook metadata"
+        aria-label={trans.__('Notebook metadata')}
       >
         <span className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellChevron`}>▾</span>
         <span
           className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellBadge`}
           data-kind="modified"
         >
-          M
+          {trans.__('M')}
         </span>
         <span className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellLabel`}>
-          Notebook metadata
+          {trans.__('Notebook metadata')}
         </span>
       </header>
       <div className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellBody`}>
@@ -1205,6 +1231,7 @@ function NotebookMetadataBlock(props: {
           theme={theme}
           dark={dark}
           placement="full"
+          trans={trans}
         />
       </div>
     </section>
@@ -1222,8 +1249,9 @@ function NotebookMetadataBlock(props: {
 function UnchangedCellBody(props: {
   entry: Extract<NotebookCellDiff, { kind: 'unchanged' }>;
   rendermime: IRenderMimeRegistry | null;
+  trans: TranslationBundle;
 }): React.ReactElement {
-  const { entry, rendermime } = props;
+  const { entry, rendermime, trans } = props;
   const cell = entry.newCell;
   const source = cellSource(cell);
   const isMarkdown = cell.cell_type === 'markdown';
@@ -1237,13 +1265,13 @@ function UnchangedCellBody(props: {
         </div>
       ) : (
         <pre className={`${NOTEBOOK_DIFF_CSS_CLASS}-unchangedSource`}>
-          {source.length > 0 ? source : '(empty cell)'}
+          {source.length > 0 ? source : trans.__('(empty cell)')}
         </pre>
       )}
       {hasOutputs && rendermime !== null ? (
         <div className={`${NOTEBOOK_DIFF_CSS_CLASS}-unchangedOutputs`}>
           <div className={`${NOTEBOOK_DIFF_CSS_CLASS}-subdiffLabel`}>
-            Outputs
+            {trans.__('Outputs')}
           </div>
           <OutputsPreview outputs={outputs} rendermime={rendermime} />
         </div>
@@ -1275,24 +1303,30 @@ function cellIndexLabel(entry: NotebookCellDiff): string {
   return `Cell ${entry.oldIndex + 1} → ${entry.newIndex + 1}`;
 }
 
-function kindBadge(kind: NotebookCellDiff['kind']): string {
+function kindBadge(
+  kind: NotebookCellDiff['kind'],
+  trans: TranslationBundle
+): string {
   switch (kind) {
     case 'added':
-      return 'A';
+      return trans.__('A');
     case 'removed':
-      return 'D';
+      return trans.__('D');
     case 'modified':
-      return 'M';
+      return trans.__('M');
     case 'unchanged':
       return '·';
   }
 }
 
-function subdiffLabel(kind: 'source' | 'metadata'): string {
+function subdiffLabel(
+  kind: 'source' | 'metadata',
+  trans: TranslationBundle
+): string {
   switch (kind) {
     case 'source':
-      return 'Source';
+      return trans.__('Source');
     case 'metadata':
-      return 'Metadata';
+      return trans.__('Metadata');
   }
 }

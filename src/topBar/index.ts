@@ -47,7 +47,7 @@ const BUTTONS: IButtonSpec[] = [
     icon: leftSidebarIcon,
     caption: trans => trans.__('Toggle left sidebar'),
     rank: -1,
-    sideClass: 'xtralab-TopBarButton-left'
+    sideClass: 'jp-xtralab-TopBarButton-left'
   },
   {
     id: 'xtralab-toggle-right-sidebar',
@@ -55,7 +55,7 @@ const BUTTONS: IButtonSpec[] = [
     icon: rightSidebarIcon,
     caption: trans => trans.__('Toggle right sidebar'),
     rank: 1000,
-    sideClass: 'xtralab-TopBarButton-right'
+    sideClass: 'jp-xtralab-TopBarButton-right'
   }
 ];
 
@@ -123,7 +123,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           noFocusOnClick: true
         });
         button.id = spec.id;
-        button.addClass('xtralab-TopBarButton');
+        button.addClass('jp-xtralab-TopBarButton');
         button.addClass(spec.sideClass);
         labShell.add(button, 'top', { rank: spec.rank });
       }

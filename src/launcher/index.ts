@@ -164,7 +164,8 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
           // the git panel and the stock launcher: let the server resolve
           // the working tree from its root directory.
           repoPath: '',
-          cwd: ''
+          cwd: '',
+          trans
         });
         launcher.title.icon = launcherIcon;
         launcher.title.label = trans.__('Launcher');

@@ -110,9 +110,13 @@ export const editorRegistryPlugin: JupyterFrontEndPlugin<IEditorRegistry> = {
       // Probe only the editors that opt into the availability check; entries
       // with `requireAvailable: false` (e.g. a shell alias) are shown
       // regardless and don't need a `which` lookup.
-      const probe = editors
-        .filter(editor => editor.requireAvailable)
-        .map(editor => editor.command);
+      const probe = Array.from(
+        new Set(
+          editors
+            .filter(editor => editor.requireAvailable)
+            .map(editor => editor.command)
+        )
+      );
       const available = await fetchAvailableCommands(probe);
       registry.set(editors, resolveEditor(editors, available));
     };
