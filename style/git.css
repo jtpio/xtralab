@@ -586,17 +586,27 @@
   margin: 0;
 }
 
+/*
+ * Checkerboard + border so transparent regions read clearly. The squares
+ * are theme-aware (JupyterLab layout colors) so the frame stays a calm
+ * light checkerboard in the light theme and a calm dark one in the dark
+ * theme, rather than a bright white block.
+ *
+ * 2-up and onion fill their whole panel with it; the swipe view instead
+ * carries it on its image-sized *frame* (not the surrounding area) so the
+ * checkerboard hugs the image. That keeps the divider's top/bottom handles
+ * sitting at the image edges instead of floating in the middle of a
+ * checkerboard expanse.
+ */
 .jp-xtralab-ImageDiff-frame,
-.jp-xtralab-ImageDiff-stack {
-  /*
-   * Checkerboard so transparent regions are obvious; theme-neutral.
-   */
-  background-color: #fff;
+.jp-xtralab-ImageDiff-stack,
+.jp-xtralab-ImageDiff-swipeFrame {
+  background-color: var(--jp-layout-color1);
   background-image:
-    linear-gradient(45deg, #c8c8c8 25%, transparent 25%),
-    linear-gradient(-45deg, #c8c8c8 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #c8c8c8 75%),
-    linear-gradient(-45deg, transparent 75%, #c8c8c8 75%);
+    linear-gradient(45deg, var(--jp-layout-color3) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--jp-layout-color3) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--jp-layout-color3) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--jp-layout-color3) 75%);
   background-size: 16px 16px;
   background-position:
     0 0,
@@ -651,8 +661,8 @@
 }
 
 /*
- * Both revisions occupy the same grid cell so swipe/onion can overlay
- * them. `place-items: center` keeps each image at its own size (no
+ * Onion-skin view: both revisions occupy the same grid cell so they
+ * overlay. `place-items: center` keeps each image at its own size (no
  * stretching the smaller revision up to the larger one's box) while
  * `max-height/width` scale either one down to fit the available space.
  */
@@ -677,29 +687,55 @@
 }
 
 /*
- * Swipe view wraps the stack in a positioning context so the divider
- * can be overlaid without joining the grid. Keeping the divider as a
- * sibling of `.jp-xtralab-ImageDiff-stack` (rather than a child)
- * preserves the stack's existing flex sizing — it stays the only flex
- * item the interactive column needs to shrink, so `max-height: 100%`
- * on the image still keeps big revisions inside the available area.
- *
- * The whole frame is the drag target: pressing anywhere over the image
- * sets the divider to that x position and drag-tracks the pointer. The
- * dedicated bottom slider was removed because its thumb sat on a
- * narrow centered track that drifted out of sync with the wide
- * divider, which felt off. Dragging directly on the image (GitHub /
- * Pierre style) keeps cursor and divider visually aligned.
+ * Swipe view: a transparent container that just centers the image-sized
+ * frame in whatever space the body leaves. The checkerboard lives on the
+ * frame (above), not here, so it hugs the image rather than spanning the
+ * panel.
  */
-.jp-xtralab-ImageDiff-swipeFrame {
+.jp-xtralab-ImageDiff-swipeArea {
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
   width: 100%;
-  position: relative;
   display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/*
+ * The frame is sized in JS (inline `width`/`height`) to exactly the
+ * displayed image box. Because the frame *is* that box, the divider's
+ * `left: N%`, the pointer-to-percent mapping in `setFromClientX` and each
+ * image's `clip-path` inset all resolve against the same width — so the
+ * white divider line sits precisely on the seam between the two revisions
+ * as it is dragged. (A full-width frame instead let the line drift off the
+ * seam by up to half the surrounding letterbox.)
+ *
+ * The whole frame is the drag target: pressing anywhere over the image
+ * jumps the divider to that x and then drag-tracks the pointer (GitHub /
+ * Pierre style), keeping cursor, divider and seam together.
+ */
+.jp-xtralab-ImageDiff-swipeFrame {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
   user-select: none;
   touch-action: none;
+}
+
+/*
+ * Both revisions fill the frame, so an image's clip inset of N% and the
+ * divider at `left: N%` cut at the same x. `object-fit: contain` only
+ * letterboxes when the two revisions differ in aspect ratio; for the
+ * common same-dimensions edit it fills the box exactly.
+ */
+.jp-xtralab-ImageDiff-swipeImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
 }
 
 /*
