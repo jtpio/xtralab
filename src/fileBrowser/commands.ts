@@ -270,7 +270,9 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
 
   commands.addCommand(CommandIDs.open, {
     label: args =>
-      ((args.label as string) ?? (args.factory as string) ?? 'Open') as string,
+      ((args.label as string) ??
+        (args.factory as string) ??
+        trans.__('Open')) as string,
     icon: args => {
       const factoryName = args.factory as string | undefined;
       if (factoryName !== undefined) {
@@ -299,7 +301,7 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
   });
 
   commands.addCommand(CommandIDs.openBrowserTab, {
-    label: 'Open in New Browser Tab',
+    label: trans.__('Open in New Browser Tab'),
     icon: fileIcon.bindprops({ stylesheet: 'menuItem' }),
     isEnabled: () => getTargetKind(app) === 'file',
     isVisible: () => getTargetKind(app) === 'file',
@@ -315,7 +317,7 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
   });
 
   commands.addCommand(CommandIDs.rename, {
-    label: 'Rename…',
+    label: trans.__('Rename…'),
     icon: editIcon.bindprops({ stylesheet: 'menuItem' }),
     mnemonic: 0,
     isEnabled: () => hasTarget(app, browser),
@@ -327,10 +329,10 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
       const serverPath = toServerPath(targetPath);
       const oldName = PathExt.basename(serverPath);
       const result = await InputDialog.getText({
-        title: 'Rename',
-        label: 'Enter a new name',
+        title: trans.__('Rename'),
+        label: trans.__('Enter a new name'),
         text: oldName,
-        okLabel: 'Rename'
+        okLabel: trans.__('Rename')
       });
       const newName = result.value?.trim();
       if (
@@ -346,7 +348,7 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
         await browser.contentsManager.rename(serverPath, newPath);
         browser.refresh();
       } catch (err) {
-        await showErrorMessage('Rename failed', err as Error);
+        await showErrorMessage(trans.__('Rename failed'), err as Error);
       }
     }
   });
@@ -354,8 +356,8 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
   commands.addCommand(CommandIDs.del, {
     label: () =>
       PageConfig.getOption('delete_to_trash') === 'true'
-        ? 'Move to Trash'
-        : 'Delete',
+        ? trans.__('Move to Trash')
+        : trans.__('Delete'),
     icon: closeIcon.bindprops({ stylesheet: 'menuItem' }),
     mnemonic: 0,
     isEnabled: () => hasTarget(app, browser),
@@ -367,11 +369,18 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
       const serverPath = toServerPath(targetPath);
       const trashing = PageConfig.getOption('delete_to_trash') === 'true';
       const result = await showDialog({
-        title: trashing ? 'Move to Trash' : 'Delete',
-        body: `Are you sure you want to permanently delete: ${serverPath}?`,
+        title: trashing ? trans.__('Move to Trash') : trans.__('Delete'),
+        body: trashing
+          ? trans.__('Are you sure you want to move to trash: %1?', serverPath)
+          : trans.__(
+              'Are you sure you want to permanently delete: %1?',
+              serverPath
+            ),
         buttons: [
           Dialog.cancelButton(),
-          Dialog.warnButton({ label: trashing ? 'Move to Trash' : 'Delete' })
+          Dialog.warnButton({
+            label: trashing ? trans.__('Move to Trash') : trans.__('Delete')
+          })
         ]
       });
       if (result.button.accept !== true) {
@@ -381,13 +390,13 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
         await browser.contentsManager.delete(serverPath);
         browser.refresh();
       } catch (err) {
-        await showErrorMessage('Delete failed', err as Error);
+        await showErrorMessage(trans.__('Delete failed'), err as Error);
       }
     }
   });
 
   commands.addCommand(CommandIDs.duplicate, {
-    label: 'Duplicate',
+    label: trans.__('Duplicate'),
     icon: copyIcon.bindprops({ stylesheet: 'menuItem' }),
     isEnabled: () => getTargetKind(app) === 'file',
     isVisible: () => getTargetKind(app) === 'file',
@@ -402,13 +411,13 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
         const created = await browser.contentsManager.copy(serverPath, dir);
         browser.notifyPathAdded(toCanonicalPath(created));
       } catch (err) {
-        await showErrorMessage('Duplicate failed', err as Error);
+        await showErrorMessage(trans.__('Duplicate failed'), err as Error);
       }
     }
   });
 
   commands.addCommand(CommandIDs.copyPath, {
-    label: 'Copy Path',
+    label: trans.__('Copy Path'),
     icon: fileIcon.bindprops({ stylesheet: 'menuItem' }),
     isEnabled: () => hasTarget(app, browser),
     execute: async () => {
@@ -431,7 +440,7 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
   });
 
   commands.addCommand(CommandIDs.download, {
-    label: 'Download',
+    label: trans.__('Download'),
     icon: downloadIcon.bindprops({ stylesheet: 'menuItem' }),
     isEnabled: () => getTargetKind(app) === 'file',
     isVisible: () => getTargetKind(app) === 'file',
@@ -450,14 +459,14 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
         anchor.click();
         document.body.removeChild(anchor);
       } catch (err) {
-        await showErrorMessage('Download failed', err as Error);
+        await showErrorMessage(trans.__('Download failed'), err as Error);
       }
     }
   });
 
   commands.addCommand(CommandIDs.refresh, {
-    label: 'Refresh File List',
-    caption: 'Refresh the file browser',
+    label: trans.__('Refresh File List'),
+    caption: trans.__('Refresh the file browser'),
     icon: refreshIcon.bindprops({ stylesheet: 'menuItem' }),
     execute: () => {
       browser.refresh();
@@ -465,8 +474,8 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
   });
 
   commands.addCommand(CommandIDs.collapseAll, {
-    label: 'Collapse All Folders',
-    caption: 'Collapse all folders in the file browser',
+    label: trans.__('Collapse All Folders'),
+    caption: trans.__('Collapse all folders in the file browser'),
     icon: collapseAllIcon.bindprops({ stylesheet: 'menuItem' }),
     execute: () => {
       browser.collapseAll();
@@ -482,7 +491,7 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
   // there is no tree row for the root itself, so the browser is asked
   // to scroll back to the top and clear its selection instead.
   commands.addCommand(CommandIDs.revealPath, {
-    label: 'Reveal in File Browser',
+    label: trans.__('Reveal in File Browser'),
     execute: (args: ReadonlyPartialJSONObject) => {
       const path = (args.path as string | undefined) ?? '';
       app.shell.activateById(FILE_BROWSER_ID);
@@ -512,8 +521,8 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
   });
 
   commands.addCommand(CommandIDs.createNewDirectory, {
-    label: 'New Folder',
-    caption: 'Create a new folder',
+    label: trans.__('New Folder'),
+    caption: trans.__('Create a new folder'),
     icon: newFolderIcon.bindprops({ stylesheet: 'menuItem' }),
     execute: async () => {
       const cwd = getWorkingDirectory(browser);
@@ -524,14 +533,17 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
         });
         browser.notifyPathAdded(toCanonicalPath(created));
       } catch (err) {
-        await showErrorMessage('Could not create folder', err as Error);
+        await showErrorMessage(
+          trans.__('Could not create folder'),
+          err as Error
+        );
       }
     }
   });
 
   commands.addCommand(CommandIDs.newLauncher, {
-    label: 'New Launcher',
-    caption: 'Open a new launcher',
+    label: trans.__('New Launcher'),
+    caption: trans.__('Open a new launcher'),
     // Skip the `menuItem` bindprops the other commands use: this command
     // lives on the toolbar, where the launcher-extension's blue button
     // styling expects the raw `jp-icon3` paths from `addIcon` so it can

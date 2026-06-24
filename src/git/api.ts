@@ -49,7 +49,7 @@ async function postWithPath<T>(
   if (text.length > 0) {
     try {
       data = JSON.parse(text) as T;
-    } catch (_err) {
+    } catch {
       // Fall through into the error handling below.
     }
   }
@@ -59,34 +59,6 @@ async function postWithPath<T>(
     throw new ServerConnection.ResponseError(response, message);
   }
   return (data ?? ({} as T)) as T;
-}
-
-/**
- * Fetch the absolute filesystem path of the git top-level for the given
- * server-relative path. Returns `null` when the path is not in a git
- * repository — the server returns a non-zero `code` (or `path: null`) in
- * that case, which is expected and not a fatal error.
- */
-export async function showTopLevel(repoPath: string): Promise<string | null> {
-  interface IShowTopLevelResult {
-    code: number;
-    path?: string | null;
-    message?: string;
-  }
-  let result: IShowTopLevelResult;
-  try {
-    result = await postWithPath<IShowTopLevelResult>(
-      'show_top_level',
-      repoPath,
-      {}
-    );
-  } catch (err) {
-    return null;
-  }
-  if (result.code !== 0 || !result.path) {
-    return null;
-  }
-  return result.path;
 }
 
 /**
@@ -111,37 +83,6 @@ export async function content(
   return postWithPath<IGitContentResult>('content', repoPath, {
     filename,
     reference
-  });
-}
-
-/** Stage a single file. */
-export async function add(repoPath: string, filename: string): Promise<void> {
-  await postWithPath('add', repoPath, { add_all: false, filename });
-}
-
-/** Stage every changed file (including untracked). */
-export async function addAll(repoPath: string): Promise<void> {
-  await postWithPath('add', repoPath, { add_all: true });
-}
-
-/** Unstage a single file. */
-export async function reset(repoPath: string, filename: string): Promise<void> {
-  await postWithPath('reset', repoPath, { reset_all: false, filename });
-}
-
-/** Unstage every file. */
-export async function resetAll(repoPath: string): Promise<void> {
-  await postWithPath('reset', repoPath, { reset_all: true });
-}
-
-/** Restore a single file to the version in the index (i.e. discard worktree changes). */
-export async function checkout(
-  repoPath: string,
-  filename: string
-): Promise<void> {
-  await postWithPath('checkout', repoPath, {
-    checkout_branch: false,
-    filename
   });
 }
 

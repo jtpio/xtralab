@@ -1,5 +1,7 @@
 import * as React from 'react';
 
+import type { TranslationBundle } from '@jupyterlab/translation';
+
 /**
  * xtralab's image diff, registered in place of `@jupyterlab/git:image-diff`.
  *
@@ -129,6 +131,8 @@ interface IImageDiffViewProps {
   challenger: string;
   /** MIME subtype from {@link imageDataType}. */
   fileType: string;
+  /** Translation bundle for user-facing strings. */
+  trans: TranslationBundle;
 }
 
 /**
@@ -137,7 +141,7 @@ interface IImageDiffViewProps {
  * plus the selected 2-up / swipe / onion-skin view.
  */
 export function ImageDiffView(props: IImageDiffViewProps): React.ReactElement {
-  const { reference, challenger, fileType } = props;
+  const { reference, challenger, fileType, trans } = props;
   const ref = React.useMemo(
     () => toSide(reference, fileType),
     [reference, fileType]
@@ -161,13 +165,13 @@ export function ImageDiffView(props: IImageDiffViewProps): React.ReactElement {
         <div
           className="jp-xtralab-DiffWidget-segmented"
           role="tablist"
-          aria-label="Image diff view mode"
+          aria-label={trans.__('Image diff view mode')}
         >
           {(
             [
-              ['2-up', '2-up'],
-              ['swipe', 'Swipe'],
-              ['onion', 'Onion Skin']
+              ['2-up', trans.__('2-up')],
+              ['swipe', trans.__('Swipe')],
+              ['onion', trans.__('Onion Skin')]
             ] as [ImageDiffViewMode, string][]
           ).map(([value, label]) => (
             <button
@@ -186,11 +190,11 @@ export function ImageDiffView(props: IImageDiffViewProps): React.ReactElement {
       </div>
       <div className="jp-xtralab-ImageDiff-body">
         {mode === '2-up' ? (
-          <TwoUp reference={ref} challenger={chall} />
+          <TwoUp reference={ref} challenger={chall} trans={trans} />
         ) : mode === 'swipe' ? (
-          <Swipe reference={ref} challenger={chall} />
+          <Swipe reference={ref} challenger={chall} trans={trans} />
         ) : (
-          <OnionSkin reference={ref} challenger={chall} />
+          <OnionSkin reference={ref} challenger={chall} trans={trans} />
         )}
       </div>
     </div>
@@ -200,6 +204,7 @@ export function ImageDiffView(props: IImageDiffViewProps): React.ReactElement {
 interface ISideViewProps {
   reference: IImageSide;
   challenger: IImageSide;
+  trans: TranslationBundle;
 }
 
 function useNaturalSize(): [
@@ -231,7 +236,11 @@ function caption(
   return `${dims}${formatBytes(side.bytes)}`;
 }
 
-function TwoUp({ reference, challenger }: ISideViewProps): React.ReactElement {
+function TwoUp({
+  reference,
+  challenger,
+  trans
+}: ISideViewProps): React.ReactElement {
   const [refSize, onRefLoad] = useNaturalSize();
   const [challSize, onChallLoad] = useNaturalSize();
   return (
@@ -242,15 +251,17 @@ function TwoUp({ reference, challenger }: ISideViewProps): React.ReactElement {
             <img
               className="jp-xtralab-ImageDiff-img"
               src={reference.uri}
-              alt="Reference revision"
+              alt={trans.__('Reference revision')}
               onLoad={onRefLoad}
             />
           ) : (
-            <div className="jp-xtralab-ImageDiff-empty">No previous image</div>
+            <div className="jp-xtralab-ImageDiff-empty">
+              {trans.__('No previous image')}
+            </div>
           )}
         </div>
         <figcaption className="jp-xtralab-ImageDiff-caption">
-          {caption(reference, refSize, 'Added')}
+          {caption(reference, refSize, trans.__('Added'))}
         </figcaption>
       </figure>
       <figure className="jp-xtralab-ImageDiff-col">
@@ -259,15 +270,17 @@ function TwoUp({ reference, challenger }: ISideViewProps): React.ReactElement {
             <img
               className="jp-xtralab-ImageDiff-img"
               src={challenger.uri}
-              alt="Challenger revision"
+              alt={trans.__('Challenger revision')}
               onLoad={onChallLoad}
             />
           ) : (
-            <div className="jp-xtralab-ImageDiff-empty">Deleted</div>
+            <div className="jp-xtralab-ImageDiff-empty">
+              {trans.__('Deleted')}
+            </div>
           )}
         </div>
         <figcaption className="jp-xtralab-ImageDiff-caption">
-          {caption(challenger, challSize, 'Deleted')}
+          {caption(challenger, challSize, trans.__('Deleted'))}
         </figcaption>
       </figure>
     </div>
@@ -353,7 +366,11 @@ function useElementSize(): readonly [
   return [ref, size] as const;
 }
 
-function Swipe({ reference, challenger }: ISideViewProps): React.ReactElement {
+function Swipe({
+  reference,
+  challenger,
+  trans
+}: ISideViewProps): React.ReactElement {
   const [position, setPosition] = React.useState(50);
   const [dragging, setDragging] = React.useState(false);
   const [refSize, onRefLoad] = useNaturalSize();
@@ -463,7 +480,7 @@ function Swipe({ reference, challenger }: ISideViewProps): React.ReactElement {
             <img
               className="jp-xtralab-ImageDiff-swipeImg"
               src={reference.uri}
-              alt="Reference revision"
+              alt={trans.__('Reference revision')}
               draggable={false}
               onLoad={onRefLoad}
               style={{
@@ -475,7 +492,7 @@ function Swipe({ reference, challenger }: ISideViewProps): React.ReactElement {
             <img
               className="jp-xtralab-ImageDiff-swipeImg"
               src={challenger.uri}
-              alt="Challenger revision"
+              alt={trans.__('Challenger revision')}
               draggable={false}
               onLoad={onChallLoad}
               style={{
@@ -487,7 +504,7 @@ function Swipe({ reference, challenger }: ISideViewProps): React.ReactElement {
             className="jp-xtralab-ImageDiff-swipeDivider"
             style={{ left: `${position}%` }}
             role="slider"
-            aria-label="Swipe between reference and challenger"
+            aria-label={trans.__('Swipe between reference and challenger')}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(position)}
@@ -512,7 +529,8 @@ function Swipe({ reference, challenger }: ISideViewProps): React.ReactElement {
 
 function OnionSkin({
   reference,
-  challenger
+  challenger,
+  trans
 }: ISideViewProps): React.ReactElement {
   const [opacity, setOpacity] = React.useState(50);
   return (
@@ -522,14 +540,14 @@ function OnionSkin({
           <img
             className="jp-xtralab-ImageDiff-stackImg"
             src={reference.uri}
-            alt="Reference revision"
+            alt={trans.__('Reference revision')}
           />
         ) : null}
         {challenger.uri !== null ? (
           <img
             className="jp-xtralab-ImageDiff-stackImg"
             src={challenger.uri}
-            alt="Challenger revision"
+            alt={trans.__('Challenger revision')}
             style={{ opacity: opacity / 100 }}
           />
         ) : null}
@@ -537,7 +555,7 @@ function OnionSkin({
       <RangeSlider
         value={opacity}
         onChange={setOpacity}
-        ariaLabel="Fade between reference and challenger"
+        ariaLabel={trans.__('Fade between reference and challenger')}
       />
     </div>
   );

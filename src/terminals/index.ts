@@ -138,7 +138,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     // the writes neither loop nor churn.
     const syncTabIcons = (): void => {
       tracker.forEach(widget => {
-        const session = widget.content?.session;
+        const session = widget.content.session;
         if (!session) {
           return;
         }

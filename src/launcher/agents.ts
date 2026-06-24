@@ -85,10 +85,9 @@ export interface IAgentSettings {
  * in `jupyter-ai-contrib/jupyter-ai-acp-client` (which is also where their
  * icons come from), but use the bare CLI names a user would type in a
  * terminal rather than the ACP wrapper binaries that project spawns.
- * Antigravity (Google's agent-first IDE/CLI, `agy`) takes the Google slot —
- * Gemini CLI was dropped because Google is sunsetting it for consumer
- * accounts on 2026-06-18. Anything not on the user's `$PATH` is filtered
- * out at activation time, so the wider list is harmless.
+ * Antigravity (Google's agent-first IDE/CLI, `agy`) is the Google agent.
+ * Anything not on the user's `$PATH` is filtered out at activation time, so
+ * the wider list is harmless.
  */
 const DEFAULTS: IAgent[] = [
   {

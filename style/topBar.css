@@ -1,6 +1,6 @@
 /* Sidebar toggle buttons in the top bar (xtralab:top-bar). */
 
-.xtralab-TopBarButton {
+.jp-xtralab-TopBarButton {
   display: flex;
   align-items: center;
 }
@@ -11,7 +11,7 @@
  * its left so it floats to the far right, mirroring the left button at the
  * leading edge.
  */
-.xtralab-TopBarButton-right {
+.jp-xtralab-TopBarButton-right {
   margin-left: auto;
 }
 
@@ -29,10 +29,10 @@
  * `!important` is needed to override the (non-important) `:host(...)` rules
  * defined inside the component's shadow DOM.
  */
-.xtralab-TopBarButton .jp-ToolbarButtonComponent {
+.jp-xtralab-TopBarButton .jp-ToolbarButtonComponent {
   box-shadow: none !important;
 }
 
-.xtralab-TopBarButton .jp-ToolbarButtonComponent[disabled] {
+.jp-xtralab-TopBarButton .jp-ToolbarButtonComponent[disabled] {
   background: transparent !important;
 }

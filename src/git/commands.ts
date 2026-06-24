@@ -2,6 +2,7 @@ import { JupyterFrontEnd } from '@jupyterlab/application';
 import { IThemeManager, MainAreaWidget } from '@jupyterlab/apputils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { Contents } from '@jupyterlab/services';
+import type { TranslationBundle } from '@jupyterlab/translation';
 import { ToolbarButton, launchIcon } from '@jupyterlab/ui-components';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { ISignal, Signal } from '@lumino/signaling';
@@ -45,9 +46,10 @@ export function pinnedDiffWidgetId(change: IFileChange): string {
   return `xtralab:diff:pinned:${change.group}:${change.path}`;
 }
 
-function formatTitle(change: IFileChange): string {
+function formatTitle(change: IFileChange, trans: TranslationBundle): string {
   const name = change.path.split('/').pop() ?? change.path;
-  const groupLabel = change.group === 'staged' ? 'Staged' : 'Working';
+  const groupLabel =
+    change.group === 'staged' ? trans.__('Staged') : trans.__('Working');
   return `${name} (${groupLabel})`;
 }
 
@@ -58,11 +60,13 @@ export class DiffMainAreaWidget extends MainAreaWidget<XtralabDiffWidget> {
   constructor(
     options: MainAreaWidget.IOptions<XtralabDiffWidget>,
     change: IFileChange,
-    pinned: boolean
+    pinned: boolean,
+    trans: TranslationBundle
   ) {
     super(options);
     this._change = change;
     this._pinned = pinned;
+    this._trans = trans;
   }
 
   get change(): IFileChange {
@@ -88,13 +92,14 @@ export class DiffMainAreaWidget extends MainAreaWidget<XtralabDiffWidget> {
   setChange(repoPath: string, change: IFileChange): void {
     this._change = change;
     this.content.setModel(fileChangeToDiffModel(repoPath, change));
-    this.title.label = formatTitle(change);
+    this.title.label = formatTitle(change, this._trans);
     this.title.caption = change.path;
     this.title.icon = getTreeIcon(change.path);
   }
 
   private _change: IFileChange;
   private _pinned: boolean;
+  private _trans: TranslationBundle;
   private _pinnedChanged = new Signal<this, boolean>(this);
 }
 
@@ -104,6 +109,7 @@ interface ICreateDiffWidgetOptions {
   themeManager: IThemeManager | null;
   contentsManager: Contents.IManager;
   rendermime: IRenderMimeRegistry | null;
+  trans: TranslationBundle;
   pinned?: boolean;
   onPinned?: (widget: DiffMainAreaWidget) => void;
 }
@@ -114,16 +120,16 @@ interface ICreateDiffWidgetOptions {
 function createDiffWidget(
   options: ICreateDiffWidgetOptions
 ): DiffMainAreaWidget {
-  const { repoPath, change, themeManager, contentsManager, rendermime } =
+  const { repoPath, change, themeManager, contentsManager, rendermime, trans } =
     options;
   const pinned = options.pinned === true;
   const content = new XtralabDiffWidget(
     fileChangeToDiffModel(repoPath, change),
-    { contentsManager, rendermime, themeManager }
+    { contentsManager, rendermime, themeManager, trans }
   );
-  const widget = new DiffMainAreaWidget({ content }, change, pinned);
+  const widget = new DiffMainAreaWidget({ content }, change, pinned, trans);
   widget.id = pinned ? pinnedDiffWidgetId(change) : PREVIEW_DIFF_WIDGET_ID;
-  widget.title.label = formatTitle(change);
+  widget.title.label = formatTitle(change, trans);
   widget.title.caption = change.path;
   widget.title.closable = true;
   widget.title.icon = getTreeIcon(change.path);
@@ -134,7 +140,7 @@ function createDiffWidget(
 
   const pinButton = new ToolbarButton({
     icon: launchIcon,
-    tooltip: 'Pin tab',
+    tooltip: trans.__('Pin tab'),
     onClick: () => widget.pin()
   });
   if (widget.pinned) {
@@ -155,7 +161,7 @@ function createDiffWidget(
     }
   };
   const onPinnedChanged = (
-    _sender: DiffMainAreaWidget,
+    sender: DiffMainAreaWidget,
     value: boolean
   ): void => {
     if (widget.isDisposed) {
@@ -203,6 +209,10 @@ export interface IRegisterGitCommandsOptions {
    */
   rendermime: IRenderMimeRegistry | null;
   /**
+   * Translation bundle for user-facing strings.
+   */
+  trans: TranslationBundle;
+  /**
    * Track newly created diff widgets before they are added to the shell.
    */
   trackDiff(widget: DiffMainAreaWidget): Promise<void>;
@@ -225,6 +235,7 @@ export function registerGitCommands(
     themeManager,
     contentsManager,
     rendermime,
+    trans,
     trackDiff,
     findDiff,
     onPinned
@@ -232,8 +243,8 @@ export function registerGitCommands(
   const { commands } = app;
 
   commands.addCommand(CommandIDs.openDiff, {
-    label: 'Open Git Diff',
-    caption: 'Open a side-by-side diff for a changed file',
+    label: trans.__('Open Git Diff'),
+    caption: trans.__('Open a side-by-side diff for a changed file'),
     execute: async (args: ReadonlyPartialJSONObject) => {
       const typed = args as unknown as CommandArguments.IOpenDiff;
       if (typed?.change === undefined) {
@@ -254,6 +265,7 @@ export function registerGitCommands(
         themeManager,
         contentsManager,
         rendermime,
+        trans,
         pinned: pin,
         onPinned
       });

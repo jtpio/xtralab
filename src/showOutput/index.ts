@@ -6,32 +6,14 @@ import {
 import { ICommandPalette } from '@jupyterlab/apputils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
-import type { ReadonlyPartialJSONValue } from '@lumino/coreutils';
 import { Panel } from '@lumino/widgets';
+
+import { coerceData } from '../mimeData';
 
 const PLUGIN_ID = 'xtralab:show-output';
 
 /** Render arbitrary rich content into a panel, with no notebook and no kernel. */
 const SHOW_COMMAND = 'xtralab:show';
-
-/**
- * Parse a JSON-typed value that may have arrived as a string. Agents and the
- * MCP bridge sometimes serialize a spec (e.g. a Vega-Lite object) to a string;
- * for `application/...json` MIME types we accept either and parse the string.
- */
-function coerceData(
-  mimeType: string,
-  data: ReadonlyPartialJSONValue
-): ReadonlyPartialJSONValue {
-  if (typeof data === 'string' && /\+?json$/.test(mimeType)) {
-    try {
-      return JSON.parse(data) as ReadonlyPartialJSONValue;
-    } catch {
-      return data;
-    }
-  }
-  return data;
-}
 
 /**
  * Contribute `xtralab:show`: render a single MIME bundle into a main-area
@@ -121,8 +103,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
             : trans.__('Output');
         const id = typeof args['id'] === 'string' ? args['id'] : 'default';
         const area = args['area'] === 'main' ? 'main' : 'right';
-        const mode =
-          typeof args['mode'] === 'string' ? args['mode'] : 'split-right';
+        const mode: DocumentMode =
+          typeof args['mode'] === 'string' && isDocumentMode(args['mode'])
+            ? args['mode']
+            : 'split-right';
 
         const bundle = { [mimeType]: data };
         const chosen = rendermime.preferredMimeType(bundle, 'any');
@@ -161,7 +145,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         // only split the document area when `area` is "main".
         if (area === 'main') {
           labShell.add(widget, 'main', {
-            mode: mode as DocumentMode,
+            mode,
             activate: true
           });
         } else {
@@ -195,5 +179,16 @@ type DocumentMode =
   | 'split-bottom'
   | 'tab-before'
   | 'tab-after';
+
+function isDocumentMode(value: string): value is DocumentMode {
+  return (
+    value === 'split-top' ||
+    value === 'split-left' ||
+    value === 'split-right' ||
+    value === 'split-bottom' ||
+    value === 'tab-before' ||
+    value === 'tab-after'
+  );
+}
 
 export default plugin;

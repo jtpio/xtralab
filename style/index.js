@@ -1,5 +1,6 @@
 import './base.css';
 import './commandBar.css';
+import './editorBreadcrumbs.css';
 import './git.css';
 import './highlight.css';
 import './launcher.css';

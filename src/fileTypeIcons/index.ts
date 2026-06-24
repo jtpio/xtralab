@@ -148,8 +148,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
           }
         };
         setIcon();
-        // Keep the tab icon right after a rename.
+        // Keep the tab icon right after a rename, and release the listener
+        // when the document closes.
         widget.context.pathChanged.connect(setIcon);
+        widget.disposed.connect(() => {
+          widget.context.pathChanged.disconnect(setIcon);
+        });
       });
     }
 
@@ -163,8 +167,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           if (icon === null) {
             continue;
           }
-          // Cross jupyterlab-git's nested `LabIcon` package boundary.
-          file.type = { ...file.type, icon } as unknown as typeof file.type;
+          file.type = { ...file.type, icon };
         }
       });
     }

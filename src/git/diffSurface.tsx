@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import { IThemeManager } from '@jupyterlab/apputils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
+import type { TranslationBundle } from '@jupyterlab/translation';
 import { undoIcon } from '@jupyterlab/ui-components';
 import { FileDiff } from '@pierre/diffs/react';
 import {
@@ -278,6 +279,10 @@ export interface IDiffSurfaceProps {
    * Optional per-hunk discard wiring; omit for a read-only diff.
    */
   hunkDiscard?: IHunkDiscard;
+  /**
+   * Translation bundle for user-facing strings.
+   */
+  trans: TranslationBundle;
 }
 
 /**
@@ -300,7 +305,8 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     onNotebookAvailabilityChange,
     onFileDiffActiveChange,
     onMetadataChange,
-    hunkDiscard
+    hunkDiscard,
+    trans
   } = props;
 
   const hasContent = !loading && error === null && !isBinary;
@@ -432,8 +438,8 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
           <button
             type="button"
             className="jp-xtralab-DiffWidget-hunkButton"
-            title="Discard this hunk's changes"
-            aria-label="Discard hunk"
+            title={trans.__("Discard this hunk's changes")}
+            aria-label={trans.__('Discard hunk')}
             onClick={() => void handleDiscardHunk(hunkIndex)}
           >
             <undoIcon.react
@@ -445,7 +451,7 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
         </div>
       );
     },
-    [handleDiscardHunk]
+    [handleDiscardHunk, trans]
   );
 
   const handleResizerPointerDown = React.useCallback(
@@ -500,8 +506,44 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     writeStoredSplitRatio(DEFAULT_SPLIT_RATIO);
   }, []);
 
+  const handleResizerKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const step = event.shiftKey ? 0.1 : 0.01;
+      let next: number | null = null;
+      switch (event.key) {
+        case 'ArrowLeft':
+          next = leftRatioRef.current - step;
+          break;
+        case 'ArrowRight':
+          next = leftRatioRef.current + step;
+          break;
+        case 'Home':
+          next = MIN_SPLIT_RATIO;
+          break;
+        case 'End':
+          next = MAX_SPLIT_RATIO;
+          break;
+      }
+      if (next === null) {
+        return;
+      }
+      event.preventDefault();
+      const clamped = Math.max(
+        MIN_SPLIT_RATIO,
+        Math.min(MAX_SPLIT_RATIO, next)
+      );
+      setLeftRatio(clamped);
+      writeStoredSplitRatio(clamped);
+    },
+    []
+  );
+
   if (loading) {
-    return <div className="jp-xtralab-DiffWidget-status">Loading diff…</div>;
+    return (
+      <div className="jp-xtralab-DiffWidget-status">
+        {trans.__('Loading diff…')}
+      </div>
+    );
   }
   if (error !== null) {
     return (
@@ -513,7 +555,7 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
   if (isBinary) {
     return (
       <div className="jp-xtralab-DiffWidget-status">
-        Binary file — diff not supported.
+        {trans.__('Binary file — diff not supported.')}
       </div>
     );
   }
@@ -527,13 +569,16 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
           reference={oldText}
           challenger={newText}
           fileType={imageType}
+          trans={trans}
         />
       </div>
     );
   }
   if (!showNotebookView && !showFileDiff) {
     return (
-      <div className="jp-xtralab-DiffWidget-status">No content to diff.</div>
+      <div className="jp-xtralab-DiffWidget-status">
+        {trans.__('No content to diff.')}
+      </div>
     );
   }
 
@@ -556,6 +601,7 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
               dark={dark}
               pierreTheme={pierreTheme}
               rendermime={rendermime}
+              trans={trans}
             />
           ) : showFileDiff && metadata !== null ? (
             <FileDiff<IHunkActionAnnotation>
@@ -597,9 +643,14 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
             aria-valuenow={Math.round(leftPercent)}
             aria-valuemin={Math.round(MIN_SPLIT_RATIO * 100)}
             aria-valuemax={Math.round(MAX_SPLIT_RATIO * 100)}
-            title="Drag to resize the diff panes (double-click to reset)"
+            aria-label={trans.__('Resize the diff panes')}
+            tabIndex={0}
+            title={trans.__(
+              'Drag to resize the diff panes (double-click to reset)'
+            )}
             onPointerDown={handleResizerPointerDown}
             onDoubleClick={handleResizerDoubleClick}
+            onKeyDown={handleResizerKeyDown}
           />
         ) : null}
       </div>
@@ -617,8 +668,9 @@ export function NotebookViewModeControl(props: {
   mode: NotebookDiffViewMode;
   available: boolean;
   onChange: (mode: NotebookDiffViewMode) => void;
+  trans: TranslationBundle;
 }): React.ReactElement {
-  const { mode, available, onChange } = props;
+  const { mode, available, onChange, trans } = props;
   if (!available) {
     return <></>;
   }
@@ -626,7 +678,7 @@ export function NotebookViewModeControl(props: {
     <div
       className="jp-xtralab-DiffWidget-segmented"
       role="tablist"
-      aria-label="Notebook diff view mode"
+      aria-label={trans.__('Notebook diff view mode')}
     >
       <button
         type="button"
@@ -636,7 +688,7 @@ export function NotebookViewModeControl(props: {
         className="jp-xtralab-DiffWidget-segmentedButton"
         onClick={() => onChange('notebook')}
       >
-        Notebook
+        {trans.__('Notebook')}
       </button>
       <button
         type="button"
@@ -646,7 +698,7 @@ export function NotebookViewModeControl(props: {
         className="jp-xtralab-DiffWidget-segmentedButton"
         onClick={() => onChange('json')}
       >
-        JSON
+        {trans.__('JSON')}
       </button>
     </div>
   );
@@ -700,8 +752,9 @@ export function DiffStyleControl(props: {
   diffStyle: DiffStyle;
   available: boolean;
   onChange: (style: DiffStyle) => void;
+  trans: TranslationBundle;
 }): React.ReactElement {
-  const { diffStyle, available, onChange } = props;
+  const { diffStyle, available, onChange, trans } = props;
   if (!available) {
     return <></>;
   }
@@ -709,7 +762,7 @@ export function DiffStyleControl(props: {
     <div
       className="jp-xtralab-DiffWidget-segmented"
       role="tablist"
-      aria-label="Diff view style"
+      aria-label={trans.__('Diff view style')}
     >
       <button
         type="button"
@@ -717,8 +770,8 @@ export function DiffStyleControl(props: {
         aria-selected={diffStyle === 'split'}
         data-active={diffStyle === 'split'}
         className="jp-xtralab-DiffWidget-segmentedButton jp-xtralab-DiffWidget-segmentedButton-icon"
-        title="Split (side-by-side) view"
-        aria-label="Split view"
+        title={trans.__('Split (side-by-side) view')}
+        aria-label={trans.__('Split view')}
         onClick={() => onChange('split')}
       >
         <DiffSplitIcon />
@@ -729,8 +782,8 @@ export function DiffStyleControl(props: {
         aria-selected={diffStyle === 'unified'}
         data-active={diffStyle === 'unified'}
         className="jp-xtralab-DiffWidget-segmentedButton jp-xtralab-DiffWidget-segmentedButton-icon"
-        title="Unified (inline) view"
-        aria-label="Unified view"
+        title={trans.__('Unified (inline) view')}
+        aria-label={trans.__('Unified view')}
         onClick={() => onChange('unified')}
       >
         <DiffUnifiedIcon />
