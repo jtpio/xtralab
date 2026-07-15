@@ -104,9 +104,10 @@ function writeLastTarget(value: string): void {
  * the prompt goes; submitting either starts that agent in a fresh terminal
  * via `xtralab:start-agent:<id>`, or pastes the prompt into an agent already
  * running in one of the open terminal sessions (via `IAgentTerminals`; the
- * agent CLIs queue prompts that arrive while they are busy). Either way the
- * prompt embeds the file path, cell index for notebooks, line range and
- * selected snippet.
+ * agent CLIs queue prompts that arrive while they are busy). Sends to a
+ * running agent stay in the background — focus never leaves the editor, and
+ * a success toast offers to open the terminal. Either way the prompt embeds
+ * the file path, cell index for notebooks, line range and selected snippet.
  *
  * The same popup is provided on the `IAskAgent` token so the git diff
  * viewers can open it for a selected diff line range.
@@ -210,8 +211,38 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
           const prompt = buildPrompt(request.context, instruction);
           if (target.kind === 'session') {
             writeLastTarget(SESSION_TARGET_PREFIX + target.name);
+            // The send is background, so hand focus straight back to the
+            // widget the ask came from (the editor or diff under the popup);
+            // disposing the popup alone would drop it on `document.body`.
+            app.shell.currentWidget?.activate();
+            const label =
+              targets.find(entry => entry.name === target.name)?.label ??
+              target.name;
             agentTerminals
               ?.sendPrompt(target.name, prompt)
+              .then(() => {
+                // The send is deliberately background — focus stays in the
+                // editor — so a small toast confirms delivery and puts the
+                // agent's tab one click away.
+                Notification.success(trans.__('Prompt sent to %1', label), {
+                  autoClose: 3000,
+                  actions: [
+                    {
+                      label: trans.__('Open'),
+                      callback: () => {
+                        app.commands
+                          .execute('terminal:open', { name: target.name })
+                          .catch((reason: unknown) => {
+                            console.error(
+                              'xtralab: failed to open the terminal',
+                              reason
+                            );
+                          });
+                      }
+                    }
+                  ]
+                });
+              })
               .catch((error: unknown) => {
                 console.error(
                   'xtralab: failed to send the prompt to the terminal',

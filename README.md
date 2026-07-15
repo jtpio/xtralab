@@ -68,7 +68,9 @@ selected snippet, so you can request fixes the moment you spot them while
 reading a diff. When an agent is already running in a terminal, the prompt box
 offers it as a target next to "New terminal": pick it and the prompt lands in
 that agent's input box instead of starting another session, queued by the
-agent itself if it is still busy with the previous request.
+agent itself if it is still busy with the previous request. These sends happen
+in the background, so your focus stays in the code you are reading and a small
+notification offers to jump to the terminal.
 
 ### One search box for files, commands, and agents
 

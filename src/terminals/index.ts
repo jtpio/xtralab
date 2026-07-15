@@ -291,7 +291,6 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
     return new AgentTerminals({
       registry,
       tracker,
-      commands: app.commands,
       terminals: app.serviceManager.terminals,
       detectCommands,
       isAgentCommand,

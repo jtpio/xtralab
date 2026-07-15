@@ -50,11 +50,12 @@ export interface IAgentTerminals {
   /**
    * Paste `prompt` into the named session's terminal and press Enter.
    *
-   * Reveals the session's tab (reopening one when it was closed), then
-   * routes the text through xterm's paste handling so a multi-line prompt
-   * arrives bracketed-paste-wrapped as one block in the agent's input box —
-   * the agent CLIs queue it themselves when they are busy. Rejects when the
-   * session is gone or no agent is running in it anymore.
+   * Delivery is deliberately background: the text is written straight to
+   * the session's websocket, bracketed-paste-wrapped so a multi-line prompt
+   * arrives as one block in the agent's input box, without revealing or
+   * focusing the terminal's tab — the user keeps working where they are,
+   * and the agent CLIs queue the prompt themselves when they are busy.
+   * Rejects when the session is gone or no agent is running in it anymore.
    */
   sendPrompt(name: string, prompt: string): Promise<void>;
 }
