@@ -8,6 +8,7 @@ import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { ISignal, Signal } from '@lumino/signaling';
 
 import { getTreeIcon } from '../fileBrowser/icons';
+import type { IAskAgent } from '../askAgent/tokens';
 import { fileChangeToDiffModel } from './diffModel';
 import {
   DIFF_WIDGET_CSS_CLASS,
@@ -109,6 +110,7 @@ interface ICreateDiffWidgetOptions {
   themeManager: IThemeManager | null;
   contentsManager: Contents.IManager;
   rendermime: IRenderMimeRegistry | null;
+  askAgent: IAskAgent | null;
   trans: TranslationBundle;
   pinned?: boolean;
   onPinned?: (widget: DiffMainAreaWidget) => void;
@@ -120,12 +122,19 @@ interface ICreateDiffWidgetOptions {
 function createDiffWidget(
   options: ICreateDiffWidgetOptions
 ): DiffMainAreaWidget {
-  const { repoPath, change, themeManager, contentsManager, rendermime, trans } =
-    options;
+  const {
+    repoPath,
+    change,
+    themeManager,
+    contentsManager,
+    rendermime,
+    askAgent,
+    trans
+  } = options;
   const pinned = options.pinned === true;
   const content = new XtralabDiffWidget(
     fileChangeToDiffModel(repoPath, change),
-    { contentsManager, rendermime, themeManager, trans }
+    { contentsManager, rendermime, themeManager, askAgent, trans }
   );
   const widget = new DiffMainAreaWidget({ content }, change, pinned, trans);
   widget.id = pinned ? pinnedDiffWidgetId(change) : PREVIEW_DIFF_WIDGET_ID;
@@ -209,6 +218,10 @@ export interface IRegisterGitCommandsOptions {
    */
   rendermime: IRenderMimeRegistry | null;
   /**
+   * Ask-agent popup for prompting an agent about diff lines; may be `null`.
+   */
+  askAgent: IAskAgent | null;
+  /**
    * Translation bundle for user-facing strings.
    */
   trans: TranslationBundle;
@@ -235,6 +248,7 @@ export function registerGitCommands(
     themeManager,
     contentsManager,
     rendermime,
+    askAgent,
     trans,
     trackDiff,
     findDiff,
@@ -265,6 +279,7 @@ export function registerGitCommands(
         themeManager,
         contentsManager,
         rendermime,
+        askAgent,
         trans,
         pinned: pin,
         onPinned

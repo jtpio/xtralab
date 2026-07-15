@@ -1,0 +1,159 @@
+/*
+ * Ask-agent overlay (xtralab:ask-agent): the floating "Ask agent" pill that
+ * follows a code selection, and the prompt popup it (or the diff gutter "+"
+ * button) opens. Both are attached to `document.body`, outside the shell,
+ * and carry `jp-ThemedContainer` so theme variables resolve.
+ */
+
+.jp-xtralab-AskAgent-pill {
+  position: fixed;
+  z-index: 10000;
+  display: none;
+  gap: 5px;
+  align-items: center;
+  padding: 3px 9px;
+  font-family: var(--jp-ui-font-family);
+  font-size: var(--jp-ui-font-size0);
+  color: var(--jp-ui-font-color1);
+  cursor: pointer;
+  background: var(--jp-layout-color1);
+  border: var(--jp-border-width) solid var(--jp-border-color1);
+  border-radius: 999px;
+  box-shadow: var(--jp-elevation-z2);
+}
+
+.jp-xtralab-AskAgent-pill:hover {
+  color: var(--jp-ui-font-color0);
+  background: var(--jp-layout-color2);
+}
+
+.jp-xtralab-AskAgent-pillIcon {
+  display: flex;
+  align-items: center;
+}
+
+.jp-xtralab-AskAgent-pillIcon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* The popup host widget node; the React tree renders the fixed card below. */
+.jp-xtralab-AskAgent {
+  position: absolute;
+}
+
+.jp-xtralab-AskAgent-popup {
+  position: fixed;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  width: min(400px, 92vw);
+  background: var(--jp-layout-color1);
+  border: var(--jp-border-width) solid var(--jp-border-color1);
+  border-radius: 6px;
+  box-shadow: var(--jp-elevation-z6);
+}
+
+.jp-xtralab-AskAgent-context {
+  padding: 7px 10px 5px;
+  overflow: hidden;
+  font-size: var(--jp-ui-font-size0);
+  color: var(--jp-ui-font-color2);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.jp-xtralab-AskAgent-input {
+  margin: 0 10px;
+  padding: 6px 8px;
+  font-family: var(--jp-ui-font-family);
+  font-size: var(--jp-ui-font-size1);
+  color: var(--jp-ui-font-color0);
+  resize: none;
+  background: var(--jp-layout-color0);
+  border: var(--jp-border-width) solid var(--jp-border-color2);
+  border-radius: 4px;
+}
+
+.jp-xtralab-AskAgent-input:focus {
+  border-color: var(--jp-brand-color1);
+  outline: none;
+}
+
+.jp-xtralab-AskAgent-input::placeholder {
+  color: var(--jp-ui-font-color3);
+}
+
+.jp-xtralab-AskAgent-empty {
+  padding: 4px 10px 10px;
+  font-size: var(--jp-ui-font-size1);
+  color: var(--jp-ui-font-color2);
+}
+
+.jp-xtralab-AskAgent-footer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+}
+
+.jp-xtralab-AskAgent-agents {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  overflow-x: auto;
+}
+
+.jp-xtralab-AskAgent-agentButton {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  border: var(--jp-border-width) solid transparent;
+  border-radius: 4px;
+}
+
+.jp-xtralab-AskAgent-agentButton:hover {
+  background: var(--jp-layout-color2);
+}
+
+.jp-xtralab-AskAgent-agentButton.jp-mod-selected {
+  background: var(--jp-layout-color2);
+  border-color: var(--jp-brand-color1);
+}
+
+.jp-xtralab-AskAgent-agentIcon {
+  display: flex;
+  align-items: center;
+}
+
+.jp-xtralab-AskAgent-agentIcon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.jp-xtralab-AskAgent-submit {
+  flex: 0 0 auto;
+  padding: 4px 12px;
+  font-size: var(--jp-ui-font-size1);
+  color: var(--jp-ui-inverse-font-color0);
+  cursor: pointer;
+  background: var(--jp-brand-color1);
+  border: none;
+  border-radius: 4px;
+}
+
+.jp-xtralab-AskAgent-submit:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.jp-xtralab-AskAgent-submit:hover:enabled {
+  background: var(--jp-brand-color0);
+}

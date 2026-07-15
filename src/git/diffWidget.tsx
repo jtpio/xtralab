@@ -10,7 +10,11 @@ import { ReactWidget } from '@jupyterlab/ui-components';
 import { PromiseDelegate } from '@lumino/coreutils';
 import { ISignal, Signal } from '@lumino/signaling';
 import { Widget } from '@lumino/widgets';
+import type { SelectedLineRange } from '@pierre/diffs';
 
+import type { IAskAgent } from '../askAgent/tokens';
+
+import { buildDiffAskRequest } from './askRequest';
 import {
   DIFF_WIDGET_CSS_CLASS,
   DiffStyleControl,
@@ -45,6 +49,11 @@ export interface IXtralabDiffContext {
   contentsManager: Contents.IManager;
   rendermime: IRenderMimeRegistry | null;
   themeManager: IThemeManager | null;
+  /**
+   * The ask-agent popup; when available, diff line selections get an
+   * "ask an agent about these lines" gutter button.
+   */
+  askAgent: IAskAgent | null;
   trans: TranslationBundle;
 }
 
@@ -250,7 +259,8 @@ function ModelDiffView(props: {
 }): React.ReactElement {
   const { widget } = props;
   const model = widget.model as IXtralabDiffModel;
-  const { contentsManager, rendermime, themeManager, trans } = widget.context;
+  const { contentsManager, rendermime, themeManager, askAgent, trans } =
+    widget.context;
   const nonce = widget.reloadNonce;
 
   const [state, setState] = React.useState<IModelDiffState>({
@@ -441,6 +451,24 @@ function ModelDiffView(props: {
     [canDiscardHunk, contentsManager, serverPath, widget]
   );
 
+  const handleLineAsk = React.useMemo(() => {
+    if (askAgent === null) {
+      return undefined;
+    }
+    return (range: SelectedLineRange, anchor: DOMRect | null): void => {
+      askAgent.open(
+        buildDiffAskRequest({
+          model,
+          oldText: state.oldText,
+          newText: state.newText,
+          range,
+          anchor,
+          trans
+        })
+      );
+    };
+  }, [askAgent, model, state.oldText, state.newText, trans]);
+
   return (
     <DiffSurface
       loading={state.loading}
@@ -459,6 +487,7 @@ function ModelDiffView(props: {
       onFileDiffActiveChange={handleFileDiffActiveChange}
       onMetadataChange={handleMetadataChange}
       hunkDiscard={hunkDiscard}
+      onLineAsk={handleLineAsk}
       trans={trans}
     />
   );

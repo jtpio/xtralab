@@ -7,6 +7,8 @@ import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { Git, IGitExtension } from '@jupyterlab/git';
 
+import { IAskAgent } from '../askAgent/tokens';
+
 import {
   IXtralabDiffContext,
   XtralabDiffWidget,
@@ -35,19 +37,21 @@ const diffProviderPlugin: JupyterFrontEndPlugin<void> = {
     "Replaces jupyterlab-git's notebook, text and image diff plugins with xtralab's renderer.",
   autoStart: true,
   requires: [IGitExtension],
-  optional: [IRenderMimeRegistry, IThemeManager, ITranslator],
+  optional: [IRenderMimeRegistry, IThemeManager, ITranslator, IAskAgent],
   activate: (
     app: JupyterFrontEnd,
     gitExtension: IGitExtension,
     rendermime: IRenderMimeRegistry | null,
     themeManager: IThemeManager | null,
-    translator: ITranslator | null
+    translator: ITranslator | null,
+    askAgent: IAskAgent | null
   ): void => {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
     const factory = makeXtralabDiffFactory({
       contentsManager: app.serviceManager.contents,
       rendermime,
       themeManager,
+      askAgent,
       trans
     });
 

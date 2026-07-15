@@ -10,7 +10,8 @@ import {
   parseDiffFromFile,
   type DiffLineAnnotation,
   type FileContents,
-  type FileDiffMetadata
+  type FileDiffMetadata,
+  type SelectedLineRange
 } from '@pierre/diffs';
 
 import { ImageDiffView, imageDataType } from './imageDiff';
@@ -280,6 +281,14 @@ export interface IDiffSurfaceProps {
    */
   hunkDiscard?: IHunkDiscard;
   /**
+   * When provided, the textual/code file diff gets line selection: clicking
+   * or dragging over the line numbers selects a range, and a gutter "+"
+   * button appears on the hovered/selected lines. Clicking that button
+   * invokes this callback with the selected range and the button's viewport
+   * rectangle (to anchor a popup to), `null` when it cannot be measured.
+   */
+  onLineAsk?: (range: SelectedLineRange, anchor: DOMRect | null) => void;
+  /**
    * Translation bundle for user-facing strings.
    */
   trans: TranslationBundle;
@@ -306,6 +315,7 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     onFileDiffActiveChange,
     onMetadataChange,
     hunkDiscard,
+    onLineAsk,
     trans
   } = props;
 
@@ -452,6 +462,25 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
       );
     },
     [handleDiscardHunk, trans]
+  );
+
+  const handleGutterUtilityClick = React.useCallback(
+    (range: SelectedLineRange) => {
+      if (onLineAsk === undefined) {
+        return;
+      }
+      // Anchor to the gutter "+" button that was just clicked. It lives in
+      // the `@pierre/diffs` shadow root (which is open), parked on the
+      // hovered/selected line's number element.
+      const slot = wrapperRef.current
+        ?.querySelector('diffs-container')
+        ?.shadowRoot?.querySelector('[data-gutter-utility-slot]');
+      onLineAsk(
+        range,
+        slot instanceof Element ? slot.getBoundingClientRect() : null
+      );
+    },
+    [onLineAsk]
   );
 
   const handleResizerPointerDown = React.useCallback(
@@ -629,7 +658,17 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
                 // string constant lets the library short-circuit the
                 // re-render path it uses when this option actually
                 // changes.
-                unsafeCSS: SPLIT_RESIZE_CSS
+                unsafeCSS: SPLIT_RESIZE_CSS,
+                // Line selection + the gutter "+" button feed the
+                // ask-agent popup; only wired up when a handler exists so
+                // a plain diff keeps its passive gutter.
+                ...(onLineAsk !== undefined
+                  ? {
+                      enableLineSelection: true,
+                      enableGutterUtility: true,
+                      onGutterUtilityClick: handleGutterUtilityClick
+                    }
+                  : {})
               }}
             />
           ) : null}

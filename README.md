@@ -56,6 +56,17 @@ the file browser, document tabs, and the `jupyterlab-git` panel. The working-tre
 side stays editable, so you can fix a line or discard a hunk without leaving the
 diff.
 
+### Ask an agent about the code you are looking at
+
+Select code in a text editor or a notebook cell and a small **Ask agent**
+button appears next to the selection (or press
+<kbd>Cmd/Ctrl</kbd>+<kbd>.</kbd>). In a git diff, click
+or drag over the line numbers and hit the `+` button that shows up in the
+gutter. Both open a small prompt box where you describe the change and pick an
+agent. The agent starts in a new terminal with your instruction plus the file
+path, line range, and selected snippet already filled in, so you can request
+fixes the moment you spot them while reading a diff.
+
 ### One search box for files, commands, and agents
 
 ![The omnibox](./images/omnibox.webp)
