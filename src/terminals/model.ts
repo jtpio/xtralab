@@ -246,6 +246,20 @@ export class SessionRegistry implements IDisposable {
   }
 
   /**
+   * The agent command server-side detection currently reports for the
+   * session, or `null` when it has not confirmed one (the session is idle,
+   * not yet covered by a poll, or detection is unavailable). Unlike
+   * {@link agentCommandFor} this never falls back to the optimistic launch
+   * tags: callers about to *write into* a session use it, and text must only
+   * ever be sent to a confirmed running agent — pasted into a shell prompt it
+   * would be executed.
+   */
+  detectedCommandFor(name: string): string | null {
+    const detected = this._detected.get(name);
+    return typeof detected === 'string' ? detected : null;
+  }
+
+  /**
    * The most recent meaningful line of output from the session's terminal, or
    * `null` when there is nothing to surface — no coding agent is running in the
    * session, its tab is closed (so there is no live buffer to read), or the

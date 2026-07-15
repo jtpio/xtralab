@@ -73,6 +73,16 @@ export interface IAskAgentContext {
 }
 
 /**
+ * Where a submitted prompt goes: a fresh terminal started with the chosen
+ * agent's command, or an existing terminal session whose running agent
+ * receives the prompt in its input box (queued by the agent itself when it
+ * is busy).
+ */
+export type AskAgentTarget =
+  | { kind: 'new'; agentId: string }
+  | { kind: 'session'; name: string };
+
+/**
  * A request to open the ask-agent popup: what code to prompt about and
  * where to place the popup on screen.
  */
@@ -90,7 +100,8 @@ export interface IAskAgentRequest {
 /**
  * The ask-agent popup: a small floating prompt box that sends the given
  * code selection, plus the user's typed instruction, to one of the
- * configured coding agents in a fresh terminal.
+ * configured coding agents — in a fresh terminal, or into an agent already
+ * running in an existing one.
  */
 export interface IAskAgent {
   /**

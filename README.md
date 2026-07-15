@@ -63,9 +63,12 @@ button appears next to the selection (or press
 <kbd>Cmd/Ctrl</kbd>+<kbd>.</kbd>). In a git diff, click
 or drag over the line numbers and hit the `+` button that shows up in the
 gutter. Both open a small prompt box where you describe the change and pick an
-agent. The agent starts in a new terminal with your instruction plus the file
-path, line range, and selected snippet already filled in, so you can request
-fixes the moment you spot them while reading a diff.
+agent. The prompt carries your instruction plus the file path, line range, and
+selected snippet, so you can request fixes the moment you spot them while
+reading a diff. When an agent is already running in a terminal, the prompt box
+offers it as a target next to "New terminal": pick it and the prompt lands in
+that agent's input box instead of starting another session, queued by the
+agent itself if it is still busy with the previous request.
 
 ### One search box for files, commands, and agents
 

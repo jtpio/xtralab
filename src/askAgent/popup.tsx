@@ -1,10 +1,10 @@
 import type { TranslationBundle } from '@jupyterlab/translation';
-import { ReactWidget } from '@jupyterlab/ui-components';
+import { addIcon, LabIcon, ReactWidget } from '@jupyterlab/ui-components';
 import * as React from 'react';
 
 import type { IAgent } from '../launcher/agents';
 
-import type { IAskAgentContext } from './tokens';
+import type { AskAgentTarget, IAskAgentContext } from './tokens';
 
 /** Gap between the popup and its anchor rectangle, in pixels. */
 const ANCHOR_GAP = 6;
@@ -38,13 +38,26 @@ function contextSummary(context: IAskAgentContext): string {
 }
 
 function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
-  const { context, anchor, agents, initialAgentId, trans, onSubmit, onCancel } =
-    props;
+  const {
+    context,
+    anchor,
+    agents,
+    targets,
+    initialAgentId,
+    initialTargetName,
+    trans,
+    onSubmit,
+    onCancel
+  } = props;
   const [instruction, setInstruction] = React.useState('');
   const [agentId, setAgentId] = React.useState<string>(() => {
     const known = agents.find(agent => agent.id === initialAgentId);
     return (known ?? agents[0])?.id ?? '';
   });
+  // The running session the prompt goes to, or `null` for a new terminal.
+  const [targetName, setTargetName] = React.useState<string | null>(
+    initialTargetName
+  );
   const [position, setPosition] = React.useState<{
     left: number;
     top: number;
@@ -121,19 +134,34 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
   }, [dismiss]);
 
   const selectedAgent = agents.find(agent => agent.id === agentId);
+  const selectedSession = targets.find(target => target.name === targetName);
   const canSubmit =
-    instruction.trim().length > 0 && selectedAgent !== undefined;
+    instruction.trim().length > 0 &&
+    (selectedSession !== undefined || selectedAgent !== undefined);
 
   const submit = React.useCallback(() => {
     const trimmed = instruction.trim();
-    const agent = agents.find(entry => entry.id === agentId);
-    if (trimmed.length === 0 || agent === undefined) {
+    if (trimmed.length === 0) {
       return;
     }
+    let target: AskAgentTarget | null = null;
+    const session = targets.find(entry => entry.name === targetName);
+    if (session !== undefined) {
+      target = { kind: 'session', name: session.name };
+    } else {
+      const agent = agents.find(entry => entry.id === agentId);
+      if (agent !== undefined) {
+        target = { kind: 'new', agentId: agent.id };
+      }
+    }
+    if (target === null) {
+      return;
+    }
+    const resolved = target;
     window.setTimeout(() => {
-      onSubmit(agent.id, trimmed);
+      onSubmit(resolved, trimmed);
     }, 0);
-  }, [instruction, agents, agentId, onSubmit]);
+  }, [instruction, agents, agentId, targets, targetName, onSubmit]);
 
   const onRootKeyDown = (event: React.KeyboardEvent): void => {
     if (event.key === 'Escape') {
@@ -176,7 +204,7 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
       <div className="jp-xtralab-AskAgent-context" title={context.path}>
         {summary}
       </div>
-      {agents.length === 0 ? (
+      {agents.length === 0 && targets.length === 0 ? (
         <div className="jp-xtralab-AskAgent-empty">
           {trans.__(
             'No agent accepts an initial prompt. Configure agents in the launcher settings.'
@@ -195,34 +223,97 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
             onChange={event => setInstruction(event.target.value)}
             onKeyDown={onTextareaKeyDown}
           />
-          <div className="jp-xtralab-AskAgent-footer">
+          {targets.length > 0 && (
             <div
-              className="jp-xtralab-AskAgent-agents"
+              className="jp-xtralab-AskAgent-targets"
               role="radiogroup"
-              aria-label={trans.__('Agent')}
+              aria-label={trans.__('Send to')}
             >
-              {agents.map(agent => (
+              {agents.length > 0 && (
                 <button
-                  key={agent.id}
                   type="button"
                   role="radio"
-                  aria-checked={agent.id === agentId}
-                  title={agent.label}
+                  aria-checked={targetName === null}
+                  title={trans.__('Start the agent in a new terminal')}
                   className={
-                    'jp-xtralab-AskAgent-agentButton' +
-                    (agent.id === agentId ? ' jp-mod-selected' : '')
+                    'jp-xtralab-AskAgent-targetButton' +
+                    (targetName === null ? ' jp-mod-selected' : '')
                   }
-                  // Keep focus in the textarea while picking an agent.
+                  // Keep focus in the textarea while picking a target.
                   onMouseDown={event => event.preventDefault()}
-                  onClick={() => setAgentId(agent.id)}
+                  onClick={() => setTargetName(null)}
                 >
-                  <agent.icon.react
+                  <addIcon.react
                     tag="span"
-                    className="jp-xtralab-AskAgent-agentIcon"
+                    className="jp-xtralab-AskAgent-targetIcon"
                   />
+                  <span className="jp-xtralab-AskAgent-targetLabel">
+                    {trans.__('New terminal')}
+                  </span>
+                </button>
+              )}
+              {targets.map(target => (
+                <button
+                  key={target.name}
+                  type="button"
+                  role="radio"
+                  aria-checked={target.name === targetName}
+                  title={
+                    target.activity
+                      ? `${target.label} · ${target.name} — ${target.activity}`
+                      : `${target.label} · ${target.name}`
+                  }
+                  className={
+                    'jp-xtralab-AskAgent-targetButton' +
+                    (target.name === targetName ? ' jp-mod-selected' : '')
+                  }
+                  onMouseDown={event => event.preventDefault()}
+                  onClick={() => setTargetName(target.name)}
+                >
+                  <target.icon.react
+                    tag="span"
+                    className="jp-xtralab-AskAgent-targetIcon"
+                  />
+                  <span className="jp-xtralab-AskAgent-targetLabel">
+                    {target.label}
+                  </span>
+                  <span className="jp-xtralab-AskAgent-targetName">
+                    {target.name}
+                  </span>
                 </button>
               ))}
             </div>
+          )}
+          <div className="jp-xtralab-AskAgent-footer">
+            {selectedSession === undefined && (
+              <div
+                className="jp-xtralab-AskAgent-agents"
+                role="radiogroup"
+                aria-label={trans.__('Agent')}
+              >
+                {agents.map(agent => (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={agent.id === agentId}
+                    title={agent.label}
+                    className={
+                      'jp-xtralab-AskAgent-agentButton' +
+                      (agent.id === agentId ? ' jp-mod-selected' : '')
+                    }
+                    // Keep focus in the textarea while picking an agent.
+                    onMouseDown={event => event.preventDefault()}
+                    onClick={() => setAgentId(agent.id)}
+                  >
+                    <agent.icon.react
+                      tag="span"
+                      className="jp-xtralab-AskAgent-agentIcon"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
             <button
               type="button"
               className="jp-xtralab-AskAgent-submit"
@@ -231,9 +322,11 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
               onMouseDown={event => event.preventDefault()}
               onClick={submit}
             >
-              {selectedAgent
-                ? trans.__('Ask %1', selectedAgent.label)
-                : trans.__('Ask agent')}
+              {selectedSession
+                ? trans.__('Send to %1', selectedSession.label)
+                : selectedAgent
+                  ? trans.__('Ask %1', selectedAgent.label)
+                  : trans.__('Ask agent')}
             </button>
           </div>
         </>
@@ -268,6 +361,22 @@ export class AskAgentPopup extends ReactWidget {
  * A namespace for `AskAgentPopup` statics.
  */
 export namespace AskAgentPopup {
+  /**
+   * A running agent terminal offered as a prompt target: the session data
+   * from `IAgentTerminals` plus the matching agent's icon, resolved by the
+   * plugin so the popup stays presentation-only.
+   */
+  export interface ISessionTarget {
+    /** The terminal session name. */
+    name: string;
+    /** The session's display label (usually the agent's name). */
+    label: string;
+    /** The agent's latest activity line, when one is available. */
+    activity: string | null;
+    /** The running agent's icon. */
+    icon: LabIcon;
+  }
+
   /** Construction options for {@link AskAgentPopup}. */
   export interface IOptions {
     /** The code selection the prompt is about. */
@@ -276,12 +385,19 @@ export namespace AskAgentPopup {
     anchor: DOMRect | null;
     /** Snapshot of the prompt-capable agents, taken when the popup opens. */
     agents: IAgent[];
+    /** Snapshot of the running agent terminals, taken when the popup opens. */
+    targets: ISessionTarget[];
     /** Preferred agent id (the last one used), when still available. */
     initialAgentId: string | null;
+    /**
+     * Session to preselect as the target, or `null` to preselect the new
+     * terminal. Must be `null` or the name of an entry in {@link targets}.
+     */
+    initialTargetName: string | null;
     /** Translation bundle for the popup's own labels. */
     trans: TranslationBundle;
-    /** Send the instruction to the chosen agent (the plugin closes the popup). */
-    onSubmit: (agentId: string, instruction: string) => void;
+    /** Send the instruction to the chosen target (the plugin closes the popup). */
+    onSubmit: (target: AskAgentTarget, instruction: string) => void;
     /** Dismiss the popup (the plugin disposes the widget). */
     onCancel: () => void;
   }

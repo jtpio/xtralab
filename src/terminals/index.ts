@@ -12,7 +12,9 @@ import { LabIcon, MenuSvg, terminalIcon } from '@jupyterlab/ui-components';
 import { IAgentSessions } from '../agentSessions';
 import { IEditorRegistry } from '../launcher/editorRegistry';
 import { agentCommandId, IAgentRegistry } from '../launcher/tokens';
+import { AgentTerminals } from './agentTerminals';
 import { SessionRegistry } from './model';
+import { IAgentTerminals } from './tokens';
 import { RunningTerminals } from './widget';
 
 const PLUGIN_ID = 'xtralab:terminals';
@@ -44,12 +46,18 @@ const PLUGIN_ID = 'xtralab:terminals';
  * consistent here as in the launcher and reuses the very same registered
  * commands and icons. When the launcher is disabled or no agents are
  * installed, the button falls back to opening a plain terminal directly.
+ *
+ * The plugin also provides {@link IAgentTerminals} — the sessions with a
+ * detection-confirmed running agent, plus a "paste a prompt into one"
+ * action — which the ask-agent popup uses to offer running agents as
+ * targets next to "new terminal".
  */
-const plugin: JupyterFrontEndPlugin<void> = {
+const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
   id: PLUGIN_ID,
   description:
     'A left-sidebar panel listing every running terminal session by its real (program-published) title, with activate/reopen, shutdown and new-terminal actions.',
   autoStart: true,
+  provides: IAgentTerminals,
   requires: [ITerminalTracker],
   optional: [
     ILayoutRestorer,
@@ -68,7 +76,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     editorRegistry: IEditorRegistry | null,
     agentSessions: IAgentSessions | null,
     settingRegistry: ISettingRegistry | null
-  ): void => {
+  ): IAgentTerminals => {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
     // Resolve a running agent/editor identifier to an icon: the matching
@@ -96,6 +104,35 @@ const plugin: JupyterFrontEndPlugin<void> = {
       return editor?.icon ?? terminalIcon;
     };
 
+    // The names the server should look for in each terminal's process tree:
+    // for every agent and editor, its configured `command` plus its canonical
+    // `id`. The id is the real CLI name (e.g. `claude`, `nvim`), so an agent
+    // whose command points at an alias — e.g. `ccm` running `claude` — is
+    // still recognised by the process it actually spawns. Read live so the
+    // list tracks settings changes; deduplicated since command and id usually
+    // coincide.
+    const detectCommands = (): string[] => {
+      const names = new Set<string>();
+      for (const agent of agentRegistry?.agents ?? []) {
+        names.add(agent.command);
+        names.add(agent.id);
+      }
+      for (const editor of editorRegistry?.editors ?? []) {
+        names.add(editor.command);
+        names.add(editor.id);
+      }
+      return Array.from(names);
+    };
+
+    // Whether a detected command/id belongs to a coding agent rather than an
+    // editor. Only agent sessions get a latest-activity line (editor
+    // terminals stay badge-only), and only they are offered as prompt
+    // targets through `IAgentTerminals`.
+    const isAgentCommand = (command: string): boolean =>
+      agentRegistry?.agents.some(
+        a => a.command === command || a.id === command
+      ) ?? false;
+
     const registry = new SessionRegistry({
       serviceManager: app.serviceManager,
       tracker,
@@ -104,32 +141,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
       // nothing while a notebook or other widget is current instead).
       shell: app.shell,
       agentSessions,
-      // The names the server should look for in each terminal's process tree:
-      // for every agent and editor, its configured `command` plus its canonical
-      // `id`. The id is the real CLI name (e.g. `claude`, `nvim`), so an agent
-      // whose command points at an alias — e.g. `ccm` running `claude` — is
-      // still recognised by the process it actually spawns. Read live so the
-      // list tracks settings changes; deduplicated since command and id usually
-      // coincide.
-      detectCommands: () => {
-        const names = new Set<string>();
-        for (const agent of agentRegistry?.agents ?? []) {
-          names.add(agent.command);
-          names.add(agent.id);
-        }
-        for (const editor of editorRegistry?.editors ?? []) {
-          names.add(editor.command);
-          names.add(editor.id);
-        }
-        return Array.from(names);
-      },
-      // Only coding agents (not editors) get a latest-activity line, so the
-      // registry asks this whether a detected command/id is an agent before
-      // reading its output buffer — editor terminals stay badge-only.
-      isAgentCommand: (command: string) =>
-        agentRegistry?.agents.some(
-          a => a.command === command || a.id === command
-        ) ?? false
+      detectCommands,
+      isAgentCommand
     });
 
     // Mirror the agent/editor detected in each open terminal onto its main-area
@@ -274,6 +287,16 @@ const plugin: JupyterFrontEndPlugin<void> = {
           );
         });
     }
+
+    return new AgentTerminals({
+      registry,
+      tracker,
+      commands: app.commands,
+      terminals: app.serviceManager.terminals,
+      detectCommands,
+      isAgentCommand,
+      trans
+    });
   }
 };
 
