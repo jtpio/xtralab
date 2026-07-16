@@ -1,0 +1,152 @@
+import type { TranslationBundle } from '@jupyterlab/translation';
+import { addIcon, LabIcon } from '@jupyterlab/ui-components';
+import * as React from 'react';
+
+import type { IAgent } from '../launcher/agents';
+
+/**
+ * A running agent terminal offered as a prompt target: the session data
+ * from `IAgentTerminals` plus the matching agent's icon, resolved by the
+ * plugin so these components stay presentation-only.
+ */
+export interface ISessionTarget {
+  /** The terminal session name. */
+  name: string;
+
+  /** The session's display label (usually the agent's name). */
+  label: string;
+
+  /** The agent's latest activity line, when one is available. */
+  activity: string | null;
+
+  /** The running agent's icon. */
+  icon: LabIcon;
+}
+
+/**
+ * The chip row picking where a prompt goes: "New terminal" plus one chip
+ * per running agent session. Rendered by the popup and the queue panel so
+ * the two surfaces stay visually and behaviorally identical; renders
+ * nothing while no agent session is running (a new terminal is then the
+ * only possibility and the row would be noise).
+ */
+export function TargetChips(props: {
+  /** Agents that could start in a new terminal; gates the "New terminal" chip. */
+  agents: IAgent[];
+  /** The running agent sessions. */
+  targets: ISessionTarget[];
+  /** The selected session name, or `null` for a new terminal. */
+  targetName: string | null;
+  trans: TranslationBundle;
+  onSelect: (targetName: string | null) => void;
+}): JSX.Element | null {
+  const { agents, targets, targetName, trans, onSelect } = props;
+  if (targets.length === 0) {
+    return null;
+  }
+  return (
+    <div
+      className="jp-xtralab-AskAgent-targets"
+      role="radiogroup"
+      aria-label={trans.__('Send to')}
+    >
+      {agents.length > 0 && (
+        <button
+          type="button"
+          role="radio"
+          aria-checked={targetName === null}
+          title={trans.__('Start the agent in a new terminal')}
+          className={
+            'jp-xtralab-AskAgent-targetButton' +
+            (targetName === null ? ' jp-mod-selected' : '')
+          }
+          // Keep focus where the user is typing while picking a target.
+          onMouseDown={event => event.preventDefault()}
+          onClick={() => onSelect(null)}
+        >
+          <addIcon.react
+            tag="span"
+            className="jp-xtralab-AskAgent-targetIcon"
+          />
+          <span className="jp-xtralab-AskAgent-targetLabel">
+            {trans.__('New terminal')}
+          </span>
+        </button>
+      )}
+      {targets.map(target => (
+        <button
+          key={target.name}
+          type="button"
+          role="radio"
+          aria-checked={target.name === targetName}
+          title={
+            target.activity
+              ? `${target.label} · ${target.name} — ${target.activity}`
+              : `${target.label} · ${target.name}`
+          }
+          className={
+            'jp-xtralab-AskAgent-targetButton' +
+            (target.name === targetName ? ' jp-mod-selected' : '')
+          }
+          onMouseDown={event => event.preventDefault()}
+          onClick={() => onSelect(target.name)}
+        >
+          <target.icon.react
+            tag="span"
+            className="jp-xtralab-AskAgent-targetIcon"
+          />
+          <span className="jp-xtralab-AskAgent-targetLabel">
+            {target.label}
+          </span>
+          <span className="jp-xtralab-AskAgent-targetName">{target.name}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The icon radiogroup picking which agent a new terminal starts with.
+ * Shared by the popup and the queue panel; renders nothing when no agent
+ * accepts an initial prompt.
+ */
+export function AgentChoices(props: {
+  agents: IAgent[];
+  agentId: string;
+  trans: TranslationBundle;
+  onSelect: (agentId: string) => void;
+}): JSX.Element | null {
+  const { agents, agentId, trans, onSelect } = props;
+  if (agents.length === 0) {
+    return null;
+  }
+  return (
+    <div
+      className="jp-xtralab-AskAgent-agents"
+      role="radiogroup"
+      aria-label={trans.__('Agent')}
+    >
+      {agents.map(agent => (
+        <button
+          key={agent.id}
+          type="button"
+          role="radio"
+          aria-checked={agent.id === agentId}
+          title={agent.label}
+          className={
+            'jp-xtralab-AskAgent-agentButton' +
+            (agent.id === agentId ? ' jp-mod-selected' : '')
+          }
+          // Keep focus where the user is typing while picking an agent.
+          onMouseDown={event => event.preventDefault()}
+          onClick={() => onSelect(agent.id)}
+        >
+          <agent.icon.react
+            tag="span"
+            className="jp-xtralab-AskAgent-agentIcon"
+          />
+        </button>
+      ))}
+    </div>
+  );
+}

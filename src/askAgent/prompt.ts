@@ -1,4 +1,17 @@
+import { PathExt } from '@jupyterlab/coreutils';
+
 import type { IAskAgentContext } from './tokens';
+
+/**
+ * The path a context points at, resolved against the server root. Contexts
+ * from git diffs carry repository-relative paths plus the repository root in
+ * `cwd`; contexts from plain editors are already server-relative.
+ */
+export function serverPath(context: IAskAgentContext): string {
+  return context.cwd !== undefined && context.cwd.length > 0
+    ? PathExt.join(context.cwd, context.path)
+    : context.path;
+}
 
 /**
  * Cap on the snippet embedded in the prompt, in characters. The path and
@@ -37,16 +50,11 @@ function clampSnippet(text: string): { snippet: string; truncated: boolean } {
 }
 
 /**
- * Compose the prompt handed to the agent CLI: a one-line locator, the
- * selected snippet in a code fence, then the user's instruction.
- *
- * The scaffold is written in English on purpose — it is consumed by the
- * agent, not shown in the UI, and the agent CLIs are English-first.
+ * Agent-facing description of where `context` points: path, notebook cell,
+ * line range and any extra locator, e.g.
+ * `` `src/app.ts`, lines 3-9, the old side (HEAD) of the current git diff ``.
  */
-export function buildPrompt(
-  context: IAskAgentContext,
-  instruction: string
-): string {
+function locatorFor(context: IAskAgentContext): string {
   const where: string[] = [`\`${context.path}\``];
   if (context.cell !== undefined) {
     // Both orderings so the agent can count cells or index the nbformat
@@ -67,8 +75,20 @@ export function buildPrompt(
   if (context.location !== undefined && context.location.length > 0) {
     where.push(context.location);
   }
+  return where.join(', ');
+}
 
-  const parts: string[] = [`In ${where.join(', ')}:`];
+/**
+ * The blocks describing one comment: `headline`, the selected snippet in a
+ * code fence (when there is one), then the user's instruction. Blocks are
+ * joined with blank lines by the callers.
+ */
+function commentParts(
+  context: IAskAgentContext,
+  instruction: string,
+  headline: string
+): string[] {
+  const parts: string[] = [headline];
   if (context.text.length > 0) {
     const { snippet, truncated } = clampSnippet(context.text);
     const fence = fenceFor(snippet);
@@ -78,5 +98,47 @@ export function buildPrompt(
     }
   }
   parts.push(instruction);
+  return parts;
+}
+
+/**
+ * Compose the prompt handed to the agent CLI: a one-line locator, the
+ * selected snippet in a code fence, then the user's instruction.
+ *
+ * The scaffold is written in English on purpose — it is consumed by the
+ * agent, not shown in the UI, and the agent CLIs are English-first.
+ */
+export function buildPrompt(
+  context: IAskAgentContext,
+  instruction: string
+): string {
+  return commentParts(context, instruction, `In ${locatorFor(context)}:`).join(
+    '\n\n'
+  );
+}
+
+/**
+ * Compose one prompt out of every queued comment, numbered and in queue
+ * order, so a whole review pass reaches the agent as a single task list. A
+ * queue of one degrades to the plain {@link buildPrompt} wording.
+ */
+export function buildBatchPrompt(
+  items: ReadonlyArray<{ context: IAskAgentContext; instruction: string }>
+): string {
+  if (items.length === 1) {
+    return buildPrompt(items[0].context, items[0].instruction);
+  }
+  const parts: string[] = [
+    `Please address the following ${items.length} comments.`
+  ];
+  items.forEach((item, index) => {
+    parts.push(
+      ...commentParts(
+        item.context,
+        item.instruction,
+        `Comment ${index + 1} — in ${locatorFor(item.context)}:`
+      )
+    );
+  });
   return parts.join('\n\n');
 }

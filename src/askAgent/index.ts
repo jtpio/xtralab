@@ -1,4 +1,5 @@
 import {
+  ILabShell,
   JupyterFrontEnd,
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
@@ -19,10 +20,25 @@ import {
 } from './editorSelection';
 import { askAgentIcon } from './icons';
 import { AskAgentPopup } from './popup';
-import { buildPrompt } from './prompt';
-import { ASK_AGENT_COMMAND, IAskAgent, IAskAgentRequest } from './tokens';
+import { buildBatchPrompt, buildPrompt, serverPath } from './prompt';
+import { IQueuedPrompt, loadQueuedPrompts, PromptQueue } from './queue';
+import { AskAgentQueuePanel } from './queuePanel';
+import type { ISessionTarget } from './targetPicker';
+import {
+  ASK_AGENT_COMMAND,
+  AskAgentTarget,
+  IAskAgent,
+  IAskAgentContext,
+  IAskAgentRequest
+} from './tokens';
 
 const PLUGIN_ID = 'xtralab:ask-agent';
+
+/** Command id that reveals the queued-prompts panel. */
+const QUEUE_PANEL_COMMAND = 'xtralab:ask-agent-queue';
+
+/** Widget id of the queued-prompts side panel. */
+const QUEUE_PANEL_ID = 'xtralab-ask-agent-queue';
 
 /** `localStorage` key remembering the last agent picked in the popup. */
 const LAST_AGENT_STORAGE_KEY = 'xtralab:ask-agent:agent';
@@ -109,6 +125,14 @@ function writeLastTarget(value: string): void {
  * a success toast offers to open the terminal. Either way the prompt embeds
  * the file path, cell index for notebooks, line range and selected snippet.
  *
+ * The popup's Queue button (or Accel+Enter) defers the send instead: the
+ * comment lands in a persistent queue, stamped with the popup's selected
+ * destination — every queued prompt is independent and may aim at a
+ * different agent or session. A right-sidebar panel reviews the queue
+ * (edit, retarget, remove) and flushes it in one go, combining prompts that
+ * share a destination into a single numbered message. The queue survives
+ * page reloads.
+ *
  * The same popup is provided on the `IAskAgent` token so the git diff
  * viewers can open it for a selected diff line range.
  */
@@ -118,13 +142,20 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
     'Prompt a coding agent about the selected code from editors, notebook cells and git diffs.',
   autoStart: true,
   provides: IAskAgent,
-  optional: [IAgentRegistry, ICommandPalette, ITranslator, IAgentTerminals],
+  optional: [
+    IAgentRegistry,
+    ICommandPalette,
+    ITranslator,
+    IAgentTerminals,
+    ILabShell
+  ],
   activate: (
     app: JupyterFrontEnd,
     agentRegistry: IAgentRegistry | null,
     palette: ICommandPalette | null,
     translator: ITranslator | null,
-    agentTerminals: IAgentTerminals | null
+    agentTerminals: IAgentTerminals | null,
+    labShell: ILabShell | null
   ): IAskAgent => {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
@@ -142,7 +173,7 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
      * from the settings). Unlike {@link promptAgents} this does not require
      * `promptArgs`: pasting into a running TUI needs no command-line recipe.
      */
-    const sessionTargets = (): AskAgentPopup.ISessionTarget[] =>
+    const sessionTargets = (): ISessionTarget[] =>
       (agentTerminals?.sessions() ?? []).map(session => ({
         name: session.name,
         label: session.label,
@@ -173,6 +204,304 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       }
     };
 
+    /** Open the named terminal's tab (the success toast's call to action). */
+    const openTerminal = (name: string): void => {
+      app.commands.execute('terminal:open', { name }).catch(reason => {
+        console.error('xtralab: failed to open the terminal', reason);
+      });
+    };
+
+    /**
+     * Paste `prompt` into the running agent in session `name`. Delivery is
+     * background — focus stays where it is — so `successMessage` is toasted
+     * with an "Open" action instead. Failures are toasted too; the promise
+     * still rejects so callers can chain their own cleanup to success only.
+     */
+    const deliverToSession = async (
+      name: string,
+      prompt: string,
+      successMessage: string
+    ): Promise<void> => {
+      if (agentTerminals === null) {
+        // Unreachable in practice: session targets are only offered when
+        // the terminals plugin is present.
+        return;
+      }
+      try {
+        await agentTerminals.sendPrompt(name, prompt);
+      } catch (error) {
+        console.error(
+          'xtralab: failed to send the prompt to the terminal',
+          error
+        );
+        const detail = error instanceof Error ? error.message : '';
+        Notification.error(
+          detail.length > 0
+            ? trans.__('Failed to send the prompt: %1', detail)
+            : trans.__('Failed to send the prompt — see the browser console.'),
+          { autoClose: 5000 }
+        );
+        throw error;
+      }
+      Notification.success(successMessage, {
+        autoClose: 3000,
+        actions: [
+          { label: trans.__('Open'), callback: () => openTerminal(name) }
+        ]
+      });
+    };
+
+    /**
+     * Start `agentId` in a fresh terminal with `prompt` on its command
+     * line. Failures are toasted; the promise still rejects so callers can
+     * chain their own cleanup to success only.
+     */
+    const startAgentTerminal = async (
+      agentId: string,
+      prompt: string,
+      cwd?: string
+    ): Promise<void> => {
+      const args: { prompt: string; cwd?: string } = { prompt };
+      if (cwd !== undefined) {
+        args.cwd = cwd;
+      }
+      try {
+        await app.commands.execute(agentCommandId(agentId), args);
+      } catch (error) {
+        console.error('xtralab: failed to start the agent', error);
+        Notification.error(
+          trans.__('Failed to start the agent — see the browser console.'),
+          { autoClose: 5000 }
+        );
+        throw error;
+      }
+    };
+
+    // The queue feature needs a side area to dock the review panel into, so
+    // everything below stays off (and the popup hides its Queue button)
+    // without the full Lab shell.
+    let queue: PromptQueue | null = null;
+    let queuePrompt:
+      | ((
+          request: IAskAgentRequest,
+          target: AskAgentTarget,
+          instruction: string
+        ) => void)
+      | null = null;
+
+    if (labShell !== null) {
+      const promptQueue = new PromptQueue(loadQueuedPrompts());
+      queue = promptQueue;
+      let panel: AskAgentQueuePanel | null = null;
+
+      /**
+       * The prompt (and working directory) for a batch sent to a new
+       * terminal. When every item agrees on a repository root the terminal
+       * starts there and the item paths stay relative to it; a mixed batch
+       * starts at the server root instead, with every locator rewritten to
+       * a server-relative path so none of them depends on the terminal's
+       * cwd.
+       */
+      const newTerminalBatch = (
+        items: readonly IQueuedPrompt[]
+      ): { prompt: string; cwd?: string } => {
+        const cwds = new Set(items.map(item => item.context.cwd ?? ''));
+        if (cwds.size === 1) {
+          const shared = [...cwds][0];
+          return {
+            prompt: buildBatchPrompt(items),
+            ...(shared.length > 0 ? { cwd: shared } : {})
+          };
+        }
+        const normalized = items.map(({ context, instruction }) => {
+          const flattened: IAskAgentContext = {
+            ...context,
+            path: serverPath(context)
+          };
+          delete flattened.cwd;
+          return { context: flattened, instruction };
+        });
+        return { prompt: buildBatchPrompt(normalized) };
+      };
+
+      /**
+       * Flush the queue: prompts are grouped by destination — every prompt
+       * is independent and may target a different agent or session — and
+       * each group goes out as one numbered message. A group's prompts
+       * leave the queue only when its delivery succeeds, so one dead
+       * session never loses the comments aimed elsewhere.
+       */
+      const sendQueue = (): void => {
+        const groups = new Map<
+          string,
+          { target: AskAgentTarget; items: IQueuedPrompt[] }
+        >();
+        for (const item of promptQueue.items) {
+          if (item.target === null) {
+            // The panel disables sending while a target is missing; skip
+            // defensively if a send races a target loss.
+            continue;
+          }
+          const key =
+            item.target.kind === 'session'
+              ? `session:${item.target.name}`
+              : `new:${item.target.agentId}`;
+          const group = groups.get(key) ?? { target: item.target, items: [] };
+          group.items.push(item);
+          groups.set(key, group);
+        }
+        for (const { target, items } of groups.values()) {
+          const ids = items.map(item => item.id);
+          if (target.kind === 'session') {
+            const label =
+              sessionTargets().find(entry => entry.name === target.name)
+                ?.label ?? target.name;
+            deliverToSession(
+              target.name,
+              buildBatchPrompt(items),
+              trans._n(
+                'Sent %1 prompt to %2',
+                'Sent %1 prompts to %2',
+                items.length,
+                label
+              )
+            )
+              .then(() => promptQueue.removeMany(ids))
+              .catch(() => {
+                // Reported by the helper; this group is kept for a retry.
+              });
+          } else {
+            const { prompt, cwd } = newTerminalBatch(items);
+            startAgentTerminal(target.agentId, prompt, cwd)
+              .then(() => promptQueue.removeMany(ids))
+              .catch(() => {
+                // Reported by the helper; this group is kept for a retry.
+              });
+          }
+        }
+      };
+
+      /** Empty the queue, with an undo toast (typed comments are work). */
+      const clearQueue = (): void => {
+        const removed = promptQueue.items;
+        if (removed.length === 0) {
+          return;
+        }
+        promptQueue.clear();
+        Notification.info(
+          trans._n(
+            'Removed %1 queued prompt',
+            'Removed %1 queued prompts',
+            removed.length
+          ),
+          {
+            autoClose: 5000,
+            actions: [
+              {
+                label: trans.__('Undo'),
+                // Prompts queued after the clear are newer; keep them,
+                // after the restored ones.
+                callback: () =>
+                  promptQueue.reset([...removed, ...promptQueue.items])
+              }
+            ]
+          }
+        );
+      };
+
+      const ensurePanel = (): AskAgentQueuePanel => {
+        if (panel === null || panel.isDisposed) {
+          const created = new AskAgentQueuePanel({
+            queue: promptQueue,
+            commands: app.commands,
+            agents: promptAgents,
+            targets: sessionTargets,
+            trans,
+            onSend: sendQueue,
+            onClear: clearQueue
+          });
+          created.id = QUEUE_PANEL_ID;
+          created.title.icon = askAgentIcon;
+          created.title.label = trans.__('Prompt Queue');
+          created.title.caption = trans.__('Queued ask-agent prompts');
+          // Closable so it gets a close button if the user drags it out of
+          // the side area; closing disposes it, and it is recreated on
+          // demand (same arrangement as the walkthrough panel).
+          created.title.closable = true;
+          // The panel re-renders on queue changes itself; the chips also
+          // mirror the live agent list and terminal sessions.
+          agentRegistry?.changed.connect(created.update, created);
+          agentTerminals?.changed.connect(created.update, created);
+          labShell.add(created, 'right', { rank: 900 });
+          created.disposed.connect(() => {
+            if (panel === created) {
+              panel = null;
+            }
+          });
+          panel = created;
+        }
+        return panel;
+      };
+
+      const revealPanel = (): void => {
+        labShell.activateById(ensurePanel().id);
+      };
+
+      queuePrompt = (request, target, instruction) => {
+        const wasEmpty = promptQueue.items.length === 0;
+        // Queueing is a target choice like sending: remember it for the
+        // next popup's preselection.
+        if (target.kind === 'session') {
+          writeLastTarget(SESSION_TARGET_PREFIX + target.name);
+        } else {
+          writeLastAgentId(target.agentId);
+          writeLastTarget(NEW_TARGET_VALUE);
+        }
+        promptQueue.add(request.context, instruction, target);
+        // Queueing is background like a session send: hand focus straight
+        // back to the widget the ask came from.
+        app.shell.currentWidget?.activate();
+        const queuePanel = ensurePanel();
+        if (queuePanel.isVisible) {
+          // The list visibly grows; no extra feedback needed.
+          return;
+        }
+        if (wasEmpty) {
+          // First prompt of a batch: reveal the panel once, so the user
+          // sees where queued prompts accumulate. Later additions respect
+          // a deliberately closed sidebar and toast instead.
+          labShell.activateById(queuePanel.id);
+          return;
+        }
+        Notification.info(
+          trans._n(
+            '%1 prompt queued',
+            '%1 prompts queued',
+            promptQueue.items.length
+          ),
+          {
+            autoClose: 3000,
+            actions: [{ label: trans.__('Review'), callback: revealPanel }]
+          }
+        );
+      };
+
+      app.commands.addCommand(QUEUE_PANEL_COMMAND, {
+        label: trans.__('Show Ask-Agent Prompt Queue'),
+        caption: trans.__(
+          'Review the queued ask-agent prompts and send them together'
+        ),
+        icon: askAgentIcon,
+        execute: revealPanel
+      });
+
+      // A queue restored from a previous page load should be discoverable
+      // without queueing anything new: recreate its sidebar tab (collapsed).
+      if (promptQueue.items.length > 0) {
+        ensurePanel();
+      }
+    }
+
     const open = (request: IAskAgentRequest): void => {
       hidePill();
       closePopup();
@@ -197,6 +526,7 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
           initialTargetName = name;
         }
       }
+      const enqueue = queuePrompt;
       const widget = new AskAgentPopup({
         context: request.context,
         anchor: request.anchor,
@@ -204,8 +534,16 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
         targets,
         initialAgentId: readLastAgentId(),
         initialTargetName,
+        queueCount: queue?.items.length,
         trans,
         onCancel: closePopup,
+        onQueue:
+          enqueue === null
+            ? undefined
+            : (target, instruction) => {
+                closePopup();
+                enqueue(request, target, instruction);
+              },
         onSubmit: (target, instruction) => {
           closePopup();
           const prompt = buildPrompt(request.context, instruction);
@@ -218,65 +556,22 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
             const label =
               targets.find(entry => entry.name === target.name)?.label ??
               target.name;
-            agentTerminals
-              ?.sendPrompt(target.name, prompt)
-              .then(() => {
-                // The send is deliberately background — focus stays in the
-                // editor — so a small toast confirms delivery and puts the
-                // agent's tab one click away.
-                Notification.success(trans.__('Prompt sent to %1', label), {
-                  autoClose: 3000,
-                  actions: [
-                    {
-                      label: trans.__('Open'),
-                      callback: () => {
-                        app.commands
-                          .execute('terminal:open', { name: target.name })
-                          .catch((reason: unknown) => {
-                            console.error(
-                              'xtralab: failed to open the terminal',
-                              reason
-                            );
-                          });
-                      }
-                    }
-                  ]
-                });
-              })
-              .catch((error: unknown) => {
-                console.error(
-                  'xtralab: failed to send the prompt to the terminal',
-                  error
-                );
-                const detail = error instanceof Error ? error.message : '';
-                Notification.error(
-                  detail.length > 0
-                    ? trans.__('Failed to send the prompt: %1', detail)
-                    : trans.__(
-                        'Failed to send the prompt — see the browser console.'
-                      ),
-                  { autoClose: 5000 }
-                );
-              });
+            deliverToSession(
+              target.name,
+              prompt,
+              trans.__('Prompt sent to %1', label)
+            ).catch(() => {
+              // Reported by the helper.
+            });
             return;
           }
           writeLastAgentId(target.agentId);
           writeLastTarget(NEW_TARGET_VALUE);
-          const args: { prompt: string; cwd?: string } = { prompt };
-          if (request.context.cwd !== undefined) {
-            args.cwd = request.context.cwd;
-          }
-          app.commands
-            .execute(agentCommandId(target.agentId), args)
-            .catch(error => {
-              console.error('xtralab: failed to start the agent', error);
-              Notification.error(
-                trans.__(
-                  'Failed to start the agent — see the browser console.'
-                ),
-                { autoClose: 5000 }
-              );
-            });
+          startAgentTerminal(target.agentId, prompt, request.context.cwd).catch(
+            () => {
+              // Reported by the helper.
+            }
+          );
         }
       });
       popup = widget;
@@ -486,6 +781,12 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
         command: ASK_AGENT_COMMAND,
         category: trans.__('Other')
       });
+      if (queue !== null) {
+        palette.addItem({
+          command: QUEUE_PANEL_COMMAND,
+          category: trans.__('Other')
+        });
+      }
     }
 
     return { open, close: closePopup };

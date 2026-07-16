@@ -1,0 +1,267 @@
+import { ISignal, Signal } from '@lumino/signaling';
+
+import type { AskAgentTarget, IAskAgentContext } from './tokens';
+
+/** `localStorage` key holding the queued prompts. */
+const QUEUE_STORAGE_KEY = 'xtralab:ask-agent:queue';
+
+/**
+ * One queued prompt: a code selection, the user's instruction about it, and
+ * where it should go. Every prompt is independent — a queue can mix targets
+ * (different agents, new terminals, different running sessions) freely.
+ */
+export interface IQueuedPrompt {
+  /** Handle for edits and removal, unique within the page session. */
+  id: string;
+
+  /** The code selection the instruction is about. */
+  context: IAskAgentContext;
+
+  /** The user's typed comment. */
+  instruction: string;
+
+  /**
+   * The destination picked for this prompt (captured from the popup when it
+   * was queued, editable in the panel). `null` when a persisted target no
+   * longer parses — the panel then asks for a new pick before sending.
+   */
+  target: AskAgentTarget | null;
+}
+
+let idCounter = 0;
+
+function nextId(): string {
+  return `queued-${Date.now().toString(36)}-${idCounter++}`;
+}
+
+/**
+ * The accumulated ask-agent prompts awaiting a batch send.
+ *
+ * Queueing decouples writing review comments from deciding where they go:
+ * the popup appends entries here instead of sending, the side panel lists
+ * and edits them, and one batch send flushes the lot to a single agent. The
+ * queue persists itself to `localStorage` (best-effort) so a page reload
+ * does not silently drop typed comments.
+ */
+export class PromptQueue {
+  constructor(items: IQueuedPrompt[] = []) {
+    this._items = items;
+  }
+
+  /** The queued prompts, oldest first. */
+  get items(): readonly IQueuedPrompt[] {
+    return this._items;
+  }
+
+  /** Emitted whenever the queue contents change. */
+  get changed(): ISignal<this, void> {
+    return this._changed;
+  }
+
+  /** Append a prompt to the queue. */
+  add(
+    context: IAskAgentContext,
+    instruction: string,
+    target: AskAgentTarget
+  ): void {
+    this._items = [
+      ...this._items,
+      { id: nextId(), context, instruction, target }
+    ];
+    this._commit();
+  }
+
+  /** Replace the instruction of the queued prompt `id`, if still present. */
+  updateInstruction(id: string, instruction: string): void {
+    let touched = false;
+    this._items = this._items.map(item => {
+      if (item.id !== id || item.instruction === instruction) {
+        return item;
+      }
+      touched = true;
+      return { ...item, instruction };
+    });
+    if (touched) {
+      this._commit();
+    }
+  }
+
+  /** Repoint the queued prompt `id` at `target`, if still present. */
+  updateTarget(id: string, target: AskAgentTarget): void {
+    let touched = false;
+    this._items = this._items.map(item => {
+      if (item.id !== id) {
+        return item;
+      }
+      touched = true;
+      return { ...item, target };
+    });
+    if (touched) {
+      this._commit();
+    }
+  }
+
+  /** Remove the queued prompt `id`, if still present. */
+  remove(id: string): void {
+    this.removeMany([id]);
+  }
+
+  /**
+   * Remove several queued prompts at once (one signal emission) — used when
+   * a batch send succeeds for one target while other targets' prompts stay.
+   */
+  removeMany(ids: readonly string[]): void {
+    const drop = new Set(ids);
+    const remaining = this._items.filter(item => !drop.has(item.id));
+    if (remaining.length !== this._items.length) {
+      this._items = remaining;
+      this._commit();
+    }
+  }
+
+  /** Drop every queued prompt. */
+  clear(): void {
+    if (this._items.length > 0) {
+      this._items = [];
+      this._commit();
+    }
+  }
+
+  /** Replace the whole queue (used to undo a clear). */
+  reset(items: readonly IQueuedPrompt[]): void {
+    this._items = [...items];
+    this._commit();
+  }
+
+  private _commit(): void {
+    saveQueuedPrompts(this._items);
+    this._changed.emit();
+  }
+
+  private _items: IQueuedPrompt[];
+  private _changed = new Signal<this, void>(this);
+}
+
+/**
+ * Validate one persisted context. Only fields that still match the
+ * `IAskAgentContext` contract are kept, so schema drift (or manual
+ * `localStorage` edits) degrades an entry instead of poisoning the queue.
+ */
+function sanitizeContext(value: unknown): IAskAgentContext | null {
+  if (value === null || typeof value !== 'object') {
+    return null;
+  }
+  const raw = value as Record<string, unknown>;
+  if (typeof raw.path !== 'string' || raw.path.length === 0) {
+    return null;
+  }
+  const context: IAskAgentContext = {
+    path: raw.path,
+    text: typeof raw.text === 'string' ? raw.text : ''
+  };
+  if (typeof raw.cwd === 'string') {
+    context.cwd = raw.cwd;
+  }
+  const cell = raw.cell as { index?: unknown; type?: unknown } | null;
+  if (
+    cell !== null &&
+    typeof cell === 'object' &&
+    typeof cell.index === 'number' &&
+    typeof cell.type === 'string'
+  ) {
+    context.cell = { index: cell.index, type: cell.type };
+  }
+  if (typeof raw.startLine === 'number') {
+    context.startLine = raw.startLine;
+  }
+  if (typeof raw.endLine === 'number') {
+    context.endLine = raw.endLine;
+  }
+  if (typeof raw.location === 'string') {
+    context.location = raw.location;
+  }
+  if (typeof raw.note === 'string') {
+    context.note = raw.note;
+  }
+  return context;
+}
+
+/**
+ * Validate one persisted target; anything that does not parse becomes
+ * `null`, which the panel surfaces as "pick where to send this".
+ */
+function sanitizeTarget(value: unknown): AskAgentTarget | null {
+  if (value === null || typeof value !== 'object') {
+    return null;
+  }
+  const raw = value as { kind?: unknown; agentId?: unknown; name?: unknown };
+  if (raw.kind === 'new' && typeof raw.agentId === 'string') {
+    return { kind: 'new', agentId: raw.agentId };
+  }
+  if (raw.kind === 'session' && typeof raw.name === 'string') {
+    return { kind: 'session', name: raw.name };
+  }
+  return null;
+}
+
+/**
+ * Read the queued prompts persisted by a previous page load. Entries that
+ * no longer parse are dropped silently — the queue is a convenience buffer,
+ * not a document.
+ */
+export function loadQueuedPrompts(): IQueuedPrompt[] {
+  try {
+    const raw = window.localStorage.getItem(QUEUE_STORAGE_KEY);
+    if (raw === null) {
+      return [];
+    }
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    const items: IQueuedPrompt[] = [];
+    for (const entry of parsed) {
+      const record = entry as {
+        context?: unknown;
+        instruction?: unknown;
+        target?: unknown;
+      } | null;
+      const context = sanitizeContext(record?.context);
+      if (context !== null && typeof record?.instruction === 'string') {
+        items.push({
+          id: nextId(),
+          context,
+          instruction: record.instruction,
+          target: sanitizeTarget(record?.target)
+        });
+      }
+    }
+    return items;
+  } catch {
+    // localStorage may be unavailable, or hold something that is not JSON;
+    // either way the queue just starts empty.
+    return [];
+  }
+}
+
+function saveQueuedPrompts(items: readonly IQueuedPrompt[]): void {
+  try {
+    if (items.length === 0) {
+      window.localStorage.removeItem(QUEUE_STORAGE_KEY);
+    } else {
+      window.localStorage.setItem(
+        QUEUE_STORAGE_KEY,
+        JSON.stringify(
+          // Ids are session-scoped handles; fresh ones are assigned on load.
+          items.map(({ context, instruction, target }) => ({
+            context,
+            instruction,
+            target
+          }))
+        )
+      );
+    }
+  } catch {
+    // Best-effort persistence, like the popup's last-used-agent keys.
+  }
+}
