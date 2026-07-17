@@ -2,9 +2,7 @@
 requires = [
     "hatchling>=1.5.0",
     "hatch-jupyter-builder>=0.5",
-    # <1.1: jupyter-builder 1.1.0 resolves the node executable through
-    # symlinks, which breaks Volta-style shims that must be called by name.
-    "jupyter-builder>=1.0.2,<1.1",
+    "jupyter-builder>=1.0.2,<2.0.0a0",
     "hatch-nodejs-version>=0.3.2",
 ]
 build-backend = "hatchling.build"
@@ -126,7 +124,7 @@ version_cmd = "hatch version"
 [tool.jupyter-releaser.hooks]
 after-bump-version = ["python scripts/sync-desktop-version.py"]
 before-build-npm = [
-    "python -m pip install 'jupyter-builder>=1.0.2,<1.1'",
+    "python -m pip install 'jupyter-builder>=1.0.2,<2.0.0a0'",
     "npm install -g pnpm@10.28.0",
     "pnpm install",
     "pnpm build:prod"
