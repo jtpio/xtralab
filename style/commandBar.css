@@ -1,35 +1,19 @@
-/* Centered command bar in the top area (xtralab:command-bar). */
+/* Command bar pill in the top bar toolbar (xtralab:command-bar). */
 
 /*
- * The bar is an overlay centered over the whole top panel rather than a flex
- * item, so its position does not shift with the (variable) width of the menu
- * bar on its left or the sidebar toggle button on its right. `#jp-top-panel`
- * is a `.lm-Widget`, which Lumino renders `position: relative`, so this
- * absolute box is centered against the full width of the top bar.
+ * The widget is a settings-driven item of JupyterLab's top bar toolbar
+ * (`#jp-top-bar`, factory "TopBar"), declared in schema/command-bar.json with
+ * a rank past the toolbar's built-in spacer, so it sits at the trailing end of
+ * the toolbar next to the right-sidebar toggle button.
  *
- * `pointer-events: none` here (with `auto` restored on the pill below) keeps
- * only the pill clickable: the transparent strips above and below it let
- * clicks fall through to whatever sits beneath the overlay.
- *
- * The `z-index` must clear JupyterLab core's settings-driven "Topbar toolbar"
- * (`#jp-top-bar`, added to the top area at rank 900), which is a `.jp-Toolbar`
- * at `z-index: 8` that grows to fill the center and paints an opaque
- * `--jp-toolbar-background`. Sitting one above it lets the centered pill show
- * through; that toolbar is empty by default, so the overlay covers blank
- * space rather than hiding any toolbar items.
+ * The widget's root (`.jp-xtralab-CommandBar`) is a plain wrapper that takes
+ * the core `.jp-Toolbar > .jp-Toolbar-item` sizing — full toolbar height,
+ * centered flex — so it needs no rules of its own; the pill button inside
+ * keeps its own compact height. It is styled with the theme's input-field
+ * fill so it reads as a search box and tracks each theme's input styling
+ * across light and dark (a flat layout color is near-black in some dark
+ * themes).
  */
-.jp-xtralab-CommandBar {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  z-index: 9;
-  display: flex;
-  align-items: center;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
 .jp-xtralab-CommandBar-button {
   display: flex;
   flex: 0 0 auto;
@@ -45,15 +29,10 @@
   color: var(--jp-ui-font-color2);
   text-align: left;
   cursor: pointer;
-
-  /* The theme's input-field fill, so the pill reads as a search box and tracks
-     each theme's input styling across light and dark (a flat layout color is
-     near-black in some dark themes). */
   background: var(--jp-input-background);
   border: var(--jp-border-width) solid var(--jp-border-color1);
   border-radius: 10px;
   appearance: none;
-  pointer-events: auto;
 }
 
 .jp-xtralab-CommandBar-button:hover {

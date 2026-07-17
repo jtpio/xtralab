@@ -1,0 +1,10 @@
+{
+  "title": "xtralab Command Bar",
+  "description": "The search-bar-styled pill in the top bar that opens the omnibox.",
+  "jupyter.lab.toolbars": {
+    "TopBar": [{ "name": "omnibox", "rank": 100 }]
+  },
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
