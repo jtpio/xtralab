@@ -3,11 +3,14 @@ import {
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
 import { ICommandPalette } from '@jupyterlab/apputils';
+import { ISettingRegistry } from '@jupyterlab/settingregistry';
+import { IStateDB } from '@jupyterlab/statedb';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { Widget } from '@lumino/widgets';
 
 import { IAgentRegistry } from '../launcher/tokens';
 
+import { OmniboxRecents } from './recents';
 import { IOmnibox, OMNIBOX_OPEN_COMMAND } from './tokens';
 import { OmniboxWidget } from './widget';
 
@@ -20,6 +23,10 @@ const PLUGIN_ID = 'xtralab:omnibox';
  * it in a fresh terminal through the launcher's `xtralab:start-agent:<id>`
  * commands). It is opened by the top-bar command bar.
  *
+ * Commands run and files opened through the overlay are remembered (persisted
+ * in the state database) and offered again at the top while the query is
+ * empty; the `maxNumberRecents` setting caps how many of each are kept.
+ *
  * The agent rows come from the launcher's `IAgentRegistry`; when the launcher
  * is disabled the omnibox still searches files and commands.
  */
@@ -29,16 +36,55 @@ const plugin: JupyterFrontEndPlugin<IOmnibox> = {
     'A launcher overlay that searches files and commands and prompts agents.',
   autoStart: true,
   provides: IOmnibox,
-  optional: [IAgentRegistry, ICommandPalette, ITranslator],
+  optional: [
+    IAgentRegistry,
+    ICommandPalette,
+    ISettingRegistry,
+    IStateDB,
+    ITranslator
+  ],
   activate: (
     app: JupyterFrontEnd,
     agentRegistry: IAgentRegistry | null,
     palette: ICommandPalette | null,
+    settingRegistry: ISettingRegistry | null,
+    state: IStateDB | null,
     translator: ITranslator | null
   ): IOmnibox => {
     const { commands, docRegistry } = app;
     const trans = (translator ?? nullTranslator).load('jupyterlab');
     const placeholder = trans.__('Search files and commands, or ask an agent…');
+
+    const recents = new OmniboxRecents({ state });
+
+    // Restore the persisted recents only after the configured cap is known:
+    // `restore` trims to `maxItems`, so restoring at the constructor default
+    // would permanently drop entries beyond it whenever the user configured a
+    // larger cap and the state fetch won the race against the settings load.
+    if (settingRegistry) {
+      void settingRegistry
+        .load(PLUGIN_ID)
+        .then(settings => {
+          const apply = (): void => {
+            const value = settings.get('maxNumberRecents').composite;
+            if (typeof value === 'number') {
+              recents.maxItems = value;
+            }
+          };
+          apply();
+          settings.changed.connect(apply);
+          void recents.restore();
+        })
+        .catch(reason => {
+          console.error(
+            `xtralab omnibox: failed to load settings for ${PLUGIN_ID}`,
+            reason
+          );
+          void recents.restore();
+        });
+    } else {
+      void recents.restore();
+    }
 
     let current: OmniboxWidget | null = null;
 
@@ -58,6 +104,7 @@ const plugin: JupyterFrontEndPlugin<IOmnibox> = {
         agents: agentRegistry ? agentRegistry.agents : [],
         placeholder,
         initialQuery: query ?? '',
+        recents,
         trans,
         onClose: close
       });

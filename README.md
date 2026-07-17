@@ -63,7 +63,10 @@ diff.
 A single pill in the top bar opens an omnibox that fuzzy-matches across your
 files, every JupyterLab command, and an **Ask an agent** row that sends whatever
 you typed to the agent of your choice. Prefix the query with `>` for commands
-only or `/` for files only.
+only or `/` for files only. The commands you run and the files you open through
+it are remembered and offered again at the top the next time you open it, so a
+repeat action is a single Enter away. The number of remembered items is
+configurable in the omnibox settings.
 
 ### Terminals that show what's running
 

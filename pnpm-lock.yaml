@@ -59,6 +59,9 @@ importers:
       '@jupyterlab/settingregistry':
         specifier: ^4.6.0
         version: 4.6.0(react@18.3.1)
+      '@jupyterlab/statedb':
+        specifier: ^4.6.0
+        version: 4.6.0
       '@jupyterlab/terminal':
         specifier: ^4.6.0
         version: 4.6.0(react@18.3.1)
@@ -587,9 +590,6 @@ packages:
     resolution: {integrity: sha512-MNdDINAi48kRpkuoWhttR2vtgAEF+iK3SpkDciE7rW6wtTIB+RhcF58B1uCChZU1yL5vb0teuv0yS6rEwR4eKA==}
     peerDependencies:
       react: '>=16'
-
-  '@jupyterlab/statedb@4.5.7':
-    resolution: {integrity: sha512-ZTrvzC0Y8uTghzfZO1K3lvFGSvUw/evZeQqoR3qbJs/zSs6P+6PQNnrlDqnzFN9IoB85rq9L0fIS/oA7vsVDUw==}
 
   '@jupyterlab/statedb@4.6.0':
     resolution: {integrity: sha512-FY58JhRA6X19MEvD9SSoDbD6BQch3IiLVpyO9/xjLgncNn2zEyHbjfcvxKcGiqwrjo9uhjMoq1xfG4eMO62BvQ==}
@@ -4541,7 +4541,7 @@ snapshots:
       '@jupyterlab/docmanager': 4.6.0
       '@jupyterlab/docregistry': 4.6.0
       '@jupyterlab/services': 7.6.0(react@18.3.1)
-      '@jupyterlab/statedb': 4.5.7
+      '@jupyterlab/statedb': 4.6.0
       '@jupyterlab/statusbar': 4.5.7
       '@jupyterlab/translation': 4.6.0(react@18.3.1)
       '@jupyterlab/ui-components': 4.6.0(react@18.3.1)
@@ -4831,14 +4831,6 @@ snapshots:
       ajv: 8.20.0
       json5: 2.2.3
       react: 18.3.1
-
-  '@jupyterlab/statedb@4.5.7':
-    dependencies:
-      '@lumino/commands': 2.3.3
-      '@lumino/coreutils': 2.2.2
-      '@lumino/disposable': 2.1.5
-      '@lumino/properties': 2.0.4
-      '@lumino/signaling': 2.1.5
 
   '@jupyterlab/statedb@4.6.0':
     dependencies:

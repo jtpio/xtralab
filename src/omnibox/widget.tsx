@@ -8,6 +8,7 @@ import type { IAgent } from '../launcher/agents';
 
 import { computeSections, IOmniboxItem } from './model';
 import { loadWorkspaceFiles } from './files';
+import type { OmniboxRecents } from './recents';
 
 /** DOM id of the results listbox, referenced by the input's `aria-controls`. */
 const LIST_ID = 'jp-xtralab-Omnibox-list';
@@ -67,6 +68,7 @@ function OmniboxComponent(props: OmniboxWidget.IOptions): JSX.Element {
     agents,
     placeholder,
     initialQuery,
+    recents,
     trans,
     onClose
   } = props;
@@ -94,11 +96,24 @@ function OmniboxComponent(props: OmniboxWidget.IOptions): JSX.Element {
 
   const sections = React.useMemo(
     () =>
-      computeSections({ query, commands, docRegistry, agents, files, trans }),
-    [query, commands, docRegistry, agents, files, trans]
+      computeSections({
+        query,
+        commands,
+        docRegistry,
+        agents,
+        files,
+        recents,
+        trans
+      }),
+    [query, commands, docRegistry, agents, files, recents, trans]
   );
   const flat = React.useMemo(
-    () => [...sections.commands, ...sections.files, ...sections.agents],
+    () => [
+      ...sections.recent,
+      ...sections.commands,
+      ...sections.files,
+      ...sections.agents
+    ],
     [sections]
   );
   const hasResults = flat.length > 0;
@@ -212,7 +227,8 @@ function OmniboxComponent(props: OmniboxWidget.IOptions): JSX.Element {
     );
   };
 
-  const filesStart = sections.commands.length;
+  const commandsStart = sections.recent.length;
+  const filesStart = commandsStart + sections.commands.length;
   const agentsStart = filesStart + sections.files.length;
 
   return (
@@ -255,7 +271,12 @@ function OmniboxComponent(props: OmniboxWidget.IOptions): JSX.Element {
         >
           {hasResults ? (
             <>
-              {renderSection(trans.__('Commands'), sections.commands, 0)}
+              {renderSection(trans.__('Recently used'), sections.recent, 0)}
+              {renderSection(
+                trans.__('Commands'),
+                sections.commands,
+                commandsStart
+              )}
               {renderSection(trans.__('Files'), sections.files, filesStart)}
               {renderSection(
                 trans.__('Ask an agent'),
@@ -314,6 +335,8 @@ export namespace OmniboxWidget {
     placeholder: string;
     /** Seed text for the input. */
     initialQuery: string;
+    /** Recently-used tracker; `null` disables the recent rows and recording. */
+    recents: OmniboxRecents | null;
     /** Translation bundle for the overlay's own labels. */
     trans: TranslationBundle;
     /** Dismiss the overlay (the plugin disposes the widget). */

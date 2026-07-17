@@ -7,6 +7,8 @@ import type { CommandRegistry } from '@lumino/commands';
 import type { IAgent } from '../launcher/agents';
 import { agentCommandId } from '../launcher/tokens';
 
+import type { OmniboxRecents, RecentKind } from './recents';
+
 /** The source a result row came from, used to group rows under a header. */
 export type OmniboxItemKind = 'command' | 'file' | 'agent';
 
@@ -29,6 +31,8 @@ export interface IOmniboxItem {
 
 /** Results grouped by source; each group is already capped and sorted. */
 export interface IOmniboxSections {
+  /** Recently used commands and files, shown while the term is empty. */
+  recent: IOmniboxItem[];
   commands: IOmniboxItem[];
   files: IOmniboxItem[];
   agents: IOmniboxItem[];
@@ -40,6 +44,8 @@ export interface IComputeOptions {
   docRegistry: DocumentRegistry;
   agents: IAgent[];
   files: string[];
+  /** Recently-used tracker; `null` disables the recent rows and recording. */
+  recents: OmniboxRecents | null;
   trans: TranslationBundle;
 }
 
@@ -60,11 +66,12 @@ type Mode = 'all' | 'commands' | 'files';
  * Build the grouped result set for a query. A leading `>` searches only
  * commands and a leading `/` only files; otherwise commands and files are
  * fuzzy-matched and every prompt-capable agent is offered an "Ask" row
- * carrying the query as its prompt. An empty term yields no rows (the widget
- * shows a hint instead).
+ * carrying the query as its prompt. An empty term yields the recently used
+ * rows for the active mode instead (and the widget shows a hint when there
+ * are none).
  */
 export function computeSections(options: IComputeOptions): IOmniboxSections {
-  const { query, commands, docRegistry, agents, files, trans } = options;
+  const { query, commands, agents, trans } = options;
   const trimmed = query.trim();
 
   let mode: Mode = 'all';
@@ -78,22 +85,139 @@ export function computeSections(options: IComputeOptions): IOmniboxSections {
   }
 
   if (!term) {
-    return { commands: [], files: [], agents: [] };
+    return {
+      recent: buildRecentItems(options, mode),
+      commands: [],
+      files: [],
+      agents: []
+    };
   }
 
   return {
-    commands: mode === 'files' ? [] : matchCommands(commands, term),
-    files:
-      mode === 'commands' ? [] : matchFiles(commands, docRegistry, files, term),
+    recent: [],
+    commands: mode === 'files' ? [] : matchCommands(options, term),
+    files: mode === 'commands' ? [] : matchFiles(options, term),
     // Agents only in the unprefixed view; the prompt is the full typed query.
     agents: mode === 'all' ? buildAgentItems(commands, agents, term, trans) : []
   };
 }
 
-function matchCommands(
+/**
+ * Run a command and record the use on success, so failed commands never enter
+ * the recents list.
+ */
+function executeCommand(
   commands: CommandRegistry,
-  term: string
+  recents: OmniboxRecents | null,
+  id: string
+): void {
+  void commands
+    .execute(id)
+    .then(() => {
+      recents?.touch('command', id);
+    })
+    .catch(reason => {
+      console.error(`xtralab omnibox: command "${id}" failed`, reason);
+    });
+}
+
+/** Open a file and record the use on success. */
+function openFile(
+  commands: CommandRegistry,
+  recents: OmniboxRecents | null,
+  path: string
+): void {
+  void commands
+    .execute('docmanager:open', { path })
+    .then(() => {
+      recents?.touch('file', path);
+    })
+    .catch(reason => {
+      console.error(`xtralab omnibox: failed to open "${path}"`, reason);
+    });
+}
+
+/**
+ * Read a command's label, visibility and caption, or `null` when the command
+ * is missing, hidden, label-less, or its accessors throw (a command's
+ * accessors can assume a context — e.g. an active notebook — the omnibox
+ * doesn't provide).
+ */
+function commandDisplay(
+  commands: CommandRegistry,
+  id: string
+): { label: string; caption: string } | null {
+  if (!commands.hasCommand(id)) {
+    return null;
+  }
+  try {
+    const label = commands.label(id);
+    if (!label || !commands.isVisible(id)) {
+      return null;
+    }
+    return { label, caption: commands.caption(id) };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The recently used rows for the empty term: both kinds interleaved by
+ * recency in the unprefixed view, or only the mode's kind under a bare `>` or
+ * `/`. Commands that no longer resolve are dropped, as are files missing from
+ * the loaded workspace listing (while the listing is still loading — or
+ * unavailable — file entries are shown as recorded).
+ */
+function buildRecentItems(
+  options: IComputeOptions,
+  mode: Mode
 ): IOmniboxItem[] {
+  const { commands, docRegistry, files, recents } = options;
+  if (!recents) {
+    return [];
+  }
+  const kind: RecentKind | undefined =
+    mode === 'commands' ? 'command' : mode === 'files' ? 'file' : undefined;
+  const knownFiles = files.length > 0 ? new Set(files) : null;
+
+  const items: IOmniboxItem[] = [];
+  for (const entry of recents.entries(kind)) {
+    if (entry.kind === 'command') {
+      const display = commandDisplay(commands, entry.id);
+      if (!display) {
+        continue;
+      }
+      items.push({
+        kind: 'command',
+        key: `recent:command:${entry.id}`,
+        label: display.label,
+        matchIndices: [],
+        caption: display.caption || undefined,
+        execute: () => {
+          executeCommand(commands, recents, entry.id);
+        }
+      });
+    } else {
+      if (knownFiles && !knownFiles.has(entry.id)) {
+        continue;
+      }
+      items.push({
+        kind: 'file',
+        key: `recent:file:${entry.id}`,
+        label: entry.id,
+        matchIndices: [],
+        icon: fileIconForPath(docRegistry, entry.id),
+        execute: () => {
+          openFile(commands, recents, entry.id);
+        }
+      });
+    }
+  }
+  return items;
+}
+
+function matchCommands(options: IComputeOptions, term: string): IOmniboxItem[] {
+  const { commands, recents } = options;
   const query = term.toLowerCase();
   const scored: Array<{ score: number; item: IOmniboxItem }> = [];
   for (const id of commands.listCommands()) {
@@ -125,9 +249,7 @@ function matchCommands(
         matchIndices: match.indices,
         caption: caption || undefined,
         execute: () => {
-          void commands.execute(id).catch(reason => {
-            console.error(`xtralab omnibox: command "${id}" failed`, reason);
-          });
+          executeCommand(commands, recents, id);
         }
       }
     });
@@ -136,12 +258,8 @@ function matchCommands(
   return scored.slice(0, COMMAND_LIMIT).map(entry => entry.item);
 }
 
-function matchFiles(
-  commands: CommandRegistry,
-  docRegistry: DocumentRegistry,
-  files: string[],
-  term: string
-): IOmniboxItem[] {
+function matchFiles(options: IComputeOptions, term: string): IOmniboxItem[] {
+  const { commands, docRegistry, files, recents } = options;
   const query = term.toLowerCase();
   const scored: Array<{ score: number; path: string; indices: number[] }> = [];
   for (const path of files) {
@@ -158,9 +276,7 @@ function matchFiles(
     matchIndices: indices,
     icon: fileIconForPath(docRegistry, path),
     execute: () => {
-      void commands.execute('docmanager:open', { path }).catch(reason => {
-        console.error(`xtralab omnibox: failed to open "${path}"`, reason);
-      });
+      openFile(commands, recents, path);
     }
   }));
 }
