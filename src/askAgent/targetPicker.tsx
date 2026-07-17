@@ -24,11 +24,44 @@ export interface ISessionTarget {
 }
 
 /**
+ * Keyboard support shared by the two radiogroups below, following the ARIA
+ * radio-group pattern: the group is one tab stop (only the checked radio is
+ * tabbable) and the arrow keys move the selection to the neighbouring
+ * radio, wrapping around. Selection follows focus, so the handler clicks
+ * the neighbour and the re-render moves the roving tabindex along.
+ */
+function onRadioGroupKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
+  let delta: number;
+  switch (event.key) {
+    case 'ArrowRight':
+    case 'ArrowDown':
+      delta = 1;
+      break;
+    case 'ArrowLeft':
+    case 'ArrowUp':
+      delta = -1;
+      break;
+    default:
+      return;
+  }
+  const radios = Array.from(
+    event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]')
+  );
+  const index = radios.findIndex(radio => radio === event.target);
+  if (index === -1) {
+    return;
+  }
+  event.preventDefault();
+  const next = radios[(index + delta + radios.length) % radios.length];
+  next.focus();
+  next.click();
+}
+
+/**
  * The chip row picking where a prompt goes: "New terminal" plus one chip
- * per running agent session. Rendered by the popup and the queue panel so
- * the two surfaces stay visually and behaviorally identical; renders
- * nothing while no agent session is running (a new terminal is then the
- * only possibility and the row would be noise).
+ * per running agent session. Renders nothing while no agent session is
+ * running (a new terminal is then the only possibility and the row would
+ * be noise).
  */
 export function TargetChips(props: {
   /** Agents that could start in a new terminal; gates the "New terminal" chip. */
@@ -49,12 +82,14 @@ export function TargetChips(props: {
       className="jp-xtralab-AskAgent-targets"
       role="radiogroup"
       aria-label={trans.__('Send to')}
+      onKeyDown={onRadioGroupKeyDown}
     >
       {agents.length > 0 && (
         <button
           type="button"
           role="radio"
           aria-checked={targetName === null}
+          tabIndex={targetName === null ? 0 : -1}
           title={trans.__('Start the agent in a new terminal')}
           className={
             'jp-xtralab-AskAgent-targetButton' +
@@ -79,10 +114,16 @@ export function TargetChips(props: {
           type="button"
           role="radio"
           aria-checked={target.name === targetName}
+          tabIndex={target.name === targetName ? 0 : -1}
           title={
             target.activity
-              ? `${target.label} · ${target.name} — ${target.activity}`
-              : `${target.label} · ${target.name}`
+              ? trans.__(
+                  '%1 · %2 — %3',
+                  target.label,
+                  target.name,
+                  target.activity
+                )
+              : trans.__('%1 · %2', target.label, target.name)
           }
           className={
             'jp-xtralab-AskAgent-targetButton' +
@@ -107,8 +148,7 @@ export function TargetChips(props: {
 
 /**
  * The icon radiogroup picking which agent a new terminal starts with.
- * Shared by the popup and the queue panel; renders nothing when no agent
- * accepts an initial prompt.
+ * Renders nothing when no agent accepts an initial prompt.
  */
 export function AgentChoices(props: {
   agents: IAgent[];
@@ -125,6 +165,7 @@ export function AgentChoices(props: {
       className="jp-xtralab-AskAgent-agents"
       role="radiogroup"
       aria-label={trans.__('Agent')}
+      onKeyDown={onRadioGroupKeyDown}
     >
       {agents.map(agent => (
         <button
@@ -132,7 +173,9 @@ export function AgentChoices(props: {
           type="button"
           role="radio"
           aria-checked={agent.id === agentId}
+          tabIndex={agent.id === agentId ? 0 : -1}
           title={agent.label}
+          aria-label={agent.label}
           className={
             'jp-xtralab-AskAgent-agentButton' +
             (agent.id === agentId ? ' jp-mod-selected' : '')

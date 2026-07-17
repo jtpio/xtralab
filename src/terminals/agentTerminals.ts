@@ -81,7 +81,7 @@ export class AgentTerminals implements IAgentTerminals {
     this._detectCommands = options.detectCommands;
     this._isAgentCommand = options.isAgentCommand;
     this._trans = options.trans;
-    this._registry.stateChanged.connect(() => this._changed.emit(), this);
+    this._registry.stateChanged.connect(this._onRegistryStateChanged, this);
   }
 
   sessions(): IAgentTerminalSession[] {
@@ -118,7 +118,15 @@ export class AgentTerminals implements IAgentTerminals {
       throw new Error(this._trans.__('The terminal is no longer running.'));
     }
     const detected = await fetchRunningAgents(this._detectCommands());
-    const command = detected?.[name];
+    if (detected === null) {
+      // Detection being unavailable (older server, transient failure) is
+      // not proof the agent is gone; refuse the write with a message that
+      // invites the retry that would succeed.
+      throw new Error(
+        this._trans.__('Could not verify the terminal — try sending again.')
+      );
+    }
+    const command = detected[name];
     if (typeof command !== 'string' || !this._isAgentCommand(command)) {
       throw new Error(
         this._trans.__('No agent is running in that terminal anymore.')
@@ -174,6 +182,10 @@ export class AgentTerminals implements IAgentTerminals {
     return (
       this._tracker.find(widget => widget.content.session.name === name) ?? null
     );
+  }
+
+  private _onRegistryStateChanged(): void {
+    this._changed.emit();
   }
 
   private _registry: SessionRegistry;

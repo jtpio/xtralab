@@ -1,3 +1,4 @@
+import { PathExt } from '@jupyterlab/coreutils';
 import type { TranslationBundle } from '@jupyterlab/translation';
 import { ReactWidget } from '@jupyterlab/ui-components';
 import { CommandRegistry } from '@lumino/commands';
@@ -19,18 +20,20 @@ const VIEWPORT_MARGIN = 8;
  * header and the queue panel: file name, notebook cell (when applicable),
  * line range and (for diffs) which side the lines are on.
  */
-export function contextSummary(context: IAskAgentContext): string {
-  const name = context.path.split('/').pop() ?? context.path;
-  const parts = [name];
+export function contextSummary(
+  context: IAskAgentContext,
+  trans: TranslationBundle
+): string {
+  const parts = [PathExt.basename(context.path)];
   if (context.cell !== undefined) {
-    parts.push(`cell ${context.cell.index + 1}`);
+    parts.push(trans.__('cell %1', context.cell.index + 1));
   }
   if (context.startLine !== undefined) {
     const endLine = context.endLine ?? context.startLine;
     parts.push(
       endLine > context.startLine
-        ? `L${context.startLine}–${endLine}`
-        : `L${context.startLine}`
+        ? trans.__('L%1–%2', context.startLine, endLine)
+        : trans.__('L%1', context.startLine)
     );
   }
   if (context.note !== undefined && context.note.length > 0) {
@@ -105,21 +108,27 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
 
   // Focus the input only once the popup is placed: while it is still
   // unpositioned it sits `visibility: hidden`, and hidden elements silently
-  // refuse focus.
+  // refuse focus. The empty state renders no textarea; focus the dialog
+  // root itself so it is announced and Escape works without a pointer.
   React.useEffect(() => {
     if (position !== null) {
-      textareaRef.current?.focus();
+      (textareaRef.current ?? popupRef.current)?.focus();
     }
   }, [position]);
 
-  const dismiss = React.useCallback(() => {
-    // Defer so unmounting this React root never happens synchronously inside
-    // the event handler that triggered it (same pattern as the omnibox).
-    window.setTimeout(onCancel, 0);
-  }, [onCancel]);
+  const dismiss = React.useCallback(
+    (restoreFocus: boolean) => {
+      // Defer so unmounting this React root never happens synchronously
+      // inside the event handler that triggered it (same pattern as the
+      // omnibox).
+      window.setTimeout(() => onCancel(restoreFocus), 0);
+    },
+    [onCancel]
+  );
 
   // Close when the user clicks anywhere outside the popup. Capture phase so
-  // a click into widgets that swallow events still dismisses it.
+  // a click into widgets that swallow events still dismisses it. The click
+  // places focus itself, so none is restored.
   React.useEffect(() => {
     const onPointerDown = (event: PointerEvent): void => {
       const node = popupRef.current;
@@ -128,7 +137,7 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
         event.target instanceof Node &&
         !node.contains(event.target)
       ) {
-        dismiss();
+        dismiss(false);
       }
     };
     document.addEventListener('pointerdown', onPointerDown, true);
@@ -186,7 +195,9 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
-      dismiss();
+      // A keyboard dismissal places no focus of its own; ask the plugin to
+      // hand it back to the widget the ask came from.
+      dismiss(true);
     }
   };
 
@@ -209,7 +220,7 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
     }
   };
 
-  const summary = contextSummary(context);
+  const summary = contextSummary(context, trans);
   const placeholder = trans.__('Describe the change…');
 
   return (
@@ -218,6 +229,10 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
       className="jp-xtralab-AskAgent-popup"
       role="dialog"
       aria-label={trans.__('Ask an agent about %1', summary)}
+      // Focusable so clicks on non-interactive popup content keep focus
+      // inside the dialog (Escape keeps working) and so the empty state
+      // can be focused at all.
+      tabIndex={-1}
       style={{
         left: position?.left ?? 0,
         top: position?.top ?? 0,
@@ -361,7 +376,11 @@ export namespace AskAgentPopup {
      * button is hidden when omitted.
      */
     onQueue?: (target: AskAgentTarget, instruction: string) => void;
-    /** Dismiss the popup (the plugin disposes the widget). */
-    onCancel: () => void;
+    /**
+     * Dismiss the popup (the plugin disposes the widget). `restoreFocus` is
+     * true when the dismissal placed no focus of its own (Escape), asking
+     * the plugin to hand focus back to the widget the ask came from.
+     */
+    onCancel: (restoreFocus: boolean) => void;
   }
 }

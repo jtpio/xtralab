@@ -1,9 +1,7 @@
+import type { ReadonlyPartialJSONValue } from '@lumino/coreutils';
 import { ISignal, Signal } from '@lumino/signaling';
 
 import type { AskAgentTarget, IAskAgentContext } from './tokens';
-
-/** `localStorage` key holding the queued prompts. */
-const QUEUE_STORAGE_KEY = 'xtralab:ask-agent:queue';
 
 /**
  * One queued prompt: a code selection, the user's instruction about it, and
@@ -39,9 +37,11 @@ function nextId(): string {
  *
  * Queueing decouples writing review comments from deciding where they go:
  * the popup appends entries here instead of sending, the side panel lists
- * and edits them, and one batch send flushes the lot to a single agent. The
- * queue persists itself to `localStorage` (best-effort) so a page reload
- * does not silently drop typed comments.
+ * and edits them, and one batch send flushes the lot, delivering each
+ * destination's prompts as one numbered message. The queue itself is a
+ * plain in-memory model; the plugin mirrors it into the JupyterLab state
+ * database (via {@link serializeQueuedPrompts}) so a page reload does not
+ * silently drop typed comments.
  */
 export class PromptQueue {
   constructor(items: IQueuedPrompt[] = []) {
@@ -68,7 +68,7 @@ export class PromptQueue {
       ...this._items,
       { id: nextId(), context, instruction, target }
     ];
-    this._commit();
+    this._changed.emit();
   }
 
   /** Replace the instruction of the queued prompt `id`, if still present. */
@@ -82,7 +82,7 @@ export class PromptQueue {
       return { ...item, instruction };
     });
     if (touched) {
-      this._commit();
+      this._changed.emit();
     }
   }
 
@@ -97,7 +97,7 @@ export class PromptQueue {
       return { ...item, target };
     });
     if (touched) {
-      this._commit();
+      this._changed.emit();
     }
   }
 
@@ -115,7 +115,7 @@ export class PromptQueue {
     const remaining = this._items.filter(item => !drop.has(item.id));
     if (remaining.length !== this._items.length) {
       this._items = remaining;
-      this._commit();
+      this._changed.emit();
     }
   }
 
@@ -123,18 +123,13 @@ export class PromptQueue {
   clear(): void {
     if (this._items.length > 0) {
       this._items = [];
-      this._commit();
+      this._changed.emit();
     }
   }
 
-  /** Replace the whole queue (used to undo a clear). */
+  /** Replace the whole queue (used to restore and to undo a clear). */
   reset(items: readonly IQueuedPrompt[]): void {
     this._items = [...items];
-    this._commit();
-  }
-
-  private _commit(): void {
-    saveQueuedPrompts(this._items);
     this._changed.emit();
   }
 
@@ -145,7 +140,7 @@ export class PromptQueue {
 /**
  * Validate one persisted context. Only fields that still match the
  * `IAskAgentContext` contract are kept, so schema drift (or manual
- * `localStorage` edits) degrades an entry instead of poisoning the queue.
+ * state-database edits) degrades an entry instead of poisoning the queue.
  */
 function sanitizeContext(value: unknown): IAskAgentContext | null {
   if (value === null || typeof value !== 'object') {
@@ -177,6 +172,9 @@ function sanitizeContext(value: unknown): IAskAgentContext | null {
   if (typeof raw.endLine === 'number') {
     context.endLine = raw.endLine;
   }
+  if (typeof raw.linesInWorkingFile === 'boolean') {
+    context.linesInWorkingFile = raw.linesInWorkingFile;
+  }
   if (typeof raw.location === 'string') {
     context.location = raw.location;
   }
@@ -205,63 +203,45 @@ function sanitizeTarget(value: unknown): AskAgentTarget | null {
 }
 
 /**
- * Read the queued prompts persisted by a previous page load. Entries that
- * no longer parse are dropped silently — the queue is a convenience buffer,
- * not a document.
+ * Rebuild queued prompts from a value read back from the state database.
+ * Entries that no longer parse are dropped silently — the queue is a
+ * convenience buffer, not a document.
  */
-export function loadQueuedPrompts(): IQueuedPrompt[] {
-  try {
-    const raw = window.localStorage.getItem(QUEUE_STORAGE_KEY);
-    if (raw === null) {
-      return [];
-    }
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-    const items: IQueuedPrompt[] = [];
-    for (const entry of parsed) {
-      const record = entry as {
-        context?: unknown;
-        instruction?: unknown;
-        target?: unknown;
-      } | null;
-      const context = sanitizeContext(record?.context);
-      if (context !== null && typeof record?.instruction === 'string') {
-        items.push({
-          id: nextId(),
-          context,
-          instruction: record.instruction,
-          target: sanitizeTarget(record?.target)
-        });
-      }
-    }
-    return items;
-  } catch {
-    // localStorage may be unavailable, or hold something that is not JSON;
-    // either way the queue just starts empty.
+export function deserializeQueuedPrompts(value: unknown): IQueuedPrompt[] {
+  if (!Array.isArray(value)) {
     return [];
   }
+  const items: IQueuedPrompt[] = [];
+  for (const entry of value) {
+    const record = entry as {
+      context?: unknown;
+      instruction?: unknown;
+      target?: unknown;
+    } | null;
+    const context = sanitizeContext(record?.context);
+    if (context !== null && typeof record?.instruction === 'string') {
+      items.push({
+        id: nextId(),
+        context,
+        instruction: record.instruction,
+        target: sanitizeTarget(record?.target)
+      });
+    }
+  }
+  return items;
 }
 
-function saveQueuedPrompts(items: readonly IQueuedPrompt[]): void {
-  try {
-    if (items.length === 0) {
-      window.localStorage.removeItem(QUEUE_STORAGE_KEY);
-    } else {
-      window.localStorage.setItem(
-        QUEUE_STORAGE_KEY,
-        JSON.stringify(
-          // Ids are session-scoped handles; fresh ones are assigned on load.
-          items.map(({ context, instruction, target }) => ({
-            context,
-            instruction,
-            target
-          }))
-        )
-      );
-    }
-  } catch {
-    // Best-effort persistence, like the popup's last-used-agent keys.
-  }
+/**
+ * The queue as a JSON value for the state database. Ids are session-scoped
+ * handles, so they are not persisted; {@link deserializeQueuedPrompts}
+ * assigns fresh ones on load.
+ */
+export function serializeQueuedPrompts(
+  items: readonly IQueuedPrompt[]
+): ReadonlyPartialJSONValue {
+  return items.map(({ context, instruction, target }) => ({
+    context: { ...context },
+    instruction,
+    target: target === null ? null : { ...target }
+  }));
 }

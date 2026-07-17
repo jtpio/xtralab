@@ -7,8 +7,8 @@ import { ToolbarButton, launchIcon } from '@jupyterlab/ui-components';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { ISignal, Signal } from '@lumino/signaling';
 
-import { getTreeIcon } from '../fileBrowser/icons';
 import type { IAskAgent } from '../askAgent/tokens';
+import { getTreeIcon } from '../fileBrowser/icons';
 import { fileChangeToDiffModel } from './diffModel';
 import {
   DIFF_WIDGET_CSS_CLASS,

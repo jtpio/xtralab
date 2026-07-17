@@ -1,6 +1,12 @@
 import { Notification } from '@jupyterlab/apputils';
+import { PathExt } from '@jupyterlab/coreutils';
 import type { TranslationBundle } from '@jupyterlab/translation';
-import { closeIcon, LabIcon, ReactWidget } from '@jupyterlab/ui-components';
+import {
+  closeIcon,
+  HTMLSelect,
+  LabIcon,
+  ReactWidget
+} from '@jupyterlab/ui-components';
 import type { CommandRegistry } from '@lumino/commands';
 import type { Message } from '@lumino/messaging';
 import * as React from 'react';
@@ -53,7 +59,7 @@ function decodeTarget(value: string): AskAgentTarget | null {
  * Whether `target` can be sent to right now: its session is still running,
  * or its agent still accepts a command-line prompt.
  */
-export function targetIsLive(
+function targetIsLive(
   target: AskAgentTarget | null,
   agents: readonly IAgent[],
   targets: readonly ISessionTarget[]
@@ -72,6 +78,7 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
     commands,
     agents: readAgents,
     targets: readTargets,
+    sending: readSending,
     trans,
     onSend,
     onClear
@@ -82,20 +89,26 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
   const items = queue.items;
   const agents = readAgents();
   const targets = readTargets();
+  const sending = readSending();
 
   const complete = items.every(item => item.instruction.trim().length > 0);
   const targeted = items.every(item =>
     targetIsLive(item.target, agents, targets)
   );
-  const canSend = items.length > 0 && complete && targeted;
+  const canSend = items.length > 0 && complete && targeted && !sending;
 
   const jumpTo = (item: IQueuedPrompt): void => {
     const { context } = item;
     const path = serverPath(context);
-    // Notebook line numbers are cell-relative, which the line highlighter
-    // does not understand — just open the notebook in that case.
+    // The highlighter needs line numbers that index the working file:
+    // notebook lines are cell-relative (or raw-JSON offsets), and diff
+    // selections may come from another revision — just open the document
+    // in those cases.
     const jump =
-      context.cell === undefined && context.startLine !== undefined
+      context.cell === undefined &&
+      context.startLine !== undefined &&
+      context.linesInWorkingFile !== false &&
+      PathExt.extname(path) !== '.ipynb'
         ? commands.execute(HIGHLIGHT_LINES_COMMAND, {
             path,
             line: context.startLine,
@@ -126,7 +139,7 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
     <div className="jp-xtralab-AskAgentQueue-body">
       <ul className="jp-xtralab-AskAgentQueue-list">
         {items.map(item => {
-          const summary = contextSummary(item.context);
+          const summary = contextSummary(item.context, trans);
           const missing = item.instruction.trim().length === 0;
           const target = item.target;
           const live = targetIsLive(target, agents, targets);
@@ -173,6 +186,7 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
                   type="button"
                   className="jp-xtralab-AskAgentQueue-itemRemove"
                   title={trans.__('Remove from the queue')}
+                  aria-label={trans.__('Remove from the queue')}
                   onClick={() => queue.remove(item.id)}
                 >
                   <closeIcon.react
@@ -186,6 +200,10 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
                   {item.context.text}
                 </pre>
               )}
+              {/* Uncontrolled on purpose: the queue re-renders through a
+                  posted Lumino update, and a controlled value fed back that
+                  late reverts keystrokes and jumps the caret. The `key` on
+                  the surrounding <li> still remounts it per queue entry. */}
               <textarea
                 className="jp-xtralab-AskAgentQueue-instruction"
                 rows={rowsFor(item.instruction)}
@@ -193,7 +211,7 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
                 aria-invalid={missing}
                 aria-label={trans.__('Instruction about %1', summary)}
                 placeholder={trans.__('Describe the change…')}
-                value={item.instruction}
+                defaultValue={item.instruction}
                 onChange={event =>
                   queue.updateInstruction(item.id, event.target.value)
                 }
@@ -205,7 +223,7 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
                 >
                   {icon !== null && <icon.react tag="span" />}
                 </span>
-                <select
+                <HTMLSelect
                   className="jp-xtralab-AskAgentQueue-itemTarget"
                   aria-invalid={!live}
                   aria-label={trans.__('Send to')}
@@ -248,7 +266,7 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
                       ))}
                     </optgroup>
                   )}
-                </select>
+                </HTMLSelect>
               </div>
             </li>
           );
@@ -266,6 +284,7 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
           <button
             type="button"
             className="jp-xtralab-AskAgentQueue-clear"
+            disabled={sending}
             title={trans.__('Remove every queued prompt')}
             onClick={onClear}
           >
@@ -276,13 +295,15 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
             className="jp-xtralab-AskAgentQueue-send"
             disabled={!canSend}
             title={
-              !complete
-                ? trans.__('Every queued prompt needs an instruction')
-                : !targeted
-                  ? trans.__('Every queued prompt needs a destination')
-                  : trans.__(
-                      'Send each queued prompt to its chosen destination'
-                    )
+              sending
+                ? trans.__('Sending…')
+                : !complete
+                  ? trans.__('Every queued prompt needs an instruction')
+                  : !targeted
+                    ? trans.__('Every queued prompt needs a destination')
+                    : trans.__(
+                        'Send each queued prompt to its chosen destination'
+                      )
             }
             onClick={() => {
               if (canSend) {
@@ -290,7 +311,9 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
               }
             }}
           >
-            {trans._n('Send %1 prompt', 'Send %1 prompts', items.length)}
+            {sending
+              ? trans.__('Sending…')
+              : trans._n('Send %1 prompt', 'Send %1 prompts', items.length)}
           </button>
         </div>
       </div>
@@ -356,6 +379,13 @@ export namespace AskAgentQueuePanel {
 
     /** Live reader of the running agent terminals (called on every render). */
     targets: () => ISessionTarget[];
+
+    /**
+     * Live reader of whether a batch send is in flight (called on every
+     * render). While true the send and clear buttons are disabled, so one
+     * flush cannot be double-delivered.
+     */
+    sending: () => boolean;
 
     /** Translation bundle for the panel's own labels. */
     trans: TranslationBundle;

@@ -72,6 +72,14 @@ agent itself if it is still busy with the previous request. These sends happen
 in the background, so your focus stays in the code you are reading and a small
 notification offers to jump to the terminal.
 
+You can also queue prompts instead of sending them one by one: hit **Queue**
+in the prompt box (or press <kbd>Cmd/Ctrl</kbd>+<kbd>Enter</kbd>) while you
+read through a diff, leaving a comment on each spot. Every queued prompt
+remembers the destination you picked, and a panel in the right sidebar lets
+you review, edit, retarget, or remove them before sending everything in one
+go. Prompts that share a destination are combined into a single numbered
+message, and the queue survives page reloads.
+
 ### One search box for files, commands, and agents
 
 ![The omnibox](./images/omnibox.webp)

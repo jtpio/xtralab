@@ -95,6 +95,11 @@ export function buildDiffAskRequest(options: {
       ...base,
       startLine,
       endLine,
+      // Only new-side lines of a working-tree diff index the file on disk;
+      // old-side and historical line numbers must not be used to highlight
+      // the working file.
+      linesInWorkingFile:
+        !isOld && model.challenger.source === Git.Diff.SpecialRef.WORKING,
       text: sliceLines(isOld ? oldText : newText, startLine, endLine),
       location: `the ${sideName(startSide)} (${ref}) of the current git diff`,
       note: isOld ? trans.__('old side') : trans.__('new side')

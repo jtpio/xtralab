@@ -53,6 +53,15 @@ export interface IAskAgentContext {
   endLine?: number;
 
   /**
+   * Whether {@link startLine}/{@link endLine} index the file's current
+   * working-tree content. `false` for diff selections taken from another
+   * revision (the old side, or a challenger that is not the working tree),
+   * whose numbers must not be used to highlight the working file. Omitted
+   * means `true`.
+   */
+  linesInWorkingFile?: boolean;
+
+  /**
    * The selected source text. May be empty when only a location is known;
    * the prompt then relies on the path and line range alone.
    */
@@ -87,6 +96,7 @@ export type AskAgentTarget =
  * where to place the popup on screen.
  */
 export interface IAskAgentRequest {
+  /** The code location and selection the prompt is about. */
   context: IAskAgentContext;
 
   /**
