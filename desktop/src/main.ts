@@ -110,6 +110,11 @@ const pendingSupervisors = new Set<SupervisorHandle>();
 const labWindowTabbingIdentifier = 'xtralab-project';
 
 let launcherWindow: BrowserWindow | null = null;
+// Whether the launcher window currently lives as a native macOS tab inside a
+// lab window's tab group (opened from the tab bar "+" or File > New Tab).
+// While true, a project picked in the launcher joins that group as a tab in
+// the launcher tab's place instead of opening as a separate window.
+let launcherOpenedAsTab = false;
 let logStream: WriteStream | null = null;
 let recentFolders: string[] = [];
 let folderEnvironmentPreferences: Record<string, FolderEnvironmentPreference> =
@@ -224,6 +229,17 @@ function configureApplicationMenu(): void {
             showLauncherWindow();
           }
         },
+        ...(process.platform === 'darwin'
+          ? [
+              {
+                label: 'New Tab',
+                accelerator: 'CmdOrCtrl+T',
+                click: () => {
+                  openLauncherTabForFocusedWindow();
+                }
+              } satisfies MenuItemConstructorOptions
+            ]
+          : []),
         {
           label: 'Open Folder...',
           accelerator: 'CmdOrCtrl+O',
@@ -258,6 +274,12 @@ function configureApplicationMenu(): void {
         { role: 'zoomIn' },
         { role: 'zoomOut' },
         { type: 'separator' },
+        ...(process.platform === 'darwin'
+          ? [
+              { role: 'toggleTabBar' } satisfies MenuItemConstructorOptions,
+              { type: 'separator' } satisfies MenuItemConstructorOptions
+            ]
+          : []),
         { role: 'togglefullscreen' }
       ]
     },
@@ -704,6 +726,56 @@ function showLauncherWindow(): void {
     return;
   }
 
+  launcherWindow = createLauncherWindow(null);
+}
+
+// Open the launcher as a native tab in hostWindow's tab group, so picking a
+// project there feels like opening a browser tab. Reuses the existing
+// launcher window when there is one, moving it into the group.
+function openLauncherTab(hostWindow: BrowserWindow): void {
+  if (process.platform !== 'darwin') {
+    showLauncherWindow();
+    return;
+  }
+
+  if (launcherWindow !== null && !launcherWindow.isDestroyed()) {
+    if (attachWindowAsTab(hostWindow, launcherWindow)) {
+      launcherOpenedAsTab = true;
+    }
+    launcherWindow.show();
+    launcherWindow.focus();
+    return;
+  }
+
+  launcherWindow = createLauncherWindow(hostWindow);
+}
+
+function openLauncherTabForFocusedWindow(): void {
+  const focusedWindow = BrowserWindow.getFocusedWindow();
+  if (focusedWindow !== null && labSessions.has(focusedWindow.id)) {
+    openLauncherTab(focusedWindow);
+    return;
+  }
+  showLauncherWindow();
+}
+
+// macOS only: addTabbedWindow throws when the host window cannot take a tab
+// (for example because it was destroyed in the meantime), in which case the
+// window is left to show as a regular window.
+function attachWindowAsTab(
+  hostWindow: BrowserWindow,
+  window: BrowserWindow
+): boolean {
+  try {
+    hostWindow.addTabbedWindow(window);
+    return true;
+  } catch (error) {
+    log(`Unable to attach window as a tab: ${formatError(error)}`);
+    return false;
+  }
+}
+
+function createLauncherWindow(tabHost: BrowserWindow | null): BrowserWindow {
   const window = new BrowserWindow({
     title: app.getName(),
     useContentSize: true,
@@ -723,7 +795,7 @@ function showLauncherWindow(): void {
     }
   });
 
-  launcherWindow = window;
+  launcherOpenedAsTab = false;
   window.webContents.setWindowOpenHandler(({ url }) => {
     openExternalIfSafe(url, null);
     return { action: 'deny' };
@@ -736,15 +808,24 @@ function showLauncherWindow(): void {
     window.setTitle(app.getName());
   });
   window.once('ready-to-show', () => {
+    if (
+      tabHost !== null &&
+      !tabHost.isDestroyed() &&
+      attachWindowAsTab(tabHost, window)
+    ) {
+      launcherOpenedAsTab = true;
+    }
     window.show();
   });
   window.on('closed', () => {
     if (launcherWindow === window) {
       launcherWindow = null;
+      launcherOpenedAsTab = false;
     }
   });
 
   void window.loadFile(getLauncherHtmlPath());
+  return window;
 }
 
 async function prepareFolderFromDialog(
@@ -806,17 +887,29 @@ async function openFolder(
     return { ok: false, error: formatError(error) };
   }
 
+  const sourceLauncher =
+    sourceWindow !== null &&
+    sourceWindow === launcherWindow &&
+    !sourceWindow.isDestroyed()
+      ? sourceWindow
+      : null;
+  // When the launcher lives as a tab in a lab window's tab group, the new
+  // project joins that group as a tab in the launcher tab's place instead of
+  // opening as a separate window.
+  const attachAsTab =
+    process.platform === 'darwin' &&
+    sourceLauncher !== null &&
+    launcherOpenedAsTab;
+
   try {
-    await createLabSession(resolvedFolder, pythonPath);
+    await createLabSession(
+      resolvedFolder,
+      pythonPath,
+      sourceLauncher,
+      attachAsTab
+    );
     rememberFolderEnvironmentPreference(resolvedFolder, pythonPath ?? null);
     rememberRecentFolder(resolvedFolder);
-    if (
-      sourceWindow !== null &&
-      sourceWindow === launcherWindow &&
-      !sourceWindow.isDestroyed()
-    ) {
-      sourceWindow.close();
-    }
     return { ok: true, folderPath: resolvedFolder };
   } catch (error) {
     log(`Unable to open ${resolvedFolder}: ${formatError(error)}`);
@@ -826,7 +919,9 @@ async function openFolder(
 
 async function createLabSession(
   folderPath: string,
-  pythonPath: string | null | undefined
+  pythonPath: string | null | undefined,
+  sourceLauncher: BrowserWindow | null,
+  attachAsTab: boolean
 ): Promise<void> {
   const managedEnvironment = getManagedEnvironment();
   const projectEnvironment = prepareProjectRuntimeEnvironment(
@@ -851,7 +946,14 @@ async function createLabSession(
   }
 
   pendingSupervisors.delete(supervisor);
-  createLabWindow(serverInfo, folderPath, supervisor, projectEnvironment);
+  createLabWindow(
+    serverInfo,
+    folderPath,
+    supervisor,
+    projectEnvironment,
+    sourceLauncher,
+    attachAsTab
+  );
 }
 
 function discoverFolderPythonEnvironments(
@@ -1414,7 +1516,9 @@ function createLabWindow(
   serverInfo: ServerInfo,
   folderPath: string,
   supervisor: SupervisorHandle,
-  projectEnvironment: ProjectRuntimeEnvironment | null
+  projectEnvironment: ProjectRuntimeEnvironment | null,
+  sourceLauncher: BrowserWindow | null,
+  attachAsTab: boolean
 ): void {
   const allowedOrigin = new URL(serverInfo.baseUrl).origin;
   const windowTitle = getLabWindowTitle(folderPath);
@@ -1471,6 +1575,12 @@ function createLabWindow(
         `${app.getName()} - ${folderName}`,
         `${reason}\n\nCheck Help → Show Logs for details.`
       );
+      // A failed open leaves the source launcher disabled in its
+      // "Opening..." state (it only closes once the lab window shows), so
+      // reload it back to a usable welcome view.
+      if (sourceLauncher !== null && !sourceLauncher.isDestroyed()) {
+        sourceLauncher.webContents.reload();
+      }
       showLauncherWindow();
     }
   };
@@ -1518,14 +1628,30 @@ function createLabWindow(
 
   window.once('ready-to-show', () => {
     windowEverShown = true;
+    // The launcher stays visible in its "Opening..." state while the server
+    // starts and the page loads, and is only swapped for the lab window once
+    // there is something to show. When the launcher is a tab, the lab window
+    // joins its tab group first so the new tab takes the launcher tab's
+    // place.
+    const launcherToClose =
+      sourceLauncher !== null &&
+      sourceLauncher === launcherWindow &&
+      !sourceLauncher.isDestroyed()
+        ? sourceLauncher
+        : null;
+    if (attachAsTab && launcherToClose !== null) {
+      attachWindowAsTab(launcherToClose, window);
+    }
     window.show();
+    launcherToClose?.close();
   });
 
-  // The native macOS "+" in the tab bar opens the launcher to pick a folder.
-  // The button appears because the window sets a tabbingIdentifier; AppKit
-  // expects this handler to open a window.
+  // The native macOS "+" in the tab bar opens the launcher as a tab in this
+  // window's tab group, ready to pick a folder. The button appears because
+  // the window sets a tabbingIdentifier; AppKit expects this handler to open
+  // a window.
   window.on('new-window-for-tab', () => {
-    showLauncherWindow();
+    openLauncherTab(window);
   });
 
   window.on('closed', () => {
