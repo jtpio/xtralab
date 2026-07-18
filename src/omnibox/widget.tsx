@@ -10,10 +10,14 @@ import { computeSections, IOmniboxItem } from './model';
 import { loadWorkspaceFiles } from './files';
 import type { OmniboxRecents } from './recents';
 
-/** DOM id of the results listbox, referenced by the input's `aria-controls`. */
+/**
+ * DOM id of the results listbox, referenced by the input's `aria-controls`.
+ */
 const LIST_ID = 'jp-xtralab-Omnibox-list';
 
-/** Stable DOM id for the result row at `index`, for `aria-activedescendant`. */
+/**
+ * Stable DOM id for the result row at `index`, for `aria-activedescendant`.
+ */
 function optionId(index: number): string {
   return `jp-xtralab-Omnibox-option-${index}`;
 }
@@ -325,21 +329,35 @@ export class OmniboxWidget extends ReactWidget {
  * A namespace for `OmniboxWidget` statics.
  */
 export namespace OmniboxWidget {
-  /** Construction options for {@link OmniboxWidget}. */
+  /**
+   * Construction options for {@link OmniboxWidget}.
+   */
   export interface IOptions {
     commands: CommandRegistry;
     docRegistry: DocumentRegistry;
-    /** Snapshot of the available agents, read once when the overlay opens. */
+    /**
+     * Snapshot of the available agents, read once when the overlay opens.
+     */
     agents: IAgent[];
-    /** Placeholder text for the input. */
+    /**
+     * Placeholder text for the input.
+     */
     placeholder: string;
-    /** Seed text for the input. */
+    /**
+     * Seed text for the input.
+     */
     initialQuery: string;
-    /** Recently-used tracker; `null` disables the recent rows and recording. */
+    /**
+     * Recently-used tracker; `null` disables the recent rows and recording.
+     */
     recents: OmniboxRecents | null;
-    /** Translation bundle for the overlay's own labels. */
+    /**
+     * Translation bundle for the overlay's own labels.
+     */
     trans: TranslationBundle;
-    /** Dismiss the overlay (the plugin disposes the widget). */
+    /**
+     * Dismiss the overlay (the plugin disposes the widget).
+     */
     onClose: () => void;
   }
 }

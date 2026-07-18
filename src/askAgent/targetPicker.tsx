@@ -10,16 +10,24 @@ import type { IAgent } from '../launcher/agents';
  * plugin so these components stay presentation-only.
  */
 export interface ISessionTarget {
-  /** The terminal session name. */
+  /**
+   * The terminal session name.
+   */
   name: string;
 
-  /** The session's display label (usually the agent's name). */
+  /**
+   * The session's display label (usually the agent's name).
+   */
   label: string;
 
-  /** The agent's latest activity line, when one is available. */
+  /**
+   * The agent's latest activity line, when one is available.
+   */
   activity: string | null;
 
-  /** The running agent's icon. */
+  /**
+   * The running agent's icon.
+   */
   icon: LabIcon;
 }
 
@@ -64,11 +72,17 @@ function onRadioGroupKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
  * be noise).
  */
 export function TargetChips(props: {
-  /** Agents that could start in a new terminal; gates the "New terminal" chip. */
+  /**
+   * Agents that could start in a new terminal; gates the "New terminal" chip.
+   */
   agents: IAgent[];
-  /** The running agent sessions. */
+  /**
+   * The running agent sessions.
+   */
   targets: ISessionTarget[];
-  /** The selected session name, or `null` for a new terminal. */
+  /**
+   * The selected session name, or `null` for a new terminal.
+   */
   targetName: string | null;
   trans: TranslationBundle;
   onSelect: (targetName: string | null) => void;

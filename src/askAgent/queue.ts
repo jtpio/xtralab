@@ -9,13 +9,19 @@ import type { AskAgentTarget, IAskAgentContext } from './tokens';
  * (different agents, new terminals, different running sessions) freely.
  */
 export interface IQueuedPrompt {
-  /** Handle for edits and removal, unique within the page session. */
+  /**
+   * Handle for edits and removal, unique within the page session.
+   */
   id: string;
 
-  /** The code selection the instruction is about. */
+  /**
+   * The code selection the instruction is about.
+   */
   context: IAskAgentContext;
 
-  /** The user's typed comment. */
+  /**
+   * The user's typed comment.
+   */
   instruction: string;
 
   /**
@@ -48,17 +54,23 @@ export class PromptQueue {
     this._items = items;
   }
 
-  /** The queued prompts, oldest first. */
+  /**
+   * The queued prompts, oldest first.
+   */
   get items(): readonly IQueuedPrompt[] {
     return this._items;
   }
 
-  /** Emitted whenever the queue contents change. */
+  /**
+   * Emitted whenever the queue contents change.
+   */
   get changed(): ISignal<this, void> {
     return this._changed;
   }
 
-  /** Append a prompt to the queue. */
+  /**
+   * Append a prompt to the queue.
+   */
   add(
     context: IAskAgentContext,
     instruction: string,
@@ -71,7 +83,9 @@ export class PromptQueue {
     this._changed.emit();
   }
 
-  /** Replace the instruction of the queued prompt `id`, if still present. */
+  /**
+   * Replace the instruction of the queued prompt `id`, if still present.
+   */
   updateInstruction(id: string, instruction: string): void {
     let touched = false;
     this._items = this._items.map(item => {
@@ -86,7 +100,9 @@ export class PromptQueue {
     }
   }
 
-  /** Repoint the queued prompt `id` at `target`, if still present. */
+  /**
+   * Repoint the queued prompt `id` at `target`, if still present.
+   */
   updateTarget(id: string, target: AskAgentTarget): void {
     let touched = false;
     this._items = this._items.map(item => {
@@ -101,7 +117,9 @@ export class PromptQueue {
     }
   }
 
-  /** Remove the queued prompt `id`, if still present. */
+  /**
+   * Remove the queued prompt `id`, if still present.
+   */
   remove(id: string): void {
     this.removeMany([id]);
   }
@@ -119,7 +137,9 @@ export class PromptQueue {
     }
   }
 
-  /** Drop every queued prompt. */
+  /**
+   * Drop every queued prompt.
+   */
   clear(): void {
     if (this._items.length > 0) {
       this._items = [];
@@ -127,7 +147,9 @@ export class PromptQueue {
     }
   }
 
-  /** Replace the whole queue (used to restore and to undo a clear). */
+  /**
+   * Replace the whole queue (used to restore and to undo a clear).
+   */
   reset(items: readonly IQueuedPrompt[]): void {
     this._items = [...items];
     this._changed.emit();

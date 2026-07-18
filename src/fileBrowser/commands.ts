@@ -132,7 +132,9 @@ function getOpenPaths(
   return candidates.filter(path => !path.endsWith('/'));
 }
 
-/** True iff there is an actionable target for a command on the right-click. */
+/**
+ * True iff there is an actionable target for a command on the right-click.
+ */
 function hasTarget(
   app: JupyterFrontEnd,
   browser: IXtralabFileBrowser

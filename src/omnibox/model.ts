@@ -9,29 +9,49 @@ import { agentCommandId } from '../launcher/tokens';
 
 import type { OmniboxRecents, RecentKind } from './recents';
 
-/** The source a result row came from, used to group rows under a header. */
+/**
+ * The source a result row came from, used to group rows under a header.
+ */
 export type OmniboxItemKind = 'command' | 'file' | 'agent';
 
-/** A single result row, with the action it runs when chosen. */
+/**
+ * A single result row, with the action it runs when chosen.
+ */
 export interface IOmniboxItem {
   kind: OmniboxItemKind;
-  /** Stable React key. */
+  /**
+   * Stable React key.
+   */
   key: string;
-  /** Primary text shown on the row. */
+  /**
+   * Primary text shown on the row.
+   */
   label: string;
-  /** Indices of matched characters in `label`, for highlighting. May be empty. */
+  /**
+   * Indices of matched characters in `label`, for highlighting. May be empty.
+   */
   matchIndices: readonly number[];
-  /** Optional secondary text shown trailing the label. */
+  /**
+   * Optional secondary text shown trailing the label.
+   */
   caption?: string;
-  /** Optional leading icon. */
+  /**
+   * Optional leading icon.
+   */
   icon?: LabIcon;
-  /** Run the row's action. */
+  /**
+   * Run the row's action.
+   */
   execute: () => void;
 }
 
-/** Results grouped by source; each group is already capped and sorted. */
+/**
+ * Results grouped by source; each group is already capped and sorted.
+ */
 export interface IOmniboxSections {
-  /** Recently used commands and files, shown while the term is empty. */
+  /**
+   * Recently used commands and files, shown while the term is empty.
+   */
   recent: IOmniboxItem[];
   commands: IOmniboxItem[];
   files: IOmniboxItem[];
@@ -44,7 +64,9 @@ export interface IComputeOptions {
   docRegistry: DocumentRegistry;
   agents: IAgent[];
   files: string[];
-  /** Recently-used tracker; `null` disables the recent rows and recording. */
+  /**
+   * Recently-used tracker; `null` disables the recent rows and recording.
+   */
   recents: OmniboxRecents | null;
   trans: TranslationBundle;
 }
@@ -121,7 +143,9 @@ function executeCommand(
     });
 }
 
-/** Open a file and record the use on success. */
+/**
+ * Open a file and record the use on success.
+ */
 function openFile(
   commands: CommandRegistry,
   recents: OmniboxRecents | null,

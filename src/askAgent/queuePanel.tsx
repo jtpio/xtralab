@@ -19,7 +19,9 @@ import type { IQueuedPrompt, PromptQueue } from './queue';
 import type { ISessionTarget } from './targetPicker';
 import type { AskAgentTarget } from './tokens';
 
-/** Command the context buttons dispatch; keeps the panel decoupled from the plugin. */
+/**
+ * Command the context buttons dispatch; keeps the panel decoupled from the plugin.
+ */
 const HIGHLIGHT_LINES_COMMAND = 'xtralab:highlight-lines';
 
 /**
@@ -366,18 +368,28 @@ export class AskAgentQueuePanel extends ReactWidget {
  * A namespace for `AskAgentQueuePanel` statics.
  */
 export namespace AskAgentQueuePanel {
-  /** Construction options for {@link AskAgentQueuePanel}. */
+  /**
+   * Construction options for {@link AskAgentQueuePanel}.
+   */
   export interface IOptions {
-    /** The queue the panel lists and edits. */
+    /**
+     * The queue the panel lists and edits.
+     */
     queue: PromptQueue;
 
-    /** Command registry used to open queued locations in the editor. */
+    /**
+     * Command registry used to open queued locations in the editor.
+     */
     commands: CommandRegistry;
 
-    /** Live reader of the prompt-capable agents (called on every render). */
+    /**
+     * Live reader of the prompt-capable agents (called on every render).
+     */
     agents: () => IAgent[];
 
-    /** Live reader of the running agent terminals (called on every render). */
+    /**
+     * Live reader of the running agent terminals (called on every render).
+     */
     targets: () => ISessionTarget[];
 
     /**
@@ -387,7 +399,9 @@ export namespace AskAgentQueuePanel {
      */
     sending: () => boolean;
 
-    /** Translation bundle for the panel's own labels. */
+    /**
+     * Translation bundle for the panel's own labels.
+     */
     trans: TranslationBundle;
 
     /**
@@ -396,7 +410,9 @@ export namespace AskAgentQueuePanel {
      */
     onSend: () => void;
 
-    /** Clear the queue (the plugin offers an undo toast). */
+    /**
+     * Clear the queue (the plugin offers an undo toast).
+     */
     onClear: () => void;
   }
 }

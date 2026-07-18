@@ -108,7 +108,9 @@ export namespace RunningTerminals {
      * terminal widget if no tab is currently attached.
      */
     onActivate: (sessionName: string) => void;
-    /** Shut the named session down on the server. */
+    /**
+     * Shut the named session down on the server.
+     */
     onShutdown: (sessionName: string) => void;
     /**
      * Shut down every running terminal at once. The plugin is expected to

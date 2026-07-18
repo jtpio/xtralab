@@ -676,10 +676,14 @@ namespace Private {
     return true;
   }
 
-  /** Rows above the cursor to scan when looking for the latest output. */
+  /**
+   * Rows above the cursor to scan when looking for the latest output.
+   */
   const ACTIVITY_SCAN_ROWS = 64;
 
-  /** Clamp for the activity string so one runaway block can't bloat a row. */
+  /**
+   * Clamp for the activity string so one runaway block can't bloat a row.
+   */
   const ACTIVITY_MAX_LENGTH = 160;
 
   /**
@@ -728,7 +732,9 @@ namespace Private {
     return null;
   }
 
-  /** Sanitized text of one buffer row. */
+  /**
+   * Sanitized text of one buffer row.
+   */
   export function lineText(buffer: IXtermBuffer, row: number): string {
     return sanitizeActivity(buffer.getLine(row)?.translateToString(true) ?? '');
   }
@@ -759,7 +765,9 @@ namespace Private {
     return result;
   }
 
-  /** Truncate by code point (never splitting an emoji) with an ellipsis. */
+  /**
+   * Truncate by code point (never splitting an emoji) with an ellipsis.
+   */
   export function clampActivity(text: string): string {
     const points = Array.from(text);
     return points.length > ACTIVITY_MAX_LENGTH

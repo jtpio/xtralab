@@ -34,7 +34,9 @@ function sideName(side: DiffSide): string {
   return side === 'deletions' ? 'old side' : 'new side';
 }
 
-/** Extract lines `startLine`–`endLine` (1-indexed, inclusive) from `text`. */
+/**
+ * Extract lines `startLine`–`endLine` (1-indexed, inclusive) from `text`.
+ */
 function sliceLines(text: string, startLine: number, endLine: number): string {
   return text
     .split('\n')

@@ -6,7 +6,9 @@ import type { ISignal } from '@lumino/signaling';
  * entry of {@link IAgentTerminals.sessions}.
  */
 export interface IAgentTerminalSession {
-  /** The terminal session name (terminado's, e.g. `1`). */
+  /**
+   * The terminal session name (terminado's, e.g. `1`).
+   */
   name: string;
 
   /**
@@ -41,10 +43,14 @@ export interface IAgentTerminalSession {
  * would execute it.
  */
 export interface IAgentTerminals {
-  /** Snapshot of the sessions with a detection-confirmed running agent. */
+  /**
+   * Snapshot of the sessions with a detection-confirmed running agent.
+   */
   sessions(): IAgentTerminalSession[];
 
-  /** Emitted whenever the {@link sessions} snapshot may have changed. */
+  /**
+   * Emitted whenever the {@link sessions} snapshot may have changed.
+   */
   readonly changed: ISignal<IAgentTerminals, void>;
 
   /**

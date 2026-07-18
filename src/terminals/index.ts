@@ -299,7 +299,9 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
   }
 };
 
-/** Read a boolean setting value, falling back when it is missing or invalid. */
+/**
+ * Read a boolean setting value, falling back when it is missing or invalid.
+ */
 function boolOption(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback;
 }

@@ -43,19 +43,29 @@ import {
 
 const PLUGIN_ID = 'xtralab:ask-agent';
 
-/** Command id that reveals the queued-prompts panel. */
+/**
+ * Command id that reveals the queued-prompts panel.
+ */
 const QUEUE_PANEL_COMMAND = 'xtralab:ask-agent-queue';
 
-/** Widget id of the queued-prompts side panel. */
+/**
+ * Widget id of the queued-prompts side panel.
+ */
 const QUEUE_PANEL_ID = 'xtralab-ask-agent-queue';
 
-/** State-database key remembering the last agent picked in the popup. */
+/**
+ * State-database key remembering the last agent picked in the popup.
+ */
 const LAST_AGENT_STATE_KEY = 'xtralab:ask-agent:agent';
 
-/** State-database key remembering the last target picked in the popup. */
+/**
+ * State-database key remembering the last target picked in the popup.
+ */
 const LAST_TARGET_STATE_KEY = 'xtralab:ask-agent:target';
 
-/** State-database key holding the queued prompts across page loads. */
+/**
+ * State-database key holding the queued prompts across page loads.
+ */
 const QUEUE_STATE_KEY = 'xtralab:ask-agent:queue';
 
 /**
@@ -64,10 +74,14 @@ const QUEUE_STATE_KEY = 'xtralab:ask-agent:queue';
  */
 const QUEUE_PERSIST_MS = 500;
 
-/** Stored target value for "start the agent in a new terminal". */
+/**
+ * Stored target value for "start the agent in a new terminal".
+ */
 const NEW_TARGET_VALUE = 'new';
 
-/** Stored-target prefix for an existing session; the session name follows. */
+/**
+ * Stored-target prefix for an existing session; the session name follows.
+ */
 const SESSION_TARGET_PREFIX = 'session:';
 
 /**
@@ -85,10 +99,14 @@ const SELECTION_SETTLE_MS = 250;
  */
 const ASK_AGENT_KEYS = 'Accel .';
 
-/** Gap between the pill and the selection anchor, in pixels. */
+/**
+ * Gap between the pill and the selection anchor, in pixels.
+ */
 const PILL_GAP = 6;
 
-/** Minimum distance kept between the pill and the viewport edges. */
+/**
+ * Minimum distance kept between the pill and the viewport edges.
+ */
 const PILL_VIEWPORT_MARGIN = 8;
 
 /**
@@ -188,7 +206,9 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       saveState(LAST_TARGET_STATE_KEY, value);
     };
 
-    /** Agents that can receive an initial prompt on their command line. */
+    /**
+     * Agents that can receive an initial prompt on their command line.
+     */
     const promptAgents = (): IAgent[] =>
       (agentRegistry?.agents ?? []).filter(
         agent => agent.promptArgs !== undefined
@@ -232,7 +252,9 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       }
     };
 
-    /** Open the named terminal's tab (the success toast's call to action). */
+    /**
+     * Open the named terminal's tab (the success toast's call to action).
+     */
     const openTerminal = (name: string): void => {
       app.commands.execute('terminal:open', { name }).catch(reason => {
         console.error('xtralab: failed to open the terminal', reason);
@@ -452,7 +474,9 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
         });
       };
 
-      /** Empty the queue, with an undo toast (typed comments are work). */
+      /**
+       * Empty the queue, with an undo toast (typed comments are work).
+       */
       const clearQueue = (): void => {
         const removed = promptQueue.items;
         if (removed.length === 0) {

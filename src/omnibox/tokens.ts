@@ -7,9 +7,13 @@ import { Token } from '@lumino/coreutils';
  * by the top-bar command bar, which opens it on click.
  */
 export interface IOmnibox {
-  /** Open the overlay, optionally seeding the input with `query`. */
+  /**
+   * Open the overlay, optionally seeding the input with `query`.
+   */
   open(query?: string): void;
-  /** Close the overlay if it is open. */
+  /**
+   * Close the overlay if it is open.
+   */
   close(): void;
 }
 

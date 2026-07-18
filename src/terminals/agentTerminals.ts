@@ -201,24 +201,38 @@ export class AgentTerminals implements IAgentTerminals {
  * A namespace for `AgentTerminals` statics.
  */
 export namespace AgentTerminals {
-  /** Construction options for {@link AgentTerminals}. */
+  /**
+   * Construction options for {@link AgentTerminals}.
+   */
   export interface IOptions {
-    /** The panel's session registry — the source of the session snapshot. */
+    /**
+     * The panel's session registry — the source of the session snapshot.
+     */
     registry: SessionRegistry;
 
-    /** Tracker of open terminal widgets, to reuse an open tab's connection. */
+    /**
+     * Tracker of open terminal widgets, to reuse an open tab's connection.
+     */
     tracker: ITerminalTracker;
 
-    /** The terminal session manager, for validation and ad-hoc connections. */
+    /**
+     * The terminal session manager, for validation and ad-hoc connections.
+     */
     terminals: Terminal.IManager;
 
-    /** Names to detect — same list the registry polls with. */
+    /**
+     * Names to detect — same list the registry polls with.
+     */
     detectCommands: () => string[];
 
-    /** Whether a detected command belongs to a coding agent (not an editor). */
+    /**
+     * Whether a detected command belongs to a coding agent (not an editor).
+     */
     isAgentCommand: (command: string) => boolean;
 
-    /** Translation bundle for the error messages thrown to callers. */
+    /**
+     * Translation bundle for the error messages thrown to callers.
+     */
     trans: TranslationBundle;
   }
 }

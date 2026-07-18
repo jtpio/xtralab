@@ -96,7 +96,9 @@ export type AskAgentTarget =
  * where to place the popup on screen.
  */
 export interface IAskAgentRequest {
-  /** The code location and selection the prompt is about. */
+  /**
+   * The code location and selection the prompt is about.
+   */
   context: IAskAgentContext;
 
   /**

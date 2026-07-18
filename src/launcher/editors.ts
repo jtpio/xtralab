@@ -10,15 +10,25 @@ import { BUILTIN_EDITOR_ICONS } from './icons';
  * the terminals panel to badge running editors.
  */
 export interface IEditor {
-  /** Stable id; also the default `$PATH` command probed for availability. */
+  /**
+   * Stable id; also the default `$PATH` command probed for availability.
+   */
   id: string;
-  /** Tile label, e.g. "Neovim". */
+  /**
+   * Tile label, e.g. "Neovim".
+   */
   label: string;
-  /** Tile tooltip. */
+  /**
+   * Tile tooltip.
+   */
   caption: string;
-  /** The literal command typed into the new terminal, e.g. `nvim`. */
+  /**
+   * The literal command typed into the new terminal, e.g. `nvim`.
+   */
   command: string;
-  /** Brand icon for the tile. */
+  /**
+   * Brand icon for the tile.
+   */
   icon: LabIcon;
   /**
    * Preference order for the single launcher tile: the first candidate, by

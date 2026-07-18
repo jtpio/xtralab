@@ -9,10 +9,14 @@ import type { IAgent } from '../launcher/agents';
 import { AgentChoices, ISessionTarget, TargetChips } from './targetPicker';
 import type { AskAgentTarget, IAskAgentContext } from './tokens';
 
-/** Gap between the popup and its anchor rectangle, in pixels. */
+/**
+ * Gap between the popup and its anchor rectangle, in pixels.
+ */
 const ANCHOR_GAP = 6;
 
-/** Minimum distance kept between the popup and the viewport edges. */
+/**
+ * Minimum distance kept between the popup and the viewport edges.
+ */
 const VIEWPORT_MARGIN = 8;
 
 /**
@@ -344,17 +348,29 @@ export class AskAgentPopup extends ReactWidget {
  * A namespace for `AskAgentPopup` statics.
  */
 export namespace AskAgentPopup {
-  /** Construction options for {@link AskAgentPopup}. */
+  /**
+   * Construction options for {@link AskAgentPopup}.
+   */
   export interface IOptions {
-    /** The code selection the prompt is about. */
+    /**
+     * The code selection the prompt is about.
+     */
     context: IAskAgentContext;
-    /** Viewport rectangle to anchor to; `null` centers near the top. */
+    /**
+     * Viewport rectangle to anchor to; `null` centers near the top.
+     */
     anchor: DOMRect | null;
-    /** Snapshot of the prompt-capable agents, taken when the popup opens. */
+    /**
+     * Snapshot of the prompt-capable agents, taken when the popup opens.
+     */
     agents: IAgent[];
-    /** Snapshot of the running agent terminals, taken when the popup opens. */
+    /**
+     * Snapshot of the running agent terminals, taken when the popup opens.
+     */
     targets: ISessionTarget[];
-    /** Preferred agent id (the last one used), when still available. */
+    /**
+     * Preferred agent id (the last one used), when still available.
+     */
     initialAgentId: string | null;
     /**
      * Session to preselect as the target, or `null` to preselect the new
@@ -366,9 +382,13 @@ export namespace AskAgentPopup {
      * meaningful together with {@link onQueue}.
      */
     queueCount?: number;
-    /** Translation bundle for the popup's own labels. */
+    /**
+     * Translation bundle for the popup's own labels.
+     */
     trans: TranslationBundle;
-    /** Send the instruction to the chosen target (the plugin closes the popup). */
+    /**
+     * Send the instruction to the chosen target (the plugin closes the popup).
+     */
     onSubmit: (target: AskAgentTarget, instruction: string) => void;
     /**
      * Add the instruction to the prompt queue instead of sending it, keyed
