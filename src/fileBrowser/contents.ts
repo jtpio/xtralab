@@ -31,9 +31,13 @@ export function toServerPath(canonicalPath: string): string {
 }
 
 export interface IListedDirectory {
-  /** Canonical paths for every immediate child of the requested directory. */
+  /**
+   * Canonical paths for every immediate child of the requested directory.
+   */
   paths: string[];
-  /** Subset of {@link IListedDirectory.paths} that are directories. */
+  /**
+   * Subset of {@link IListedDirectory.paths} that are directories.
+   */
   subdirectories: string[];
 }
 

@@ -72,7 +72,9 @@ class EditorRegistry implements IEditorRegistry {
     return this._changed;
   }
 
-  /** Replace both lists (recomputed together) and notify observers. */
+  /**
+   * Replace both lists (recomputed together) and notify observers.
+   */
   set(editors: IEditor[], current: IEditor | null): void {
     this._editors = editors;
     this._current = current;

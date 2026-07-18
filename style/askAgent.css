@@ -1,0 +1,544 @@
+/*
+ * Ask-agent surfaces (xtralab:ask-agent): the floating "Ask agent" pill that
+ * follows a code selection, the prompt popup it (or the diff gutter "+"
+ * button) opens, and the right-sidebar queue panel that reviews queued
+ * prompts. The pill and popup are attached to `document.body`, outside the
+ * shell, and carry `jp-ThemedContainer` so theme variables resolve; the
+ * queue panel lives inside the shell.
+ */
+
+.jp-xtralab-AskAgent-pill {
+  position: fixed;
+  z-index: 10000;
+  display: none;
+  gap: 5px;
+  align-items: center;
+  padding: 3px 9px;
+  font-family: var(--jp-ui-font-family);
+  font-size: var(--jp-ui-font-size0);
+  color: var(--jp-ui-font-color1);
+  cursor: pointer;
+  background: var(--jp-layout-color1);
+  border: var(--jp-border-width) solid var(--jp-border-color1);
+  border-radius: 999px;
+  box-shadow: var(--jp-elevation-z2);
+}
+
+.jp-xtralab-AskAgent-pill:hover {
+  color: var(--jp-ui-font-color0);
+  background: var(--jp-layout-color2);
+}
+
+.jp-xtralab-AskAgent-pill:focus-visible {
+  outline: var(--jp-border-width) solid var(--jp-brand-color1);
+  outline-offset: 1px;
+}
+
+.jp-xtralab-AskAgent-pillIcon {
+  display: flex;
+  align-items: center;
+}
+
+.jp-xtralab-AskAgent-pillIcon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* The popup host widget node; the React tree renders the fixed card below. */
+.jp-xtralab-AskAgent {
+  position: absolute;
+}
+
+.jp-xtralab-AskAgent-popup {
+  position: fixed;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  width: min(400px, 92vw);
+  background: var(--jp-layout-color1);
+  border: var(--jp-border-width) solid var(--jp-border-color1);
+  border-radius: 6px;
+  box-shadow: var(--jp-elevation-z6);
+}
+
+.jp-xtralab-AskAgent-context {
+  padding: 7px 10px 5px;
+  overflow: hidden;
+  font-size: var(--jp-ui-font-size0);
+  color: var(--jp-ui-font-color2);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.jp-xtralab-AskAgent-input {
+  margin: 0 10px;
+  padding: 6px 8px;
+  font-family: var(--jp-ui-font-family);
+  font-size: var(--jp-ui-font-size1);
+  color: var(--jp-ui-font-color0);
+  resize: none;
+  background: var(--jp-layout-color0);
+  border: var(--jp-border-width) solid var(--jp-border-color2);
+  border-radius: 4px;
+}
+
+.jp-xtralab-AskAgent-input:focus {
+  border-color: var(--jp-brand-color1);
+  outline: none;
+}
+
+.jp-xtralab-AskAgent-input::placeholder {
+  color: var(--jp-ui-font-color3);
+}
+
+.jp-xtralab-AskAgent-empty {
+  padding: 4px 10px 10px;
+  font-size: var(--jp-ui-font-size1);
+  color: var(--jp-ui-font-color2);
+}
+
+/*
+ * Target chips: "New terminal" plus one chip per terminal with a running
+ * agent. Present only while at least one agent terminal is running.
+ */
+.jp-xtralab-AskAgent-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  padding: 8px 10px 0;
+}
+
+.jp-xtralab-AskAgent-targetButton {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 5px;
+  align-items: center;
+  max-width: 100%;
+  padding: 3px 9px;
+  font-family: var(--jp-ui-font-family);
+  font-size: var(--jp-ui-font-size0);
+  color: var(--jp-ui-font-color1);
+  cursor: pointer;
+  background: transparent;
+  border: var(--jp-border-width) solid var(--jp-border-color2);
+  border-radius: 999px;
+}
+
+.jp-xtralab-AskAgent-targetButton:hover {
+  background: var(--jp-layout-color2);
+}
+
+.jp-xtralab-AskAgent-targetButton.jp-mod-selected {
+  background: var(--jp-layout-color2);
+  border-color: var(--jp-brand-color1);
+}
+
+.jp-xtralab-AskAgent-targetButton:focus-visible {
+  outline: var(--jp-border-width) solid var(--jp-brand-color1);
+  outline-offset: 1px;
+}
+
+.jp-xtralab-AskAgent-targetIcon {
+  display: flex;
+  align-items: center;
+}
+
+.jp-xtralab-AskAgent-targetIcon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.jp-xtralab-AskAgent-targetLabel {
+  max-width: 160px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.jp-xtralab-AskAgent-targetName {
+  color: var(--jp-ui-font-color3);
+}
+
+.jp-xtralab-AskAgent-footer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+}
+
+.jp-xtralab-AskAgent-agents {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  overflow-x: auto;
+}
+
+.jp-xtralab-AskAgent-agentButton {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  border: var(--jp-border-width) solid transparent;
+  border-radius: 4px;
+}
+
+.jp-xtralab-AskAgent-agentButton:hover {
+  background: var(--jp-layout-color2);
+}
+
+.jp-xtralab-AskAgent-agentButton.jp-mod-selected {
+  background: var(--jp-layout-color2);
+  border-color: var(--jp-brand-color1);
+}
+
+.jp-xtralab-AskAgent-agentButton:focus-visible {
+  outline: var(--jp-border-width) solid var(--jp-brand-color1);
+  outline-offset: 1px;
+}
+
+.jp-xtralab-AskAgent-agentIcon {
+  display: flex;
+  align-items: center;
+}
+
+.jp-xtralab-AskAgent-agentIcon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/*
+ * `margin-left: auto` keeps the action buttons pinned right even when the
+ * agent radiogroup is absent (an existing session is the selected target,
+ * so the agent choice is implied and the row is not rendered). The
+ * "Send to %1" label embeds the session title, which the running agent may
+ * grow long via its xterm title escape, so the buttons shrink and ellipsize
+ * rather than overflowing the popup.
+ */
+.jp-xtralab-AskAgent-actions {
+  display: flex;
+  flex: 0 1 auto;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.jp-xtralab-AskAgent-queueButton {
+  flex: 0 0 auto;
+  padding: 4px 12px;
+  font-size: var(--jp-ui-font-size1);
+  color: var(--jp-ui-font-color1);
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  border: var(--jp-border-width) solid var(--jp-border-color2);
+  border-radius: 4px;
+}
+
+.jp-xtralab-AskAgent-queueButton:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.jp-xtralab-AskAgent-queueButton:focus-visible {
+  outline: var(--jp-border-width) solid var(--jp-brand-color1);
+  outline-offset: 1px;
+}
+
+.jp-xtralab-AskAgent-queueButton:hover:enabled {
+  background: var(--jp-layout-color2);
+}
+
+/* The popup's send button and the panel's batch-send button match. */
+.jp-xtralab-AskAgent-submit,
+.jp-xtralab-AskAgentQueue-send {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 4px 12px;
+  overflow: hidden;
+  font-size: var(--jp-ui-font-size1);
+  color: var(--jp-ui-inverse-font-color0);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  background: var(--jp-brand-color1);
+  border: none;
+  border-radius: 4px;
+}
+
+.jp-xtralab-AskAgent-submit:disabled,
+.jp-xtralab-AskAgentQueue-send:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* Inset panel-background ring so keyboard focus stays visible on the
+ * brand fill. */
+.jp-xtralab-AskAgent-submit:focus-visible,
+.jp-xtralab-AskAgentQueue-send:focus-visible {
+  outline: var(--jp-border-width) solid var(--jp-layout-color1);
+  outline-offset: -2px;
+}
+
+.jp-xtralab-AskAgent-submit:hover:enabled,
+.jp-xtralab-AskAgentQueue-send:hover:enabled {
+  background: var(--jp-brand-color0);
+}
+
+/*
+ * Queue panel (right side area): the queued prompts awaiting a batch send,
+ * each with a jump-to-code context line, a snippet preview and an editable
+ * instruction, above a footer that picks the target and sends everything.
+ */
+.jp-xtralab-AskAgentQueue {
+  display: flex;
+  background: var(--jp-layout-color1);
+}
+
+.jp-xtralab-AskAgentQueue-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  font-family: var(--jp-ui-font-family);
+  font-size: var(--jp-ui-font-size1);
+  color: var(--jp-ui-font-color1);
+}
+
+.jp-xtralab-AskAgentQueue-blank {
+  padding: 12px;
+  color: var(--jp-ui-font-color2);
+}
+
+/* `min-height: 0` lets the list shrink below its content height (a flex
+ * item's default min-height is its content), so a long queue scrolls here
+ * instead of pushing the footer out of the panel. */
+.jp-xtralab-AskAgentQueue-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  margin: 0;
+  padding: 8px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.jp-xtralab-AskAgentQueue-item {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--jp-layout-color0);
+  border: var(--jp-border-width) solid var(--jp-border-color2);
+  border-radius: 6px;
+}
+
+.jp-xtralab-AskAgentQueue-itemHeader {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.jp-xtralab-AskAgentQueue-itemContext {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: var(--jp-ui-font-family);
+  font-size: var(--jp-ui-font-size0);
+  color: var(--jp-ui-font-color2);
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+}
+
+.jp-xtralab-AskAgentQueue-itemContext:hover {
+  color: var(--jp-brand-color1);
+  text-decoration: underline;
+}
+
+.jp-xtralab-AskAgentQueue-itemContext:focus-visible {
+  outline: var(--jp-border-width) solid var(--jp-brand-color1);
+  outline-offset: 1px;
+}
+
+.jp-xtralab-AskAgentQueue-itemRemove {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+}
+
+.jp-xtralab-AskAgentQueue-itemRemove:hover {
+  background: var(--jp-layout-color2);
+}
+
+.jp-xtralab-AskAgentQueue-itemRemove:focus-visible {
+  outline: var(--jp-border-width) solid var(--jp-brand-color1);
+  outline-offset: 1px;
+}
+
+.jp-xtralab-AskAgentQueue-itemRemoveIcon {
+  display: flex;
+  align-items: center;
+}
+
+.jp-xtralab-AskAgentQueue-itemRemoveIcon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Clamped preview of the selected code; the context line above jumps to
+ * the real thing. */
+.jp-xtralab-AskAgentQueue-snippet {
+  display: -webkit-box;
+  margin: 0;
+  padding: 4px 6px;
+  overflow: hidden;
+  font-family: var(--jp-code-font-family);
+  font-size: var(--jp-code-font-size);
+  line-height: var(--jp-code-line-height);
+  color: var(--jp-ui-font-color2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--jp-layout-color1);
+  border-radius: 4px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.jp-xtralab-AskAgentQueue-instruction {
+  padding: 6px 8px;
+  font-family: var(--jp-ui-font-family);
+  font-size: var(--jp-ui-font-size1);
+  color: var(--jp-ui-font-color0);
+  resize: vertical;
+  background: var(--jp-layout-color0);
+  border: var(--jp-border-width) solid var(--jp-border-color2);
+  border-radius: 4px;
+}
+
+.jp-xtralab-AskAgentQueue-instruction:focus {
+  border-color: var(--jp-brand-color1);
+  outline: none;
+}
+
+.jp-xtralab-AskAgentQueue-instruction::placeholder {
+  color: var(--jp-ui-font-color3);
+}
+
+/* An emptied-out instruction blocks the batch send; make the gap visible. */
+.jp-xtralab-AskAgentQueue-instruction[aria-invalid='true'] {
+  border-color: var(--jp-warn-color1);
+}
+
+/* Each prompt's own destination — the agent icon plus a select whose
+ * closed text names the action ("Terminal 2 · Claude", "New terminal ·
+ * Codex"), so a mixed queue can be scanned without opening dropdowns. */
+.jp-xtralab-AskAgentQueue-itemTargetRow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.jp-xtralab-AskAgentQueue-itemTargetIcon {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  width: 16px;
+}
+
+.jp-xtralab-AskAgentQueue-itemTargetIcon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* The select is core's jp-HTMLSelect (the notebook-toolbar dropdown);
+ * these rules only make it fill the row and ellipsize long labels. */
+.jp-xtralab-AskAgentQueue-itemTarget {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.jp-xtralab-AskAgentQueue-itemTarget select {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A destination that has gone away (closed terminal, removed agent)
+ * blocks the send; make the gap visible despite the borderless default.
+ * The doubled-up class outweighs core's `.jp-HTMLSelect.jp-DefaultStyle
+ * select` border reset regardless of stylesheet order. */
+.jp-xtralab-AskAgentQueue-itemTarget.jp-HTMLSelect select[aria-invalid='true'] {
+  border: var(--jp-border-width) solid var(--jp-warn-color1);
+  border-radius: 4px;
+}
+
+.jp-xtralab-AskAgentQueue-footer {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-top: var(--jp-border-width) solid var(--jp-border-color2);
+}
+
+.jp-xtralab-AskAgentQueue-noTargets {
+  color: var(--jp-ui-font-color2);
+}
+
+.jp-xtralab-AskAgentQueue-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.jp-xtralab-AskAgentQueue-clear {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  font-size: var(--jp-ui-font-size1);
+  color: var(--jp-ui-font-color2);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+}
+
+.jp-xtralab-AskAgentQueue-clear:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.jp-xtralab-AskAgentQueue-clear:focus-visible {
+  outline: var(--jp-border-width) solid var(--jp-brand-color1);
+  outline-offset: 1px;
+}
+
+.jp-xtralab-AskAgentQueue-clear:hover:enabled {
+  color: var(--jp-ui-font-color1);
+  background: var(--jp-layout-color2);
+}

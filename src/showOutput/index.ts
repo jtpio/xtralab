@@ -12,7 +12,9 @@ import { coerceData } from '../mimeData';
 
 const PLUGIN_ID = 'xtralab:show-output';
 
-/** Render arbitrary rich content into a panel, with no notebook and no kernel. */
+/**
+ * Render arbitrary rich content into a panel, with no notebook and no kernel.
+ */
 const SHOW_COMMAND = 'xtralab:show';
 
 /**

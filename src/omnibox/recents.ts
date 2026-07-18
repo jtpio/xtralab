@@ -1,17 +1,25 @@
 import type { IStateDB } from '@jupyterlab/statedb';
 import type { PartialJSONObject } from '@lumino/coreutils';
 
-/** Kinds of omnibox results whose uses are recorded. */
+/**
+ * Kinds of omnibox results whose uses are recorded.
+ */
 export type RecentKind = 'command' | 'file';
 
-/** A single recorded use: a command that was run or a file that was opened. */
+/**
+ * A single recorded use: a command that was run or a file that was opened.
+ */
 export interface IRecentEntry {
   kind: RecentKind;
-  /** The command id, or the workspace-relative file path. */
+  /**
+   * The command id, or the workspace-relative file path.
+   */
   id: string;
 }
 
-/** State database key the recents list is persisted under. */
+/**
+ * State database key the recents list is persisted under.
+ */
 const STATE_KEY = 'xtralab:omnibox:recents';
 
 /**
@@ -56,7 +64,9 @@ export class OmniboxRecents {
       : [...this._entries];
   }
 
-  /** Record a use of `id`, moving it to the front of its kind's list. */
+  /**
+   * Record a use of `id`, moving it to the front of its kind's list.
+   */
   touch(kind: RecentKind, id: string): void {
     const rest = this._entries.filter(
       entry => !(entry.kind === kind && entry.id === id)
@@ -102,7 +112,9 @@ export class OmniboxRecents {
     this._entries = this._trim(merged);
   }
 
-  /** Keep at most `maxItems` entries of each kind, preserving order. */
+  /**
+   * Keep at most `maxItems` entries of each kind, preserving order.
+   */
   private _trim(entries: IRecentEntry[]): IRecentEntry[] {
     const counts = new Map<RecentKind, number>();
     return entries.filter(entry => {
@@ -131,9 +143,13 @@ export class OmniboxRecents {
 }
 
 export namespace OmniboxRecents {
-  /** Construction options for {@link OmniboxRecents}. */
+  /**
+   * Construction options for {@link OmniboxRecents}.
+   */
   export interface IOptions {
-    /** The state database to persist through, if available. */
+    /**
+     * The state database to persist through, if available.
+     */
     state?: IStateDB | null;
   }
 }

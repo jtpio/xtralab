@@ -6,6 +6,8 @@ import { IThemeManager, WidgetTracker } from '@jupyterlab/apputils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 
+import { IAskAgent } from '../askAgent/tokens';
+
 import {
   CommandArguments,
   CommandIDs,
@@ -31,12 +33,13 @@ const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
   description:
     "The launcher dashboard's side-by-side git diff command, powered by @pierre/diffs.",
   autoStart: true,
-  optional: [IThemeManager, IRenderMimeRegistry, ITranslator],
+  optional: [IThemeManager, IRenderMimeRegistry, ITranslator, IAskAgent],
   activate: (
     app: JupyterFrontEnd,
     themeManager: IThemeManager | null,
     rendermime: IRenderMimeRegistry | null,
-    translator: ITranslator | null
+    translator: ITranslator | null,
+    askAgent: IAskAgent | null
   ): void => {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
     // Track open diffs so repeated opens reveal the existing tab.
@@ -60,6 +63,7 @@ const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
       themeManager,
       contentsManager: app.serviceManager.contents,
       rendermime,
+      askAgent,
       trans,
       trackDiff: widget => tracker.add(widget),
       onPinned: current => {

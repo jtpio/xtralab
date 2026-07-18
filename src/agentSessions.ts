@@ -28,10 +28,14 @@ export interface IAgentSessions {
    */
   get(sessionName: string): string | null;
 
-  /** Record that a session was launched as the given agent command. */
+  /**
+   * Record that a session was launched as the given agent command.
+   */
   set(sessionName: string, command: string): void;
 
-  /** Forget a session — called when it shuts down so the map stays bounded. */
+  /**
+   * Forget a session — called when it shuts down so the map stays bounded.
+   */
   delete(sessionName: string): void;
 
   /**

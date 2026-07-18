@@ -78,9 +78,13 @@ export async function launchInTerminal(
   commands: CommandRegistry,
   options: {
     cwd?: string;
-    /** The literal command line typed into the fresh terminal. */
+    /**
+     * The literal command line typed into the fresh terminal.
+     */
     invocation: string;
-    /** Tab/title label applied once the command is sent. */
+    /**
+     * Tab/title label applied once the command is sent.
+     */
     label: string;
     onSession?: (sessionName: string) => void;
   }

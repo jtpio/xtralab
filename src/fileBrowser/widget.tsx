@@ -99,7 +99,9 @@ export interface IXtralabFileBrowser {
    */
   readonly collapseAllRequested: ISignal<IXtralabFileBrowser, void>;
 
-  /** Trigger a refresh of every loaded directory in the tree. */
+  /**
+   * Trigger a refresh of every loaded directory in the tree.
+   */
   refresh(): void;
 
   /**

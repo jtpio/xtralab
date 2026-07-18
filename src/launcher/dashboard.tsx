@@ -508,7 +508,9 @@ function AgentSection(props: {
  */
 const MCP_ADD_AGENT_IDS = new Set(['claude', 'codex', 'copilot']);
 
-/** The stdio proxy console script that bridges an agent to the MCP server. */
+/**
+ * The stdio proxy console script that bridges an agent to the MCP server.
+ */
 const MCP_PROXY_COMMAND = 'jupyter-server-mcp-proxy';
 
 /**

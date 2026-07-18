@@ -19,7 +19,9 @@ export interface IGitStatusFile {
   is_binary: boolean | null;
 }
 
-/** Response shape of `POST /git/<path>/status`. */
+/**
+ * Response shape of `POST /git/<path>/status`.
+ */
 export interface IGitStatusResult {
   code: number;
   branch: string | null;

@@ -14,14 +14,18 @@ import { IWalkthroughMedia, IWalkthroughStep, WalkthroughPanel } from './panel';
 
 const PLUGIN_ID = 'xtralab:walkthrough';
 
-/** Append a step to the read-only walkthrough panel. */
+/**
+ * Append a step to the read-only walkthrough panel.
+ */
 const WALKTHROUGH_COMMAND = 'xtralab:walkthrough';
 
 const HIGHLIGHT_LINES_COMMAND = 'xtralab:highlight-lines';
 
 const PANEL_ID = 'xtralab-walkthrough';
 
-/** Pull a `{ mimeType, data }` media object out of a JSON command argument. */
+/**
+ * Pull a `{ mimeType, data }` media object out of a JSON command argument.
+ */
 function readMedia(value: unknown): IWalkthroughMedia | undefined {
   if (
     value &&

@@ -1,6 +1,7 @@
 import { JupyterFrontEndPlugin } from '@jupyterlab/application';
 
 import agentSessionsPlugin from './agentSessions';
+import askAgentPlugin from './askAgent';
 import commandBarPlugin from './commandBar';
 import fileBrowserPlugin from './fileBrowser';
 import fileTypeIconsPlugin from './fileTypeIcons';
@@ -30,6 +31,7 @@ import walkthroughPlugin from './walkthrough';
  */
 const plugins: JupyterFrontEndPlugin<unknown>[] = [
   agentSessionsPlugin,
+  askAgentPlugin,
   commandBarPlugin,
   editorBreadcrumbsPlugin,
   editorIndentPlugin,

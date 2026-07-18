@@ -246,6 +246,20 @@ export class SessionRegistry implements IDisposable {
   }
 
   /**
+   * The agent command server-side detection currently reports for the
+   * session, or `null` when it has not confirmed one (the session is idle,
+   * not yet covered by a poll, or detection is unavailable). Unlike
+   * {@link agentCommandFor} this never falls back to the optimistic launch
+   * tags: callers about to *write into* a session use it, and text must only
+   * ever be sent to a confirmed running agent — pasted into a shell prompt it
+   * would be executed.
+   */
+  detectedCommandFor(name: string): string | null {
+    const detected = this._detected.get(name);
+    return typeof detected === 'string' ? detected : null;
+  }
+
+  /**
    * The most recent meaningful line of output from the session's terminal, or
    * `null` when there is nothing to surface — no coding agent is running in the
    * session, its tab is closed (so there is no live buffer to read), or the
@@ -662,10 +676,14 @@ namespace Private {
     return true;
   }
 
-  /** Rows above the cursor to scan when looking for the latest output. */
+  /**
+   * Rows above the cursor to scan when looking for the latest output.
+   */
   const ACTIVITY_SCAN_ROWS = 64;
 
-  /** Clamp for the activity string so one runaway block can't bloat a row. */
+  /**
+   * Clamp for the activity string so one runaway block can't bloat a row.
+   */
   const ACTIVITY_MAX_LENGTH = 160;
 
   /**
@@ -714,7 +732,9 @@ namespace Private {
     return null;
   }
 
-  /** Sanitized text of one buffer row. */
+  /**
+   * Sanitized text of one buffer row.
+   */
   export function lineText(buffer: IXtermBuffer, row: number): string {
     return sanitizeActivity(buffer.getLine(row)?.translateToString(true) ?? '');
   }
@@ -745,7 +765,9 @@ namespace Private {
     return result;
   }
 
-  /** Truncate by code point (never splitting an emoji) with an ellipsis. */
+  /**
+   * Truncate by code point (never splitting an emoji) with an ellipsis.
+   */
   export function clampActivity(text: string): string {
     const points = Array.from(text);
     return points.length > ACTIVITY_MAX_LENGTH

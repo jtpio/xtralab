@@ -67,13 +67,21 @@ class CommandBar extends Widget {
 
 namespace CommandBar {
   export interface IOptions {
-    /** Placeholder-style text shown inside the pill. */
+    /**
+     * Placeholder-style text shown inside the pill.
+     */
     label: string;
-    /** Tooltip and accessible name for the button. */
+    /**
+     * Tooltip and accessible name for the button.
+     */
     caption: string;
-    /** Formatted keyboard shortcut shown as a trailing hint, if any. */
+    /**
+     * Formatted keyboard shortcut shown as a trailing hint, if any.
+     */
     shortcut?: string;
-    /** Runs on click or keyboard activation. */
+    /**
+     * Runs on click or keyboard activation.
+     */
     onActivate: () => void;
   }
 

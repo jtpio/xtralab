@@ -4,7 +4,9 @@ import type { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { defaultAgentSettings } from './agents';
 import { defaultEditorSettings } from './editors';
 
-/** Schema id the launcher's `agents`/`editors` settings live under. */
+/**
+ * Schema id the launcher's `agents`/`editors` settings live under.
+ */
 export const LAUNCHER_PLUGIN_ID = 'xtralab:launcher';
 
 /**
