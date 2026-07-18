@@ -134,3 +134,15 @@ release tag and uploads renamed installers
 (`xtralab-<version>-darwin-arm64.dmg`, `xtralab-<version>-linux-x64.AppImage`)
 directly to that release's assets, alongside the Python wheel/sdist that
 Jupyter Releaser pushes for PyPI.
+
+## Documentation
+
+The documentation site lives in [`docs/`](./docs) and is built with
+[Starlight](https://starlight.astro.build). `pnpm install && pnpm dev` inside
+`docs/` starts a local preview; the `docs` GitHub Actions workflow builds
+every pull request that touches it and deploys to GitHub Pages when the
+change lands on `main`.
+
+Screenshots in the docs are generated with the Galata suite in
+[`ui-tests/`](./ui-tests); see its [README](./ui-tests/README.md) for how to
+regenerate them after a UI change.

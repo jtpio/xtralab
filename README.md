@@ -10,6 +10,9 @@ agent-ready JupyterLab base.
 
 ![The xtralab workspace: path-first file browser, agent launcher, a side-by-side git diff, and a running Claude Code session](./images/hero.webp)
 
+Full documentation lives at
+[jtpio.github.io/xtralab](https://jtpio.github.io/xtralab/).
+
 ## Install
 
 ```bash
