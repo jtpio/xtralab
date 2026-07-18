@@ -1,0 +1,25 @@
+---
+title: Language servers
+description: Python works out of the box; add more servers when you need them.
+---
+
+xtralab ships [`jupyterlab-lsp`](https://github.com/jupyter-lsp/jupyterlab-lsp)
+with Python pre-registered through
+[`ty`](https://github.com/astral-sh/ty), which is bundled and works out of the
+box: completions, diagnostics, and navigation with zero setup.
+
+## TypeScript and JavaScript
+
+Install the server yourself and restart JupyterLab:
+
+```bash
+npm install -g typescript-language-server typescript
+```
+
+## Other languages
+
+To enable another server (bash, yaml, json, pyright, and more), install its
+binary and drop a JSON spec into a `jupyter_server_config.d/` directory; run
+`jupyter --paths` to find one. See the
+[`jupyterlab-lsp` docs](https://jupyterlab-lsp.readthedocs.io/en/latest/Configuring.html)
+for the spec format.

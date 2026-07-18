@@ -156,6 +156,8 @@
         "dist",
         "coverage",
         "**/*.d.ts",
+        "docs",
+        "ui-tests",
         "desktop/out",
         "desktop/dist",
         "desktop/python/wheels",

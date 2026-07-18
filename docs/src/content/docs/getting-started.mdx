@@ -1,0 +1,47 @@
+---
+title: Getting started
+description: Launch xtralab, start an agent, and find your way around.
+---
+
+## Launch it from your project
+
+Start JupyterLab from the folder you want to work in:
+
+```bash
+cd my-project
+jupyter lab
+```
+
+The file browser is path-first: it shows the folder you launched from, the way
+a code editor would, and the git integration picks up the repository at that
+root.
+
+## Start an agent
+
+The first thing you see is the launcher.
+
+![The xtralab launcher: a prompt box, one button per installed agent, an Open row, and the list of changed files](../../assets/screenshots/launcher.png)
+
+Type an optional prompt, then pick an agent. The button opens a terminal that
+runs the agent in your project and passes the prompt along. Only agents
+installed on your machine get a button, so the row reflects what you can
+actually run.
+
+The **Open** row covers the rest of a working session: a plain terminal, a
+notebook, a console, or your terminal editor. The **Changes** list shows every
+modified file in the repository and jumps straight to its
+[diff](../features/git-diffs/).
+
+## Find your way around
+
+The left sidebar keeps the terminals list, the file browser, the git panel,
+and search and replace. The top bar holds the menus and the
+[omnibox](../features/omnibox/) pill, and the right sidebar hosts the prompt
+queue from [Ask an agent](../features/ask-agent/).
+
+## Let the agent drive the app
+
+Agents can do more than run in a terminal: xtralab ships a Model Context
+Protocol server inside JupyterLab, so a connected agent can open files, run
+notebook cells, and read outputs. Wiring one up is a single command; see
+[Connect agents with MCP](../agents/mcp/).

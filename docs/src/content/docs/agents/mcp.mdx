@@ -1,0 +1,29 @@
+---
+title: Connect agents with MCP
+description: Let agents open files, run cells, and read notebooks.
+---
+
+xtralab runs a [Model Context Protocol](https://modelcontextprotocol.io)
+server inside JupyterLab, provided by
+[`jupyter-server-mcp`](https://github.com/jupyter-ai-contrib/jupyter-server-mcp),
+so an agent can drive the app: open files, run cells, and read the notebook.
+
+## Register the proxy
+
+To wire up a client, register the bundled `jupyter-server-mcp-proxy` console
+script with it:
+
+```bash
+claude mcp add jupyter -- jupyter-server-mcp-proxy
+codex mcp add jupyter -- jupyter-server-mcp-proxy
+copilot mcp add jupyter -- jupyter-server-mcp-proxy
+```
+
+Run this from a terminal inside xtralab so the proxy inherits the server
+environment and discovers the running server on its own. No port is needed,
+and a single registration keeps working across restarts.
+
+The [launcher](../../features/launcher/) also surfaces these commands with
+copy buttons, filtered to the agents you have installed. See the
+[`jupyter-server-mcp` README](https://github.com/jupyter-ai-contrib/jupyter-server-mcp)
+for other clients.
