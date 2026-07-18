@@ -1,0 +1,15 @@
+{
+  "title": "xtralab Omnibox",
+  "description": "The launcher overlay that searches files and commands and prompts agents.",
+  "type": "object",
+  "properties": {
+    "maxNumberRecents": {
+      "type": "integer",
+      "title": "Recent items number",
+      "description": "Number of recently used commands and files (each) the omnibox remembers and shows at the top before you type a query. Set to 0 to disable recent items.",
+      "default": 5,
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}
