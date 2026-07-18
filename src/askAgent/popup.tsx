@@ -22,7 +22,8 @@ const VIEWPORT_MARGIN = 8;
 /**
  * Short human-readable descriptor of the prompted range, shown in the popup
  * header and the queue panel: file name, notebook cell (when applicable),
- * line range and (for diffs) which side the lines are on.
+ * line range and, for ranges that are not current file content (such as the
+ * old side of a diff), a clarifying tag.
  */
 export function contextSummary(
   context: IAskAgentContext,

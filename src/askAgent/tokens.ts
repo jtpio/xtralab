@@ -76,7 +76,8 @@ export interface IAskAgentContext {
 
   /**
    * Short user-facing tag shown in the popup header next to the file name,
-   * e.g. "old side". Translated, unlike {@link location}.
+   * e.g. "old version". Translated, unlike {@link location}. Omit when the
+   * range reads naturally as the file's current content.
    */
   note?: string;
 }

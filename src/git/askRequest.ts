@@ -104,7 +104,9 @@ export function buildDiffAskRequest(options: {
         !isOld && model.challenger.source === Git.Diff.SpecialRef.WORKING,
       text: sliceLines(isOld ? oldText : newText, startLine, endLine),
       location: `the ${sideName(startSide)} (${ref}) of the current git diff`,
-      note: isOld ? trans.__('old side') : trans.__('new side')
+      // New-side lines read as the file's current content, so only old-side
+      // ranges need a clarifying tag in the popup header.
+      ...(isOld ? { note: trans.__('old version') } : {})
     },
     anchor
   };
