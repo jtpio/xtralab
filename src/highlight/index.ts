@@ -5,6 +5,7 @@ import {
 import { ICommandPalette } from '@jupyterlab/apputils';
 import { CodeMirrorEditor } from '@jupyterlab/codemirror';
 import { IDocumentManager } from '@jupyterlab/docmanager';
+import { FileEditor } from '@jupyterlab/fileeditor';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { StateEffect, StateField } from '@codemirror/state';
 import { Decoration, DecorationSet, EditorView } from '@codemirror/view';
@@ -20,7 +21,9 @@ const PLUGIN_ID = 'xtralab:highlight';
 const HIGHLIGHT_LINES_COMMAND = 'xtralab:highlight-lines';
 const CLEAR_HIGHLIGHTS_COMMAND = 'xtralab:clear-highlights';
 
-/** CodeMirror line-decoration class; styled in style/highlight.css. */
+/**
+ * CodeMirror line-decoration class; styled in style/highlight.css.
+ */
 const HIGHLIGHT_LINE_CLASS = 'jp-xtralab-highlightLine';
 
 /**
@@ -66,15 +69,16 @@ const highlightField = StateField.define<DecorationSet>({
 });
 
 /**
- * Return the CodeMirror view backing a widget's editor, or `null` when the
- * widget is not a CodeMirror-based text editor (a notebook, a terminal, the
- * settings editor, …). Duck-typed on `content.editor` so the plugin does not
- * depend on `@jupyterlab/fileeditor`.
+ * Return the CodeMirror view backing a widget's file editor, or `null` when
+ * the widget is not a CodeMirror-based text editor (a notebook, a terminal,
+ * the settings editor, …).
  */
 function viewForWidget(widget: Widget | null): EditorView | null {
-  const editor = (widget as { content?: { editor?: unknown } } | null)?.content
-    ?.editor;
-  return editor instanceof CodeMirrorEditor ? editor.editor : null;
+  const content = (widget as { content?: unknown } | null)?.content;
+  return content instanceof FileEditor &&
+    content.editor instanceof CodeMirrorEditor
+    ? content.editor.editor
+    : null;
 }
 
 /**

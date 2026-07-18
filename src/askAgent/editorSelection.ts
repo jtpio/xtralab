@@ -1,5 +1,7 @@
 import type { JupyterFrontEnd } from '@jupyterlab/application';
 import { CodeMirrorEditor } from '@jupyterlab/codemirror';
+import { FileEditor } from '@jupyterlab/fileeditor';
+import { NotebookPanel } from '@jupyterlab/notebook';
 import type { EditorView } from '@codemirror/view';
 import type { Widget } from '@lumino/widgets';
 
@@ -20,62 +22,41 @@ export interface IEditorTarget {
 }
 
 /**
- * Return the document path behind a widget, or `null` for widgets that are
- * not document widgets (duck-typed on `context.path`).
- */
-function pathForWidget(widget: Widget | null): string | null {
-  const path = (widget as { context?: { path?: unknown } } | null)?.context
-    ?.path;
-  return typeof path === 'string' && path.length > 0 ? path : null;
-}
-
-/**
  * Resolve the CodeMirror view a selection in `widget` would live in, or
- * `null` when the widget holds no such editor. Two shapes are recognized,
- * both duck-typed so the plugin depends on neither `@jupyterlab/fileeditor`
- * nor `@jupyterlab/notebook` (the highlight plugin resolves file editors
- * the same way):
+ * `null` when the widget holds no such editor. Two widget shapes are
+ * recognized:
  *
- * - a document widget whose `content.editor` is the CodeMirror editor
- *   (file editors), and
- * - a notebook panel, where the active cell carries the editor
- *   (`content.activeCell.editor`) and `content.activeCellIndex` names its
- *   0-based position in the nbformat `cells` array. A rendered markdown
- *   cell keeps its (hidden) editor, but a selection in the rendered HTML
- *   never passes {@link domSelectionInView}, so no pill appears there.
+ * - a notebook panel, where the active cell carries the editor and
+ *   `activeCellIndex` names its 0-based position in the nbformat `cells`
+ *   array. A rendered markdown cell keeps its (hidden) editor, but a
+ *   selection in the rendered HTML never passes {@link domSelectionInView},
+ *   so no pill appears there; and
+ * - a document widget whose content is a `FileEditor`. The wrapper is not
+ *   checked with `instanceof DocumentWidget`: `@jupyterlab/docregistry` is
+ *   not a core singleton, so another copy of the class could be in play.
+ *   `FileEditor` and `NotebookPanel` come from singleton packages.
  */
 export function resolveEditorTarget(
   widget: Widget | null
 ): IEditorTarget | null {
-  const path = pathForWidget(widget);
-  if (path === null) {
+  if (widget instanceof NotebookPanel) {
+    const cell = widget.content.activeCell;
+    if (cell !== null && cell.editor instanceof CodeMirrorEditor) {
+      return {
+        view: cell.editor.editor,
+        path: widget.context.path,
+        cell: { index: widget.content.activeCellIndex, type: cell.model.type }
+      };
+    }
     return null;
   }
 
-  const content = (widget as { content?: unknown } | null)?.content as
-    | {
-        editor?: unknown;
-        activeCell?: { editor?: unknown; model?: { type?: unknown } };
-        activeCellIndex?: unknown;
-      }
-    | undefined;
-
-  if (content?.editor instanceof CodeMirrorEditor) {
-    return { view: content.editor.editor, path };
-  }
-
-  const cellEditor = content?.activeCell?.editor;
-  if (cellEditor instanceof CodeMirrorEditor) {
-    const index = content?.activeCellIndex;
-    const type = content?.activeCell?.model?.type;
-    return {
-      view: cellEditor.editor,
-      path,
-      cell: {
-        index: typeof index === 'number' ? index : 0,
-        type: typeof type === 'string' ? type : 'code'
-      }
-    };
+  const content = (widget as { content?: unknown } | null)?.content;
+  if (
+    content instanceof FileEditor &&
+    content.editor instanceof CodeMirrorEditor
+  ) {
+    return { view: content.editor.editor, path: content.context.path };
   }
 
   return null;
