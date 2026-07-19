@@ -63,7 +63,7 @@ export interface IGitContentResult {
  * changes on top of an already-staged version. The panel models that as two
  * separate entries, one per group.
  */
-export type FileChangeGroup = 'staged' | 'unstaged';
+type FileChangeGroup = 'staged' | 'unstaged';
 
 /**
  * The user-facing status of a file change. Drives the single-letter badge

@@ -17,12 +17,12 @@ export const FILE_BROWSER_ID = 'xtralab:file-browser';
  * specific enough not to clash with other browsers (such as the default
  * `jp-FileBrowser`).
  */
-export const FILE_BROWSER_CSS_CLASS = 'jp-xtralab-FileBrowser';
+const FILE_BROWSER_CSS_CLASS = 'jp-xtralab-FileBrowser';
 
 const TOOLBAR_CSS_CLASS = 'jp-xtralab-FileBrowser-toolbar';
 const CONTENT_CSS_CLASS = 'jp-xtralab-FileBrowser-content';
 
-export interface IXtralabFileBrowserOptions {
+interface IXtralabFileBrowserOptions {
   contentsManager: Contents.IManager;
   docManager: IDocumentManager;
   onOpenFile?: (serverPath: string) => void;

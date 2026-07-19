@@ -9,7 +9,7 @@ import type { GitReference, IFileChange } from './tokens';
  * Resolve the old/new git refs for a launcher file change. Staged diffs are
  * INDEX vs HEAD; unstaged diffs are WORKING vs INDEX.
  */
-export function resolveReferences(change: IFileChange): {
+function resolveReferences(change: IFileChange): {
   oldRef: GitReference | null;
   newRef: GitReference | null;
 } {

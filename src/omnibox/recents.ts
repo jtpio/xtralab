@@ -9,7 +9,7 @@ export type RecentKind = 'command' | 'file';
 /**
  * A single recorded use: a command that was run or a file that was opened.
  */
-export interface IRecentEntry {
+interface IRecentEntry {
   kind: RecentKind;
   /**
    * The command id, or the workspace-relative file path.

@@ -21,14 +21,14 @@ import { resolveDiffTheme } from './diffTheme';
  * style cell sections, headers, and the per-cell diff blocks hang off this
  * class.
  */
-export const NOTEBOOK_DIFF_CSS_CLASS = 'jp-xtralab-NotebookDiff';
+const NOTEBOOK_DIFF_CSS_CLASS = 'jp-xtralab-NotebookDiff';
 
 /**
  * Minimal slice of nbformat 4.x that the diff inspects. Fields we don't
  * read (attachments, e.g.) are intentionally not narrowed — we still pass
  * them around as part of the cell, but we never project them into the diff.
  */
-export interface INotebookCell {
+interface INotebookCell {
   cell_type: string;
   id?: string;
   source: string | string[];
@@ -38,7 +38,7 @@ export interface INotebookCell {
   attachments?: Record<string, unknown>;
 }
 
-export interface INotebookOutput {
+interface INotebookOutput {
   output_type: string;
   data?: Record<string, unknown>;
   text?: string | string[];
@@ -50,7 +50,7 @@ export interface INotebookOutput {
   metadata?: Record<string, unknown>;
 }
 
-export interface INotebook {
+interface INotebook {
   cells: INotebookCell[];
   metadata: Record<string, unknown>;
   nbformat: number;
@@ -64,7 +64,7 @@ export interface INotebook {
  * carry the same payload but live on separate union members so `Extract`
  * narrowing works on `kind` literals downstream.
  */
-export type NotebookCellDiff =
+type NotebookCellDiff =
   | {
       kind: 'modified';
       oldCell: INotebookCell;
@@ -117,7 +117,7 @@ export interface INotebookDiffResult {
  * look like a notebook (missing `cells` array). The caller falls back to a
  * raw text diff so a malformed file is still inspectable.
  */
-export function parseNotebook(text: string): INotebook | null {
+function parseNotebook(text: string): INotebook | null {
   if (text.length === 0) {
     return emptyNotebook();
   }
@@ -156,14 +156,14 @@ function emptyNotebook(): INotebook {
  * strings. Normalize to one string so equality checks and diffs see the
  * same shape regardless of how the writer chose to serialize it.
  */
-export function joinMultiline(value: string | string[] | undefined): string {
+function joinMultiline(value: string | string[] | undefined): string {
   if (value === undefined) {
     return '';
   }
   return Array.isArray(value) ? value.join('') : value;
 }
 
-export function cellSource(cell: INotebookCell): string {
+function cellSource(cell: INotebookCell): string {
   return joinMultiline(cell.source);
 }
 
@@ -174,7 +174,7 @@ export function cellSource(cell: INotebookCell): string {
  * to a `<mime-type>` placeholder so diffing image bytes doesn't drown the
  * panel in base64 noise.
  */
-export function canonicalOutputs(cell: INotebookCell): string {
+function canonicalOutputs(cell: INotebookCell): string {
   const outputs = cell.outputs ?? [];
   if (outputs.length === 0) {
     return '';
@@ -242,7 +242,7 @@ function stripAnsi(value: string): string {
  * An empty metadata object returns the empty string so freshly-added cells
  * that carry the default `{}` don't produce a `+{}` placeholder section.
  */
-export function canonicalMetadata(cell: INotebookCell): string {
+function canonicalMetadata(cell: INotebookCell): string {
   const md = cell.metadata ?? {};
   if (Object.keys(md).length === 0) {
     return '';
@@ -255,7 +255,7 @@ export function canonicalMetadata(cell: INotebookCell): string {
  * info, nbformat). We diff the bundle as a single block so the user sees
  * all environment-level changes in one place.
  */
-export function canonicalNotebookMetadata(notebook: INotebook): string {
+function canonicalNotebookMetadata(notebook: INotebook): string {
   return stableStringify({
     metadata: notebook.metadata,
     nbformat: notebook.nbformat,
@@ -285,7 +285,7 @@ function sortKeysReplacer(key: string, value: unknown): unknown {
  * itself sees, so an "equal" verdict here implies all per-cell diff blocks
  * would be empty.
  */
-export function cellsAreEqual(a: INotebookCell, b: INotebookCell): boolean {
+function cellsAreEqual(a: INotebookCell, b: INotebookCell): boolean {
   return (
     a.cell_type === b.cell_type &&
     cellSource(a) === cellSource(b) &&
@@ -306,7 +306,7 @@ export function cellsAreEqual(a: INotebookCell, b: INotebookCell): boolean {
  * edits this is more readable than guessing alignment between unrelated
  * insertions and deletions.
  */
-export function alignNotebookCells(
+function alignNotebookCells(
   oldCells: INotebookCell[],
   newCells: INotebookCell[]
 ): NotebookCellDiff[] {
@@ -374,7 +374,7 @@ export function alignNotebookCells(
   return entries;
 }
 
-export interface IBuildNotebookDiffOptions {
+interface IBuildNotebookDiffOptions {
   oldText: string;
   newText: string;
 }

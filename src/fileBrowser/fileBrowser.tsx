@@ -99,7 +99,7 @@ const FILE_TREE_UNSAFE_CSS =
   'border-left-color: transparent;' +
   '}';
 
-export interface IFileBrowserProps {
+interface IFileBrowserProps {
   contentsManager: Contents.IManager;
   docManager: IDocumentManager;
   onOpenFile?: (serverPath: string) => void;

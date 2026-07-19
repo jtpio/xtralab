@@ -6,7 +6,7 @@ import {
 /**
  * Shiki CSS-variable theme used for non-Pierre JupyterLab themes.
  */
-export const JUPYTERLAB_DIFF_THEME: DiffsThemeNames = 'jupyterlab';
+const JUPYTERLAB_DIFF_THEME: DiffsThemeNames = 'jupyterlab';
 
 /**
  * Register a Shiki theme whose token colors read JupyterLab's editor
