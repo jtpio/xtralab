@@ -87,6 +87,15 @@ test('launcher', async ({ page }) => {
 
 test('git diff', async ({ page }) => {
   await ready(page);
+  // Pair the git panel on the left with the diff in the main area.
+  await page.evaluate(() => {
+    (window as any).jupyterapp.shell.activateById('jp-git-sessions');
+  });
+  await page
+    .locator('[id="jp-git-sessions"]')
+    .getByText('metrics.py')
+    .first()
+    .waitFor({ timeout: 15000 });
   await page
     .locator('.jp-xtralab-Launcher-change', { hasText: 'src/acme/metrics.py' })
     .click();
