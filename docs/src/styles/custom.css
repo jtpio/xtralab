@@ -16,3 +16,23 @@
   border: 1px solid var(--sl-color-hairline);
   border-radius: 0.5rem;
 }
+
+/* Icon-only theme switcher: collapse the select to its icon and hide the
+   selected-value text; the native dropdown keeps the full labels. */
+starlight-theme-select label {
+  /* The component sets the width as an inline style, hence the important. */
+  --sl-select-width: 2.25rem !important;
+}
+
+starlight-theme-select select {
+  color: transparent;
+  padding-inline-end: 0;
+}
+
+starlight-theme-select select option {
+  color: CanvasText;
+}
+
+starlight-theme-select svg.caret {
+  display: none;
+}
