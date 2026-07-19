@@ -1,0 +1,18 @@
+/* Accent palette derived from the XtraLab logo gradient. */
+:root {
+  --sl-color-accent-low: #2a1a66;
+  --sl-color-accent: #7c5cff;
+  --sl-color-accent-high: #d6ccff;
+}
+
+:root[data-theme='light'] {
+  --sl-color-accent-low: #e9e4ff;
+  --sl-color-accent: #6644e0;
+  --sl-color-accent-high: #33206e;
+}
+
+/* Screenshots read better with a subtle frame. */
+.sl-markdown-content img {
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 0.5rem;
+}

@@ -1,0 +1,49 @@
+---
+title: Desktop app
+description: A standalone xtralab app for macOS and Linux.
+---
+
+xtralab also ships as a standalone desktop app: a DMG on macOS and an AppImage
+on Linux. It bundles its own Python runtime, so it does not require Python,
+`pip`, `uv`, or network access on your machine.
+
+## Download
+
+Grab the installer for the latest tagged release from the
+[releases page](https://github.com/jtpio/xtralab/releases/latest). Builds from
+`main` are also uploaded as workflow artifacts on the
+[Actions tab](https://github.com/jtpio/xtralab/actions).
+
+The macOS build is not notarized yet, so Gatekeeper blocks the first launch.
+Right-click the app and choose **Open**, or run
+`xattr -d com.apple.quarantine /path/to/xtralab.app` to dismiss the warning
+once. You can also self-sign the app for free to get native notifications; see
+[CONTRIBUTING.md](https://github.com/jtpio/xtralab/blob/main/CONTRIBUTING.md)
+for the steps.
+
+## One window per project
+
+The app opens with a small launcher window where you pick a local folder. Each
+folder gets its own JupyterLab server and window, with its own named workspace,
+so open tabs and panel layout stay scoped to the project instead of leaking
+through a shared workspace.
+
+On macOS the project windows follow the system "Prefer tabs when opening
+documents" setting: they open as native tabs when that is set to Always, and
+otherwise as separate windows that can still be merged from the Window menu.
+The tab bar plus button and <kbd>Cmd</kbd>+<kbd>T</kbd> open the launcher in a
+new tab, and the project you pick replaces that tab.
+
+## Project environments and kernels
+
+The launcher detects common project Python environments such as `.venv`,
+`venv`, `env`, `.conda`, and pixi environments. Selecting one registers a
+folder-local kernel so notebooks execute with the project interpreter, while
+the JupyterLab server itself keeps running from the isolated bundled runtime.
+Environments without `ipykernel` are left alone and not exposed as kernels.
+
+## Building it yourself
+
+The Electron app lives in the repository's `desktop/` folder. See
+[CONTRIBUTING.md](https://github.com/jtpio/xtralab/blob/main/CONTRIBUTING.md)
+for the architecture, local builds, and the release pipeline.

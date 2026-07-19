@@ -1,0 +1,32 @@
+---
+title: Agent skills
+description: Skills that teach any coding agent how to work with the app.
+---
+
+xtralab ships [Agent Skills](https://agentskills.io) that teach any coding
+agent how to work with the app. They live in the repository at
+[`agent-skill/`](https://github.com/jtpio/xtralab/tree/main/agent-skill).
+
+## What the skills know
+
+- **customize-jupyterlab** turns plain-English requests like "hide the status
+  bar" or "change the theme" into the right config-file edits.
+- **guided-code-walkthrough** drives the running app over the MCP bridge to
+  open files, highlight specific lines, and build a read-only walkthrough
+  panel of prose, snippets, and diagrams beside the editor, so the agent can
+  _show_ you something instead of only describing it in chat.
+
+## Install them
+
+The same `SKILL.md` files work with Claude Code, Codex CLI, Gemini CLI, GitHub
+Copilot, and other tools that read the Agent Skills format. For Claude Code,
+the repository doubles as a one-plugin marketplace:
+
+```text
+/plugin marketplace add jtpio/xtralab
+/plugin install xtralab-skills@xtralab
+```
+
+See
+[`agent-skill/README.md`](https://github.com/jtpio/xtralab/blob/main/agent-skill/README.md)
+for other install paths and what the skills know in detail.

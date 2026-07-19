@@ -3,3 +3,10 @@ node_modules
 **/lib
 **/package.json
 !/package.json
+
+# Standalone subprojects with their own tooling and formatting conventions.
+docs/
+ui-tests/
+
+# Local agent worktrees and state, excluded from git via .git/info/exclude.
+.claude/

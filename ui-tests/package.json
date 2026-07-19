@@ -1,0 +1,14 @@
+{
+  "name": "xtralab-ui-tests",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Galata screenshot generation for the documentation",
+  "scripts": {
+    "install:browsers": "playwright install chromium",
+    "screenshots": "playwright test"
+  },
+  "devDependencies": {
+    "@jupyterlab/galata": "^5.6.1",
+    "@playwright/test": "^1.60.0"
+  }
+}

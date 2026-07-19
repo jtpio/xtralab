@@ -1,0 +1,33 @@
+---
+title: Launcher entries
+description: Override, hide, or add agents and editors in the launcher.
+---
+
+Open **Settings → Settings Editor → xtralab launcher** to override, hide, or
+add [launcher](../../features/launcher/) entries. The editor shows xtralab's
+full built-in list as the default for both the `agents` and `editors`
+settings, so you can read every shipped entry and copy one into your user
+preferences to tweak.
+
+## Merge by id
+
+Both lists merge with the defaults by `id`, so an override only needs the `id`
+plus the fields you want to change:
+
+```jsonc
+{
+  "agents": [
+    { "id": "kiro", "enabled": false }, // hide an agent
+    { "id": "claude", "command": "cl" }, // point Claude at a shell alias
+    { "id": "aider", "label": "Aider", "command": "aider", "promptArgs": [] }
+  ]
+}
+```
+
+## Fields
+
+Each entry takes `id` (required) plus optional `label`, `caption`, `command`,
+`promptArgs`, `iconSvg`, `rank`, `enabled`, and `requireAvailable`.
+
+The **Open** row's terminal-editor tile (Neovim, falling back to Vim) is
+configured the same way through an `editors` array.

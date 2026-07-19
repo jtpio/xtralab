@@ -1,0 +1,51 @@
+---
+title: Installation
+description: Install xtralab with pip or uv, or grab the desktop app.
+---
+
+xtralab is published on [PyPI](https://pypi.org/project/xtralab/) and requires
+Python 3.10 or newer.
+
+## With pip
+
+```bash
+pip install xtralab
+jupyter lab
+```
+
+## With uv
+
+Add it to a project and run JupyterLab from the project environment:
+
+```bash
+uv add xtralab
+uv run jupyter lab
+```
+
+Or try it without installing anything permanently:
+
+```bash
+uvx --from xtralab jupyter-lab
+```
+
+## What gets installed
+
+xtralab is a meta-package: on top of [ajlab](https://github.com/jtpio/ajlab)
+it pulls in JupyterLab 4.6+ with `jupyterlab-git`, `jupyterlab-lsp`,
+`jupyterlab-quickopen`, `jupyterlab-search-replace`, `jupyterlab-vim`, and a
+set of light and dark themes, then layers its own extension and quieter
+defaults on top. See
+[`pyproject.toml`](https://github.com/jtpio/xtralab/blob/main/pyproject.toml)
+for the full list and pinned versions.
+
+## Desktop app
+
+A standalone desktop app (DMG on macOS, AppImage on Linux) ships with every
+tagged release. It bundles its own Python runtime, so it does not need any of
+the above. See the [desktop app page](../desktop/) for details.
+
+## Upgrading
+
+```bash
+pip install --upgrade xtralab
+```

@@ -142,3 +142,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
       - uses: jupyterlab/maintainer-tools/.github/actions/check-links@v1
+        with:
+          # The docs site only exists once the docs workflow has deployed
+          # from main, so the link is dead on the PR that introduces it.
+          ignore_links: 'https://jtpio.github.io/xtralab.*'
