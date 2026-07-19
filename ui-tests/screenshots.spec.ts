@@ -26,9 +26,14 @@ const test = base.extend({
 test.use({
   autoGoto: false,
   // Loaded settings still come from the server (so xtralab's shipped
-  // defaults apply); this override is layered on top, in memory only.
+  // defaults apply); these overrides are layered on top, in memory only.
+  // The sidebar tabs are trimmed to the ones the screenshots are about.
   mockSettings: {
-    '@jupyterlab/apputils-extension:themes': { theme: 'JupyterLab Dark' }
+    '@jupyterlab/apputils-extension:themes': { theme: 'JupyterLab Dark' },
+    'xtralab:sidebar': {
+      showDefaultFileBrowser: false,
+      showRunningSessions: false
+    }
   }
 });
 
@@ -41,6 +46,16 @@ async function ready(page: IJupyterLabPageFixture): Promise<void> {
   await page.waitForSelector('body[data-jp-theme-name="JupyterLab Dark"]', {
     state: 'attached'
   });
+  // Hiding the default file browser can leave the sidebar stack without a
+  // current widget, so bring up the xtralab file tree explicitly.
+  await page.evaluate(() => {
+    (window as any).jupyterapp.shell.activateById('xtralab:file-browser');
+  });
+  // The tree rows render inside @pierre/trees' shadow DOM, so wait for the
+  // visible host instead of row text.
+  await page
+    .locator('[id="xtralab:file-browser"] file-tree-container')
+    .waitFor({ timeout: 15000 });
   // Wide enough for the whole sidebar tab strip.
   await page.sidebar.setWidth(320);
   await page.evaluate(() => document.fonts.ready);
