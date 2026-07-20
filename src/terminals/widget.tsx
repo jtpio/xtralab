@@ -19,7 +19,7 @@ import { SessionRegistry } from './model';
  * Id of the panel widget. Used for layout restoration and as the handle
  * the sidebar visibility toggle would target.
  */
-export const RUNNING_TERMINALS_ID = 'xtralab-running-terminals';
+const RUNNING_TERMINALS_ID = 'xtralab-running-terminals';
 
 /**
  * Left-sidebar panel listing every running terminal session. It is the

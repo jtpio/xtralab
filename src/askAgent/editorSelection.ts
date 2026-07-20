@@ -12,7 +12,7 @@ import type { IAskAgentContext, IAskAgentRequest } from './tokens';
  * to describe it to an agent: the document path and, for notebooks, which
  * cell the view belongs to.
  */
-export interface IEditorTarget {
+interface IEditorTarget {
   view: EditorView;
   path: string;
   cell?: {

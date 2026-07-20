@@ -30,7 +30,7 @@ export function toServerPath(canonicalPath: string): string {
     : canonicalPath;
 }
 
-export interface IListedDirectory {
+interface IListedDirectory {
   /**
    * Canonical paths for every immediate child of the requested directory.
    */

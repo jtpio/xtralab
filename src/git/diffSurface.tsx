@@ -199,13 +199,13 @@ export function isPierreTheme(themeManager: IThemeManager | null): boolean {
  * the on-disk path) and triggers any follow-up refresh in
  * {@link IHunkDiscard.onAfterSave}.
  */
-export interface IHunkDiscard {
+interface IHunkDiscard {
   enabled: boolean;
   save: (fullText: string) => Promise<void>;
   onAfterSave: () => void;
 }
 
-export interface IDiffSurfaceProps {
+interface IDiffSurfaceProps {
   /**
    * Whether the host is still resolving the file contents.
    */

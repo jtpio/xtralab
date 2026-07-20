@@ -20,7 +20,7 @@ const SEPARATOR_CLASS = 'jp-BreadCrumbs-separator';
  */
 const REVEAL_COMMAND = 'xtralab:reveal-path';
 
-export interface IEditorBreadcrumbsOptions {
+interface IEditorBreadcrumbsOptions {
   context: DocumentRegistry.IContext<DocumentRegistry.IModel>;
   commands: CommandRegistry;
   trans: TranslationBundle;

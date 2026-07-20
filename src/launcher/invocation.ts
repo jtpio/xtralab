@@ -14,7 +14,7 @@ import type { IAgent } from './agents';
  * longer involved. Backslashes and single quotes are escaped first so
  * the source text round-trips unchanged.
  */
-export function shellQuote(value: string): string {
+function shellQuote(value: string): string {
   const escaped = value
     .replace(/\\/g, '\\\\')
     .replace(/'/g, "\\'")

@@ -59,9 +59,9 @@ export namespace CommandIDs {
  * core's populator does not try to fill ours with items derived from the
  * default file browser's selection.
  */
-export const OPEN_WITH_SUBMENU_ID = 'jp-contextmenu-xtralab-open-with';
+const OPEN_WITH_SUBMENU_ID = 'jp-contextmenu-xtralab-open-with';
 
-export interface IRegisterCommandsOptions {
+interface IRegisterCommandsOptions {
   app: JupyterFrontEnd;
   browser: IXtralabFileBrowser;
   docManager: IDocumentManager;

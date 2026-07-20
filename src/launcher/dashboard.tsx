@@ -39,7 +39,7 @@ import { agentCommandId } from './tokens';
  * tab for the freshly created terminal). Keeping it as an opaque
  * callback means the widget itself does not import `app.shell`.
  */
-export interface ILauncherDashboardOptions {
+interface ILauncherDashboardOptions {
   commands: CommandRegistry;
   /**
    * The agent list to render. Already filtered by availability + sorted by

@@ -206,7 +206,7 @@ function createDiffWidget(
   return widget;
 }
 
-export interface IRegisterGitCommandsOptions {
+interface IRegisterGitCommandsOptions {
   app: JupyterFrontEnd;
   themeManager: IThemeManager | null;
   /**

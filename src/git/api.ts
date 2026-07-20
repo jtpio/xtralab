@@ -114,7 +114,7 @@ export function expandStatusFiles(files: IGitStatusFile[]): IFileChange[] {
  * shows up twice in the panel — once under "Staged Changes" and once under
  * "Changes" — matching the layout the user sees in VS Code.
  */
-export function porcelainToFileChanges(file: IGitStatusFile): IFileChange[] {
+function porcelainToFileChanges(file: IGitStatusFile): IFileChange[] {
   const result: IFileChange[] = [];
   // Untracked files are reported with `??` and only appear under "Changes".
   if (file.x === '?' && file.y === '?') {

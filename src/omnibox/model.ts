@@ -12,7 +12,7 @@ import type { OmniboxRecents, RecentKind } from './recents';
 /**
  * The source a result row came from, used to group rows under a header.
  */
-export type OmniboxItemKind = 'command' | 'file' | 'agent';
+type OmniboxItemKind = 'command' | 'file' | 'agent';
 
 /**
  * A single result row, with the action it runs when chosen.
@@ -48,7 +48,7 @@ export interface IOmniboxItem {
 /**
  * Results grouped by source; each group is already capped and sorted.
  */
-export interface IOmniboxSections {
+interface IOmniboxSections {
   /**
    * Recently used commands and files, shown while the term is empty.
    */
@@ -58,7 +58,7 @@ export interface IOmniboxSections {
   agents: IOmniboxItem[];
 }
 
-export interface IComputeOptions {
+interface IComputeOptions {
   query: string;
   commands: CommandRegistry;
   docRegistry: DocumentRegistry;

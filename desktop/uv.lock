@@ -1099,15 +1099,15 @@ wheels = [
 
 [[package]]
 name = "jupyter-ydoc"
-version = "4.0.0"
+version = "4.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "pycrdt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1e/de/72a8a7c1e10eac782562d648c08240bd4a4e0ddd33bbe36b2960ccee58b6/jupyter_ydoc-4.0.0.tar.gz", hash = "sha256:292763304364103cf796c85bd55fb6fa3fba08b9076e45b68c4d1ac266380fc5", size = 974330, upload-time = "2026-06-15T13:50:20.703Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/78/5e9208b9679bdbd90dbe9872e7978167043bc44adda794b26002b4a0f724/jupyter_ydoc-4.1.1.tar.gz", hash = "sha256:834749749e2714dbec9bfd245ac9115b0546a0c0e11f657938fff9ed193b09c2", size = 975490, upload-time = "2026-07-06T06:39:45.037Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/91/afd06c452c2de8172cc3fc031b49a42b6dd3acdf6cd7b301326876a3266d/jupyter_ydoc-4.0.0-py3-none-any.whl", hash = "sha256:c3ddc776a7bc9e930fec7affc63e1b5ebb212361fcb7d1224042b5381b7fb60c", size = 14526, upload-time = "2026-06-15T13:50:19.093Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/c7/b59250cfef2bd3316117401ca0aa9685fefddb0634362bea62fcb5fa84df/jupyter_ydoc-4.1.1-py3-none-any.whl", hash = "sha256:ec8e2cc29d3159ecbd899d09e9dc6646a5652df2c6b3dc1dcf5837c6acc9e425", size = 15616, upload-time = "2026-07-06T06:39:43.643Z" },
 ]
 
 [[package]]
@@ -1815,16 +1815,16 @@ wheels = [
 
 [[package]]
 name = "pycrdt-websocket"
-version = "0.16.3"
+version = "0.16.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "pycrdt" },
     { name = "pycrdt-store" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a4/0f/e9a9f3b298d6e6b6abacf8a41ea7f4f697aa8116215a15c8674fa1445f39/pycrdt_websocket-0.16.3.tar.gz", hash = "sha256:dd2723d531d9ca7048a67dd8d27c63e4362f5d909ca8c97efcfb2bd1d15d8d2a", size = 23822, upload-time = "2026-06-11T09:03:43.46Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/84/68/165d96a120bda022467d19a54238b50ba5022bb63d17116295d8a898cab9/pycrdt_websocket-0.16.4.tar.gz", hash = "sha256:6d90f36f4a1d51b3736caf8698fc3745ff44bb20cb820ff0033bfc76d4737da9", size = 23851, upload-time = "2026-07-02T09:11:44.507Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/c6/c4176d2093bce6304e9f34470aae7f733c3818d3e7b54bf31892f1b3429e/pycrdt_websocket-0.16.3-py3-none-any.whl", hash = "sha256:dc3585705d3c2060b24ec329bb7c2065dae9dc50eb7d85854dcf0ed018958c4b", size = 14906, upload-time = "2026-06-11T09:03:42.355Z" },
+    { url = "https://files.pythonhosted.org/packages/9f/2b/3559cd224ee4153127b28138842ce436a3dca4ad82fd30054f3cddb1401c/pycrdt_websocket-0.16.4-py3-none-any.whl", hash = "sha256:5c1612ea4e8743c4eb9d46b938b9e727ddfc7aee0d20130627e0d6c1fcc083da", size = 14916, upload-time = "2026-07-02T09:11:43.052Z" },
 ]
 
 [[package]]
