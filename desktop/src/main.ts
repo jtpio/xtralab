@@ -19,6 +19,7 @@ import * as path from 'node:path';
 
 import {
   app,
+  autoUpdater,
   BrowserWindow,
   dialog,
   ipcMain,
@@ -180,7 +181,52 @@ function startApplication(): void {
   loadRecentFolders();
   loadFolderEnvironmentPreferences();
   registerIpcHandlers();
+  setUpAutoUpdates();
   showLauncherWindow();
+}
+
+// Poll update.electronjs.org for new GitHub releases and apply them through
+// Squirrel.Mac. Only a signed, packaged macOS build can self-update: Squirrel
+// verifies the downloaded app's code signature against the running one, and
+// the service serves the darwin zip attached to each release.
+const updateRepo = 'jtpio/xtralab';
+const updateIntervalMs = 10 * 60 * 1000;
+
+function setUpAutoUpdates(): void {
+  if (
+    process.platform !== 'darwin' ||
+    !app.isPackaged ||
+    !isAppProperlySigned()
+  ) {
+    return;
+  }
+
+  const feedUrl = `https://update.electronjs.org/${updateRepo}/darwin-${process.arch}/${app.getVersion()}`;
+  autoUpdater.setFeedURL({ url: feedUrl });
+  autoUpdater.on('error', error => {
+    log(`Auto-update error: ${formatError(error)}`);
+  });
+  autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
+    void dialog
+      .showMessageBox({
+        type: 'info',
+        buttons: ['Restart', 'Later'],
+        defaultId: 0,
+        title: 'Application Update',
+        message: releaseName,
+        detail:
+          'A new version has been downloaded. Restart the application to apply the updates.'
+      })
+      .then(({ response }) => {
+        if (response === 0) {
+          void restartToApplyUpdate();
+        }
+      });
+  });
+
+  log(`Checking for updates at ${feedUrl}`);
+  autoUpdater.checkForUpdates();
+  setInterval(() => autoUpdater.checkForUpdates(), updateIntervalMs);
 }
 
 function initializeLogging(): void {
@@ -625,11 +671,11 @@ function isAppProperlySigned(): boolean {
 // Deliver a desktop notification forwarded from a terminal.
 //
 // macOS only delivers a native Notification from a real (non-ad-hoc) signature;
-// an unsigned bundle is silently dropped. So a signed packaged build (Developer
-// ID, or a self-signed cert) uses the native Notification (xtralab's icon and
-// click-to-focus), while everything else on macOS (`pnpm dev`, or an unsigned
-// release) falls back to `osascript`, which always delivers but carries no click
-// action. Linux/Windows always use native.
+// an unsigned bundle is silently dropped. So a signed packaged build uses the
+// native Notification (xtralab's icon and click-to-focus), while everything
+// else on macOS (`pnpm dev`, or an unsigned build) falls back to `osascript`,
+// which always delivers but carries no click action. Linux/Windows always use
+// native.
 function deliverDesktopNotification(
   rawTitle: string,
   rawBody: string,
@@ -1775,6 +1821,24 @@ async function shutdownAndQuit(): Promise<void> {
   }
 
   quitInProgress = true;
+  await stopAllSessions();
+  app.quit();
+}
+
+// Same teardown as a quit, but hand the final step to Squirrel.Mac so the
+// staged update is installed and the app relaunched. quitInProgress keeps the
+// before-quit handler from intercepting Squirrel's own quit.
+async function restartToApplyUpdate(): Promise<void> {
+  if (quitInProgress) {
+    return;
+  }
+
+  quitInProgress = true;
+  await stopAllSessions();
+  autoUpdater.quitAndInstall();
+}
+
+async function stopAllSessions(): Promise<void> {
   for (const session of labSessions.values()) {
     if (!session.window.isDestroyed()) {
       session.window.hide();
@@ -1787,8 +1851,6 @@ async function shutdownAndQuit(): Promise<void> {
   ]);
   labSessions.clear();
   pendingSupervisors.clear();
-
-  app.quit();
 }
 
 function stopSupervisor(child: ChildProcessWithoutNullStreams): Promise<void> {

@@ -26,9 +26,10 @@ jupyter lab
 
 A standalone desktop app (DMG on macOS, AppImage on Linux) ships with every
 tagged release on the
-[releases page](https://github.com/jtpio/xtralab/releases/latest); see the
-[desktop app docs](https://jtpio.github.io/xtralab/desktop/) for the
-Gatekeeper notes and how it manages projects and kernels.
+[releases page](https://github.com/jtpio/xtralab/releases/latest). The macOS
+app is signed and notarized and keeps itself up to date; see the
+[desktop app docs](https://jtpio.github.io/xtralab/desktop/) for how it
+manages projects and kernels.
 
 ## Highlights
 

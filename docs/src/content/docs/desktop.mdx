@@ -14,12 +14,10 @@ Grab the installer for the latest tagged release from the
 `main` are also uploaded as workflow artifacts on the
 [Actions tab](https://github.com/jtpio/xtralab/actions).
 
-The macOS build is not notarized yet, so Gatekeeper blocks the first launch.
-Right-click the app and choose **Open**, or run
-`xattr -d com.apple.quarantine /path/to/xtralab.app` to dismiss the warning
-once. You can also self-sign the app for free to get native notifications; see
-[CONTRIBUTING.md](https://github.com/jtpio/xtralab/blob/main/CONTRIBUTING.md)
-for the steps.
+The macOS app is signed and notarized, so it opens like any other app. It
+also keeps itself up to date: when a new release is published, the app
+downloads it in the background and offers to restart. The Linux AppImage does
+not auto-update; grab new versions from the releases page.
 
 ## One window per project
 

@@ -1,9 +1,11 @@
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerDMG } from '@electron-forge/maker-dmg';
+import { MakerZIP } from '@electron-forge/maker-zip';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import MakerAppImage from '@reforged/maker-appimage';
+import { closeSync, openSync, readSync } from 'node:fs';
 
 const variant =
   process.env.XTRALAB_BUILD_VARIANT ??
@@ -16,11 +18,43 @@ const appBundleId = isDev
   ? 'io.github.jtpio.xtralab.dev'
   : 'io.github.jtpio.xtralab';
 
-// Optional macOS code-signing identity (a Keychain certificate name). When set,
-// the packaged app is signed with it: a Developer ID, or a self-signed cert for
-// personal use. A stable signature is what lets native (clickable) notifications
-// register; an unsigned build falls back to osascript.
-const signIdentity = process.env.XTRALAB_SIGN_IDENTITY;
+// macOS release signing, enabled with XTRALAB_MACOS_SIGN=1. The Developer ID
+// Application identity is auto-discovered from the keychain, and osx-sign's
+// defaults (hardened runtime, secure timestamps, Electron's standard
+// entitlements) are the notarization prerequisites. Notarization runs when the
+// Apple credentials are also present, and staples the ticket into the app.
+const signMacOS = process.env.XTRALAB_MACOS_SIGN === '1';
+const appleId = process.env.APPLE_ID;
+const appleIdPassword = process.env.APPLE_APP_SPECIFIC_PASSWORD;
+const appleTeamId = process.env.APPLE_TEAM_ID;
+const osxNotarize =
+  signMacOS && appleId && appleIdPassword && appleTeamId
+    ? { appleId, appleIdPassword, teamId: appleTeamId }
+    : undefined;
+
+// First four bytes of every Mach-O flavor (thin 32/64-bit and universal
+// binaries, both byte orders), read big-endian.
+const machOMagics = new Set([
+  0xfeedface, 0xcefaedfe, 0xfeedfacf, 0xcffaedfe, 0xcafebabe, 0xbebafeca,
+  0xcafebabf, 0xbfbafeca
+]);
+
+function isMachO(filePath: string): boolean {
+  try {
+    const fd = openSync(filePath, 'r');
+    try {
+      const header = Buffer.alloc(4);
+      if (readSync(fd, header, 0, 4, 0) < 4) {
+        return false;
+      }
+      return machOMagics.has(header.readUInt32BE(0));
+    } finally {
+      closeSync(fd);
+    }
+  } catch {
+    return false;
+  }
+}
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -31,26 +65,19 @@ const config: ForgeConfig = {
     icon: './assets/jupyter',
     asar: true,
     extraResource: ['python/runtime'],
-    ...(signIdentity
+    ...(signMacOS
       ? {
           osxSign: {
-            identity: signIdentity,
-            // Let a self-signed cert (flagged CSSMERR_TP_NOT_TRUSTED) sign
-            // directly; codesign signs with it regardless, only verification
-            // needs trust.
-            identityValidation: false,
-            // Skip the bundled Python runtime: only the app shell needs a
-            // signature to register for notifications, and the runtime is a
-            // subprocess with its own signatures.
+            // The signing walk covers every binary-looking file in the bundle.
+            // Notarization needs each Mach-O signed — including the bundled
+            // Python runtime — but the runtime is also full of binary
+            // non-Mach-O files (.pyc caches and friends), and every signature
+            // costs a timestamp-server round-trip, so restrict the runtime to
+            // real Mach-O binaries.
             ignore: (file: string) =>
-              file.includes('/Contents/Resources/runtime/'),
-            // Skip the Apple timestamp server (a network round-trip per file)
-            // and hardened runtime; both are only needed for notarization.
-            optionsForFile: () => ({
-              hardenedRuntime: false,
-              timestamp: 'none'
-            })
-          }
+              file.includes('/Contents/Resources/runtime/') && !isMachO(file)
+          },
+          ...(osxNotarize ? { osxNotarize } : {})
         }
       : {}),
     ignore: [
@@ -80,6 +107,9 @@ const config: ForgeConfig = {
       },
       ['darwin']
     ),
+    // Squirrel.Mac consumes updates as a zip of the .app; the DMG stays the
+    // human-facing installer.
+    new MakerZIP({}, ['darwin']),
     new MakerAppImage(
       {
         options: {

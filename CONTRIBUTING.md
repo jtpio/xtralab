@@ -59,8 +59,8 @@ pnpm install
 pnpm dev
 ```
 
-To produce an unsigned, distributable installer (DMG on macOS, AppImage on
-Linux) using [Electron Forge](https://www.electronforge.io/):
+To produce a distributable installer (DMG on macOS, AppImage on Linux) using
+[Electron Forge](https://www.electronforge.io/):
 
 ```bash
 cd desktop
@@ -70,10 +70,14 @@ pnpm make
 The output is written under `desktop/out/make/`. To produce an unpacked
 `.app` folder without an installer wrapper, use `pnpm package` instead.
 
-Because the build is unsigned, macOS Gatekeeper will block the first launch
-with "Apple cannot check it for malicious software." Right-click the app and
-choose **Open** (or run `xattr -d com.apple.quarantine /path/to/xtralab.app`)
-to dismiss the warning once.
+Local builds are unsigned by default. On macOS, set `XTRALAB_MACOS_SIGN=1` to
+sign the app with the Developer ID Application identity from your keychain,
+and provide `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` as
+well to also notarize it. When an unsigned build is downloaded onto another
+machine, macOS Gatekeeper blocks the first launch with "Apple cannot check it
+for malicious software"; right-click the app and choose **Open** (or run
+`xattr -d com.apple.quarantine /path/to/xtralab.app`) to dismiss the warning
+once.
 
 ### Bundled Python runtime
 
@@ -126,14 +130,18 @@ XTRALAB_BUILD_VARIANT=release pnpm make
 Every push to `main` and every pull request also runs the desktop build on
 GitHub Actions for macOS (Apple Silicon) and Linux (x64). The resulting DMG
 and AppImage are uploaded as workflow artifacts and can be downloaded from
-the run page on the repository's Actions tab.
+the run page on the repository's Actions tab. macOS builds are signed and
+notarized with the repository's Developer ID secrets, except on pull
+requests, which build unsigned because GitHub withholds secrets there.
 
 When the Jupyter Releaser publishes a new GitHub Release (Step 2 of the
 release workflow), the same desktop-build job runs once more against the
 release tag and uploads renamed installers
-(`xtralab-<version>-darwin-arm64.dmg`, `xtralab-<version>-linux-x64.AppImage`)
-directly to that release's assets, alongside the Python wheel/sdist that
-Jupyter Releaser pushes for PyPI.
+(`xtralab-<version>-darwin-arm64.dmg`, `xtralab-<version>-darwin-arm64.zip`,
+`xtralab-<version>-linux-x64.AppImage`) directly to that release's assets,
+alongside the Python wheel/sdist that Jupyter Releaser pushes for PyPI. The
+zip is what installed apps consume to update themselves through
+[update.electronjs.org](https://update.electronjs.org).
 
 ## Documentation
 
