@@ -128,7 +128,15 @@ jobs:
           security set-keychain-settings -lut 21600 "$keychain_path"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
           security import "$certificate_path" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
-          security import "$intermediate_path" -k "$keychain_path"
+          # A .p12 exported from Keychain Access usually already carries the
+          # intermediate, so a redundant import is expected; only a different
+          # failure should stop the build.
+          if ! import_output=$(security import "$intermediate_path" -k "$keychain_path" 2>&1); then
+            if ! grep -q "already exists" <<<"$import_output"; then
+              echo "$import_output" >&2
+              exit 1
+            fi
+          fi
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$keychain_path" > /dev/null
           security list-keychain -d user -s "$keychain_path" login.keychain
           if ! security find-identity -v -p codesigning "$keychain_path" | grep -q "Developer ID Application"; then
