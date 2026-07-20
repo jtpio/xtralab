@@ -2,6 +2,39 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.12.0
+
+([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.11.1...0eac45f31f3c2896c713c06b5d8f097ebaff9af7))
+
+### Enhancements made
+
+- Move the command bar into the top bar toolbar and add omnibox recents [#62](https://github.com/jtpio/xtralab/pull/62) ([@jtpio](https://github.com/jtpio))
+- Open new projects as tabs in the desktop app [#61](https://github.com/jtpio/xtralab/pull/61) ([@jtpio](https://github.com/jtpio))
+- Add ask-agent popup for editors, notebooks, and git diffs [#59](https://github.com/jtpio/xtralab/pull/59) ([@jtpio](https://github.com/jtpio))
+- Fix swipe mode [#56](https://github.com/jtpio/xtralab/pull/56) ([@jtpio](https://github.com/jtpio))
+
+### Maintenance and upkeep improvements
+
+- Remove unneeded exports and bump ydoc dependencies [#64](https://github.com/jtpio/xtralab/pull/64) ([@jtpio](https://github.com/jtpio))
+- Front-end audit fixes: bugs, i18n, comments, dead code [#57](https://github.com/jtpio/xtralab/pull/57) ([@jtpio](https://github.com/jtpio))
+- Update dependencies to latest stable releases [#55](https://github.com/jtpio/xtralab/pull/55) ([@jtpio](https://github.com/jtpio))
+
+### Documentation improvements
+
+- Add a documentation site [#63](https://github.com/jtpio/xtralab/pull/63) ([@jtpio](https://github.com/jtpio))
+- Improve README [#58](https://github.com/jtpio/xtralab/pull/58) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-06-23&to=2026-07-20&type=c))
+
+@jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-06-23..2026-07-20&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.11.1
 
 ([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.11.0...ad5b3e940f4ad5a8b327c85599476a9164a22a43))
@@ -18,8 +51,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-06-23&to=2026-06-23&type=c))
 
 @jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-06-23..2026-06-23&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.11.0
 
