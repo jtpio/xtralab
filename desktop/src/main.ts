@@ -1673,8 +1673,6 @@ function startSupervisor(
   projectEnvironment: ProjectRuntimeEnvironment | null
 ): SupervisorHandle {
   const command = managedEnvironment.xtralabPath;
-  const collabDir = getProjectCollabDir(folderPath);
-  mkdirSync(collabDir, { recursive: true });
   const args = [
     'serve',
     '--json',
@@ -1682,8 +1680,9 @@ function startSupervisor(
     '120',
     '--cwd',
     folderPath,
-    '--collab-ystore-db',
-    path.join(collabDir, 'ystore.db'),
+    // Keep real-time collaboration but not its stored update history, which
+    // corrupts documents that agents edit out-of-band. See xtralab/ystore.py.
+    '--no-collab-persistence',
     '--workspace',
     getProjectWorkspaceName(folderPath)
   ];
@@ -2301,8 +2300,8 @@ function getManagedEnvironmentExecutablePath(
 
 // A short, stable identifier for one opened folder, derived from its absolute
 // path. Keys the per-folder state xtralab keeps under app data (kernels,
-// collaboration history, JupyterLab workspace) so two folders never collide
-// and the same folder maps back to its own state on every launch.
+// JupyterLab workspace) so two folders never collide and the same folder maps
+// back to its own state on every launch.
 function getProjectHash(folderPath: string): string {
   return createHash('sha256').update(folderPath).digest('hex').slice(0, 16);
 }
@@ -2311,21 +2310,6 @@ function getProjectKernelDataPath(folderPath: string): string {
   return path.join(
     app.getPath('userData'),
     'project-kernels',
-    getProjectHash(folderPath)
-  );
-}
-
-// Per-folder collaboration state directory. jupyter-server-ydoc creates two
-// files alongside whichever folder the user opens (.jupyter_ystore.db and
-// .jupyter/collaboration_sessions.json). We relocate them under userData so
-// they don't pollute the user's project (and don't show up as untracked in
-// git). The directory is keyed by a hash of the folder path so each opened
-// folder gets its own isolated Y-history and session set.
-function getProjectCollabDir(folderPath: string): string {
-  return path.join(
-    app.getPath('userData'),
-    'jupyter',
-    'collab',
     getProjectHash(folderPath)
   );
 }

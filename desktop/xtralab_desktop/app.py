@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import signal
 import sys
 import threading
@@ -39,7 +40,22 @@ def _serve_main(args: argparse.Namespace) -> int:
             return 1
 
     extra_args: list[str] = []
-    if args.collab_ystore_db is not None:
+    if args.no_collab_persistence:
+        # Keep real-time collaboration, drop its stored update history. See
+        # xtralab.ystore for why persisting it corrupts documents that change
+        # on disk between sessions. Passed as traitlets config rather than a
+        # jupyter_server_config.d drop-in because those files never reach an
+        # ExtensionApp such as YDocExtension.
+        extra_args.append("--YDocExtension.ystore_class=xtralab.ystore.NoYStore")
+        # Recorded session ids let a client that outlives a server restart
+        # reconnect and merge its state instead of reloading — only sound
+        # when the update history survives the restart too. Without a ystore
+        # the rebuilt room and the stale client hold divergent histories and
+        # silently show different content, so keep the store empty: every
+        # cross-restart reconnect then fails closed with the client's
+        # "Session expired, reload" prompt.
+        extra_args.append(f"--YDocExtension.session_store_path={os.devnull}")
+    elif args.collab_ystore_db is not None:
         db_path = Path(args.collab_ystore_db).expanduser().resolve()
         db_path.parent.mkdir(parents=True, exist_ok=True)
         # SQLiteYStore is a configurable traitlet shipped by
@@ -110,7 +126,17 @@ def _build_parser() -> argparse.ArgumentParser:
         "--collab-ystore-db",
         help=(
             "path to the jupyter-server-ydoc SQLite database "
-            "(default: '.jupyter_ystore.db' under --cwd)"
+            "(default: '.jupyter_ystore.db' under --cwd); ignored when "
+            "--no-collab-persistence is given"
+        ),
+    )
+    serve.add_argument(
+        "--no-collab-persistence",
+        action="store_true",
+        help=(
+            "keep real-time collaboration but persist nothing between server "
+            "runs: documents rebuild from disk and clients from an older run "
+            "must reload"
         ),
     )
     serve.add_argument(
