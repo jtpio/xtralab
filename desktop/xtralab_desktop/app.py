@@ -38,10 +38,35 @@ def _serve_main(args: argparse.Namespace) -> int:
             print(f"error: not a directory: {cwd}", file=sys.stderr)
             return 1
 
+    extra_args: list[str] = []
+    if args.no_collab_persistence:
+        # Keep real-time collaboration, drop its stored update history. See
+        # xtralab.ystore for why persisting it corrupts documents that change
+        # on disk between sessions. Passed as traitlets config rather than a
+        # jupyter_server_config.d drop-in because those files never reach an
+        # ExtensionApp such as YDocExtension.
+        extra_args.append("--YDocExtension.ystore_class=xtralab.ystore.NoYStore")
+    elif args.collab_ystore_db is not None:
+        db_path = Path(args.collab_ystore_db).expanduser().resolve()
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        # SQLiteYStore is a configurable traitlet shipped by
+        # jupyter-server-ydoc; this flag redirects the Y-updates SQLite
+        # database away from the default ``.jupyter_ystore.db`` in cwd.
+        extra_args.append(f"--SQLiteYStore.db_path={db_path}")
+
+    if args.collab_session_store is not None:
+        session_path = Path(args.collab_session_store).expanduser().resolve()
+        session_path.parent.mkdir(parents=True, exist_ok=True)
+        # Session ids are recorded for reconnect compatibility checks. Without
+        # this the file lands in '<cwd>/.jupyter/', i.e. inside the user's
+        # project, where it shows up as untracked in git.
+        extra_args.append(f"--YDocExtension.session_store_path={session_path}")
+
     try:
         supervisor = JupyterLabSupervisor(
             cwd=cwd,
             ready_timeout=args.timeout,
+            extra_args=extra_args,
             workspace=args.workspace,
         )
         info = supervisor.start(stdout=sys.stderr, stderr=sys.stderr)
@@ -95,6 +120,29 @@ def _build_parser() -> argparse.ArgumentParser:
     serve.add_argument(
         "--cwd",
         help="directory to use as the JupyterLab server root",
+    )
+    serve.add_argument(
+        "--collab-ystore-db",
+        help=(
+            "path to the jupyter-server-ydoc SQLite database "
+            "(default: '.jupyter_ystore.db' under --cwd); ignored when "
+            "--no-collab-persistence is given"
+        ),
+    )
+    serve.add_argument(
+        "--no-collab-persistence",
+        action="store_true",
+        help=(
+            "keep real-time collaboration but do not persist Y updates "
+            "between sessions, so every document is rebuilt from disk"
+        ),
+    )
+    serve.add_argument(
+        "--collab-session-store",
+        help=(
+            "path to the collaboration session id file "
+            "(default: '.jupyter/collaboration_sessions.json' under --cwd)"
+        ),
     )
     serve.add_argument(
         "--workspace",

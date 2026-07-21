@@ -1,8 +1,7 @@
 {
   "ServerApp": {
     "jpserver_extensions": {
-      "xtralab": true,
-      "jupyter_server_ydoc": false
+      "xtralab": true
     }
   }
 }
