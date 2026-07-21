@@ -2,6 +2,25 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.12.1
+
+([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.12.0...a2273483a52453ee3b0aec73c05831e2962e2c32))
+
+### Enhancements made
+
+- Sign and notarize the macOS app and add auto-update [#65](https://github.com/jtpio/xtralab/pull/65) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-07-20&to=2026-07-21&type=c))
+
+@jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-07-20..2026-07-21&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.12.0
 
 ([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.11.1...0eac45f31f3c2896c713c06b5d8f097ebaff9af7))
@@ -32,8 +51,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-06-23&to=2026-07-20&type=c))
 
 @jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-06-23..2026-07-20&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.11.1
 
