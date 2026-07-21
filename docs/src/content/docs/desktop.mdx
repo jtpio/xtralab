@@ -59,6 +59,11 @@ folder-local kernel so notebooks execute with the project interpreter, while
 the JupyterLab server itself keeps running from the isolated bundled runtime.
 Environments without `ipykernel` are left alone and not exposed as kernels.
 
+The bundled `ty` language server follows the same selection, so completions
+and diagnostics resolve imports from the project environment rather than from
+the bundled runtime. See
+[Language servers](../customize/language-servers/) for details.
+
 ## Building it yourself
 
 The Electron app lives in the repository's `desktop/` folder. See

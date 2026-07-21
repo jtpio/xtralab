@@ -1349,8 +1349,9 @@ function getManagedEnvironment(): ManagedEnvironment {
 }
 
 function ensureRuntimePyvenvCfg(envDir: string, binDir: string): void {
-  // The bundled runtime is a uv-installed Python (not a venv), but we set
-  // VIRTUAL_ENV=<envDir> for child processes. Tools like Astral ty refuse to
+  // The bundled runtime is a uv-installed Python (not a venv), but child
+  // processes get VIRTUAL_ENV=<envDir> when the project has no usable
+  // environment of its own. Tools like Astral ty refuse to
   // start without a pyvenv.cfg, so synthesize a self-referential one. Python's
   // own startup is unaffected because sys.prefix and sys.base_prefix both
   // resolve back to envDir.
@@ -1399,7 +1400,11 @@ function getSupervisorEnvironment(
     PYTHONNOUSERSITE: '1'
   };
   clearInheritedPythonEnvironment(environment);
-  environment.VIRTUAL_ENV = managedEnvironment.envDir;
+  exportPythonEnvironmentRoot(
+    environment,
+    managedEnvironment,
+    projectEnvironment
+  );
 
   // Advertise an iTerm2-class terminal so coding agents (Claude Code, Codex, …)
   // take their OSC 9 notification path on the default `auto` setting; without a
@@ -1425,6 +1430,32 @@ function getSupervisorEnvironment(
   }
 
   return environment;
+}
+
+function exportPythonEnvironmentRoot(
+  environment: NodeJS.ProcessEnv,
+  managedEnvironment: ManagedEnvironment,
+  projectEnvironment: ProjectRuntimeEnvironment | null
+): void {
+  // ty resolves third-party imports from the environment named by VIRTUAL_ENV
+  // or CONDA_PREFIX (VIRTUAL_ENV wins when both are set), and either variable
+  // takes precedence over ty's own discovery of a `.venv` next to the project,
+  // so the language server must be pointed at the environment the project
+  // kernel runs in. VIRTUAL_ENV is only valid for environments with a
+  // pyvenv.cfg (ty refuses to start otherwise); conda and pixi prefixes are
+  // exported through CONDA_PREFIX instead.
+  const environmentRoot = projectEnvironment?.option.environmentRoot ?? null;
+  if (environmentRoot !== null) {
+    if (existsSync(path.join(environmentRoot, 'pyvenv.cfg'))) {
+      environment.VIRTUAL_ENV = environmentRoot;
+      return;
+    }
+    if (existsSync(path.join(environmentRoot, 'conda-meta'))) {
+      environment.CONDA_PREFIX = environmentRoot;
+      return;
+    }
+  }
+  environment.VIRTUAL_ENV = managedEnvironment.envDir;
 }
 
 function startSupervisor(

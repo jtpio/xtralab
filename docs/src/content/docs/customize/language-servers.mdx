@@ -8,6 +8,20 @@ with Python pre-registered through
 [`ty`](https://github.com/astral-sh/ty), which is bundled and works out of the
 box: completions, diagnostics, and navigation with zero setup.
 
+## Python environments
+
+ty resolves imports from a Python environment. In the desktop app that is the
+same environment the notebook kernel runs in: when the opened folder has a
+project environment such as `.venv` (or a conda or pixi prefix), both the
+kernel and the language server use it, so third-party packages and local
+modules resolve without any configuration. Folders without a project
+environment fall back to the bundled runtime.
+
+With a pip install, ty follows its regular
+[environment discovery](https://docs.astral.sh/ty/modules/#python-environment):
+the environment that was active when the Jupyter server started, otherwise a
+`.venv` at the root of the folder the server was started in.
+
 ## TypeScript and JavaScript
 
 Install the server yourself and restart JupyterLab:
