@@ -1673,8 +1673,6 @@ function startSupervisor(
   projectEnvironment: ProjectRuntimeEnvironment | null
 ): SupervisorHandle {
   const command = managedEnvironment.xtralabPath;
-  const collabDir = getProjectCollabDir(folderPath);
-  mkdirSync(collabDir, { recursive: true });
   const args = [
     'serve',
     '--json',
@@ -1685,8 +1683,6 @@ function startSupervisor(
     // Keep real-time collaboration but not its stored update history, which
     // corrupts documents that agents edit out-of-band. See xtralab/ystore.py.
     '--no-collab-persistence',
-    '--collab-session-store',
-    path.join(collabDir, 'collaboration_sessions.json'),
     '--workspace',
     getProjectWorkspaceName(folderPath)
   ];
@@ -2304,8 +2300,8 @@ function getManagedEnvironmentExecutablePath(
 
 // A short, stable identifier for one opened folder, derived from its absolute
 // path. Keys the per-folder state xtralab keeps under app data (kernels,
-// collaboration history, JupyterLab workspace) so two folders never collide
-// and the same folder maps back to its own state on every launch.
+// JupyterLab workspace) so two folders never collide and the same folder maps
+// back to its own state on every launch.
 function getProjectHash(folderPath: string): string {
   return createHash('sha256').update(folderPath).digest('hex').slice(0, 16);
 }
@@ -2314,23 +2310,6 @@ function getProjectKernelDataPath(folderPath: string): string {
   return path.join(
     app.getPath('userData'),
     'project-kernels',
-    getProjectHash(folderPath)
-  );
-}
-
-// Per-folder collaboration state directory. jupyter-server-ydoc writes its
-// state alongside whichever folder the user opens, where it pollutes the
-// user's project and shows up as untracked in git, so we relocate it under
-// userData. The directory is keyed by a hash of the folder path so each
-// opened folder gets its own isolated session set. Only
-// collaboration_sessions.json lands here: Y-update persistence is disabled
-// (see the --no-collab-persistence flag above), so no ystore database is
-// ever created.
-function getProjectCollabDir(folderPath: string): string {
-  return path.join(
-    app.getPath('userData'),
-    'jupyter',
-    'collab',
     getProjectHash(folderPath)
   );
 }

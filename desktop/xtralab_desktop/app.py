@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import signal
 import sys
 import threading
@@ -46,6 +47,14 @@ def _serve_main(args: argparse.Namespace) -> int:
         # jupyter_server_config.d drop-in because those files never reach an
         # ExtensionApp such as YDocExtension.
         extra_args.append("--YDocExtension.ystore_class=xtralab.ystore.NoYStore")
+        # Recorded session ids let a client that outlives a server restart
+        # reconnect and merge its state instead of reloading — only sound
+        # when the update history survives the restart too. Without a ystore
+        # the rebuilt room and the stale client hold divergent histories and
+        # silently show different content, so keep the store empty: every
+        # cross-restart reconnect then fails closed with the client's
+        # "Session expired, reload" prompt.
+        extra_args.append(f"--YDocExtension.session_store_path={os.devnull}")
     elif args.collab_ystore_db is not None:
         db_path = Path(args.collab_ystore_db).expanduser().resolve()
         db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -53,14 +62,6 @@ def _serve_main(args: argparse.Namespace) -> int:
         # jupyter-server-ydoc; this flag redirects the Y-updates SQLite
         # database away from the default ``.jupyter_ystore.db`` in cwd.
         extra_args.append(f"--SQLiteYStore.db_path={db_path}")
-
-    if args.collab_session_store is not None:
-        session_path = Path(args.collab_session_store).expanduser().resolve()
-        session_path.parent.mkdir(parents=True, exist_ok=True)
-        # Session ids are recorded for reconnect compatibility checks. Without
-        # this the file lands in '<cwd>/.jupyter/', i.e. inside the user's
-        # project, where it shows up as untracked in git.
-        extra_args.append(f"--YDocExtension.session_store_path={session_path}")
 
     try:
         supervisor = JupyterLabSupervisor(
@@ -133,15 +134,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "--no-collab-persistence",
         action="store_true",
         help=(
-            "keep real-time collaboration but do not persist Y updates "
-            "between sessions, so every document is rebuilt from disk"
-        ),
-    )
-    serve.add_argument(
-        "--collab-session-store",
-        help=(
-            "path to the collaboration session id file "
-            "(default: '.jupyter/collaboration_sessions.json' under --cwd)"
+            "keep real-time collaboration but persist nothing between server "
+            "runs: documents rebuild from disk and clients from an older run "
+            "must reload"
         ),
     )
     serve.add_argument(
