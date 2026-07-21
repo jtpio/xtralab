@@ -210,6 +210,7 @@ svg.symbol {
 .environment-select:focus-visible,
 .primary-action:focus-visible,
 .secondary-action:focus-visible,
+.update-action:focus-visible,
 .back-link:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
@@ -499,15 +500,98 @@ svg.symbol {
   opacity: 0.55;
 }
 
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: auto;
+}
+
 .status {
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 18px;
-  margin: auto 0 0;
+  margin: 0;
   color: var(--text-subtle);
   font-size: 13px;
 }
 
 .status.error {
   color: var(--error);
+}
+
+.update-area {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: 10px;
+}
+
+.update-spinner {
+  flex: 0 0 auto;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: update-spin 0.8s linear infinite;
+}
+
+@keyframes update-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.update-message {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-subtle);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.update-message.error {
+  color: var(--error);
+}
+
+.update-action {
+  flex: 0 0 auto;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--link);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.update-action:hover {
+  color: var(--link-hover);
+}
+
+.update-action:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.update-action.is-accent {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.update-action.is-accent:hover {
+  color: var(--accent-hover);
+}
+
+.app-version {
+  flex: 0 0 auto;
+  color: var(--text-subtle);
+  font-size: 12px;
 }
 
 .theme-toggle {
