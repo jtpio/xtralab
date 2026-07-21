@@ -7,7 +7,14 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { notarize } from '@electron/notarize';
 import MakerAppImage from '@reforged/maker-appimage';
 import { execFileSync } from 'node:child_process';
-import { closeSync, openSync, readSync } from 'node:fs';
+import {
+  closeSync,
+  openSync,
+  readFileSync,
+  readSync,
+  writeFileSync
+} from 'node:fs';
+import { join } from 'node:path';
 
 const variant =
   process.env.XTRALAB_BUILD_VARIANT ??
@@ -138,6 +145,17 @@ const config: ForgeConfig = {
     })
   ],
   hooks: {
+    // Electron derives the runtime app name — and with it the userData
+    // directory, the "<name> Safe Storage" keychain item, and the
+    // single-instance lock — from the asar's package.json productName, not
+    // from packagerConfig.name. Stamp the variant's productName in so packaged
+    // dev builds keep their state fully separate from the release app.
+    packageAfterCopy: async (forgeConfig, buildPath) => {
+      const packageJsonPath = join(buildPath, 'package.json');
+      const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+      packageJson.productName = productName;
+      writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
+    },
     // Forge's osxSign/osxNotarize cover only the .app. Apple's disk-image
     // guidance is to sign the DMG itself, then notarize and staple it, so the
     // downloaded installer also passes Gatekeeper, offline included. codesign
