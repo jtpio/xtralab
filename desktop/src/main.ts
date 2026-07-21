@@ -1682,8 +1682,15 @@ function startSupervisor(
     '120',
     '--cwd',
     folderPath,
-    '--collab-ystore-db',
-    path.join(collabDir, 'ystore.db'),
+    // Single-user desktop: the file on disk is the source of truth, so keep
+    // real-time collaboration but not its stored update history. Replaying a
+    // stored history against a file that changed underneath it (routine here,
+    // since agents edit files while the app is open) rebuilds the room with a
+    // divergent Yjs history, which can panic pycrdt and leave documents
+    // rendering empty. See xtralab/ystore.py.
+    '--no-collab-persistence',
+    '--collab-session-store',
+    path.join(collabDir, 'collaboration_sessions.json'),
     '--workspace',
     getProjectWorkspaceName(folderPath)
   ];
@@ -2315,12 +2322,14 @@ function getProjectKernelDataPath(folderPath: string): string {
   );
 }
 
-// Per-folder collaboration state directory. jupyter-server-ydoc creates two
-// files alongside whichever folder the user opens (.jupyter_ystore.db and
-// .jupyter/collaboration_sessions.json). We relocate them under userData so
-// they don't pollute the user's project (and don't show up as untracked in
-// git). The directory is keyed by a hash of the folder path so each opened
-// folder gets its own isolated Y-history and session set.
+// Per-folder collaboration state directory. jupyter-server-ydoc writes its
+// state alongside whichever folder the user opens, where it pollutes the
+// user's project and shows up as untracked in git, so we relocate it under
+// userData. The directory is keyed by a hash of the folder path so each
+// opened folder gets its own isolated session set. Only
+// collaboration_sessions.json lands here: Y-update persistence is disabled
+// (see the --no-collab-persistence flag above), so no ystore database is
+// ever created.
 function getProjectCollabDir(folderPath: string): string {
   return path.join(
     app.getPath('userData'),
