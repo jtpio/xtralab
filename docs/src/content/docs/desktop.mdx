@@ -3,23 +3,40 @@ title: Desktop app
 description: A standalone xtralab app for macOS and Linux.
 ---
 
+import { LinkButton } from '@astrojs/starlight/components';
+
 xtralab also ships as a standalone desktop app: a DMG on macOS and an AppImage
 on Linux. It bundles its own Python runtime, so it does not require Python,
 `pip`, `uv`, or network access on your machine.
 
 ## Download
 
-Grab the installer for the latest tagged release from the
-[releases page](https://github.com/jtpio/xtralab/releases/latest). Builds from
+<LinkButton
+  href="https://github.com/jtpio/xtralab/releases/latest/download/xtralab-darwin-arm64.dmg"
+  icon="apple"
+  iconPlacement="start"
+>
+  Download for macOS (Apple Silicon)
+</LinkButton>
+<LinkButton
+  href="https://github.com/jtpio/xtralab/releases/latest/download/xtralab-linux-x64.AppImage"
+  icon="linux"
+  iconPlacement="start"
+  variant="secondary"
+>
+  Download for Linux (x64)
+</LinkButton>
+
+The buttons always download the installer from the latest tagged release.
+Older versions are on the
+[releases page](https://github.com/jtpio/xtralab/releases), and builds from
 `main` are also uploaded as workflow artifacts on the
 [Actions tab](https://github.com/jtpio/xtralab/actions).
 
-The macOS build is not notarized yet, so Gatekeeper blocks the first launch.
-Right-click the app and choose **Open**, or run
-`xattr -d com.apple.quarantine /path/to/xtralab.app` to dismiss the warning
-once. You can also self-sign the app for free to get native notifications; see
-[CONTRIBUTING.md](https://github.com/jtpio/xtralab/blob/main/CONTRIBUTING.md)
-for the steps.
+The macOS app is signed and notarized, so it opens like any other app. It
+also keeps itself up to date: when a new release is published, the app
+downloads it in the background and offers to restart. The Linux AppImage does
+not auto-update; grab new versions from the releases page.
 
 ## One window per project
 

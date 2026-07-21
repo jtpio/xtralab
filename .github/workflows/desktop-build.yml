@@ -25,14 +25,15 @@ jobs:
             artifact: xtralab-macos-arm64
             artifact-paths: |
               desktop/out/make/**/*.dmg
-            installer-glob: '*.dmg'
+              desktop/out/make/**/*.zip
+            release-globs: '*.dmg *.zip'
             platform: darwin-arm64
           - os: ubuntu-latest
             label: Linux (x64)
             artifact: xtralab-linux-x64
             artifact-paths: |
               desktop/out/make/**/*.AppImage
-            installer-glob: '*.AppImage'
+            release-globs: '*.AppImage'
             platform: linux-x64
     runs-on: ${{ matrix.os }}
     permissions:
@@ -94,9 +95,72 @@ jobs:
         working-directory: desktop
         run: pnpm build:runtime
 
+      # Signing requires the Developer ID certificate in a keychain; fork PRs
+      # never receive secrets, so pull_request builds stay unsigned. A release
+      # build without the secrets is a hard error rather than a silently
+      # unsigned installer.
+      - name: Set up code-signing keychain
+        id: signing
+        if: runner.os == 'macOS' && github.event_name != 'pull_request'
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$APPLE_CERTIFICATE_P12" ]; then
+            if [ "$GITHUB_EVENT_NAME" = "release" ]; then
+              echo "::error::Release builds require the code-signing secrets."
+              exit 1
+            fi
+            echo "No signing certificate configured; building unsigned."
+            exit 0
+          fi
+          certificate_path="$RUNNER_TEMP/developer_id.p12"
+          intermediate_path="$RUNNER_TEMP/DeveloperIDG2CA.cer"
+          keychain_path="$RUNNER_TEMP/signing.keychain-db"
+          echo -n "$APPLE_CERTIFICATE_P12" | base64 --decode -o "$certificate_path"
+          # The Developer ID G2 intermediate must be present for the identity
+          # to validate; the runner image is not guaranteed to ship it.
+          curl -fsSL -o "$intermediate_path" https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security import "$certificate_path" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
+          # A .p12 exported from Keychain Access usually already carries the
+          # intermediate, so a redundant import is expected; only a different
+          # failure should stop the build.
+          if ! import_output=$(security import "$intermediate_path" -k "$keychain_path" 2>&1); then
+            if ! grep -q "already exists" <<<"$import_output"; then
+              echo "$import_output" >&2
+              exit 1
+            fi
+          fi
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$keychain_path" > /dev/null
+          security list-keychain -d user -s "$keychain_path" login.keychain
+          if ! security find-identity -v -p codesigning "$keychain_path" | grep -q "Developer ID Application"; then
+            echo "::error::No valid Developer ID Application identity after import."
+            security find-identity -v -p codesigning "$keychain_path" || true
+            exit 1
+          fi
+          echo "enabled=1" >> "$GITHUB_OUTPUT"
+
       - name: Make distribution
         working-directory: desktop
+        env:
+          # Surface @electron/notarize progress (submission ids, status polls)
+          # in the log; credentials are redacted by the library.
+          DEBUG: electron-notarize*
+          XTRALAB_MACOS_SIGN: ${{ steps.signing.outputs.enabled }}
+          APPLE_ID: ${{ steps.signing.outputs.enabled && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ steps.signing.outputs.enabled && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ steps.signing.outputs.enabled && secrets.APPLE_TEAM_ID || '' }}
         run: pnpm exec electron-forge make
+
+      - name: Clean up code-signing keychain
+        if: always() && steps.signing.outputs.enabled == '1'
+        run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
@@ -106,28 +170,43 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Attach installer to GitHub Release
+      # The darwin zip asset name must keep the "darwin" and "arm64" tokens:
+      # update.electronjs.org matches release assets on them to serve updates.
+      - name: Attach installers to GitHub Release
         if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event.release.tag_name }}
           PLATFORM: ${{ matrix.platform }}
-          INSTALLER_GLOB: ${{ matrix.installer-glob }}
+          RELEASE_GLOBS: ${{ matrix.release-globs }}
           REPO: ${{ github.repository }}
         shell: bash
         run: |
           set -euo pipefail
           version="${TAG#v}"
-          installer_count=$(find desktop/out/make -type f -name "$INSTALLER_GLOB" | wc -l | tr -d ' ')
-          if [ "$installer_count" != "1" ]; then
-            echo "::error::Expected exactly one $INSTALLER_GLOB under desktop/out/make, found $installer_count:"
-            find desktop/out/make -type f -name "$INSTALLER_GLOB"
-            exit 1
-          fi
-          installer=$(find desktop/out/make -type f -name "$INSTALLER_GLOB")
-          ext="${installer##*.}"
-          asset_name="xtralab-${version}-${PLATFORM}.${ext}"
-          staged="$RUNNER_TEMP/$asset_name"
-          cp "$installer" "$staged"
-          echo "Uploading $staged to release $TAG"
-          gh release upload "$TAG" "$staged" --clobber --repo "$REPO"
+          for glob in $RELEASE_GLOBS; do
+            installer_count=$(find desktop/out/make -type f -name "$glob" | wc -l | tr -d ' ')
+            if [ "$installer_count" != "1" ]; then
+              echo "::error::Expected exactly one $glob under desktop/out/make, found $installer_count:"
+              find desktop/out/make -type f -name "$glob"
+              exit 1
+            fi
+            installer=$(find desktop/out/make -type f -name "$glob")
+            ext="${installer##*.}"
+            asset_name="xtralab-${version}-${PLATFORM}.${ext}"
+            staged="$RUNNER_TEMP/$asset_name"
+            cp "$installer" "$staged"
+            echo "Uploading $staged to release $TAG"
+            gh release upload "$TAG" "$staged" --clobber --repo "$REPO"
+            # The docs download buttons use releases/latest/download URLs,
+            # which need an asset name that stays the same across releases.
+            # The update zip gets no alias: update.electronjs.org must match
+            # exactly one darwin zip per release.
+            if [ "$ext" != "zip" ]; then
+              alias_name="xtralab-${PLATFORM}.${ext}"
+              staged_alias="$RUNNER_TEMP/$alias_name"
+              cp "$installer" "$staged_alias"
+              echo "Uploading $staged_alias to release $TAG"
+              gh release upload "$TAG" "$staged_alias" --clobber --repo "$REPO"
+            fi
+          done
