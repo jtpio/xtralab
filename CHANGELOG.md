@@ -2,6 +2,29 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.12.5
+
+([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.12.4...4a6e76a55590fceed6e6d4cebfe11eb348b4ca91))
+
+### Enhancements made
+
+- Show a check mark next to the version when up to date [#71](https://github.com/jtpio/xtralab/pull/71) ([@jtpio](https://github.com/jtpio))
+
+### Bugs fixed
+
+- Disable Y update persistence in the desktop app [#70](https://github.com/jtpio/xtralab/pull/70) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-07-21&to=2026-07-21&type=c))
+
+@jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-07-21..2026-07-21&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.12.4
 
 ([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.12.3...6fd555bdb3002966feae85f5ef8e6fbce83dd2ef))
@@ -18,8 +41,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-07-21&to=2026-07-21&type=c))
 
 @jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-07-21..2026-07-21&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.12.3
 
