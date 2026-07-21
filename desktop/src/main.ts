@@ -26,6 +26,7 @@ import {
   Menu,
   nativeImage,
   nativeTheme,
+  net,
   Notification,
   shell,
   type IpcMainInvokeEvent,
@@ -185,37 +186,104 @@ function startApplication(): void {
   showLauncherWindow();
 }
 
-// Poll update.electronjs.org for new GitHub releases and apply them through
-// Squirrel.Mac. Only a signed, packaged macOS build can self-update: Squirrel
-// verifies the downloaded app's code signature against the running one, and
-// the service serves the darwin zip attached to each release.
+// Keep the app current from GitHub releases via update.electronjs.org. A
+// lightweight HTTP poll (runUpdateCheck) discovers new releases without
+// downloading anything; the Squirrel.Mac download only starts in
+// downloadUpdate() once the user has asked for it. Only a signed, packaged
+// macOS build can self-update: Squirrel verifies the downloaded app's code
+// signature against the running one, and the service serves the darwin zip
+// attached to each release.
 const updateRepo = 'jtpio/xtralab';
 const updateIntervalMs = 10 * 60 * 1000;
+// Give the launcher window time to appear before the first background check,
+// so an update available at startup shows up in its footer instead of as a
+// dialog over the fresh window.
+const initialUpdateCheckDelayMs = 15 * 1000;
+
+type UpdateStatus =
+  | 'unsupported'
+  | 'idle'
+  | 'checking'
+  | 'update-available'
+  | 'downloading'
+  | 'ready'
+  | 'up-to-date'
+  | 'error';
+
+interface UpdateState {
+  status: UpdateStatus;
+  currentVersion: string;
+  latestVersion: string | null;
+  error: string | null;
+}
+
+// Shown in the launcher footer and pushed to it on every transition.
+// 'unsupported' covers builds that cannot self-update (dev, unsigned,
+// non-macOS); setUpAutoUpdates() promotes it to 'idle' when Squirrel is
+// usable.
+const updateState: UpdateState = {
+  status: 'unsupported',
+  currentVersion: app.getVersion(),
+  latestVersion: null,
+  error: null
+};
+let updateCheckInFlight = false;
+// Versions already offered through the background dialog, so one release
+// prompts at most once per app run.
+const offeredUpdateVersions = new Set<string>();
+
+function canAutoUpdate(): boolean {
+  return (
+    process.platform === 'darwin' && app.isPackaged && isAppProperlySigned()
+  );
+}
+
+function getUpdateFeedUrl(): string {
+  return `https://update.electronjs.org/${updateRepo}/darwin-${process.arch}/${app.getVersion()}`;
+}
+
+// Release names come through as tag names ("v0.12.4"); strip the leading "v"
+// for display.
+function formatVersionName(name: string): string {
+  return name.replace(/^v(?=\d)/, '');
+}
+
+function setUpdateState(patch: Partial<UpdateState>): void {
+  Object.assign(updateState, patch);
+  if (launcherWindow !== null && !launcherWindow.isDestroyed()) {
+    launcherWindow.webContents.send('xtralab:update-state', { ...updateState });
+  }
+}
 
 function setUpAutoUpdates(): void {
-  if (
-    process.platform !== 'darwin' ||
-    !app.isPackaged ||
-    !isAppProperlySigned()
-  ) {
+  if (!canAutoUpdate()) {
     return;
   }
 
-  const feedUrl = `https://update.electronjs.org/${updateRepo}/darwin-${process.arch}/${app.getVersion()}`;
-  autoUpdater.setFeedURL({ url: feedUrl });
+  updateState.status = 'idle';
+  autoUpdater.setFeedURL({ url: getUpdateFeedUrl() });
   autoUpdater.on('error', error => {
     log(`Auto-update error: ${formatError(error)}`);
+    setUpdateState({
+      status: 'error',
+      error: `Update failed: ${formatError(error)}`
+    });
+  });
+  autoUpdater.on('update-not-available', () => {
+    setUpdateState({ status: 'up-to-date', latestVersion: null, error: null });
   });
   autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
+    const version = formatVersionName(releaseName);
+    setUpdateState({ status: 'ready', latestVersion: version, error: null });
     void dialog
       .showMessageBox({
         type: 'info',
         buttons: ['Restart', 'Later'],
         defaultId: 0,
+        cancelId: 1,
         title: 'Application Update',
-        message: releaseName,
-        detail:
-          'A new version has been downloaded. Restart the application to apply the updates.'
+        message: `xtralab ${version} is ready to install`,
+        detail: 'Restart the application to apply the update.'
       })
       .then(({ response }) => {
         if (response === 0) {
@@ -224,9 +292,138 @@ function setUpAutoUpdates(): void {
       });
   });
 
-  log(`Checking for updates at ${feedUrl}`);
+  setTimeout(() => void runUpdateCheck(false), initialUpdateCheckDelayMs);
+  setInterval(() => void runUpdateCheck(false), updateIntervalMs);
+}
+
+// Ask the feed whether a newer release exists, without downloading it: it
+// answers 204 when the running version is current and a JSON description of
+// the latest release otherwise. A manual check surfaces its outcome in the
+// launcher footer; background checks stay quiet on failure and only prompt
+// through maybeOfferUpdate.
+async function runUpdateCheck(manual: boolean): Promise<void> {
+  if (
+    updateCheckInFlight ||
+    updateState.status === 'downloading' ||
+    updateState.status === 'ready'
+  ) {
+    return;
+  }
+
+  updateCheckInFlight = true;
+  const previousStatus = updateState.status;
+  setUpdateState({ status: 'checking', error: null });
+
+  // A download the user starts mid-check owns the state from then on; the
+  // check result is stale and must not overwrite it.
+  const applyCheckResult = (patch: Partial<UpdateState>): boolean => {
+    if (
+      updateState.status === 'downloading' ||
+      updateState.status === 'ready'
+    ) {
+      return false;
+    }
+    setUpdateState(patch);
+    return true;
+  };
+
+  try {
+    const response = await net.fetch(getUpdateFeedUrl(), {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(30000)
+    });
+    if (response.status === 204) {
+      applyCheckResult({ status: 'up-to-date', latestVersion: null });
+      return;
+    }
+    if (!response.ok) {
+      throw new Error(`Update feed responded with HTTP ${response.status}`);
+    }
+
+    const payload: unknown = await response.json();
+    const name =
+      typeof payload === 'object' &&
+      payload !== null &&
+      typeof (payload as { name?: unknown }).name === 'string'
+        ? (payload as { name: string }).name
+        : null;
+    if (name === null) {
+      throw new Error('Update feed returned no release name');
+    }
+
+    const latestVersion = formatVersionName(name);
+    log(`Update available: ${latestVersion}`);
+    if (
+      applyCheckResult({ status: 'update-available', latestVersion }) &&
+      !manual
+    ) {
+      maybeOfferUpdate(latestVersion);
+    }
+  } catch (error) {
+    log(`Update check failed: ${formatError(error)}`);
+    if (manual) {
+      applyCheckResult({
+        status: 'error',
+        error: `Update check failed: ${formatError(error)}`
+      });
+    } else {
+      applyCheckResult({ status: previousStatus });
+    }
+  } finally {
+    updateCheckInFlight = false;
+  }
+}
+
+// Ask through a system dialog whether to download a release found by a
+// background check. The dialog is skipped while the launcher is focused: its
+// footer already shows the update with a Download button, and not marking the
+// release as offered keeps the dialog available for a later check once the
+// launcher is gone.
+function maybeOfferUpdate(latestVersion: string): void {
+  if (offeredUpdateVersions.has(latestVersion)) {
+    return;
+  }
+  if (
+    launcherWindow !== null &&
+    !launcherWindow.isDestroyed() &&
+    launcherWindow.isFocused()
+  ) {
+    return;
+  }
+
+  offeredUpdateVersions.add(latestVersion);
+  void dialog
+    .showMessageBox({
+      type: 'info',
+      buttons: ['Download', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+      title: 'Update Available',
+      message: `xtralab ${latestVersion} is available`,
+      detail: 'Do you want to download the update now?'
+    })
+    .then(({ response }) => {
+      if (response === 0) {
+        downloadUpdate();
+      }
+    });
+}
+
+// Hand the download to Squirrel.Mac: its checkForUpdates() fetches the feed
+// again and downloads the release it reports. update-downloaded then offers
+// the restart.
+function downloadUpdate(): void {
+  if (
+    !canAutoUpdate() ||
+    updateState.status === 'downloading' ||
+    updateState.status === 'ready'
+  ) {
+    return;
+  }
+
+  log('Downloading update via Squirrel');
+  setUpdateState({ status: 'downloading', error: null });
   autoUpdater.checkForUpdates();
-  setInterval(() => autoUpdater.checkForUpdates(), updateIntervalMs);
 }
 
 function initializeLogging(): void {
@@ -522,6 +719,18 @@ function registerIpcHandlers(): void {
   ipcMain.handle('xtralab:clear-recent-folders', () => clearRecentFolders());
   ipcMain.handle('xtralab:show-logs', async () => {
     await shell.openPath(getLogsDir());
+  });
+  ipcMain.handle('xtralab:get-update-state', () => ({ ...updateState }));
+  ipcMain.handle('xtralab:check-for-updates', () => {
+    void runUpdateCheck(true);
+  });
+  ipcMain.handle('xtralab:download-update', () => {
+    downloadUpdate();
+  });
+  ipcMain.handle('xtralab:restart-to-update', () => {
+    if (updateState.status === 'ready') {
+      void restartToApplyUpdate();
+    }
   });
   ipcMain.handle(
     'xtralab:notify',

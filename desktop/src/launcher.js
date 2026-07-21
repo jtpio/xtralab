@@ -52,10 +52,15 @@ const environmentDetail = document.getElementById('environment-detail');
 const chooseInterpreterButton = document.getElementById('choose-interpreter');
 const launchFolderButton = document.getElementById('launch-folder');
 const statusElement = document.getElementById('status');
+const updateSpinner = document.getElementById('update-spinner');
+const updateMessage = document.getElementById('update-message');
+const updateAction = document.getElementById('update-action');
+const appVersion = document.getElementById('app-version');
 
 let homeDir = '';
 let preparedFolder = null;
 let isBusy = false;
+let updateState = null;
 
 function updateActionAvailability() {
   const option = selectedEnvironment();
@@ -68,9 +73,64 @@ function updateActionAvailability() {
     (option.kind !== 'managed' && !option.hasIpykernel);
   backLink.disabled = isBusy;
   recentClear.disabled = isBusy;
+  updateAction.disabled = isBusy;
   for (const button of recentList.querySelectorAll('button')) {
     button.disabled = isBusy;
   }
+}
+
+function renderUpdateState(state) {
+  updateState = state;
+  appVersion.textContent = `v${state.currentVersion}`;
+
+  let message = '';
+  let messageTitle = '';
+  let actionLabel = '';
+  let emphasized = false;
+  let spinning = false;
+
+  switch (state.status) {
+    case 'idle':
+      actionLabel = 'Check for updates';
+      break;
+    case 'checking':
+      spinning = true;
+      message = 'Checking for updates...';
+      break;
+    case 'up-to-date':
+      message = 'Up to date';
+      actionLabel = 'Check for updates';
+      break;
+    case 'update-available':
+      message = `Version ${state.latestVersion} is available`;
+      actionLabel = 'Download';
+      emphasized = true;
+      break;
+    case 'downloading':
+      spinning = true;
+      message = `Downloading ${state.latestVersion || 'update'}...`;
+      break;
+    case 'ready':
+      message = `Version ${state.latestVersion} downloaded`;
+      actionLabel = 'Restart to update';
+      emphasized = true;
+      break;
+    case 'error':
+      message = state.error || 'Update failed';
+      messageTitle = state.error || '';
+      actionLabel = 'Check for updates';
+      break;
+  }
+
+  updateSpinner.hidden = !spinning;
+  updateMessage.textContent = message;
+  updateMessage.title = messageTitle;
+  updateMessage.classList.toggle('error', state.status === 'error');
+  updateMessage.hidden = message === '';
+  updateAction.textContent = actionLabel;
+  updateAction.hidden = actionLabel === '';
+  updateAction.classList.toggle('is-accent', emphasized);
+  updateActionAvailability();
 }
 
 function setBusy(busy, label = 'Opening...') {
@@ -295,6 +355,19 @@ environmentSelect.addEventListener('change', () => {
   renderEnvironmentDetail();
 });
 
+updateAction.addEventListener('click', () => {
+  if (updateState === null) {
+    return;
+  }
+  if (updateState.status === 'update-available') {
+    void window.xtralab.downloadUpdate();
+  } else if (updateState.status === 'ready') {
+    void window.xtralab.restartToUpdate();
+  } else {
+    void window.xtralab.checkForUpdates();
+  }
+});
+
 chooseInterpreterButton.addEventListener('click', async () => {
   if (preparedFolder === null) {
     return;
@@ -323,6 +396,12 @@ launchFolderButton.addEventListener('click', async () => {
 });
 
 (async () => {
+  window.xtralab.onUpdateState(renderUpdateState);
+  try {
+    renderUpdateState(await window.xtralab.getUpdateState());
+  } catch {
+    // The footer keeps its empty default when the state is unavailable.
+  }
   try {
     homeDir = await window.xtralab.getHomeDir();
   } catch {

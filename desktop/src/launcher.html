@@ -144,7 +144,26 @@
         </div>
       </div>
 
-      <p class="status" id="status" role="status" aria-live="polite"></p>
+      <footer class="footer">
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+        <div class="update-area">
+          <span class="update-spinner" id="update-spinner" hidden></span>
+          <span
+            class="update-message"
+            id="update-message"
+            role="status"
+            aria-live="polite"
+            hidden
+          ></span>
+          <button
+            class="update-action"
+            id="update-action"
+            type="button"
+            hidden
+          ></button>
+          <span class="app-version" id="app-version"></span>
+        </div>
+      </footer>
     </main>
     <script src="./launcher.js"></script>
   </body>

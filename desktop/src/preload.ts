@@ -23,6 +23,23 @@ interface FolderEnvironmentResult {
   error?: string;
 }
 
+type UpdateStatus =
+  | 'unsupported'
+  | 'idle'
+  | 'checking'
+  | 'update-available'
+  | 'downloading'
+  | 'ready'
+  | 'up-to-date'
+  | 'error';
+
+interface UpdateState {
+  status: UpdateStatus;
+  currentVersion: string;
+  latestVersion: string | null;
+  error: string | null;
+}
+
 contextBridge.exposeInMainWorld('xtralab', {
   getHomeDir: (): Promise<string> => ipcRenderer.invoke('xtralab:get-home-dir'),
   getRecentFolders: (): Promise<string[]> =>
@@ -46,5 +63,18 @@ contextBridge.exposeInMainWorld('xtralab', {
     pythonPath: string | null
   ): Promise<OpenFolderResult> =>
     ipcRenderer.invoke('xtralab:open-folder', folderPath, pythonPath),
-  showLogs: (): Promise<void> => ipcRenderer.invoke('xtralab:show-logs')
+  showLogs: (): Promise<void> => ipcRenderer.invoke('xtralab:show-logs'),
+  getUpdateState: (): Promise<UpdateState> =>
+    ipcRenderer.invoke('xtralab:get-update-state'),
+  checkForUpdates: (): Promise<void> =>
+    ipcRenderer.invoke('xtralab:check-for-updates'),
+  downloadUpdate: (): Promise<void> =>
+    ipcRenderer.invoke('xtralab:download-update'),
+  restartToUpdate: (): Promise<void> =>
+    ipcRenderer.invoke('xtralab:restart-to-update'),
+  onUpdateState: (listener: (state: UpdateState) => void): void => {
+    ipcRenderer.on('xtralab:update-state', (event, state: UpdateState) => {
+      listener(state);
+    });
+  }
 });
