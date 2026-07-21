@@ -1682,12 +1682,8 @@ function startSupervisor(
     '120',
     '--cwd',
     folderPath,
-    // Single-user desktop: the file on disk is the source of truth, so keep
-    // real-time collaboration but not its stored update history. Replaying a
-    // stored history against a file that changed underneath it (routine here,
-    // since agents edit files while the app is open) rebuilds the room with a
-    // divergent Yjs history, which can panic pycrdt and leave documents
-    // rendering empty. See xtralab/ystore.py.
+    // Keep real-time collaboration but not its stored update history, which
+    // corrupts documents that agents edit out-of-band. See xtralab/ystore.py.
     '--no-collab-persistence',
     '--collab-session-store',
     path.join(collabDir, 'collaboration_sessions.json'),
