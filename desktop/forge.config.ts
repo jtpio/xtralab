@@ -154,7 +154,10 @@ const config: ForgeConfig = {
       const packageJsonPath = join(buildPath, 'package.json');
       const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
       packageJson.productName = productName;
-      writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
+      writeFileSync(
+        packageJsonPath,
+        `${JSON.stringify(packageJson, null, 2)}\n`
+      );
     },
     // Forge's osxSign/osxNotarize cover only the .app. Apple's disk-image
     // guidance is to sign the DMG itself, then notarize and staple it, so the
