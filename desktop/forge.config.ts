@@ -5,6 +5,7 @@ import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-nati
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import MakerAppImage from '@reforged/maker-appimage';
+import { execFileSync } from 'node:child_process';
 import { closeSync, openSync, readSync } from 'node:fs';
 
 const variant =
@@ -134,7 +135,47 @@ const config: ForgeConfig = {
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
       [FuseV1Options.OnlyLoadAppFromAsar]: true
     })
-  ]
+  ],
+  hooks: {
+    // osxNotarize notarizes and staples the .app, but the DMG that wraps it is
+    // left un-notarized, so opening the downloaded disk image would still warn
+    // users even though the app inside is trusted. Notarize and staple each
+    // DMG so the installer itself passes Gatekeeper, offline included.
+    postMake: async (forgeConfig, makeResults) => {
+      if (osxNotarize) {
+        for (const result of makeResults) {
+          if (result.platform !== 'darwin') {
+            continue;
+          }
+          for (const artifact of result.artifacts) {
+            if (!artifact.endsWith('.dmg')) {
+              continue;
+            }
+            execFileSync(
+              'xcrun',
+              [
+                'notarytool',
+                'submit',
+                artifact,
+                '--apple-id',
+                osxNotarize.appleId,
+                '--password',
+                osxNotarize.appleIdPassword,
+                '--team-id',
+                osxNotarize.teamId,
+                '--wait'
+              ],
+              { stdio: 'inherit' }
+            );
+            execFileSync('xcrun', ['stapler', 'staple', artifact], {
+              stdio: 'inherit'
+            });
+          }
+        }
+      }
+      return makeResults;
+    }
+  }
 };
 
 export default config;
