@@ -3,14 +3,33 @@ title: Desktop app
 description: A standalone xtralab app for macOS and Linux.
 ---
 
+import { LinkButton } from '@astrojs/starlight/components';
+
 xtralab also ships as a standalone desktop app: a DMG on macOS and an AppImage
 on Linux. It bundles its own Python runtime, so it does not require Python,
 `pip`, `uv`, or network access on your machine.
 
 ## Download
 
-Grab the installer for the latest tagged release from the
-[releases page](https://github.com/jtpio/xtralab/releases/latest). Builds from
+<LinkButton
+  href="https://github.com/jtpio/xtralab/releases/latest/download/xtralab-darwin-arm64.dmg"
+  icon="apple"
+  iconPlacement="start"
+>
+  Download for macOS (Apple Silicon)
+</LinkButton>
+<LinkButton
+  href="https://github.com/jtpio/xtralab/releases/latest/download/xtralab-linux-x64.AppImage"
+  icon="linux"
+  iconPlacement="start"
+  variant="secondary"
+>
+  Download for Linux (x64)
+</LinkButton>
+
+The buttons always download the installer from the latest tagged release.
+Older versions are on the
+[releases page](https://github.com/jtpio/xtralab/releases), and builds from
 `main` are also uploaded as workflow artifacts on the
 [Actions tab](https://github.com/jtpio/xtralab/actions).
 

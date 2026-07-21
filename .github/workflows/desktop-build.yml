@@ -198,4 +198,15 @@ jobs:
             cp "$installer" "$staged"
             echo "Uploading $staged to release $TAG"
             gh release upload "$TAG" "$staged" --clobber --repo "$REPO"
+            # The docs download buttons use releases/latest/download URLs,
+            # which need an asset name that stays the same across releases.
+            # The update zip gets no alias: update.electronjs.org must match
+            # exactly one darwin zip per release.
+            if [ "$ext" != "zip" ]; then
+              alias_name="xtralab-${PLATFORM}.${ext}"
+              staged_alias="$RUNNER_TEMP/$alias_name"
+              cp "$installer" "$staged_alias"
+              echo "Uploading $staged_alias to release $TAG"
+              gh release upload "$TAG" "$staged_alias" --clobber --repo "$REPO"
+            fi
           done
