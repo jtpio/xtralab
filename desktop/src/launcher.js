@@ -55,6 +55,7 @@ const statusElement = document.getElementById('status');
 const updateSpinner = document.getElementById('update-spinner');
 const updateMessage = document.getElementById('update-message');
 const updateAction = document.getElementById('update-action');
+const updateCheck = document.getElementById('update-check');
 const appVersion = document.getElementById('app-version');
 
 let homeDir = '';
@@ -98,7 +99,6 @@ function renderUpdateState(state) {
       message = 'Checking for updates...';
       break;
     case 'up-to-date':
-      message = 'Up to date';
       actionLabel = 'Check for updates';
       break;
     case 'update-available':
@@ -127,6 +127,7 @@ function renderUpdateState(state) {
   updateMessage.title = messageTitle;
   updateMessage.classList.toggle('error', state.status === 'error');
   updateMessage.hidden = message === '';
+  updateCheck.hidden = state.status !== 'up-to-date';
   updateAction.textContent = actionLabel;
   updateAction.hidden = actionLabel === '';
   updateAction.classList.toggle('is-accent', emphasized);

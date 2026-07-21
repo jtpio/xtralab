@@ -588,6 +588,20 @@ svg.symbol {
   color: var(--accent-hover);
 }
 
+.update-check {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-right: -4px;
+  color: var(--text-subtle);
+}
+
+.update-check svg {
+  width: 11px;
+  height: 11px;
+  fill: currentColor;
+}
+
 .app-version {
   flex: 0 0 auto;
   color: var(--text-subtle);
