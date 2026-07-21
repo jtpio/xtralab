@@ -1,5 +1,6 @@
 {
   "notebookStartsKernel": false,
+  "disableRTC": true,
   "disabledExtensions": {
     "@jupyterlab/application-extension:logo": true,
     "@jupyterlab/application-extension:property-inspector": true,

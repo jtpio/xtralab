@@ -61,7 +61,8 @@ jobs:
 
           # @jupyter/docprovider-extension comes from ajlab's jupyter-docprovider
           # (3.0.0a0), which targets @jupyter/ydoc ^4 to match JupyterLab 4.6, so
-          # it resolves cleanly against the host. Require the strict OK.
+          # it resolves cleanly against the host. Its plugins stay inert because
+          # xtralab ships disableRTC, but the bundle must still resolve OK.
           grep -e "@jupyter/docprovider-extension.*OK" labextensions.txt
 
           # xtralab keeps the @jupyterlab/git frontend enabled and only
@@ -77,21 +78,28 @@ jobs:
             grep -e "${plugin}" labextensions.txt
           done
 
-          # xtralab ships a labconfig fragment that disables the
-          # announcements plugin and a few other panels. Verify it lands
-          # at the install prefix.
+          # xtralab ships a labconfig fragment that turns off real-time
+          # collaboration (disableRTC) and disables the announcements
+          # plugin and a few other panels. Verify it lands at the install
+          # prefix.
           PREFIX=$(python -c 'import sysconfig; print(sysconfig.get_paths()["data"])')
           test -f "$PREFIX/etc/jupyter/labconfig/page_config.d/00-xtralab.json"
 
           # Server extensions: jupyterlab-git for the changes panel, plus
-          # ajlab's docprovider/MCP stack for collaboration.
+          # ajlab's MCP bridge for agents.
           jupyter server extension list 2>&1 | tee server-extensions.txt
           for ext in \
             "jupyterlab_git" \
-            "jupyter_server_ydoc" \
             "jupyter_server_mcp"; do
             grep -e "${ext}.*OK" server-extensions.txt
           done
+
+          # jupyter-server-ydoc also comes with ajlab, but xtralab is a
+          # single-user app whose files are routinely edited out-of-band
+          # by coding agents, and replaying stored Y history against such
+          # files corrupts open documents. A config drop-in keeps the
+          # extension installed but disabled.
+          grep -e "jupyter_server_ydoc.*disabled" server-extensions.txt
 
       - name: Package the extension
         run: |
