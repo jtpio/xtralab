@@ -33,6 +33,9 @@ importers:
       '@electron/fuses':
         specifier: ^1.8.0
         version: 1.8.0
+      '@electron/notarize':
+        specifier: ^2.5.0
+        version: 2.5.0
       '@reforged/maker-appimage':
         specifier: ^5.1.0
         version: 5.2.0

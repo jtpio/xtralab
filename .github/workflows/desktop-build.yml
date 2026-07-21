@@ -149,6 +149,9 @@ jobs:
       - name: Make distribution
         working-directory: desktop
         env:
+          # Surface @electron/notarize progress (submission ids, status polls)
+          # in the log; credentials are redacted by the library.
+          DEBUG: electron-notarize*
           XTRALAB_MACOS_SIGN: ${{ steps.signing.outputs.enabled }}
           APPLE_ID: ${{ steps.signing.outputs.enabled && secrets.APPLE_ID || '' }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ steps.signing.outputs.enabled && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}

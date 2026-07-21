@@ -4,6 +4,7 @@ import { MakerZIP } from '@electron-forge/maker-zip';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import { notarize } from '@electron/notarize';
 import MakerAppImage from '@reforged/maker-appimage';
 import { execFileSync } from 'node:child_process';
 import { closeSync, openSync, readSync } from 'node:fs';
@@ -137,12 +138,13 @@ const config: ForgeConfig = {
     })
   ],
   hooks: {
-    // osxNotarize notarizes and staples the .app, but the DMG that wraps it is
-    // left un-notarized, so opening the downloaded disk image would still warn
-    // users even though the app inside is trusted. Notarize and staple each
-    // DMG so the installer itself passes Gatekeeper, offline included.
+    // Forge's osxSign/osxNotarize cover only the .app. Apple's disk-image
+    // guidance is to sign the DMG itself, then notarize and staple it, so the
+    // downloaded installer also passes Gatekeeper, offline included. codesign
+    // resolves the identity by keychain substring match, the same discovery
+    // osx-sign performs for the app.
     postMake: async (forgeConfig, makeResults) => {
-      if (osxNotarize) {
+      if (signMacOS) {
         for (const result of makeResults) {
           if (result.platform !== 'darwin') {
             continue;
@@ -152,24 +154,13 @@ const config: ForgeConfig = {
               continue;
             }
             execFileSync(
-              'xcrun',
-              [
-                'notarytool',
-                'submit',
-                artifact,
-                '--apple-id',
-                osxNotarize.appleId,
-                '--password',
-                osxNotarize.appleIdPassword,
-                '--team-id',
-                osxNotarize.teamId,
-                '--wait'
-              ],
+              'codesign',
+              ['--sign', 'Developer ID Application', '--timestamp', artifact],
               { stdio: 'inherit' }
             );
-            execFileSync('xcrun', ['stapler', 'staple', artifact], {
-              stdio: 'inherit'
-            });
+            if (osxNotarize) {
+              await notarize({ ...osxNotarize, appPath: artifact });
+            }
           }
         }
       }

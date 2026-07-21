@@ -29,6 +29,7 @@
     "@electron-forge/plugin-fuses": "^7.11.0",
     "@electron-forge/shared-types": "^7.11.0",
     "@electron/fuses": "^1.8.0",
+    "@electron/notarize": "^2.5.0",
     "@reforged/maker-appimage": "^5.1.0",
     "@types/node": "25.6.0",
     "electron": "42.0.0",

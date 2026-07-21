@@ -71,9 +71,9 @@ The output is written under `desktop/out/make/`. To produce an unpacked
 `.app` folder without an installer wrapper, use `pnpm package` instead.
 
 Local builds are unsigned by default. On macOS, set `XTRALAB_MACOS_SIGN=1` to
-sign the app with the Developer ID Application identity from your keychain,
-and provide `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` as
-well to also notarize it. When an unsigned build is downloaded onto another
+sign the app and the DMG with the Developer ID Application identity from your
+keychain, and provide `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and
+`APPLE_TEAM_ID` as well to also notarize them. When an unsigned build is downloaded onto another
 machine, macOS Gatekeeper blocks the first launch with "Apple cannot check it
 for malicious software"; right-click the app and choose **Open** (or run
 `xattr -d com.apple.quarantine /path/to/xtralab.app`) to dismiss the warning
