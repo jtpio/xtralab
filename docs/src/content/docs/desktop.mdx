@@ -53,6 +53,14 @@ otherwise as separate windows that can still be merged from the Window menu.
 The tab bar plus button and <kbd>Cmd</kbd>+<kbd>T</kbd> open the launcher in a
 new tab, and the project you pick replaces that tab.
 
+Quitting the app keeps the session. The next launch reopens the projects that
+were open, puts their windows and tabs back in place, and reselects the one
+that was active, with the launcher showing the progress while the servers
+start. Each window then recovers its open files and panel layout from its
+project workspace. Windows closed before quitting stay closed, and tab groups
+assembled purely by hand in the window manager (for example with Merge All
+Windows) come back as separate windows that follow the system tab preference.
+
 ## Project environments and kernels
 
 The launcher detects common project Python environments such as `.venv`,

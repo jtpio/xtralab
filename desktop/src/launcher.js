@@ -62,6 +62,7 @@ let homeDir = '';
 let preparedFolder = null;
 let isBusy = false;
 let updateState = null;
+let restoreBusy = false;
 
 function updateActionAvailability() {
   const option = selectedEnvironment();
@@ -132,6 +133,26 @@ function renderUpdateState(state) {
   updateAction.hidden = actionLabel === '';
   updateAction.classList.toggle('is-accent', emphasized);
   updateActionAvailability();
+}
+
+// While the app restores the previous session's projects at startup, the
+// launcher sits in a disabled "Restoring..." state; it either closes when the
+// first restored window appears or returns to the welcome view if nothing
+// could be restored.
+function renderRestoreState(state) {
+  if (state.restoring) {
+    restoreBusy = true;
+    const label =
+      state.count === 1
+        ? 'Restoring project...'
+        : `Restoring ${state.count} projects...`;
+    setBusy(true, label);
+    return;
+  }
+  if (restoreBusy) {
+    restoreBusy = false;
+    setReady();
+  }
 }
 
 function setBusy(busy, label = 'Opening...') {
@@ -398,10 +419,16 @@ launchFolderButton.addEventListener('click', async () => {
 
 (async () => {
   window.xtralab.onUpdateState(renderUpdateState);
+  window.xtralab.onRestoreState(renderRestoreState);
   try {
     renderUpdateState(await window.xtralab.getUpdateState());
   } catch {
     // The footer keeps its empty default when the state is unavailable.
+  }
+  try {
+    renderRestoreState(await window.xtralab.getRestoreState());
+  } catch {
+    // The launcher stays usable when the restore state is unavailable.
   }
   try {
     homeDir = await window.xtralab.getHomeDir();

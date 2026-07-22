@@ -3,7 +3,7 @@ import {
   spawnSync,
   type ChildProcessWithoutNullStreams
 } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   createWriteStream,
   existsSync,
@@ -28,6 +28,7 @@ import {
   nativeTheme,
   net,
   Notification,
+  screen,
   shell,
   type IpcMainInvokeEvent,
   type MenuItemConstructorOptions
@@ -99,6 +100,62 @@ interface OpenFolderResult {
   error?: string;
 }
 
+interface SessionWindowBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+// One lab window as persisted in session-state.json. groupId ties together
+// the windows that belong to the same native macOS tab group so the next
+// launch can reassemble it; focusSequence orders windows by their most recent
+// focus so the restore can reselect the active tab and window.
+interface SessionWindowState {
+  folderPath: string;
+  groupId: string;
+  bounds: SessionWindowBounds | null;
+  maximized: boolean;
+  fullScreen: boolean;
+  focusSequence: number;
+}
+
+interface TrackedSessionWindow extends SessionWindowState {
+  windowId: number;
+}
+
+interface RestoredSessionWindow {
+  window: BrowserWindow;
+  state: SessionWindowState;
+}
+
+interface RestoreFailure {
+  folderPath: string;
+  reason: string;
+}
+
+// Shown in the launcher while the startup restore reopens projects.
+interface RestoreProgressState {
+  restoring: boolean;
+  count: number;
+}
+
+// How createLabWindow takes part in a session restore: the window keeps the
+// saved state, waits for the previous tab of its group before it appears, and
+// joins the group through the window the driver last brought up.
+interface SessionRestoreRequest {
+  state: SessionWindowState;
+  waitForPredecessor: Promise<void>;
+  getTabHost: () => BrowserWindow | null;
+  onShown: () => void;
+}
+
+interface ProjectSession {
+  serverInfo: ServerInfo;
+  supervisor: SupervisorHandle;
+  projectEnvironment: ProjectRuntimeEnvironment | null;
+}
+
 const recentFoldersLimit = 8;
 const launcherContentWidth = 720;
 const launcherContentHeight = 640;
@@ -112,17 +169,36 @@ const pendingSupervisors = new Set<SupervisorHandle>();
 const labWindowTabbingIdentifier = 'xtralab-project';
 
 let launcherWindow: BrowserWindow | null = null;
-// Whether the launcher window currently lives as a native macOS tab inside a
-// lab window's tab group (opened from the tab bar "+" or File > New Tab).
-// While true, a project picked in the launcher joins that group as a tab in
-// the launcher tab's place instead of opening as a separate window.
-let launcherOpenedAsTab = false;
+// The session group of the lab window whose native macOS tab group the
+// launcher currently lives in (opened from the tab bar "+" or File > New
+// Tab). While set, a project picked in the launcher joins that group as a tab
+// in the launcher tab's place instead of opening as a separate window.
+let launcherTabGroupId: string | null = null;
 let logStream: WriteStream | null = null;
 let recentFolders: string[] = [];
 let folderEnvironmentPreferences: Record<string, FolderEnvironmentPreference> =
   {};
 let quitInProgress = false;
 let ipcRegistered = false;
+
+// Live view of the open lab windows, persisted to session-state.json so the
+// next launch reopens them. Array order is window creation order, which is
+// also the tab order used when a group is reassembled.
+const sessionWindows: TrackedSessionWindow[] = [];
+// Windows from the previous session that restorePreviousSession has not
+// reopened yet. Included in every save so quitting or crashing mid-restore
+// keeps them for the next launch.
+let pendingRestoreWindows: SessionWindowState[] = [];
+// Set once the quit-time snapshot is written; stops the window closes that
+// follow during teardown from shrinking the saved session.
+let sessionStateFrozen = false;
+let sessionStateSaveTimer: NodeJS.Timeout | null = null;
+// Monotonic stamp handed out on every window focus, persisted per window so
+// the restore can order windows by how recently they were active.
+let focusSequenceCounter = 0;
+// How many projects the startup restore is still reopening, or null outside
+// a restore; mirrored in the launcher as a "Restoring..." status.
+let restoringProjectCount: number | null = null;
 
 if (!app.isPackaged) {
   app.setName('xtralab dev');
@@ -183,6 +259,10 @@ function startApplication(): void {
   loadFolderEnvironmentPreferences();
   registerIpcHandlers();
   setUpAutoUpdates();
+  const previousSession = loadSessionWindowStates();
+  if (previousSession.length > 0) {
+    void restorePreviousSession(previousSession);
+  }
   showLauncherWindow();
 }
 
@@ -721,6 +801,7 @@ function registerIpcHandlers(): void {
     await shell.openPath(getLogsDir());
   });
   ipcMain.handle('xtralab:get-update-state', () => ({ ...updateState }));
+  ipcMain.handle('xtralab:get-restore-state', () => getRestoreProgressState());
   ipcMain.handle('xtralab:check-for-updates', () => {
     void runUpdateCheck(true);
   });
@@ -995,7 +1076,7 @@ function openLauncherTab(hostWindow: BrowserWindow): void {
 
   if (launcherWindow !== null && !launcherWindow.isDestroyed()) {
     if (attachWindowAsTab(hostWindow, launcherWindow)) {
-      launcherOpenedAsTab = true;
+      launcherTabGroupId = sessionWindowGroupId(hostWindow.id) ?? randomUUID();
     }
     launcherWindow.show();
     launcherWindow.focus();
@@ -1050,7 +1131,7 @@ function createLauncherWindow(tabHost: BrowserWindow | null): BrowserWindow {
     }
   });
 
-  launcherOpenedAsTab = false;
+  launcherTabGroupId = null;
   window.webContents.setWindowOpenHandler(({ url }) => {
     openExternalIfSafe(url, null);
     return { action: 'deny' };
@@ -1068,14 +1149,14 @@ function createLauncherWindow(tabHost: BrowserWindow | null): BrowserWindow {
       !tabHost.isDestroyed() &&
       attachWindowAsTab(tabHost, window)
     ) {
-      launcherOpenedAsTab = true;
+      launcherTabGroupId = sessionWindowGroupId(tabHost.id) ?? randomUUID();
     }
     window.show();
   });
   window.on('closed', () => {
     if (launcherWindow === window) {
       launcherWindow = null;
-      launcherOpenedAsTab = false;
+      launcherTabGroupId = null;
     }
   });
 
@@ -1151,17 +1232,17 @@ async function openFolder(
   // When the launcher lives as a tab in a lab window's tab group, the new
   // project joins that group as a tab in the launcher tab's place instead of
   // opening as a separate window.
-  const attachAsTab =
-    process.platform === 'darwin' &&
-    sourceLauncher !== null &&
-    launcherOpenedAsTab;
+  const attachGroupId =
+    process.platform === 'darwin' && sourceLauncher !== null
+      ? launcherTabGroupId
+      : null;
 
   try {
     await createLabSession(
       resolvedFolder,
       pythonPath,
       sourceLauncher,
-      attachAsTab
+      attachGroupId
     );
     rememberFolderEnvironmentPreference(resolvedFolder, pythonPath ?? null);
     rememberRecentFolder(resolvedFolder);
@@ -1176,8 +1257,24 @@ async function createLabSession(
   folderPath: string,
   pythonPath: string | null | undefined,
   sourceLauncher: BrowserWindow | null,
-  attachAsTab: boolean
+  attachGroupId: string | null
 ): Promise<void> {
+  const { serverInfo, supervisor, projectEnvironment } =
+    await startProjectSession(folderPath, pythonPath);
+  createLabWindow(
+    serverInfo,
+    folderPath,
+    supervisor,
+    projectEnvironment,
+    sourceLauncher,
+    attachGroupId
+  );
+}
+
+async function startProjectSession(
+  folderPath: string,
+  pythonPath: string | null | undefined
+): Promise<ProjectSession> {
   const managedEnvironment = getManagedEnvironment();
   const projectEnvironment = prepareProjectRuntimeEnvironment(
     folderPath,
@@ -1201,14 +1298,7 @@ async function createLabSession(
   }
 
   pendingSupervisors.delete(supervisor);
-  createLabWindow(
-    serverInfo,
-    folderPath,
-    supervisor,
-    projectEnvironment,
-    sourceLauncher,
-    attachAsTab
-  );
+  return { serverInfo, supervisor, projectEnvironment };
 }
 
 function discoverFolderPythonEnvironments(
@@ -1803,15 +1893,19 @@ function createLabWindow(
   supervisor: SupervisorHandle,
   projectEnvironment: ProjectRuntimeEnvironment | null,
   sourceLauncher: BrowserWindow | null,
-  attachAsTab: boolean
-): void {
+  attachGroupId: string | null,
+  restore?: SessionRestoreRequest
+): BrowserWindow {
   const allowedOrigin = new URL(serverInfo.baseUrl).origin;
   const windowTitle = getLabWindowTitle(folderPath);
+  const restoredBounds =
+    restore === undefined
+      ? null
+      : boundsOnAvailableDisplay(restore.state.bounds);
 
   const window = new BrowserWindow({
     title: windowTitle,
-    width: 1280,
-    height: 900,
+    ...(restoredBounds ?? { width: 1280, height: 900 }),
     minWidth: 900,
     minHeight: 600,
     show: false,
@@ -1833,6 +1927,7 @@ function createLabWindow(
     supervisor,
     window
   });
+  trackSessionWindow(window, folderPath, restore?.state ?? null);
 
   let windowEverShown = false;
   let sessionAborted = false;
@@ -1913,6 +2008,25 @@ function createLabWindow(
 
   window.once('ready-to-show', () => {
     windowEverShown = true;
+    if (restore !== undefined) {
+      // A restored window waits for the previous tab of its group so the
+      // group reassembles in the saved order, and appears without taking
+      // focus; restorePreviousSession focuses the previously active window
+      // once at the end.
+      void restore.waitForPredecessor.then(() => {
+        if (window.isDestroyed()) {
+          return;
+        }
+        const tabHost = restore.getTabHost();
+        if (tabHost !== null) {
+          attachWindowAsTab(tabHost, window);
+        }
+        window.showInactive();
+        restore.onShown();
+      });
+      return;
+    }
+
     // The launcher stays visible in its "Opening..." state while the server
     // starts and the page loads, and is only swapped for the lab window once
     // there is something to show. When the launcher is a tab, the lab window
@@ -1924,8 +2038,12 @@ function createLabWindow(
       !sourceLauncher.isDestroyed()
         ? sourceLauncher
         : null;
-    if (attachAsTab && launcherToClose !== null) {
-      attachWindowAsTab(launcherToClose, window);
+    if (
+      attachGroupId !== null &&
+      launcherToClose !== null &&
+      attachWindowAsTab(launcherToClose, window)
+    ) {
+      assignSessionWindowGroup(window.id, attachGroupId);
     }
     window.show();
     launcherToClose?.close();
@@ -1944,6 +2062,7 @@ function createLabWindow(
     const session = labSessions.get(window.id);
     labSessions.delete(window.id);
     notificationTimestamps.delete(window.id);
+    untrackSessionWindow(window.id);
     if (session !== undefined && !quitInProgress) {
       void session.supervisor.stop();
     }
@@ -1959,6 +2078,7 @@ function createLabWindow(
   });
 
   void window.loadURL(serverInfo.url);
+  return window;
 }
 
 function parseReadyLine(line: string): ServerInfo | null {
@@ -2059,6 +2179,7 @@ async function shutdownAndQuit(): Promise<void> {
     return;
   }
 
+  commitSessionStateForQuit();
   quitInProgress = true;
   await stopAllSessions();
   app.quit();
@@ -2072,6 +2193,7 @@ async function restartToApplyUpdate(): Promise<void> {
     return;
   }
 
+  commitSessionStateForQuit();
   quitInProgress = true;
   await stopAllSessions();
   autoUpdater.quitAndInstall();
@@ -2256,6 +2378,477 @@ function rememberFolderEnvironmentPreference(
     updatedAt: new Date().toISOString()
   };
   saveFolderEnvironmentPreferences();
+}
+
+function sessionWindowGroupId(windowId: number): string | null {
+  const entry = sessionWindows.find(
+    candidate => candidate.windowId === windowId
+  );
+  return entry?.groupId ?? null;
+}
+
+function trackSessionWindow(
+  window: BrowserWindow,
+  folderPath: string,
+  restoredState: SessionWindowState | null
+): void {
+  const entry: TrackedSessionWindow = {
+    windowId: window.id,
+    folderPath,
+    groupId: restoredState?.groupId ?? randomUUID(),
+    bounds: restoredState?.bounds ?? window.getBounds(),
+    maximized: restoredState?.maximized ?? false,
+    fullScreen: restoredState?.fullScreen ?? false,
+    focusSequence: restoredState?.focusSequence ?? ++focusSequenceCounter
+  };
+  sessionWindows.push(entry);
+
+  const updateBounds = (): void => {
+    // Keep the last plain frame while the window is maximized or full
+    // screen; the flags carry that part of the state.
+    if (!window.isMaximized() && !window.isFullScreen()) {
+      entry.bounds = window.getBounds();
+    }
+    scheduleSessionStateWrite();
+  };
+  window.on('move', updateBounds);
+  window.on('resize', updateBounds);
+  window.on('focus', () => {
+    entry.focusSequence = ++focusSequenceCounter;
+    scheduleSessionStateWrite();
+  });
+  window.on('maximize', () => {
+    entry.maximized = true;
+    scheduleSessionStateWrite();
+  });
+  window.on('unmaximize', () => {
+    entry.maximized = false;
+    scheduleSessionStateWrite();
+  });
+  window.on('enter-full-screen', () => {
+    entry.fullScreen = true;
+    scheduleSessionStateWrite();
+  });
+  window.on('leave-full-screen', () => {
+    entry.fullScreen = false;
+    scheduleSessionStateWrite();
+  });
+  window.on('close', () => {
+    // On Windows and Linux closing the last window quits the app through
+    // window-all-closed, so this close is the quit: snapshot the session
+    // now so the window stays in it instead of being removed by 'closed'.
+    if (
+      process.platform !== 'darwin' &&
+      BrowserWindow.getAllWindows().length === 1
+    ) {
+      commitSessionStateForQuit();
+    }
+  });
+
+  scheduleSessionStateWrite();
+}
+
+function untrackSessionWindow(windowId: number): void {
+  if (sessionStateFrozen) {
+    return;
+  }
+  const index = sessionWindows.findIndex(entry => entry.windowId === windowId);
+  if (index === -1) {
+    return;
+  }
+  sessionWindows.splice(index, 1);
+  scheduleSessionStateWrite();
+}
+
+function assignSessionWindowGroup(windowId: number, groupId: string): void {
+  const entry = sessionWindows.find(
+    candidate => candidate.windowId === windowId
+  );
+  if (entry === undefined) {
+    return;
+  }
+  entry.groupId = groupId;
+  scheduleSessionStateWrite();
+}
+
+function removePendingRestoreWindow(state: SessionWindowState): void {
+  const index = pendingRestoreWindows.indexOf(state);
+  if (index !== -1) {
+    pendingRestoreWindows.splice(index, 1);
+    scheduleSessionStateWrite();
+  }
+}
+
+function persistedSessionWindows(): SessionWindowState[] {
+  const windows: SessionWindowState[] = [];
+  for (const entry of sessionWindows) {
+    windows.push({
+      folderPath: entry.folderPath,
+      groupId: entry.groupId,
+      bounds: entry.bounds,
+      maximized: entry.maximized,
+      fullScreen: entry.fullScreen,
+      focusSequence: entry.focusSequence
+    });
+  }
+  windows.push(...pendingRestoreWindows);
+  return windows;
+}
+
+function writeSessionState(): void {
+  if (sessionStateSaveTimer !== null) {
+    clearTimeout(sessionStateSaveTimer);
+    sessionStateSaveTimer = null;
+  }
+  try {
+    writeFileSync(
+      getSessionStatePath(),
+      `${JSON.stringify(
+        { version: 1, windows: persistedSessionWindows() },
+        null,
+        2
+      )}\n`,
+      'utf8'
+    );
+  } catch (error) {
+    log(`Unable to save session state: ${formatError(error)}`);
+  }
+}
+
+// Saves are debounced because move and resize fire in bursts; the quit paths
+// write synchronously through commitSessionStateForQuit instead.
+function scheduleSessionStateWrite(): void {
+  if (sessionStateFrozen || sessionStateSaveTimer !== null) {
+    return;
+  }
+  sessionStateSaveTimer = setTimeout(() => {
+    sessionStateSaveTimer = null;
+    if (!sessionStateFrozen) {
+      writeSessionState();
+    }
+  }, 500);
+}
+
+// The quit-time snapshot: refresh every live window's frame (background tabs
+// miss move and resize events) and write the state one final time before the
+// teardown starts closing windows.
+function commitSessionStateForQuit(): void {
+  if (sessionStateFrozen) {
+    return;
+  }
+  sessionStateFrozen = true;
+
+  for (const entry of sessionWindows) {
+    const window = BrowserWindow.fromId(entry.windowId);
+    if (window === null || window.isDestroyed()) {
+      continue;
+    }
+    entry.maximized = window.isMaximized();
+    entry.fullScreen = window.isFullScreen();
+    if (!entry.maximized && !entry.fullScreen) {
+      entry.bounds = window.getBounds();
+    }
+  }
+  writeSessionState();
+}
+
+function loadSessionWindowStates(): SessionWindowState[] {
+  let rawWindows: unknown;
+  try {
+    const parsed: unknown = JSON.parse(
+      readFileSync(getSessionStatePath(), 'utf8')
+    );
+    if (typeof parsed !== 'object' || parsed === null) {
+      return [];
+    }
+    rawWindows = (parsed as { windows?: unknown }).windows;
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(rawWindows)) {
+    return [];
+  }
+
+  const states: SessionWindowState[] = [];
+  for (const candidate of rawWindows) {
+    if (typeof candidate !== 'object' || candidate === null) {
+      continue;
+    }
+    const state = candidate as Partial<SessionWindowState>;
+    if (
+      typeof state.folderPath !== 'string' ||
+      typeof state.groupId !== 'string'
+    ) {
+      continue;
+    }
+    states.push({
+      folderPath: state.folderPath,
+      groupId: state.groupId,
+      bounds: isSessionWindowBounds(state.bounds) ? state.bounds : null,
+      maximized: state.maximized === true,
+      fullScreen: state.fullScreen === true,
+      focusSequence:
+        typeof state.focusSequence === 'number' &&
+        Number.isFinite(state.focusSequence)
+          ? state.focusSequence
+          : 0
+    });
+  }
+  return states;
+}
+
+function isSessionWindowBounds(value: unknown): value is SessionWindowBounds {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const bounds = value as Partial<SessionWindowBounds>;
+  return (
+    Number.isFinite(bounds.x) &&
+    Number.isFinite(bounds.y) &&
+    Number.isFinite(bounds.width) &&
+    Number.isFinite(bounds.height)
+  );
+}
+
+// Saved bounds are only reused when they still land visibly on a connected
+// display; otherwise the window falls back to the default size and placement.
+function boundsOnAvailableDisplay(
+  bounds: SessionWindowBounds | null
+): SessionWindowBounds | null {
+  if (bounds === null) {
+    return null;
+  }
+  const visible = screen.getAllDisplays().some(display => {
+    const area = display.workArea;
+    const overlapWidth =
+      Math.min(bounds.x + bounds.width, area.x + area.width) -
+      Math.max(bounds.x, area.x);
+    const overlapHeight =
+      Math.min(bounds.y + bounds.height, area.y + area.height) -
+      Math.max(bounds.y, area.y);
+    return overlapWidth >= 100 && overlapHeight >= 100;
+  });
+  return visible ? bounds : null;
+}
+
+function getRestoreProgressState(): RestoreProgressState {
+  return {
+    restoring: restoringProjectCount !== null,
+    count: restoringProjectCount ?? 0
+  };
+}
+
+function setRestoringProjectCount(count: number | null): void {
+  restoringProjectCount = count;
+  if (launcherWindow !== null && !launcherWindow.isDestroyed()) {
+    launcherWindow.webContents.send(
+      'xtralab:restore-state',
+      getRestoreProgressState()
+    );
+  }
+}
+
+// Reopen the lab windows recorded in session-state.json. Windows that shared
+// a native macOS tab group through app-initiated tabbing are reassembled with
+// addTabbedWindow; windows the OS itself grouped (or that were merged by
+// hand) restore as separate windows that macOS regroups under the same
+// "Prefer tabs" setting that grouped them originally, since Electron has no
+// API to observe native tab membership.
+async function restorePreviousSession(
+  states: SessionWindowState[]
+): Promise<void> {
+  const failures: RestoreFailure[] = [];
+  const validStates: SessionWindowState[] = [];
+  for (const state of states) {
+    if (isDirectory(state.folderPath)) {
+      validStates.push(state);
+    } else {
+      failures.push({
+        folderPath: state.folderPath,
+        reason: 'The folder no longer exists.'
+      });
+    }
+  }
+
+  focusSequenceCounter = Math.max(
+    focusSequenceCounter,
+    ...validStates.map(state => state.focusSequence)
+  );
+  pendingRestoreWindows = [...validStates];
+  scheduleSessionStateWrite();
+
+  if (validStates.length === 0) {
+    reportRestoreFailures(failures);
+    return;
+  }
+
+  setRestoringProjectCount(validStates.length);
+  log(
+    `Restoring ${validStates.length} project window(s) from the previous session`
+  );
+
+  const groups = new Map<string, SessionWindowState[]>();
+  for (const state of validStates) {
+    const members = groups.get(state.groupId);
+    if (members === undefined) {
+      groups.set(state.groupId, [state]);
+    } else {
+      members.push(state);
+    }
+  }
+
+  // The launcher covers the server startup gap with its "Restoring..."
+  // status and is swapped away as soon as the first restored window is up,
+  // like it is after picking a project.
+  let launcherSwapped = false;
+  const swapOutLauncher = (): void => {
+    if (launcherSwapped) {
+      return;
+    }
+    launcherSwapped = true;
+    if (launcherWindow !== null && !launcherWindow.isDestroyed()) {
+      launcherWindow.close();
+    }
+  };
+
+  const restoredWindows: RestoredSessionWindow[] = [];
+  await Promise.all(
+    [...groups.values()].map(members =>
+      restoreSessionGroup(members, failures, restoredWindows, swapOutLauncher)
+    )
+  );
+
+  setRestoringProjectCount(null);
+  if (quitInProgress) {
+    return;
+  }
+
+  const focusTarget = restoredWindows
+    .filter(({ window }) => !window.isDestroyed())
+    .reduce<RestoredSessionWindow | null>(
+      (best, candidate) =>
+        best === null ||
+        candidate.state.focusSequence > best.state.focusSequence
+          ? candidate
+          : best,
+      null
+    );
+  focusTarget?.window.focus();
+
+  reportRestoreFailures(failures);
+}
+
+async function restoreSessionGroup(
+  members: SessionWindowState[],
+  failures: RestoreFailure[],
+  restoredWindows: RestoredSessionWindow[],
+  onWindowShown: () => void
+): Promise<void> {
+  const sessions = await Promise.all(
+    members.map(async state => {
+      try {
+        const session = await startProjectSession(state.folderPath, undefined);
+        return { state, session };
+      } catch (error) {
+        log(`Unable to restore ${state.folderPath}: ${formatError(error)}`);
+        removePendingRestoreWindow(state);
+        failures.push({
+          folderPath: state.folderPath,
+          reason: formatError(error)
+        });
+        return null;
+      }
+    })
+  );
+
+  // The windows appear strictly in saved order: each one waits for its
+  // predecessor before joining the group, because addTabbedWindow inserts
+  // next to the host tab and unordered attachment would shuffle the tabs.
+  let predecessorShown: Promise<void> = Promise.resolve();
+  let lastShownWindow: BrowserWindow | null = null;
+  const groupWindows: RestoredSessionWindow[] = [];
+
+  for (const item of sessions) {
+    if (item === null) {
+      continue;
+    }
+    if (quitInProgress) {
+      void item.session.supervisor.stop();
+      continue;
+    }
+
+    const { state, session } = item;
+    let resolveShown!: () => void;
+    const shown = new Promise<void>(resolve => {
+      resolveShown = resolve;
+    });
+    const labWindow = createLabWindow(
+      session.serverInfo,
+      state.folderPath,
+      session.supervisor,
+      session.projectEnvironment,
+      null,
+      null,
+      {
+        state,
+        waitForPredecessor: predecessorShown,
+        getTabHost: () =>
+          lastShownWindow !== null && !lastShownWindow.isDestroyed()
+            ? lastShownWindow
+            : null,
+        onShown: () => {
+          lastShownWindow = labWindow;
+          onWindowShown();
+          resolveShown();
+        }
+      }
+    );
+    labWindow.once('closed', () => resolveShown());
+    removePendingRestoreWindow(state);
+    groupWindows.push({ window: labWindow, state });
+    restoredWindows.push({ window: labWindow, state });
+    predecessorShown = shown;
+  }
+
+  await predecessorShown;
+  if (quitInProgress) {
+    return;
+  }
+
+  const leader = groupWindows.find(({ window }) => !window.isDestroyed());
+  if (leader === undefined) {
+    return;
+  }
+  if (leader.state.fullScreen) {
+    leader.window.setFullScreen(true);
+  } else if (leader.state.maximized) {
+    leader.window.maximize();
+  }
+
+  // Reselect the tab that was active in this group.
+  if (groupWindows.length > 1) {
+    const selected = groupWindows.reduce((best, candidate) =>
+      candidate.state.focusSequence > best.state.focusSequence
+        ? candidate
+        : best
+    );
+    if (!selected.window.isDestroyed()) {
+      selected.window.focus();
+    }
+  }
+}
+
+function reportRestoreFailures(failures: RestoreFailure[]): void {
+  if (failures.length === 0 || quitInProgress) {
+    return;
+  }
+  const details = failures
+    .map(failure => `${failure.folderPath}\n${failure.reason}`)
+    .join('\n\n');
+  dialog.showErrorBox(
+    `${app.getName()} - Restore`,
+    `Some projects from the previous session could not be reopened.\n\n${details}`
+  );
 }
 
 function normalizeFolderPath(folderPath: string): string {
@@ -2444,6 +3037,10 @@ function getRecentFoldersPath(): string {
 
 function getFolderEnvironmentPreferencesPath(): string {
   return path.join(app.getPath('userData'), 'folder-environments.json');
+}
+
+function getSessionStatePath(): string {
+  return path.join(app.getPath('userData'), 'session-state.json');
 }
 
 function showStartupError(error: unknown): void {
