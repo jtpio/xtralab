@@ -134,11 +134,28 @@ interface RestoreFailure {
   reason: string;
 }
 
+type RestoreProjectStatus = 'starting' | 'ready' | 'opened' | 'failed';
+
+// One project of the startup restore as rendered by the launcher's restore
+// view: its server is starting, the server is ready and the window is about
+// to appear, or it finished either way.
+interface RestoreProjectState {
+  folderPath: string;
+  status: RestoreProjectStatus;
+  error: string | null;
+}
+
 // Shown in the launcher while the startup restore reopens projects.
 interface RestoreProgressState {
   restoring: boolean;
-  count: number;
+  projects: RestoreProjectState[];
 }
+
+type RestoreProgressUpdater = (
+  state: SessionWindowState,
+  status: RestoreProjectStatus,
+  error?: string | null
+) => void;
 
 // How createLabWindow takes part in a session restore: the window keeps the
 // saved state, waits for the previous tab of its group before it appears, and
@@ -196,9 +213,11 @@ let sessionStateSaveTimer: NodeJS.Timeout | null = null;
 // Monotonic stamp handed out on every window focus, persisted per window so
 // the restore can order windows by how recently they were active.
 let focusSequenceCounter = 0;
-// How many projects the startup restore is still reopening, or null outside
-// a restore; mirrored in the launcher as a "Restoring..." status.
-let restoringProjectCount: number | null = null;
+// Per-project progress of the startup restore, rendered by the launcher's
+// restore view. A clean restore clears it as the launcher is swapped away; a
+// restore with failures keeps it until the launcher dismisses the summary.
+let restoreProjects: RestoreProjectState[] | null = null;
+let restoreInProgress = false;
 
 if (!app.isPackaged) {
   app.setName('xtralab dev');
@@ -802,6 +821,11 @@ function registerIpcHandlers(): void {
   });
   ipcMain.handle('xtralab:get-update-state', () => ({ ...updateState }));
   ipcMain.handle('xtralab:get-restore-state', () => getRestoreProgressState());
+  ipcMain.handle('xtralab:dismiss-restore-result', () => {
+    if (!restoreInProgress) {
+      restoreProjects = null;
+    }
+  });
   ipcMain.handle('xtralab:check-for-updates', () => {
     void runUpdateCheck(true);
   });
@@ -2633,13 +2657,15 @@ function boundsOnAvailableDisplay(
 
 function getRestoreProgressState(): RestoreProgressState {
   return {
-    restoring: restoringProjectCount !== null,
-    count: restoringProjectCount ?? 0
+    restoring: restoreInProgress,
+    projects:
+      restoreProjects === null
+        ? []
+        : restoreProjects.map(project => ({ ...project }))
   };
 }
 
-function setRestoringProjectCount(count: number | null): void {
-  restoringProjectCount = count;
+function pushRestoreProgress(): void {
   if (launcherWindow !== null && !launcherWindow.isDestroyed()) {
     launcherWindow.webContents.send(
       'xtralab:restore-state',
@@ -2659,16 +2685,32 @@ async function restorePreviousSession(
 ): Promise<void> {
   const failures: RestoreFailure[] = [];
   const validStates: SessionWindowState[] = [];
+  const progressByState = new Map<SessionWindowState, RestoreProjectState>();
+  const progress: RestoreProjectState[] = [];
   for (const state of states) {
     if (isDirectory(state.folderPath)) {
       validStates.push(state);
+      const project: RestoreProjectState = {
+        folderPath: state.folderPath,
+        status: 'starting',
+        error: null
+      };
+      progressByState.set(state, project);
+      progress.push(project);
     } else {
       failures.push({
         folderPath: state.folderPath,
         reason: 'The folder no longer exists.'
       });
+      progress.push({
+        folderPath: state.folderPath,
+        status: 'failed',
+        error: 'The folder no longer exists.'
+      });
     }
   }
+  restoreProjects = progress;
+  restoreInProgress = validStates.length > 0;
 
   focusSequenceCounter = Math.max(
     focusSequenceCounter,
@@ -2678,11 +2720,29 @@ async function restorePreviousSession(
   scheduleSessionStateWrite();
 
   if (validStates.length === 0) {
-    reportRestoreFailures(failures);
+    // The launcher opens right after and shows the failed entries itself.
     return;
   }
 
-  setRestoringProjectCount(validStates.length);
+  const updateProgress: RestoreProgressUpdater = (state, status, error) => {
+    const project = progressByState.get(state);
+    if (project === undefined) {
+      return;
+    }
+    project.status = status;
+    project.error = error ?? null;
+    if (
+      status === 'opened' &&
+      launcherWindow !== null &&
+      !launcherWindow.isDestroyed()
+    ) {
+      // showInactive orders the new window above the launcher; lift the
+      // launcher back so the restore progress stays visible until the end.
+      launcherWindow.moveTop();
+    }
+    pushRestoreProgress();
+  };
+
   log(
     `Restoring ${validStates.length} project window(s) from the previous session`
   );
@@ -2697,30 +2757,32 @@ async function restorePreviousSession(
     }
   }
 
-  // The launcher covers the server startup gap with its "Restoring..."
-  // status and is swapped away as soon as the first restored window is up,
-  // like it is after picking a project.
-  let launcherSwapped = false;
-  const swapOutLauncher = (): void => {
-    if (launcherSwapped) {
-      return;
-    }
-    launcherSwapped = true;
-    if (launcherWindow !== null && !launcherWindow.isDestroyed()) {
-      launcherWindow.close();
-    }
-  };
-
   const restoredWindows: RestoredSessionWindow[] = [];
   await Promise.all(
     [...groups.values()].map(members =>
-      restoreSessionGroup(members, failures, restoredWindows, swapOutLauncher)
+      restoreSessionGroup(members, failures, restoredWindows, updateProgress)
     )
   );
 
-  setRestoringProjectCount(null);
+  restoreInProgress = false;
   if (quitInProgress) {
     return;
+  }
+
+  const anyFailed = progress.some(project => project.status === 'failed');
+  if (anyFailed) {
+    // The launcher stays up to show which projects could not come back; the
+    // dialog is the fallback for when it was closed during the restore.
+    pushRestoreProgress();
+    if (launcherWindow === null || launcherWindow.isDestroyed()) {
+      reportRestoreFailures(failures);
+    }
+    return;
+  }
+
+  restoreProjects = null;
+  if (launcherWindow !== null && !launcherWindow.isDestroyed()) {
+    launcherWindow.close();
   }
 
   const focusTarget = restoredWindows
@@ -2734,20 +2796,19 @@ async function restorePreviousSession(
       null
     );
   focusTarget?.window.focus();
-
-  reportRestoreFailures(failures);
 }
 
 async function restoreSessionGroup(
   members: SessionWindowState[],
   failures: RestoreFailure[],
   restoredWindows: RestoredSessionWindow[],
-  onWindowShown: () => void
+  updateProgress: RestoreProgressUpdater
 ): Promise<void> {
   const sessions = await Promise.all(
     members.map(async state => {
       try {
         const session = await startProjectSession(state.folderPath, undefined);
+        updateProgress(state, 'ready');
         return { state, session };
       } catch (error) {
         log(`Unable to restore ${state.folderPath}: ${formatError(error)}`);
@@ -2756,6 +2817,7 @@ async function restoreSessionGroup(
           folderPath: state.folderPath,
           reason: formatError(error)
         });
+        updateProgress(state, 'failed', formatError(error));
         return null;
       }
     })
@@ -2798,7 +2860,7 @@ async function restoreSessionGroup(
             : null,
         onShown: () => {
           lastShownWindow = labWindow;
-          onWindowShown();
+          updateProgress(state, 'opened');
           resolveShown();
         }
       }

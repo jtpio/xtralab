@@ -40,9 +40,17 @@ interface UpdateState {
   error: string | null;
 }
 
+type RestoreProjectStatus = 'starting' | 'ready' | 'opened' | 'failed';
+
+interface RestoreProjectState {
+  folderPath: string;
+  status: RestoreProjectStatus;
+  error: string | null;
+}
+
 interface RestoreProgressState {
   restoring: boolean;
-  count: number;
+  projects: RestoreProjectState[];
 }
 
 contextBridge.exposeInMainWorld('xtralab', {
@@ -84,6 +92,8 @@ contextBridge.exposeInMainWorld('xtralab', {
   },
   getRestoreState: (): Promise<RestoreProgressState> =>
     ipcRenderer.invoke('xtralab:get-restore-state'),
+  dismissRestoreResult: (): Promise<void> =>
+    ipcRenderer.invoke('xtralab:dismiss-restore-result'),
   onRestoreState: (listener: (state: RestoreProgressState) => void): void => {
     ipcRenderer.on(
       'xtralab:restore-state',

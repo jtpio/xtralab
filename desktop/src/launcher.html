@@ -147,6 +147,39 @@
             </div>
           </div>
         </div>
+
+        <div class="restore-view view-pane is-inactive" id="restore-view">
+          <section class="restore-section" aria-label="Restoring projects">
+            <h2 class="section-title">Restoring projects</h2>
+            <p
+              class="restore-note"
+              id="restore-note"
+              role="status"
+              aria-live="polite"
+            ></p>
+            <div
+              class="restore-progress"
+              id="restore-progress"
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
+              <div
+                class="restore-progress-fill"
+                id="restore-progress-fill"
+              ></div>
+            </div>
+            <div class="restore-list" id="restore-list"></div>
+            <button
+              class="secondary-action restore-dismiss"
+              id="restore-dismiss"
+              type="button"
+              hidden
+            >
+              Continue
+            </button>
+          </section>
+        </div>
       </div>
 
       <footer class="footer">
