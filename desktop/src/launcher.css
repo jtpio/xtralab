@@ -588,11 +588,21 @@ svg.symbol {
   color: var(--accent-hover);
 }
 
+/* Fixed-size slot after the version for the spinner or the check mark, so
+   the footer keeps the same layout in every update state. */
+.update-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 11px;
+  height: 11px;
+  margin-left: -4px;
+}
+
 .update-check {
   display: inline-flex;
   align-items: center;
-  flex: 0 0 auto;
-  margin-right: -4px;
   color: var(--text-subtle);
 }
 
