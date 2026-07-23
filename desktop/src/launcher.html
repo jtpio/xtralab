@@ -152,7 +152,6 @@
       <footer class="footer">
         <p class="status" id="status" role="status" aria-live="polite"></p>
         <div class="update-area">
-          <span class="update-spinner" id="update-spinner" hidden></span>
           <span
             class="update-message"
             id="update-message"
@@ -166,17 +165,20 @@
             type="button"
             hidden
           ></button>
-          <span
-            class="update-check"
-            id="update-check"
-            role="img"
-            aria-label="Up to date"
-            title="Up to date"
-            hidden
-          >
-            <svg aria-hidden="true"><use href="#icon-check" /></svg>
-          </span>
           <span class="app-version" id="app-version"></span>
+          <span class="update-indicator">
+            <span class="update-spinner" id="update-spinner" hidden></span>
+            <span
+              class="update-check"
+              id="update-check"
+              role="img"
+              aria-label="Up to date"
+              title="Up to date"
+              hidden
+            >
+              <svg aria-hidden="true"><use href="#icon-check" /></svg>
+            </span>
+          </span>
         </div>
       </footer>
     </main>
