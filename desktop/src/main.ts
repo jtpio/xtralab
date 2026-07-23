@@ -159,12 +159,15 @@ type RestoreProgressUpdater = (
 
 // How createLabWindow takes part in a session restore: the window keeps the
 // saved state, waits for the previous tab of its group before it appears, and
-// joins the group through the window the driver last brought up.
+// joins the group through the window the driver last brought up. onAborted
+// reports a window that died before it appeared so the driver can record the
+// project as a restore failure.
 interface SessionRestoreRequest {
   state: SessionWindowState;
   waitForPredecessor: Promise<void>;
   getTabHost: () => BrowserWindow | null;
   onShown: () => void;
+  onAborted: (reason: string) => void;
 }
 
 interface ProjectSession {
@@ -1974,6 +1977,13 @@ function createLabWindow(
     }
 
     if (!wasShown && !quitInProgress) {
+      if (restore !== undefined) {
+        // The restore driver records the failure; it surfaces in the
+        // launcher's restore view like any other project that could not
+        // come back.
+        restore.onAborted(reason);
+        return;
+      }
       const folderName = path.basename(folderPath) || folderPath;
       dialog.showErrorBox(
         `${app.getName()} - ${folderName}`,
@@ -2031,12 +2041,13 @@ function createLabWindow(
   });
 
   window.once('ready-to-show', () => {
-    windowEverShown = true;
     if (restore !== undefined) {
       // A restored window waits for the previous tab of its group so the
       // group reassembles in the saved order, and appears without taking
       // focus; restorePreviousSession focuses the previously active window
-      // once at the end.
+      // once at the end. The window only counts as shown once it actually
+      // appears: a session that dies during the wait must still be treated
+      // as failed-before-shown.
       void restore.waitForPredecessor.then(() => {
         if (window.isDestroyed()) {
           return;
@@ -2045,12 +2056,14 @@ function createLabWindow(
         if (tabHost !== null) {
           attachWindowAsTab(tabHost, window);
         }
+        windowEverShown = true;
         window.showInactive();
         restore.onShown();
       });
       return;
     }
 
+    windowEverShown = true;
     // The launcher stays visible in its "Opening..." state while the server
     // starts and the page loads, and is only swapped for the lab window once
     // there is something to show. When the launcher is a tab, the lab window
@@ -2862,6 +2875,13 @@ async function restoreSessionGroup(
           lastShownWindow = labWindow;
           updateProgress(state, 'opened');
           resolveShown();
+        },
+        onAborted: reason => {
+          failures.push({
+            folderPath: state.folderPath,
+            reason
+          });
+          updateProgress(state, 'failed', reason);
         }
       }
     );
