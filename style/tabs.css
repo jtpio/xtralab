@@ -26,6 +26,15 @@
   width: auto;
 }
 
+/* Breathing room between the label and the close icon. Fit-content tabs put
+   the icon flush against the label's last glyph (stock's fixed-width tabs
+   hide this with slack space), and the icon-hover chip in chrome.css extends
+   2px beyond the icon box into this gap. */
+.lm-DockPanel-tabBar .lm-TabBar-tab .lm-TabBar-tabCloseIcon,
+.lm-TabPanel-tabBar .lm-TabBar-tab .lm-TabBar-tabCloseIcon {
+  margin-left: 4px;
+}
+
 .lm-DockPanel-tabBar .lm-TabBar-content {
   flex: 0 1 auto;
   min-width: 0;

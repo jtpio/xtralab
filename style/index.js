@@ -1,5 +1,6 @@
 import './base.css';
 import './askAgent.css';
+import './chrome.css';
 import './commandBar.css';
 import './editorBreadcrumbs.css';
 import './git.css';
