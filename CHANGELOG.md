@@ -2,6 +2,31 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.13.0
+
+([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.12.5...8655079ec17e8c23c4f4d9179c1ade649fa7d197))
+
+### Enhancements made
+
+- Add a UI polish layer modernizing the stock JupyterLab look [#77](https://github.com/jtpio/xtralab/pull/77) ([@jtpio](https://github.com/jtpio))
+- Keep the update spinner and check mark next to the version [#76](https://github.com/jtpio/xtralab/pull/76) ([@jtpio](https://github.com/jtpio))
+- Restore open projects and tabs when relaunching the desktop app [#75](https://github.com/jtpio/xtralab/pull/75) ([@jtpio](https://github.com/jtpio))
+
+### Bugs fixed
+
+- Document notifications on MacOS [#73](https://github.com/jtpio/xtralab/pull/73) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-07-21&to=2026-07-27&type=c))
+
+@jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-07-21..2026-07-27&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.12.5
 
 ([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.12.4...4a6e76a55590fceed6e6d4cebfe11eb348b4ca91))
@@ -22,8 +47,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-07-21&to=2026-07-21&type=c))
 
 @jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-07-21..2026-07-21&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.12.4
 
