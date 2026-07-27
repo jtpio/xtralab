@@ -227,6 +227,24 @@ body[data-jp-theme-light] diffs-container {
   border-left-color: var(--jp-border-color2);
 }
 
+/*
+ * Re-assert the sidebar width floor over inline styles. Stock intends
+ * --jp-sidebar-min-width as the floor for sidebar stack children, but a
+ * widget moved into a sidebar (Move Widget To, or a drag) keeps the tiny
+ * inline min-width Lumino wrote while it lived in the dock — and inline
+ * beats the stylesheet, so the floor never engages for it. Combined with
+ * the shell saving the raw split sizes while a sidebar is collapsed
+ * (collapsed = ~0, unguarded upstream, unlike the down area's
+ * _lastDownAreaSize), a restored workspace then expands that sidebar to a
+ * 1px sliver. !important is the one thing that outranks an inline style;
+ * with the floor restored, even a zero saved size expands to a usable
+ * panel.
+ */
+#jp-left-stack > .lm-Widget,
+#jp-right-stack > .lm-Widget {
+  min-width: var(--jp-sidebar-min-width) !important;
+}
+
 #jp-down-stack {
   border-bottom-color: var(--jp-border-color2);
 }
@@ -811,31 +829,15 @@ select.jp-mod-styled,
   top: 3px;
 }
 
-/* Menu items are display:table-row (radius and margin do not render on
-   table rows), so the rounded inset highlight is painted on the four
-   table-cells, with radius on the first/last cell. Lumino always renders
-   all four cells. */
+/* The active-row highlight is painted on the row itself: table-row
+   backgrounds paint uniformly across the row, whereas per-cell painting
+   breaks — MenuSvg swaps the icon and submenu-caret cells for inline-block
+   elements whose boxes do not span the row (the icon cell is 0px tall).
+   The menu's 5px side padding keeps the highlight inset from the panel
+   edge; rounding is forfeited because border-radius does not render on
+   table rows. */
 .lm-Menu.jp-ThemedContainer .lm-Menu-item.lm-mod-active {
-  background: transparent;
-}
-
-.lm-Menu.jp-ThemedContainer .lm-Menu-item.lm-mod-active > .lm-Menu-itemIcon,
-.lm-Menu.jp-ThemedContainer .lm-Menu-item.lm-mod-active > .lm-Menu-itemLabel,
-.lm-Menu.jp-ThemedContainer .lm-Menu-item.lm-mod-active > .lm-Menu-itemShortcut,
-.lm-Menu.jp-ThemedContainer
-  .lm-Menu-item.lm-mod-active
-  > .lm-Menu-itemSubmenuIcon {
   background: color-mix(in srgb, var(--jp-ui-font-color1) 8%, transparent);
-}
-
-.lm-Menu.jp-ThemedContainer .lm-Menu-item.lm-mod-active > .lm-Menu-itemIcon {
-  border-radius: 5px 0 0 5px;
-}
-
-.lm-Menu.jp-ThemedContainer
-  .lm-Menu-item.lm-mod-active
-  > .lm-Menu-itemSubmenuIcon {
-  border-radius: 0 5px 5px 0;
 }
 
 /* Muted shortcut hints, like every modern menu. */
