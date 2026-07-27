@@ -1,12 +1,12 @@
 import './base.css';
 import './askAgent.css';
+import './chrome.css';
 import './commandBar.css';
 import './editorBreadcrumbs.css';
 import './git.css';
 import './highlight.css';
 import './launcher.css';
 import './omnibox.css';
-import './polish.css';
 import './showOutput.css';
 import './sidebar.css';
 import './tabs.css';

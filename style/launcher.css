@@ -349,7 +349,7 @@
   cursor: not-allowed;
 }
 
-/* border-color0: polish.css remaps color1 onto color2 in light themes, so
+/* border-color0: chrome.css remaps color1 onto color2 in light themes, so
    a color1 hover would be identical to the resting color2 border there. */
 .jp-xtralab-Launcher-agent:hover:not(:disabled) {
   background-color: var(--jp-layout-color2);

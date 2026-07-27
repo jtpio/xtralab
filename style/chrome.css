@@ -1,6 +1,6 @@
 /*
- * Polish layer: a token-driven modernization pass over stock JupyterLab and
- * Lumino chrome, so the app reads as a quiet native window rather than a
+ * The chrome layer: a token-driven modernization pass over stock JupyterLab
+ * and Lumino chrome, so the app reads as a quiet native window rather than a
  * paneled web app.
  *
  * The language, in one place:
