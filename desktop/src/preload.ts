@@ -40,6 +40,19 @@ interface UpdateState {
   error: string | null;
 }
 
+type RestoreProjectStatus = 'starting' | 'ready' | 'opened' | 'failed';
+
+interface RestoreProjectState {
+  folderPath: string;
+  status: RestoreProjectStatus;
+  error: string | null;
+}
+
+interface RestoreProgressState {
+  restoring: boolean;
+  projects: RestoreProjectState[];
+}
+
 contextBridge.exposeInMainWorld('xtralab', {
   getHomeDir: (): Promise<string> => ipcRenderer.invoke('xtralab:get-home-dir'),
   getRecentFolders: (): Promise<string[]> =>
@@ -76,5 +89,17 @@ contextBridge.exposeInMainWorld('xtralab', {
     ipcRenderer.on('xtralab:update-state', (event, state: UpdateState) => {
       listener(state);
     });
+  },
+  getRestoreState: (): Promise<RestoreProgressState> =>
+    ipcRenderer.invoke('xtralab:get-restore-state'),
+  dismissRestoreResult: (): Promise<void> =>
+    ipcRenderer.invoke('xtralab:dismiss-restore-result'),
+  onRestoreState: (listener: (state: RestoreProgressState) => void): void => {
+    ipcRenderer.on(
+      'xtralab:restore-state',
+      (event, state: RestoreProgressState) => {
+        listener(state);
+      }
+    );
   }
 });

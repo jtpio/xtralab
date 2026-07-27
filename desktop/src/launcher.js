@@ -40,6 +40,12 @@ applyTheme(getStoredTheme());
 
 const welcomeView = document.getElementById('welcome-view');
 const projectView = document.getElementById('project-view');
+const restoreView = document.getElementById('restore-view');
+const restoreNote = document.getElementById('restore-note');
+const restoreProgress = document.getElementById('restore-progress');
+const restoreProgressFill = document.getElementById('restore-progress-fill');
+const restoreList = document.getElementById('restore-list');
+const restoreDismiss = document.getElementById('restore-dismiss');
 const openFolderLink = document.getElementById('open-folder');
 const backLink = document.getElementById('back-to-welcome');
 const recentSection = document.getElementById('recent-section');
@@ -62,6 +68,8 @@ let homeDir = '';
 let preparedFolder = null;
 let isBusy = false;
 let updateState = null;
+let restoreViewActive = false;
+let restoreRows = [];
 
 function updateActionAvailability() {
   const option = selectedEnvironment();
@@ -134,6 +142,135 @@ function renderUpdateState(state) {
   updateActionAvailability();
 }
 
+// How far along one project is, as a fraction of its slice of the progress
+// bar: the server start dominates the wait, the window appearing ends it.
+const restoreStatusProgress = {
+  starting: 0.1,
+  ready: 0.6,
+  opened: 1,
+  failed: 1
+};
+
+function restoreRowIcon(status) {
+  if (status === 'opened') {
+    return createIcon('#icon-check');
+  }
+  if (status === 'failed') {
+    return createIcon('#icon-xmark');
+  }
+  const spinner = document.createElement('span');
+  spinner.className = 'restore-spinner';
+  return spinner;
+}
+
+function syncRestoreRows(projects) {
+  const sameRows =
+    restoreRows.length === projects.length &&
+    restoreRows.every((row, index) => {
+      return row.folderPath === projects[index].folderPath;
+    });
+  if (!sameRows) {
+    restoreRows = projects.map(project => {
+      const item = document.createElement('div');
+      item.className = 'restore-item';
+      item.title = project.folderPath;
+
+      const status = document.createElement('span');
+      status.className = 'restore-status';
+
+      const name = document.createElement('span');
+      name.className = 'restore-name';
+      name.textContent = folderName(project.folderPath);
+
+      const detail = document.createElement('span');
+      detail.className = 'restore-detail';
+      detail.textContent = recentDetailFor(project.folderPath);
+
+      item.append(status, name, detail);
+
+      const error = document.createElement('p');
+      error.className = 'restore-error';
+      error.hidden = true;
+
+      const entry = document.createElement('div');
+      entry.className = 'restore-entry';
+      entry.append(item, error);
+
+      return {
+        folderPath: project.folderPath,
+        root: entry,
+        statusEl: status,
+        errorEl: error,
+        lastStatus: null
+      };
+    });
+    restoreList.replaceChildren(...restoreRows.map(row => row.root));
+  }
+
+  restoreRows.forEach((row, index) => {
+    const project = projects[index];
+    if (row.lastStatus === project.status) {
+      return;
+    }
+    row.lastStatus = project.status;
+    row.statusEl.dataset.status = project.status;
+    row.statusEl.replaceChildren(restoreRowIcon(project.status));
+    const failed = project.status === 'failed';
+    row.errorEl.hidden = !failed || !project.error;
+    row.errorEl.textContent = failed ? project.error || '' : '';
+  });
+}
+
+// While the app restores the previous session at startup, the launcher swaps
+// its regular views for a restore view listing each project with its
+// progress. A clean restore ends with the main process closing the launcher;
+// one with failures keeps the summary up until Continue is clicked.
+function renderRestoreState(state) {
+  const projects = state.projects || [];
+  if (projects.length === 0) {
+    if (restoreViewActive) {
+      restoreViewActive = false;
+      showWelcome();
+    }
+    return;
+  }
+
+  restoreViewActive = true;
+  welcomeView.classList.add('is-inactive');
+  projectView.classList.add('is-inactive');
+  restoreView.classList.remove('is-inactive');
+
+  syncRestoreRows(projects);
+
+  const total = projects.length;
+  const failedCount = projects.filter(
+    project => project.status === 'failed'
+  ).length;
+  let fraction = 0;
+  for (const project of projects) {
+    fraction += restoreStatusProgress[project.status] || 0;
+  }
+  const percent = state.restoring
+    ? Math.max(Math.round((fraction / total) * 100), 4)
+    : 100;
+  restoreProgressFill.style.width = `${percent}%`;
+  restoreProgress.setAttribute('aria-valuenow', String(percent));
+
+  if (state.restoring) {
+    restoreNote.textContent =
+      total === 1
+        ? 'Reopening the project from your last session...'
+        : `Reopening ${total} projects from your last session...`;
+    restoreDismiss.hidden = true;
+  } else {
+    restoreNote.textContent =
+      failedCount === total
+        ? 'The projects from your last session could not be reopened.'
+        : 'Some projects from your last session could not be reopened.';
+    restoreDismiss.hidden = failedCount === 0;
+  }
+}
+
 function setBusy(busy, label = 'Opening...') {
   isBusy = busy;
   updateActionAvailability();
@@ -158,6 +295,7 @@ function setError(message) {
 function showWelcome() {
   preparedFolder = null;
   projectView.classList.add('is-inactive');
+  restoreView.classList.add('is-inactive');
   welcomeView.classList.remove('is-inactive');
   setReady();
   updateActionAvailability();
@@ -165,6 +303,7 @@ function showWelcome() {
 
 function showProject() {
   welcomeView.classList.add('is-inactive');
+  restoreView.classList.add('is-inactive');
   projectView.classList.remove('is-inactive');
   updateActionAvailability();
 }
@@ -352,6 +491,16 @@ backLink.addEventListener('click', () => {
   showWelcome();
 });
 
+restoreDismiss.addEventListener('click', async () => {
+  restoreViewActive = false;
+  try {
+    await window.xtralab.dismissRestoreResult();
+  } catch {
+    // The summary is gone either way; the welcome view takes over.
+  }
+  showWelcome();
+});
+
 environmentSelect.addEventListener('change', () => {
   renderEnvironmentDetail();
 });
@@ -398,10 +547,16 @@ launchFolderButton.addEventListener('click', async () => {
 
 (async () => {
   window.xtralab.onUpdateState(renderUpdateState);
+  window.xtralab.onRestoreState(renderRestoreState);
   try {
     renderUpdateState(await window.xtralab.getUpdateState());
   } catch {
     // The footer keeps its empty default when the state is unavailable.
+  }
+  try {
+    renderRestoreState(await window.xtralab.getRestoreState());
+  } catch {
+    // The launcher stays usable when the restore state is unavailable.
   }
   try {
     homeDir = await window.xtralab.getHomeDir();
