@@ -30,8 +30,9 @@
   /* Drop just below the top bar so it reads as a command-center dropdown. */
   margin-top: calc(var(--jp-private-menubar-height, 28px) + 4px);
   background: var(--jp-layout-color1);
-  border: var(--jp-border-width) solid var(--jp-border-color1);
-  border-radius: 4px;
+  border: var(--jp-border-width) solid
+    color-mix(in srgb, var(--jp-border-color1) 55%, transparent);
+  border-radius: 10px;
   box-shadow: var(--jp-elevation-z6);
 }
 
@@ -50,13 +51,17 @@
   color: var(--jp-ui-font-color3);
 }
 
+/* Side gutters float the active-row highlight inside the panel edge,
+   matching the menu/palette treatment; section headers and items shift
+   together so their left alignment is preserved. */
 .jp-xtralab-Omnibox-results {
-  padding: 4px 0;
+  padding: 5px 6px;
   overflow-y: auto;
 }
 
 .jp-xtralab-Omnibox-sectionHeader {
-  padding: 6px 14px 2px;
+  /* 8px + the results container's 6px gutter = the item rows' 14px inset. */
+  padding: 6px 8px 2px;
   font-size: var(--jp-ui-font-size0);
   font-weight: 600;
   color: var(--jp-ui-font-color2);
@@ -68,14 +73,18 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 5px 14px;
+  padding: 5px 8px;
   font-size: var(--jp-ui-font-size1);
   color: var(--jp-ui-font-color1);
   cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 120ms ease-out;
 }
 
+/* Translucent foreground wash (not an opaque layout color) so the
+   highlight reads correctly on the frosted panel background. */
 .jp-xtralab-Omnibox-item.jp-mod-active {
-  background: var(--jp-layout-color2);
+  background: color-mix(in srgb, var(--jp-ui-font-color1) 8%, transparent);
 }
 
 .jp-xtralab-Omnibox-itemIcon {
@@ -114,7 +123,8 @@
 }
 
 .jp-xtralab-Omnibox-empty {
-  padding: 14px;
+  /* 8px + the results container's 6px gutter = the item rows' 14px inset. */
+  padding: 14px 8px;
   font-size: var(--jp-ui-font-size1);
   color: var(--jp-ui-font-color2);
 }

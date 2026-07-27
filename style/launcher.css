@@ -349,9 +349,11 @@
   cursor: not-allowed;
 }
 
+/* border-color0: polish.css remaps color1 onto color2 in light themes, so
+   a color1 hover would be identical to the resting color2 border there. */
 .jp-xtralab-Launcher-agent:hover:not(:disabled) {
   background-color: var(--jp-layout-color2);
-  border-color: var(--jp-border-color1);
+  border-color: var(--jp-border-color0);
 }
 
 .jp-xtralab-Launcher-agent-icon {
@@ -438,9 +440,10 @@
   font-size: var(--jp-ui-font-size0);
 }
 
+/* border-color0 for the same light-theme reason as the agent cards. */
 .jp-xtralab-Launcher-mcp-copy:hover {
   background-color: var(--jp-layout-color2);
-  border-color: var(--jp-border-color1);
+  border-color: var(--jp-border-color0);
 }
 
 .jp-xtralab-Launcher-mcp-copy:focus-visible {
