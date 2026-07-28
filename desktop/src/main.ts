@@ -935,6 +935,13 @@ function registerIpcHandlers(): void {
   );
 }
 
+// Notifications shown and not yet dismissed. Electron holds the JS wrapper
+// only weakly: garbage collection removes a still-pending notification from
+// Notification Center along with its click handling. Bounded because 'close'
+// is not guaranteed to fire.
+const liveNotifications = new Set<Notification>();
+const MAX_LIVE_NOTIFICATIONS = 50;
+
 // Recent notification timestamps per lab-window id, consulted by
 // `allowNotification`. Pruned when a lab window closes.
 const notificationTimestamps = new Map<number, number[]>();
@@ -1054,11 +1061,28 @@ function deliverDesktopNotification(
     title: title || app.getName(),
     body
   });
+  if (liveNotifications.size >= MAX_LIVE_NOTIFICATIONS) {
+    const oldest = liveNotifications.values().next().value;
+    if (oldest !== undefined) {
+      liveNotifications.delete(oldest);
+    }
+  }
+  liveNotifications.add(notification);
+  const release = (): void => {
+    liveNotifications.delete(notification);
+  };
+  notification.on('close', release);
+  notification.on('failed', release);
   notification.on('click', () => {
+    release();
     if (senderWindow !== null && !senderWindow.isDestroyed()) {
       if (senderWindow.isMinimized()) {
         senderWindow.restore();
       }
+      // show() rather than focus() alone: right after a banner click the app
+      // is inactive, where focus() is a no-op; show() activates the app and
+      // orders the window front, which also selects its native macOS tab.
+      senderWindow.show();
       senderWindow.focus();
       // Activate the terminal that fired this notification, not just the window.
       if (session !== null) {
