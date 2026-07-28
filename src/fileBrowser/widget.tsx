@@ -100,6 +100,21 @@ export interface IXtralabFileBrowser {
   readonly collapseAllRequested: ISignal<IXtralabFileBrowser, void>;
 
   /**
+   * Whether the filter box above the tree is shown. Mirrors the default
+   * file browser's `showFileFilter`: hidden on startup and flipped by the
+   * toolbar toggle. Also forced to `true` when the tree opens a search
+   * session on its own — typing a letter while the tree has focus.
+   */
+  readonly fileFilterVisible: boolean;
+
+  /**
+   * Emits when {@link fileFilterVisible} changes. The React component
+   * listens to show or hide the filter box; the toggle command listens
+   * to refresh its toggled state.
+   */
+  readonly fileFilterVisibleChanged: ISignal<IXtralabFileBrowser, boolean>;
+
+  /**
    * Trigger a refresh of every loaded directory in the tree.
    */
   refresh(): void;
@@ -130,6 +145,16 @@ export interface IXtralabFileBrowser {
    * Ask the tree to collapse every currently expanded folder.
    */
   collapseAll(): void;
+
+  /**
+   * Show or hide the filter box above the tree.
+   */
+  setFileFilterVisible(visible: boolean): void;
+
+  /**
+   * Toggle the filter box above the tree.
+   */
+  toggleFileFilter(): void;
 }
 
 /**
@@ -201,6 +226,14 @@ export class XtralabFileBrowser extends Widget implements IXtralabFileBrowser {
     return this._collapseAllRequested;
   }
 
+  get fileFilterVisible(): boolean {
+    return this._fileFilterVisible;
+  }
+
+  get fileFilterVisibleChanged(): ISignal<this, boolean> {
+    return this._fileFilterVisibleChanged;
+  }
+
   /**
    * Update the cached selection. Called from the React tree when the
    * underlying `@pierre/trees` model emits a selection change.
@@ -235,6 +268,18 @@ export class XtralabFileBrowser extends Widget implements IXtralabFileBrowser {
     this._collapseAllRequested.emit();
   }
 
+  setFileFilterVisible(visible: boolean): void {
+    if (this._fileFilterVisible === visible) {
+      return;
+    }
+    this._fileFilterVisible = visible;
+    this._fileFilterVisibleChanged.emit(visible);
+  }
+
+  toggleFileFilter(): void {
+    this.setFileFilterVisible(!this._fileFilterVisible);
+  }
+
   private _contentsManager: Contents.IManager;
   private _docManager: IDocumentManager;
   private _onOpenFile: ((serverPath: string) => void) | undefined;
@@ -245,6 +290,8 @@ export class XtralabFileBrowser extends Widget implements IXtralabFileBrowser {
   private _revealRequested = new Signal<this, string>(this);
   private _rootRequested = new Signal<this, void>(this);
   private _collapseAllRequested = new Signal<this, void>(this);
+  private _fileFilterVisible = false;
+  private _fileFilterVisibleChanged = new Signal<this, boolean>(this);
   private _toolbar: Toolbar;
   private _content: XtralabFileTreeContent;
 }

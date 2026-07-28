@@ -93,10 +93,21 @@ const GIT_REPO_PATH = '';
  */
 const FILE_TREE_TAG = 'file-tree-container';
 
+/**
+ * Injected into the tree's shadow root. The second rule hides the search
+ * box unless the host carries the visibility marker set by the filter
+ * bridge effect below — `@pierre/trees` always renders the box when
+ * `search` is enabled, and its stylesheet lives in the shadow root where
+ * outside CSS cannot reach.
+ */
 const FILE_TREE_UNSAFE_CSS =
   '[data-type="item"][data-item-selected="true"] ' +
   '[data-item-section="spacing-item"] {' +
   'border-left-color: transparent;' +
+  '}' +
+  ':host(:not([data-xtralab-filter-visible])) ' +
+  '[data-file-tree-search-container] {' +
+  'display: none;' +
   '}';
 
 interface IFileBrowserProps {
@@ -748,6 +759,17 @@ export function FileBrowserComponent(
     contentsManager.fileChanged.connect(onContentsFileChanged);
 
     const unsubscribe = model.subscribe(() => {
+      // Search-driven expansion must not trigger fetches: the tree
+      // auto-expands every directory whose path matches the query, and
+      // treating those as user expansions would recursively fetch every
+      // matching subtree — a single common letter can walk the whole
+      // workspace, node_modules included. Closing the search restores
+      // the pre-search expansion state, and a directory clicked in the
+      // results is toggled after the session closes, so real expansions
+      // are still fetched the moment the session ends.
+      if (model.isSearchOpen()) {
+        return;
+      }
       knownDirs.forEach((state, canonicalPath) => {
         if (state !== 'unloaded') {
           return;
@@ -844,6 +866,48 @@ export function FileBrowserComponent(
     sync();
     const unsubscribe = model.subscribe(sync);
     return () => {
+      unsubscribe();
+    };
+  }, [model, widget]);
+
+  // Bridge the filter-box visibility between the widget and the tree. The
+  // widget owns the flag; applying it stamps the marker attribute the
+  // unsafeCSS rule keys on and opens or closes the model's search session
+  // (opening focuses the input, closing clears any active filter). The
+  // model subscription covers the reverse direction: typing a printable
+  // character while the tree has focus opens a session on the tree's own
+  // initiative, and the box must surface for that session to be usable.
+  React.useEffect(() => {
+    if (widget === undefined) {
+      return;
+    }
+    const apply = (visible: boolean): void => {
+      const host = model.getFileTreeContainer();
+      if (host !== undefined) {
+        if (visible) {
+          host.dataset.xtralabFilterVisible = 'true';
+        } else {
+          delete host.dataset.xtralabFilterVisible;
+        }
+      }
+      if (visible && !model.isSearchOpen()) {
+        model.openSearch();
+      } else if (!visible && model.isSearchOpen()) {
+        model.closeSearch();
+      }
+    };
+    apply(widget.fileFilterVisible);
+    const visibleSlot = (sender: unknown, visible: boolean): void => {
+      apply(visible);
+    };
+    widget.fileFilterVisibleChanged.connect(visibleSlot);
+    const unsubscribe = model.subscribe(() => {
+      if (model.isSearchOpen() && !widget.fileFilterVisible) {
+        widget.setFileFilterVisible(true);
+      }
+    });
+    return () => {
+      widget.fileFilterVisibleChanged.disconnect(visibleSlot);
       unsubscribe();
     };
   }, [model, widget]);
