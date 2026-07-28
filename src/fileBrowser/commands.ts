@@ -19,6 +19,7 @@ import {
   downloadIcon,
   editIcon,
   fileIcon,
+  filterIcon,
   IDisposableMenuItem,
   newFolderIcon,
   RankedMenu,
@@ -47,6 +48,7 @@ export namespace CommandIDs {
   export const download = 'xtralab:download';
   export const refresh = 'xtralab:refresh';
   export const collapseAll = 'xtralab:collapse-all';
+  export const toggleFileFilter = 'xtralab:toggle-file-filter';
   export const createNewDirectory = 'xtralab:create-new-directory';
   export const newLauncher = 'xtralab:new-launcher';
   export const revealPath = 'xtralab:reveal-path';
@@ -484,6 +486,24 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
     }
   });
 
+  commands.addCommand(CommandIDs.toggleFileFilter, {
+    label: trans.__('Toggle File Filter'),
+    caption: trans.__('Show or hide the file filter'),
+    icon: filterIcon.bindprops({ stylesheet: 'menuItem' }),
+    isToggled: () => browser.fileFilterVisible,
+    execute: () => {
+      browser.toggleFileFilter();
+    }
+  });
+
+  // Refresh the toggle's state however the filter is shown or hidden —
+  // the toolbar button, or the auto-show that kicks in when typing with
+  // the tree focused opens a search session.
+  const onFilterVisibleChanged = (): void => {
+    commands.notifyCommandChanged(CommandIDs.toggleFileFilter);
+  };
+  browser.fileFilterVisibleChanged.connect(onFilterVisibleChanged);
+
   // Public reveal seam. Other plugins (editor breadcrumbs, future
   // "reveal in tree" actions) call this command rather than depending
   // on the file browser widget directly. Activating the sidebar is part
@@ -591,6 +611,7 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
   return () => {
     app.contextMenu.opened.disconnect(updateOpenWithMenu);
     app.shell.currentChanged?.disconnect(onCurrentChanged);
+    browser.fileFilterVisibleChanged.disconnect(onFilterVisibleChanged);
     paletteItem?.dispose();
   };
 }
@@ -605,13 +626,14 @@ export namespace ToolbarNames {
   export const newDirectory = 'new-directory';
   export const refresh = 'refresh';
   export const collapseAll = 'collapse-all';
+  export const toggleFileFilter = 'toggle-file-filter';
 }
 
 /**
  * Populate the file browser's toolbar with the buttons that mirror the
  * default JupyterLab file browser: a "+" launcher button, a new-folder
- * button, and a refresh button. Returns a list of button names so callers
- * can extend it or remove items if they need to.
+ * button, a refresh button, a collapse-all button, and the file filter
+ * toggle.
  */
 export function populateToolbar(opts: {
   app: JupyterFrontEnd;
@@ -649,6 +671,14 @@ export function populateToolbar(opts: {
     new CommandToolbarButton({
       commands,
       id: CommandIDs.collapseAll,
+      label: ''
+    })
+  );
+  browser.toolbar.addItem(
+    ToolbarNames.toggleFileFilter,
+    new CommandToolbarButton({
+      commands,
+      id: CommandIDs.toggleFileFilter,
       label: ''
     })
   );

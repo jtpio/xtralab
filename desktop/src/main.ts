@@ -935,6 +935,13 @@ function registerIpcHandlers(): void {
   );
 }
 
+// Notifications shown and not yet dismissed. Electron holds the JS wrapper
+// only weakly: garbage collection removes a still-pending notification from
+// Notification Center along with its click handling. Bounded because 'close'
+// is not guaranteed to fire.
+const liveNotifications = new Set<Notification>();
+const MAX_LIVE_NOTIFICATIONS = 50;
+
 // Recent notification timestamps per lab-window id, consulted by
 // `allowNotification`. Pruned when a lab window closes.
 const notificationTimestamps = new Map<number, number[]>();
@@ -983,6 +990,43 @@ function isAppProperlySigned(): boolean {
     cachedAppSigned = false;
   }
   return cachedAppSigned;
+}
+
+// The window to order front before the sender when a clicked notification's
+// tab group may live on another macOS Space. Only the group's selected tab
+// keeps an ordered-in NSWindow with Space affinity: ordering a background
+// tab's ordered-out NSWindow front materializes the group on whichever Space
+// is current instead of switching. Null means the sender itself is that tab
+// (or stands alone) and is safe to order front directly.
+function notificationSpaceAnchor(sender: BrowserWindow): BrowserWindow | null {
+  const groupId = sessionWindowGroupId(sender.id);
+  if (groupId === null) {
+    return null;
+  }
+  // Electron cannot observe native tab selection (isVisible() is true for
+  // background tabs too); the group member with the highest focusSequence is
+  // the same selected-tab guess session restore relies on.
+  let top: TrackedSessionWindow | null = null;
+  for (const entry of sessionWindows) {
+    if (entry.groupId !== groupId) {
+      continue;
+    }
+    const window = BrowserWindow.fromId(entry.windowId);
+    if (window === null || window.isDestroyed()) {
+      continue;
+    }
+    if (top === null || entry.focusSequence > top.focusSequence) {
+      top = entry;
+    }
+  }
+  if (top === null || top.windowId === sender.id) {
+    return null;
+  }
+  const anchor = BrowserWindow.fromId(top.windowId);
+  if (anchor === null || anchor.isDestroyed() || anchor.isMinimized()) {
+    return null;
+  }
+  return anchor;
 }
 
 // Deliver a desktop notification forwarded from a terminal.
@@ -1054,17 +1098,70 @@ function deliverDesktopNotification(
     title: title || app.getName(),
     body
   });
+  if (liveNotifications.size >= MAX_LIVE_NOTIFICATIONS) {
+    const oldest = liveNotifications.values().next().value;
+    if (oldest !== undefined) {
+      liveNotifications.delete(oldest);
+    }
+  }
+  liveNotifications.add(notification);
+  const release = (): void => {
+    liveNotifications.delete(notification);
+  };
+  notification.on('close', release);
+  notification.on('failed', release);
   notification.on('click', () => {
-    if (senderWindow !== null && !senderWindow.isDestroyed()) {
-      if (senderWindow.isMinimized()) {
-        senderWindow.restore();
+    release();
+    if (senderWindow === null || senderWindow.isDestroyed()) {
+      return;
+    }
+    const selectSenderTab = (): void => {
+      if (senderWindow.isDestroyed()) {
+        return;
       }
+      // show() rather than focus() alone: right after a banner click the app
+      // can be inactive, where focus() is a no-op; show() activates the app
+      // and orders the window front, which also selects its native macOS tab.
+      senderWindow.show();
       senderWindow.focus();
       // Activate the terminal that fired this notification, not just the window.
       if (session !== null) {
         senderWindow.webContents.send('xtralab:focus-terminal', session);
       }
+    };
+    if (senderWindow.isMinimized()) {
+      senderWindow.restore();
+      selectSenderTab();
+      return;
     }
+    const anchor =
+      process.platform === 'darwin'
+        ? notificationSpaceAnchor(senderWindow)
+        : null;
+    // A focused anchor means the group's Space is already current, where
+    // ordering the sender front cannot drag the group to another Space.
+    if (anchor === null || anchor.isFocused()) {
+      selectSenderTab();
+      return;
+    }
+    // Raise the anchor so macOS switches to the group's Space, and select the
+    // sender tab only once focus lands there.
+    let settled = false;
+    const settle = (): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(fallback);
+      anchor.removeListener('focus', settle);
+      selectSenderTab();
+    };
+    // Fallback: if the anchor never takes focus (activation can be denied),
+    // select the sender tab anyway.
+    const fallback = setTimeout(settle, 500);
+    anchor.once('focus', settle);
+    anchor.show();
+    anchor.focus();
   });
   notification.show();
 }

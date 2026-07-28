@@ -206,6 +206,14 @@ body[data-jp-theme-light] diffs-container {
   scrollbar-color: auto;
 }
 
+/* Carve-out: Lumino's drag cursor backdrop (the invisible scroll box that
+   follows the pointer while a splitter handle is held) hides its scrollbars
+   with scrollbar-width: none; the universal thin rule above out-specifies
+   that and would paint its thumbs as gray pills floating near the cursor. */
+body[data-jp-theme-light] .lm-cursor-backdrop {
+  scrollbar-width: none;
+}
+
 /* -----------------------------------------------------------------------------
 | Window chrome: seams, menu bar, activity strips, status bar, splitters
 |---------------------------------------------------------------------------- */
@@ -927,56 +935,6 @@ select.jp-mod-styled,
   border-radius: 8px;
   border-color: color-mix(in srgb, var(--jp-border-color1) 55%, transparent);
 }
-
-/* -----------------------------------------------------------------------------
-| Toast notifications
-|---------------------------------------------------------------------------- */
-
-/*
- * Stock marks toast status with a 5px colored top strip. Rounded card with
- * hairline border and a slim colored left accent instead — same five
- * status tokens, modern grammar. Scoped under .jp-ThemedContainer (present
- * on both the corner toast container and the notification-center popup) so
- * these outrank react-toastify's lazy-loaded base CSS by specificity.
- * (.Toastify__toast is react-toastify's own BEM class, hence the
- * selector-class-pattern exemption.)
- */
-
-/* stylelint-disable selector-class-pattern */
-.jp-ThemedContainer .Toastify__toast {
-  padding: 8px 10px;
-  border: var(--jp-border-width) solid var(--jp-border-color2);
-  border-radius: 10px;
-  box-shadow:
-    0 1px 3px var(--jp-shadow-ambient-color),
-    0 8px 24px -6px var(--jp-shadow-penumbra-color);
-}
-
-.jp-ThemedContainer .Toastify__toast.jp-Notification-Toast-error {
-  border-top: var(--jp-border-width) solid var(--jp-border-color2);
-  border-left: 3px solid var(--jp-error-color1);
-}
-
-.jp-ThemedContainer .Toastify__toast.jp-Notification-Toast-warning {
-  border-top: var(--jp-border-width) solid var(--jp-border-color2);
-  border-left: 3px solid var(--jp-warn-color1);
-}
-
-.jp-ThemedContainer .Toastify__toast.jp-Notification-Toast-info {
-  border-top: var(--jp-border-width) solid var(--jp-border-color2);
-  border-left: 3px solid var(--jp-info-color1);
-}
-
-.jp-ThemedContainer .Toastify__toast.jp-Notification-Toast-success {
-  border-top: var(--jp-border-width) solid var(--jp-border-color2);
-  border-left: 3px solid var(--jp-success-color1);
-}
-
-.jp-ThemedContainer .Toastify__toast.jp-Notification-Toast-in-progress {
-  border-top: var(--jp-border-width) solid var(--jp-border-color2);
-  border-left: 3px solid var(--jp-brand-color1);
-}
-/* stylelint-enable selector-class-pattern */
 
 /* -----------------------------------------------------------------------------
 | Document search overlay
