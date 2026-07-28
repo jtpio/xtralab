@@ -206,6 +206,14 @@ body[data-jp-theme-light] diffs-container {
   scrollbar-color: auto;
 }
 
+/* Carve-out: Lumino's drag cursor backdrop (the invisible scroll box that
+   follows the pointer while a splitter handle is held) hides its scrollbars
+   with scrollbar-width: none; the universal thin rule above out-specifies
+   that and would paint its thumbs as gray pills floating near the cursor. */
+body[data-jp-theme-light] .lm-cursor-backdrop {
+  scrollbar-width: none;
+}
+
 /* -----------------------------------------------------------------------------
 | Window chrome: seams, menu bar, activity strips, status bar, splitters
 |---------------------------------------------------------------------------- */
