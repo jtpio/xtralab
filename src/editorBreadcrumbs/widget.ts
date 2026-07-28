@@ -6,6 +6,7 @@ import type { CommandRegistry } from '@lumino/commands';
 import { Widget } from '@lumino/widgets';
 
 const EDITOR_BREADCRUMBS_CLASS = 'jp-xtralab-EditorBreadcrumbs';
+const TOOLBAR_SPACER_CLASS = 'jp-Toolbar-spacer';
 const BREADCRUMBS_CONTAINER_CLASS = 'jp-BreadCrumbs-container';
 const BREADCRUMBS_CONTENT_CLASS = 'jp-BreadCrumbs-content';
 const ROOT_CLASS = 'jp-BreadCrumbs-home';
@@ -37,6 +38,10 @@ export class EditorBreadcrumbs extends Widget {
     this._commands = options.commands;
     this._trans = options.trans;
     this.addClass(EDITOR_BREADCRUMBS_CLASS);
+    // The breadcrumbs stretch to fill the toolbar, so ReactiveToolbar's
+    // overflow math must count them as a spacer (2px) — measured at their
+    // stretched clientWidth they would evict every item into the popup.
+    this.addClass(TOOLBAR_SPACER_CLASS);
     this.node.setAttribute('aria-label', this._trans.__('Editor file path'));
 
     this._container = document.createElement('span');
