@@ -4,8 +4,8 @@ import { IThemeManager } from '@jupyterlab/apputils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import type { TranslationBundle } from '@jupyterlab/translation';
 import { undoIcon } from '@jupyterlab/ui-components';
-import { EditorProvider, FileDiff } from '@pierre/diffs/react';
-import { Editor } from '@pierre/diffs/editor';
+import { EditProvider, FileDiff, type CreateEditor } from '@pierre/diffs/react';
+import { Editor } from '@pierre/diffs/edit';
 import {
   diffAcceptRejectHunk,
   parseDiffFromFile,
@@ -239,6 +239,11 @@ export interface IDiffEdit {
  * Live save state surfaced to the user while an edit session is active.
  */
 type EditSaveState = 'idle' | 'saving' | 'saved' | 'error';
+
+/**
+ * Quiet period after the last keystroke before an edit session autosaves.
+ */
+const EDIT_AUTOSAVE_DELAY_MS = 500;
 
 interface IDiffSurfaceProps {
   /**
@@ -766,6 +771,7 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
                 initialText={newText}
                 save={edit.save}
                 onSaved={edit.onSaved}
+                trans={trans}
               />
             ) : (
               <FileDiff<IHunkActionAnnotation>
@@ -804,9 +810,9 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
 
 /**
  * The new (additions) side of a textual file diff, rendered as an in-place
- * editor. Wires a `@pierre/diffs` {@link Editor} into the {@link FileDiff}
- * through {@link EditorProvider} (which the library requires whenever
- * `contentEditable` is set) and autosaves edits to the working-tree file.
+ * editor. Hands {@link FileDiff} a `@pierre/diffs` {@link Editor} factory
+ * through {@link EditProvider} (which the library requires whenever `edit` is
+ * set) and autosaves edits to the working-tree file.
  *
  * The editor owns the live DOM while mounted, so the rendered diff is frozen to
  * its mount-time snapshot and memoized: neither save-status re-renders nor the
@@ -820,6 +826,7 @@ function EditableFileDiff(props: {
   initialText: string;
   save: (fullText: string) => Promise<void>;
   onSaved?: (fullText: string) => void;
+  trans: TranslationBundle;
 }): React.ReactElement {
   const {
     initialFileDiff,
@@ -827,7 +834,8 @@ function EditableFileDiff(props: {
     hostStyle,
     initialText,
     save,
-    onSaved
+    onSaved,
+    trans
   } = props;
 
   // The diff is frozen to its mount-time snapshot: the editor takes over live
@@ -895,46 +903,72 @@ function EditableFileDiff(props: {
     }
   }, []);
 
-  // One editor per session, created lazily so it survives status re-renders.
-  // The library already debounces onChange (~500ms), so each call is a settled
-  // edit we can persist directly. `file.contents` lazily reads the library's
-  // document; if that ever fails there is nothing readable to persist, so skip
-  // rather than let the error escape into the library's debounce timer.
-  const [editor] = React.useState(
-    () =>
-      new Editor<IHunkActionAnnotation>({
-        onChange: (file: FileContents) => {
-          let contents: string;
-          try {
-            contents = file.contents;
-          } catch {
-            return;
-          }
-          latestTextRef.current = contents;
-          if (contents === savedTextRef.current) {
-            // Back in sync with disk (the attach echo, or an undo to it).
-            // Don't override a save still draining — its loop settles state,
-            // and may still need a corrective write back to this content.
-            if (!savingRef.current) {
-              setSaveState('idle');
-            }
-            return;
-          }
-          void persist();
+  // Pending autosave timer. The editor reports every applied change
+  // synchronously (no built-in debounce), so this component owns the delay
+  // between the last keystroke and the disk write.
+  const saveTimerRef = React.useRef<number | null>(null);
+
+  const cancelPendingSave = React.useCallback(() => {
+    if (saveTimerRef.current !== null) {
+      window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+  }, []);
+
+  // Fires on every applied edit. `file.contents` lazily reads the library's
+  // document; if that ever fails there is nothing readable to persist, so
+  // skip. The captured text is what teardown flushes, so it is always the
+  // live document even when the autosave timer never fires.
+  const handleEditorChange = React.useCallback(
+    (file: FileContents) => {
+      let contents: string;
+      try {
+        contents = file.contents;
+      } catch {
+        return;
+      }
+      latestTextRef.current = contents;
+      if (contents === savedTextRef.current) {
+        // Back in sync with disk (an undo to the saved text): nothing left
+        // to write. Don't override a save still draining — its loop settles
+        // state, and may still need a corrective write back to this content.
+        cancelPendingSave();
+        if (!savingRef.current) {
+          setSaveState('idle');
         }
-      })
+        return;
+      }
+      cancelPendingSave();
+      saveTimerRef.current = window.setTimeout(() => {
+        saveTimerRef.current = null;
+        void persist();
+      }, EDIT_AUTOSAVE_DELAY_MS);
+    },
+    [cancelPendingSave, persist]
+  );
+
+  // The library components own the editor lifecycle: `FileDiff` calls this
+  // factory when its edit session starts (handing it the `editorOptions`
+  // below) and cleans the editor up when the session ends.
+  const createEditor = React.useCallback<CreateEditor<IHunkActionAnnotation>>(
+    options => new Editor<IHunkActionAnnotation>(options),
+    []
+  );
+
+  const editorOptions = React.useMemo(
+    () => ({ onChange: handleEditorChange }),
+    [handleEditorChange]
   );
 
   // On teardown (toggle off, file swap, tab close): flush whatever the last
-  // onChange delivered, then drop the editor. The library does not cancel its
-  // pending onChange debounce on cleanUp and the contents getter stays valid,
-  // so a final onChange can still fire afterwards and persist the last edits.
+  // onChange delivered instead of waiting out the autosave delay. The
+  // library tears the editor itself down when the edit session ends.
   React.useEffect(() => {
     return () => {
+      cancelPendingSave();
       void persist();
-      editor.cleanUp();
     };
-  }, [editor, persist]);
+  }, [cancelPendingSave, persist]);
 
   // Let the "Saved" confirmation fade back to the steady state on its own; a
   // persistent badge would just be noise once the write has landed.
@@ -955,10 +989,11 @@ function EditableFileDiff(props: {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
         event.preventDefault();
         event.stopPropagation();
+        cancelPendingSave();
         void persist();
       }
     },
-    [persist]
+    [cancelPendingSave, persist]
   );
 
   // Memoized so only a split-resize (a hostStyle change) re-renders the
@@ -966,10 +1001,11 @@ function EditableFileDiff(props: {
   // while status and host-baseline updates leave it untouched.
   const diffElement = React.useMemo(
     () => (
-      <EditorProvider editor={editor}>
+      <EditProvider createEditor={createEditor}>
         <FileDiff<IHunkActionAnnotation>
           fileDiff={fileDiff}
-          contentEditable={true}
+          edit={true}
+          editorOptions={editorOptions}
           // The editable view opts out of the worker pool: on attach the
           // library hands the editor its main-thread highlighter for live
           // tokenization, the editor render relies on `useTokenTransformer`
@@ -980,9 +1016,9 @@ function EditableFileDiff(props: {
           style={hostStyle}
           options={options}
         />
-      </EditorProvider>
+      </EditProvider>
     ),
-    [editor, fileDiff, options, hostStyle]
+    [createEditor, editorOptions, fileDiff, options, hostStyle]
   );
 
   return (
@@ -994,7 +1030,7 @@ function EditableFileDiff(props: {
       {/* Sticky, zero-height bar so the save indicator stays pinned to the top
           of the viewport while the file scrolls, without displacing the diff. */}
       <div className="jp-xtralab-DiffWidget-saveStatusBar">
-        <EditSaveStatus state={saveState} />
+        <EditSaveStatus state={saveState} trans={trans} />
       </div>
       {diffElement}
     </div>
@@ -1008,17 +1044,18 @@ function EditableFileDiff(props: {
  */
 function EditSaveStatus(props: {
   state: EditSaveState;
+  trans: TranslationBundle;
 }): React.ReactElement | null {
-  const { state } = props;
+  const { state, trans } = props;
   if (state === 'idle') {
     return null;
   }
   const label =
     state === 'saving'
-      ? 'Saving…'
+      ? trans.__('Saving…')
       : state === 'saved'
-        ? 'Saved'
-        : 'Save failed';
+        ? trans.__('Saved')
+        : trans.__('Save failed');
   return (
     <div
       className="jp-xtralab-DiffWidget-saveStatus"
@@ -1201,11 +1238,15 @@ export function EditModeControl(props: {
   editing: boolean;
   available: boolean;
   onChange: (editing: boolean) => void;
+  trans: TranslationBundle;
 }): React.ReactElement {
-  const { editing, available, onChange } = props;
+  const { editing, available, onChange, trans } = props;
   if (!available) {
     return <></>;
   }
+  const label = editing
+    ? trans.__('Done editing')
+    : trans.__('Edit the file directly');
   return (
     <div className="jp-xtralab-DiffWidget-segmented">
       <button
@@ -1213,8 +1254,8 @@ export function EditModeControl(props: {
         aria-pressed={editing}
         data-active={editing}
         className="jp-xtralab-DiffWidget-segmentedButton jp-xtralab-DiffWidget-segmentedButton-icon"
-        title={editing ? 'Done editing' : 'Edit the file directly'}
-        aria-label={editing ? 'Done editing' : 'Edit the file directly'}
+        title={label}
+        aria-label={label}
         onClick={() => onChange(!editing)}
       >
         <EditModeIcon />

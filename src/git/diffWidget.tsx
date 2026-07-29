@@ -371,7 +371,7 @@ function ModelDiffView(props: {
   // Mirror toolbar-driven edit-mode changes into React state.
   const [editing, setEditing] = React.useState<boolean>(() => widget.editing);
   React.useEffect(() => {
-    const handler = (_sender: XtralabDiffWidget, value: boolean): void => {
+    const handler = (sender: XtralabDiffWidget, value: boolean): void => {
       setEditing(value);
     };
     widget.editingChanged.connect(handler);
@@ -780,10 +780,10 @@ function EditModeToolbarControl(props: {
     () => widget.editAvailable
   );
   React.useEffect(() => {
-    const onEditing = (_sender: XtralabDiffWidget, next: boolean): void => {
+    const onEditing = (sender: XtralabDiffWidget, next: boolean): void => {
       setEditing(next);
     };
-    const onAvailable = (_sender: XtralabDiffWidget, next: boolean): void => {
+    const onAvailable = (sender: XtralabDiffWidget, next: boolean): void => {
       setAvailable(next);
     };
     widget.editingChanged.connect(onEditing);
@@ -801,6 +801,7 @@ function EditModeToolbarControl(props: {
       editing={editing}
       available={available}
       onChange={next => widget.setEditing(next)}
+      trans={widget.context.trans}
     />
   );
 }
