@@ -2,6 +2,7 @@ import type { DocumentRegistry } from '@jupyterlab/docregistry';
 import type { TranslationBundle } from '@jupyterlab/translation';
 import { LabIcon, ReactWidget } from '@jupyterlab/ui-components';
 import type { CommandRegistry } from '@lumino/commands';
+import type { CommandPalette } from '@lumino/widgets';
 import * as React from 'react';
 
 import type { IAgent } from '../launcher/agents';
@@ -68,6 +69,7 @@ function renderIcon(icon?: LabIcon): React.ReactNode {
 function OmniboxComponent(props: OmniboxWidget.IOptions): JSX.Element {
   const {
     commands,
+    paletteItems,
     docRegistry,
     agents,
     placeholder,
@@ -103,13 +105,14 @@ function OmniboxComponent(props: OmniboxWidget.IOptions): JSX.Element {
       computeSections({
         query,
         commands,
+        paletteItems,
         docRegistry,
         agents,
         files,
         recents,
         trans
       }),
-    [query, commands, docRegistry, agents, files, recents, trans]
+    [query, commands, paletteItems, docRegistry, agents, files, recents, trans]
   );
   const flat = React.useMemo(
     () => [
@@ -334,6 +337,11 @@ export namespace OmniboxWidget {
    */
   export interface IOptions {
     commands: CommandRegistry;
+    /**
+     * Snapshot of the command palette's items, read once when the overlay
+     * opens; empty when the palette isn't available.
+     */
+    paletteItems: ReadonlyArray<CommandPalette.IItem>;
     docRegistry: DocumentRegistry;
     /**
      * Snapshot of the available agents, read once when the overlay opens.

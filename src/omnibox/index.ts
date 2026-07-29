@@ -6,7 +6,7 @@ import { ICommandPalette } from '@jupyterlab/apputils';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { IStateDB } from '@jupyterlab/statedb';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
-import { Widget } from '@lumino/widgets';
+import { CommandPalette, Widget } from '@lumino/widgets';
 
 import { IAgentRegistry } from '../launcher/tokens';
 
@@ -19,9 +19,11 @@ const PLUGIN_ID = 'xtralab:omnibox';
 /**
  * The omnibox: a single launcher overlay that fuzzy-searches workspace files
  * (via jupyterlab-quickopen's gitignore-aware endpoint) and JupyterLab
- * commands, and routes a typed prompt to one of the configured agents (running
- * it in a fresh terminal through the launcher's `xtralab:start-agent:<id>`
- * commands). It is opened by the top-bar command bar.
+ * commands (the command palette's entries plus registry commands the palette
+ * doesn't list), and routes a typed prompt to one of the configured agents
+ * (running it in a fresh terminal through the launcher's
+ * `xtralab:start-agent:<id>` commands). It is opened by the top-bar command
+ * bar.
  *
  * Commands run and files opened through the overlay are remembered (persisted
  * in the state database) and offered again at the top while the query is
@@ -54,6 +56,18 @@ const plugin: JupyterFrontEndPlugin<IOmnibox> = {
     const { commands, docRegistry } = app;
     const trans = (translator ?? nullTranslator).load('jupyterlab');
     const placeholder = trans.__('Search files and commands, or ask an agent…');
+
+    // The palette's items carry per-item args (e.g. one "Use Theme: …" per
+    // theme) that a raw command-registry scan can't see, but `ICommandPalette`
+    // exposes no item list and the widget itself is unreachable through the
+    // shell (`LabShell.add` defers it until layout restore, after which the
+    // modal setting re-parents it out of the left area). The wrapper's
+    // `_palette` field is private in TypeScript only, so read it guarded.
+    const paletteItems = (): ReadonlyArray<CommandPalette.IItem> => {
+      const widget = (palette as unknown as { _palette?: unknown } | null)
+        ?._palette;
+      return widget instanceof CommandPalette ? [...widget.items] : [];
+    };
 
     const recents = new OmniboxRecents({ state });
 
@@ -100,6 +114,7 @@ const plugin: JupyterFrontEndPlugin<IOmnibox> = {
       close();
       const widget = new OmniboxWidget({
         commands,
+        paletteItems: paletteItems(),
         docRegistry,
         agents: agentRegistry ? agentRegistry.agents : [],
         placeholder,
