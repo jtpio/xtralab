@@ -1,5 +1,5 @@
 import type { IStateDB } from '@jupyterlab/statedb';
-import type { PartialJSONObject } from '@lumino/coreutils';
+import type { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 
 /**
  * Kinds of omnibox results whose uses are recorded.
@@ -15,6 +15,19 @@ interface IRecentEntry {
    * The command id, or the workspace-relative file path.
    */
   id: string;
+  /**
+   * Arguments the command ran with, for palette-style entries whose label
+   * and behavior depend on them (e.g. one "Use Theme: …" per theme).
+   */
+  args?: ReadonlyPartialJSONObject;
+}
+
+/**
+ * Identity of an entry: two uses only match when kind, id and args all do,
+ * so runs of one command with different args stay distinct entries.
+ */
+function entryKey(entry: IRecentEntry): string {
+  return `${entry.kind}\0${entry.id}\0${JSON.stringify(entry.args ?? null)}`;
 }
 
 /**
@@ -65,13 +78,15 @@ export class OmniboxRecents {
   }
 
   /**
-   * Record a use of `id`, moving it to the front of its kind's list.
+   * Record a use of `id` (with the args it ran with, if any), moving it to
+   * the front of its kind's list.
    */
-  touch(kind: RecentKind, id: string): void {
-    const rest = this._entries.filter(
-      entry => !(entry.kind === kind && entry.id === id)
-    );
-    this._entries = this._trim([{ kind, id }, ...rest]);
+  touch(kind: RecentKind, id: string, args?: ReadonlyPartialJSONObject): void {
+    const entry: IRecentEntry =
+      args === undefined ? { kind, id } : { kind, id, args };
+    const key = entryKey(entry);
+    const rest = this._entries.filter(existing => entryKey(existing) !== key);
+    this._entries = this._trim([entry, ...rest]);
     this._save();
   }
 
@@ -90,23 +105,35 @@ export class OmniboxRecents {
       return;
     }
     const persisted: IRecentEntry[] = Array.isArray(fetched)
-      ? fetched.filter(
-          (entry): entry is IRecentEntry =>
-            !!entry &&
-            typeof entry === 'object' &&
-            ((entry as IRecentEntry).kind === 'command' ||
-              (entry as IRecentEntry).kind === 'file') &&
-            typeof (entry as IRecentEntry).id === 'string'
-        )
+      ? fetched.filter((entry): entry is IRecentEntry => {
+          if (!entry || typeof entry !== 'object') {
+            return false;
+          }
+          const candidate = entry as IRecentEntry;
+          if (candidate.kind !== 'command' && candidate.kind !== 'file') {
+            return false;
+          }
+          if (typeof candidate.id !== 'string') {
+            return false;
+          }
+          const args: unknown = candidate.args;
+          return (
+            args === undefined ||
+            (typeof args === 'object' && args !== null && !Array.isArray(args))
+          );
+        })
       : [];
+    const known = new Set(this._entries.map(entryKey));
     const merged = [...this._entries];
     for (const entry of persisted) {
-      if (
-        !merged.some(
-          existing => existing.kind === entry.kind && existing.id === entry.id
-        )
-      ) {
-        merged.push({ kind: entry.kind, id: entry.id });
+      const key = entryKey(entry);
+      if (!known.has(key)) {
+        known.add(key);
+        merged.push(
+          entry.args === undefined
+            ? { kind: entry.kind, id: entry.id }
+            : { kind: entry.kind, id: entry.id, args: entry.args }
+        );
       }
     }
     this._entries = this._trim(merged);
@@ -128,10 +155,11 @@ export class OmniboxRecents {
     if (!this._state) {
       return;
     }
-    const value = this._entries.map<PartialJSONObject>(entry => ({
-      kind: entry.kind,
-      id: entry.id
-    }));
+    const value = this._entries.map<ReadonlyPartialJSONObject>(entry =>
+      entry.args === undefined
+        ? { kind: entry.kind, id: entry.id }
+        : { kind: entry.kind, id: entry.id, args: entry.args }
+    );
     this._state.save(STATE_KEY, value).catch(reason => {
       console.error('xtralab omnibox: failed to save recents', reason);
     });

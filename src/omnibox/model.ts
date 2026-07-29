@@ -3,6 +3,8 @@ import type { TranslationBundle } from '@jupyterlab/translation';
 import { fileIcon, LabIcon } from '@jupyterlab/ui-components';
 import { StringExt } from '@lumino/algorithm';
 import type { CommandRegistry } from '@lumino/commands';
+import type { ReadonlyPartialJSONObject } from '@lumino/coreutils';
+import type { CommandPalette } from '@lumino/widgets';
 
 import type { IAgent } from '../launcher/agents';
 import { agentCommandId } from '../launcher/tokens';
@@ -61,6 +63,11 @@ interface IOmniboxSections {
 interface IComputeOptions {
   query: string;
   commands: CommandRegistry;
+  /**
+   * The command palette's items, whose labels are computed with each item's
+   * args — the only form in which entries like "Use Theme: …" exist.
+   */
+  paletteItems: ReadonlyArray<CommandPalette.IItem>;
   docRegistry: DocumentRegistry;
   agents: IAgent[];
   files: string[];
@@ -131,12 +138,13 @@ export function computeSections(options: IComputeOptions): IOmniboxSections {
 function executeCommand(
   commands: CommandRegistry,
   recents: OmniboxRecents | null,
-  id: string
+  id: string,
+  args?: ReadonlyPartialJSONObject
 ): void {
   void commands
-    .execute(id)
+    .execute(id, args)
     .then(() => {
-      recents?.touch('command', id);
+      recents?.touch('command', id, args);
     })
     .catch(reason => {
       console.error(`xtralab omnibox: command "${id}" failed`, reason);
@@ -169,17 +177,18 @@ function openFile(
  */
 function commandDisplay(
   commands: CommandRegistry,
-  id: string
+  id: string,
+  args?: ReadonlyPartialJSONObject
 ): { label: string; caption: string } | null {
   if (!commands.hasCommand(id)) {
     return null;
   }
   try {
-    const label = commands.label(id);
-    if (!label || !commands.isVisible(id)) {
+    const label = commands.label(id, args);
+    if (!label || !commands.isVisible(id, args)) {
       return null;
     }
-    return { label, caption: commands.caption(id) };
+    return { label, caption: commands.caption(id, args) };
   } catch {
     return null;
   }
@@ -207,18 +216,18 @@ function buildRecentItems(
   const items: IOmniboxItem[] = [];
   for (const entry of recents.entries(kind)) {
     if (entry.kind === 'command') {
-      const display = commandDisplay(commands, entry.id);
+      const display = commandDisplay(commands, entry.id, entry.args);
       if (!display) {
         continue;
       }
       items.push({
         kind: 'command',
-        key: `recent:command:${entry.id}`,
+        key: `recent:command:${entry.id}:${JSON.stringify(entry.args ?? null)}`,
         label: display.label,
         matchIndices: [],
         caption: display.caption || undefined,
         execute: () => {
-          executeCommand(commands, recents, entry.id);
+          executeCommand(commands, recents, entry.id, entry.args);
         }
       });
     } else {
@@ -240,11 +249,64 @@ function buildRecentItems(
   return items;
 }
 
+/**
+ * Match the query against the palette's items first — their labels carry each
+ * item's args (one "Use Theme: …" per theme, one row per font-size key), which
+ * a raw registry scan can never produce — then against registry commands the
+ * palette doesn't present. Palette-covered ids are skipped in the registry
+ * pass so a command never also surfaces under its argless label.
+ */
 function matchCommands(options: IComputeOptions, term: string): IOmniboxItem[] {
-  const { commands, recents } = options;
+  const { commands, paletteItems, recents } = options;
   const query = term.toLowerCase();
   const scored: Array<{ score: number; item: IOmniboxItem }> = [];
+  const inPalette = new Set<string>();
+  const seenKeys = new Set<string>();
+  for (const item of paletteItems) {
+    inPalette.add(item.command);
+    const { command: id, args } = item;
+    let label = '';
+    let visible = true;
+    let caption = '';
+    try {
+      // An item's accessors can throw if the command assumes a context (e.g.
+      // an active notebook) the omnibox doesn't provide; skip those.
+      label = item.label;
+      visible = item.isVisible;
+      caption = item.caption;
+    } catch {
+      continue;
+    }
+    if (!label || !visible) {
+      continue;
+    }
+    const key = `command:${id}:${JSON.stringify(args)}`;
+    if (seenKeys.has(key)) {
+      continue;
+    }
+    seenKeys.add(key);
+    const match = StringExt.matchSumOfSquares(label.toLowerCase(), query);
+    if (!match) {
+      continue;
+    }
+    scored.push({
+      score: match.score,
+      item: {
+        kind: 'command',
+        key,
+        label,
+        matchIndices: match.indices,
+        caption: caption || undefined,
+        execute: () => {
+          executeCommand(commands, recents, id, args);
+        }
+      }
+    });
+  }
   for (const id of commands.listCommands()) {
+    if (inPalette.has(id)) {
+      continue;
+    }
     let label = '';
     let visible = true;
     let caption = '';
