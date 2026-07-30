@@ -141,6 +141,7 @@
             "@jupyterlab/git:notebook-diff",
             "@jupyterlab/git:plain-text-diff",
             "@jupyterlab/git:image-diff",
+            "@jupyterlab/help-extension:about",
             "@jupyterlab/launcher-extension"
         ]
     },

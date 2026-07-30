@@ -1,5 +1,6 @@
 import { JupyterFrontEndPlugin } from '@jupyterlab/application';
 
+import aboutPlugin from './about';
 import agentSessionsPlugin from './agentSessions';
 import askAgentPlugin from './askAgent';
 import commandBarPlugin from './commandBar';
@@ -30,6 +31,7 @@ import walkthroughPlugin from './walkthrough';
  * they are spread in.
  */
 const plugins: JupyterFrontEndPlugin<unknown>[] = [
+  aboutPlugin,
   agentSessionsPlugin,
   askAgentPlugin,
   commandBarPlugin,
