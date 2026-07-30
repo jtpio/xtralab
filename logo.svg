@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-5 -3 194 272" role="img" aria-labelledby="jp-xtralab-logo-title jp-xtralab-logo-desc">
+  <title id="jp-xtralab-logo-title">XtraLab flask icon</title>
+  <desc id="jp-xtralab-logo-desc">A clean, slightly tilted laboratory flask with a symmetrical constant-width dark frame, blue-to-pink liquid, bubbles, and rising pixel blocks.</desc>
+
+  <defs>
+    <linearGradient id="jp-xtralab-logo-liquid" x1="20" y1="154" x2="151" y2="231" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00a6ed"/>
+      <stop offset=".29" stop-color="#0879ed"/>
+      <stop offset=".58" stop-color="#6548d2"/>
+      <stop offset=".8" stop-color="#b43baa"/>
+      <stop offset="1" stop-color="#f1357e"/>
+    </linearGradient>
+    <radialGradient id="jp-xtralab-logo-liquid-glow" cx="0" cy="0" r="1"
+                    gradientTransform="translate(49 169) rotate(34) scale(75 49)"
+                    gradientUnits="userSpaceOnUse">
+      <stop stop-color="#18b9ef" stop-opacity=".78"/>
+      <stop offset=".58" stop-color="#1688ef" stop-opacity=".2"/>
+      <stop offset="1" stop-color="#1688ef" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="jp-xtralab-logo-pixel-blue" x1="137" y1="13" x2="156" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#05aae9"/>
+      <stop offset="1" stop-color="#008be0"/>
+    </linearGradient>
+    <linearGradient id="jp-xtralab-logo-pixel-purple" x1="154" y1="39" x2="178" y2="61" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6242c0"/>
+      <stop offset="1" stop-color="#923ba8"/>
+    </linearGradient>
+    <linearGradient id="jp-xtralab-logo-pixel-pink" x1="166" y1="0" x2="183" y2="17" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8040bd"/>
+      <stop offset="1" stop-color="#ad3c9b"/>
+    </linearGradient>
+    <clipPath id="jp-xtralab-logo-chamber" clipPathUnits="userSpaceOnUse">
+      <path d="M64 61h36v43c0 10 2 18 8 27l42 73c5 8 5 18 0 26-5 8-13 12-23 13H37c-10-1-18-5-23-13-5-8-5-18 0-26l42-73c6-9 8-17 8-27Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- The flask is constructed symmetrically around x=82, then given a slight logo-matching tilt. -->
+  <g transform="rotate(9 82 232)">
+    <g clip-path="url(#jp-xtralab-logo-chamber)">
+      <path fill="url(#jp-xtralab-logo-liquid)"
+            d="M8 207c17-25 34-52 55-60 16-6 29-2 42 5 14 8 27 8 43-4l13 65c4 18-8 35-27 37H30c-20-2-30-23-22-43Z"/>
+      <path fill="url(#jp-xtralab-logo-liquid-glow)"
+            d="M8 207c17-25 34-52 55-60 16-6 29-2 42 5 14 8 27 8 43-4l13 65c4 18-8 35-27 37H30c-20-2-30-23-22-43Z"/>
+    </g>
+
+    <!-- A straight integrated mouth joins the widened chimney without a separate rim element. -->
+    <path d="M56 55v49c0 12-2 21-8 31L9 201c-7 10-7 23-1 33s16 15 28 16h92c12-1 22-6 28-16s6-23-1-33l-39-66c-6-10-8-19-8-31V55H56Z"
+          fill="none" stroke="#07111d" stroke-width="16" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M56 55v49c0 12-2 21-8 31L9 201c-7 10-7 23-1 33s16 15 28 16h92c12-1 22-6 28-16s6-23-1-33l-39-66c-6-10-8-19-8-31V55H56Z"
+          fill="none" stroke="#263b57" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>
+
+    <circle cx="82" cy="80" r="4.7" fill="#009fe9" stroke="#0b1d35" stroke-width=".7"/>
+    <circle cx="82" cy="104" r="6.2" fill="#078ae9" stroke="#0b1d35" stroke-width=".7"/>
+    <circle cx="82" cy="128" r="7.2" fill="#3256d9" stroke="#0b1d35" stroke-width=".7"/>
+  </g>
+
+  <g stroke="#17233c" stroke-width=".75">
+    <rect x="116" y="22" width="13" height="13" rx="2" fill="#7342bd"/>
+    <rect x="137" y="13" width="19" height="19" rx="1.5" fill="url(#jp-xtralab-logo-pixel-blue)"/>
+    <rect x="154" y="39" width="24" height="22" rx="1.5" fill="url(#jp-xtralab-logo-pixel-purple)"/>
+    <rect x="166" y=".5" width="17" height="17" rx="1.5" fill="url(#jp-xtralab-logo-pixel-pink)"/>
+  </g>
+</svg>
