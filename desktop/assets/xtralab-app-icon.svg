@@ -1,0 +1,71 @@
+<!-- xtralab desktop app icon source: macOS icon-grid squircle (824px tile on
+     the 1024 canvas) with the flask mark from /logo.svg centered on it.
+     xtralab.icns and xtralab.png are rendered from this file. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="xl-appicon-bg" x1="512" y1="100" x2="512" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2E4368"/>
+      <stop offset="1" stop-color="#15203A"/>
+    </linearGradient>
+    <linearGradient id="xl-appicon-liquid" x1="20" y1="154" x2="151" y2="231" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00a6ed"/>
+      <stop offset=".29" stop-color="#0879ed"/>
+      <stop offset=".58" stop-color="#6548d2"/>
+      <stop offset=".8" stop-color="#b43baa"/>
+      <stop offset="1" stop-color="#f1357e"/>
+    </linearGradient>
+    <radialGradient id="xl-appicon-liquid-glow" cx="0" cy="0" r="1"
+                    gradientTransform="translate(49 169) rotate(34) scale(75 49)"
+                    gradientUnits="userSpaceOnUse">
+      <stop stop-color="#18b9ef" stop-opacity=".78"/>
+      <stop offset=".58" stop-color="#1688ef" stop-opacity=".2"/>
+      <stop offset="1" stop-color="#1688ef" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="xl-appicon-pixel-blue" x1="137" y1="13" x2="156" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#05aae9"/>
+      <stop offset="1" stop-color="#008be0"/>
+    </linearGradient>
+    <linearGradient id="xl-appicon-pixel-purple" x1="154" y1="39" x2="178" y2="61" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6242c0"/>
+      <stop offset="1" stop-color="#923ba8"/>
+    </linearGradient>
+    <linearGradient id="xl-appicon-pixel-pink" x1="166" y1="0" x2="183" y2="17" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8040bd"/>
+      <stop offset="1" stop-color="#ad3c9b"/>
+    </linearGradient>
+    <clipPath id="xl-appicon-chamber" clipPathUnits="userSpaceOnUse">
+      <path d="M64 61h36v43c0 10 2 18 8 27l42 73c5 8 5 18 0 26-5 8-13 12-23 13H37c-10-1-18-5-23-13-5-8-5-18 0-26l42-73c6-9 8-17 8-27Z"/>
+    </clipPath>
+    <filter id="xl-appicon-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="20" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#xl-appicon-bg)"/>
+
+  <g filter="url(#xl-appicon-shadow)">
+    <svg x="305" y="222" width="414" height="580" viewBox="-5 -3 194 272">
+      <g transform="rotate(9 82 232)">
+        <g clip-path="url(#xl-appicon-chamber)">
+          <path fill="url(#xl-appicon-liquid)"
+                d="M8 207c17-25 34-52 55-60 16-6 29-2 42 5 14 8 27 8 43-4l13 65c4 18-8 35-27 37H30c-20-2-30-23-22-43Z"/>
+          <path fill="url(#xl-appicon-liquid-glow)"
+                d="M8 207c17-25 34-52 55-60 16-6 29-2 42 5 14 8 27 8 43-4l13 65c4 18-8 35-27 37H30c-20-2-30-23-22-43Z"/>
+        </g>
+        <path d="M56 55v49c0 12-2 21-8 31L9 201c-7 10-7 23-1 33s16 15 28 16h92c12-1 22-6 28-16s6-23-1-33l-39-66c-6-10-8-19-8-31V55H56Z"
+              fill="none" stroke="#07111d" stroke-width="16" stroke-linejoin="round" stroke-linecap="round"/>
+        <path d="M56 55v49c0 12-2 21-8 31L9 201c-7 10-7 23-1 33s16 15 28 16h92c12-1 22-6 28-16s6-23-1-33l-39-66c-6-10-8-19-8-31V55H56Z"
+              fill="none" stroke="#263b57" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="82" cy="80" r="4.7" fill="#009fe9" stroke="#0b1d35" stroke-width=".7"/>
+        <circle cx="82" cy="104" r="6.2" fill="#078ae9" stroke="#0b1d35" stroke-width=".7"/>
+        <circle cx="82" cy="128" r="7.2" fill="#3256d9" stroke="#0b1d35" stroke-width=".7"/>
+      </g>
+      <g stroke="#17233c" stroke-width=".75">
+        <rect x="116" y="22" width="13" height="13" rx="2" fill="#7342bd"/>
+        <rect x="137" y="13" width="19" height="19" rx="1.5" fill="url(#xl-appicon-pixel-blue)"/>
+        <rect x="154" y="39" width="24" height="22" rx="1.5" fill="url(#xl-appicon-pixel-purple)"/>
+        <rect x="166" y=".5" width="17" height="17" rx="1.5" fill="url(#xl-appicon-pixel-pink)"/>
+      </g>
+    </svg>
+  </g>
+</svg>
