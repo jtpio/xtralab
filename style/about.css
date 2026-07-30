@@ -7,6 +7,16 @@
 
 .jp-xtralab-About-header {
   display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.jp-xtralab-About-logo {
+  flex-shrink: 0;
+}
+
+.jp-xtralab-About-header-info {
+  display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;

@@ -7,6 +7,8 @@ import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import * as React from 'react';
 
+import { aboutLogoIcon } from './icons';
+
 const PLUGIN_ID = 'xtralab:about';
 
 /**
@@ -67,12 +69,19 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
         const title = (
           <span className="jp-xtralab-About-header">
-            <span className="jp-xtralab-About-wordmark">xtralab</span>
-            {version ? (
-              <span className="jp-xtralab-About-version">
-                {trans.__('Version %1', version)}
-              </span>
-            ) : null}
+            <aboutLogoIcon.react
+              className="jp-xtralab-About-logo"
+              height="56px"
+              width="56px"
+            />
+            <div className="jp-xtralab-About-header-info">
+              <span className="jp-xtralab-About-wordmark">xtralab</span>
+              {version ? (
+                <span className="jp-xtralab-About-version">
+                  {trans.__('Version %1', version)}
+                </span>
+              ) : null}
+            </div>
           </span>
         );
 
