@@ -1,5 +1,4 @@
 // Captures the documentation screenshots against the seeded demo workspace.
-// Run with `pnpm screenshots`; images land in docs/src/assets/screenshots/.
 import { test as base } from '@jupyterlab/galata';
 import type { IJupyterLabPageFixture } from '@jupyterlab/galata';
 import { expect } from '@playwright/test';
@@ -17,9 +16,8 @@ const OUTPUT = path.resolve(
 );
 
 const test = base.extend({
-  // Keep the server root exactly as seeded: the default fixture creates a
-  // per-test scratch directory in it, which would show up in the file
-  // browser and as an untracked entry in the git changes list.
+  // The default fixture creates a per-test scratch directory in the server
+  // root, which would show up in the file browser and the changes list.
   tmpPath: async ({}, use) => {
     await use('');
   }
@@ -27,9 +25,7 @@ const test = base.extend({
 
 test.use({
   autoGoto: false,
-  // Loaded settings still come from the server (so xtralab's shipped
-  // defaults apply); these overrides are layered on top, in memory only.
-  // The sidebar tabs are trimmed to the ones the screenshots are about.
+  // Layered on top of xtralab's shipped defaults, in memory only.
   mockSettings: {
     '@jupyterlab/apputils-extension:themes': { theme: 'Pierre Dark' },
     'xtralab:sidebar': {
@@ -44,9 +40,8 @@ test.beforeAll(() => {
 });
 
 /**
- * Whether a CLI resolves in a login shell — the closest match to the
- * environment the server hands to new terminals. The captures that run real
- * coding agents are skipped on machines without the CLIs they launch.
+ * Whether a CLI resolves in a login shell, the closest match to the
+ * environment the server hands to new terminals.
  */
 function hasCli(command: string): boolean {
   const shell = process.env.SHELL ?? '/bin/sh';
@@ -57,10 +52,9 @@ function hasCli(command: string): boolean {
 }
 
 /**
- * Hide WebGL from the page before it loads. Under headless capture the
- * WebGL terminal renderer sizes its canvas for a scale factor of 1, which
- * the page then stretches — blurry text at our 2x capture. Without WebGL
- * the terminal falls back to the canvas renderer.
+ * Hide WebGL so the terminal falls back to the canvas renderer: under
+ * headless capture the WebGL renderer sizes its canvas for a scale factor of
+ * 1, which the page then stretches into blurry text at 2x.
  */
 async function hideWebgl(page: IJupyterLabPageFixture): Promise<void> {
   await page.addInitScript(() => {
@@ -78,9 +72,8 @@ async function hideWebgl(page: IJupyterLabPageFixture): Promise<void> {
 }
 
 /**
- * Read the full text of a terminal widget's xterm buffer. JupyterLab keeps
- * its xterm in the widget's private `_term` field — the same access the
- * terminals panel itself uses for activity lines.
+ * Read a terminal widget's xterm buffer. JupyterLab keeps its xterm in the
+ * widget's private `_term` field.
  */
 function terminalText(
   page: IJupyterLabPageFixture,
@@ -103,7 +96,7 @@ function terminalText(
   }, widgetId);
 }
 
-/** Type Enter into a terminal's session, as if the user had pressed it. */
+/** Send Enter to a terminal's session. */
 function pressEnter(
   page: IJupyterLabPageFixture,
   widgetId: string
@@ -120,13 +113,10 @@ function pressEnter(
 
 /**
  * Wait for a freshly launched agent's TUI, accepting the Enter default of
- * the one-time screens an agent shows when it has never run in the seeded
- * workspace (claude's folder trust, codex's onboarding). Resolves once
- * `until` matches the buffer — or, without `until`, best-effort once the
- * agent has painted something beyond the shell prompt it was typed into and
- * the buffer stops changing. Slow starters (codex resolves a toolchain shim
- * before its first paint) otherwise pass a naive stability check while
- * still showing only the prompt.
+ * the one-time screens an agent shows on first run (claude's folder trust,
+ * codex's onboarding). Resolves when `until` matches, or without it once the
+ * buffer has painted past the shell prompt and gone quiet — slow starters
+ * pass a plain stability check while still showing only that prompt.
  */
 async function awaitAgentReady(
   page: IJupyterLabPageFixture,
@@ -191,9 +181,8 @@ async function settleTerminal(
 /**
  * The canvas renderer sizes its layers for a scale factor of 1 when a
  * terminal first opens under headless capture, drawing 2x glyphs off the
- * bottom of the backing store. It re-sizes them correctly on the next real
- * reflow, so nudge the font size to force one for a terminal that is
- * visible in a shot.
+ * bottom of the backing store. Nudging the font size forces the reflow that
+ * re-sizes them.
  */
 async function refitRenderer(
   page: IJupyterLabPageFixture,
@@ -233,12 +222,11 @@ async function ready(page: IJupyterLabPageFixture): Promise<void> {
     state: 'attached'
   });
   // Hiding the default file browser can leave the sidebar stack without a
-  // current widget, so bring up the xtralab file tree explicitly.
+  // current widget.
   await page.evaluate(() => {
     (window as any).jupyterapp.shell.activateById('xtralab:file-browser');
   });
-  // The tree rows render inside @pierre/trees' shadow DOM, so wait for the
-  // visible host instead of row text.
+  // Tree rows live in @pierre/trees' shadow DOM, so wait on the host.
   await page
     .locator('[id="xtralab:file-browser"] file-tree-container')
     .waitFor({ timeout: 15000 });
@@ -264,8 +252,7 @@ async function shot(
 test('launcher', async ({ page }) => {
   await ready(page);
   await page.locator('.jp-xtralab-Launcher-body').waitFor();
-  // The changes list fills in once git status resolves, and the agent row
-  // once the availability probes come back.
+  // The changes list waits on git status, the agent row on the probes.
   await page
     .locator('.jp-xtralab-Launcher-change', { hasText: 'metrics.py' })
     .waitFor({ timeout: 15000 });
@@ -298,8 +285,7 @@ test('git diff', async ({ page }) => {
 
 test('omnibox', async ({ page }) => {
   await ready(page);
-  // The agent rows come from the availability probes; wait for them (the
-  // launcher buttons appear once they resolve) before opening the omnibox.
+  // The omnibox lists agents too, so wait for the probes to resolve.
   await page
     .locator('button', { hasText: 'Claude' })
     .first()
@@ -325,13 +311,12 @@ test('ask agent', async ({ page }) => {
     });
   });
   await page.locator('.jp-FileEditor .cm-content').waitFor();
-  // The collaborative document streams in after the editor mounts; wait for
-  // the full file before addressing lines in it.
+  // The collaborative document streams in after the editor mounts.
   await page.waitForFunction(() => {
     const widget = (window as any).jupyterapp.shell.currentWidget;
     return (widget?.content?.editor?.lineCount ?? 0) > 25;
   });
-  // Select the average_order_value function, then ask about it.
+  // Select the average_order_value function.
   await page.evaluate(() => {
     const widget = (window as any).jupyterapp.shell.currentWidget;
     widget.content.editor.setSelection({
@@ -350,10 +335,9 @@ test('ask agent', async ({ page }) => {
   await shot(page, 'ask-agent.png');
 });
 
-// The terminals-panel capture: several live coding agents side by side,
-// each row badged with the agent detected inside it and its latest line of
-// activity. Runs late so the sessions can never bleed into the feature
-// captures, and skipped when the agent CLIs are not installed.
+// The terminals-panel capture: live coding agents side by side, each row
+// badged with the agent detected inside it and its latest activity. Runs
+// late so the sessions cannot bleed into the feature captures.
 test('terminals', async ({ page }) => {
   const agents = [
     { id: 'codex', cli: 'codex' },
@@ -366,8 +350,7 @@ test('terminals', async ({ page }) => {
   );
   test.setTimeout(300000);
 
-  // Much narrower than the hero: the panel plus the start of the active
-  // session tell the story.
+  // Narrower than the hero: the panel plus the start of the active session.
   await page.setViewportSize({ width: 960, height: 1160 });
   await hideWebgl(page);
   await ready(page);
@@ -377,8 +360,7 @@ test('terminals', async ({ page }) => {
     (window as any).jupyterapp.shell.activateById('xtralab-running-terminals');
   });
 
-  // Launch each agent in its own terminal, letting it boot (and answering
-  // its one-time prompts) before starting the next.
+  // Launch each agent in its own terminal, one at a time.
   const widgetIds: string[] = [];
   for (const agent of agents) {
     const widgetId: string = await page.evaluate(async agentId => {
@@ -390,8 +372,8 @@ test('terminals', async ({ page }) => {
     await awaitAgentReady(page, widgetId);
   }
 
-  // Every session listed, and activity lines under (at least) most rows —
-  // an idle agent whose buffer is all chrome legitimately has none.
+  // Every session listed, with activity lines under most rows: an idle
+  // agent whose buffer is all chrome legitimately has none.
   await expect(page.locator('.jp-xtralab-Terminals-item')).toHaveCount(
     agents.length,
     { timeout: 15000 }
@@ -403,8 +385,7 @@ test('terminals', async ({ page }) => {
     )
     .toBeGreaterThanOrEqual(agents.length - 1);
 
-  // Claude front and center: active tab in the main area, current row in
-  // the panel, crisp banner.
+  // Claude front and center: active tab, current row, crisp banner.
   const claudeId = widgetIds[1];
   await page.evaluate(id => {
     (window as any).jupyterapp.shell.activateById(id);
@@ -426,16 +407,15 @@ test('terminals', async ({ page }) => {
 });
 
 // The landing-page capture: launcher, git diff, and a live Claude Code
-// session in one workspace. Kept last so the agent session can never bleed
-// into the other captures, and skipped when the CLI is not installed.
+// session in one workspace. Kept last so the session cannot bleed into the
+// other captures.
 test('hero', async ({ page }) => {
   test.skip(!hasCli('claude'), 'the hero capture needs the claude CLI');
   // Claude Code's startup is the slow part of this capture.
   test.setTimeout(180000);
 
-  // A larger canvas than the feature shots: the hero packs three panes plus
-  // the sidebar, and the landing page shows it big. Tall enough for the full
-  // launcher (through the changes list) above a readable terminal.
+  // A larger canvas than the feature shots: three panes plus the sidebar,
+  // tall enough for the full launcher above a readable terminal.
   await page.setViewportSize({ width: 2000, height: 1160 });
   await hideWebgl(page);
   await ready(page);
@@ -463,10 +443,9 @@ test('hero', async ({ page }) => {
     shell._dockPanel.addWidget(diff, { mode: 'split-right', ref: launcher });
   });
 
-  // Carve out a bottom pane spanning the full width and weight the split
-  // like a real session. A placeholder terminal shapes the pane first so the
-  // Claude Code session opens straight into its final geometry — claude
-  // paints its welcome screen once and a later resize would garble it.
+  // Carve out a full-width bottom pane weighted like a real session. A
+  // placeholder shapes it first so the agent session opens into its final
+  // geometry — claude paints its welcome once, and a resize garbles it.
   const placeholderId: string = await page.evaluate(async () => {
     const app = (window as any).jupyterapp;
     const placeholder = await app.commands.execute('terminal:create-new');
@@ -480,12 +459,10 @@ test('hero', async ({ page }) => {
     dock.activateWidget(placeholder);
     return placeholder.id;
   });
-  // Let the split settle and the placeholder's xterm fit the pane, so the
-  // agent terminal tabs in next to it with trustworthy dimensions.
+  // Let the placeholder's xterm fit the pane before the agent tabs in.
   await page.waitForTimeout(1000);
 
-  // Start Claude through the launcher's own command — the terminal opens as
-  // a tab beside the placeholder — then retire the placeholder.
+  // Start Claude through the launcher's own command, then drop the placeholder.
   const termId: string = await page.evaluate(async id => {
     const app = (window as any).jupyterapp;
     const term = await app.commands.execute('xtralab:start-agent:claude');
@@ -500,8 +477,8 @@ test('hero', async ({ page }) => {
     return term.id;
   }, placeholderId);
 
-  // Wait for Claude's full welcome screen: the version banner, the `❯`
-  // input box, and the hint footer, drawn in that order.
+  // The regex spans Claude's full welcome screen: version banner, `❯` input
+  // box, and hint footer.
   await awaitAgentReady(
     page,
     termId,

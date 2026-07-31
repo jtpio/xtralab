@@ -23,9 +23,8 @@ module.exports = {
     timeout: 240 * 1000,
     reuseExistingServer: false,
     env: {
-      // Root the server at the seeded project so the file browser and git
-      // integration see it, and keep user-level Jupyter config out of the
-      // run (and settings writes out of the real user config).
+      // Root the server at the seeded project, and keep the run (including
+      // settings writes) out of the real user Jupyter config.
       JUPYTERLAB_GALATA_ROOT_DIR: path.join(workspaceRoot, 'demo-project'),
       JUPYTER_CONFIG_DIR: path.join(workspaceRoot, 'jupyter-config')
     }
