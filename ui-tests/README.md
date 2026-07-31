@@ -25,7 +25,7 @@ pnpm screenshots
 ```
 
 Playwright starts the server itself (port 8899) with an isolated Jupyter
-config, forces the JupyterLab Dark theme in memory, and shuts everything down
+config, forces the Pierre Dark theme in memory, and shuts everything down
 afterwards.
 
 ## What is not regenerated

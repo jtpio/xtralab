@@ -29,7 +29,7 @@ test.use({
   // defaults apply); these overrides are layered on top, in memory only.
   // The sidebar tabs are trimmed to the ones the screenshots are about.
   mockSettings: {
-    '@jupyterlab/apputils-extension:themes': { theme: 'JupyterLab Dark' },
+    '@jupyterlab/apputils-extension:themes': { theme: 'Pierre Dark' },
     'xtralab:sidebar': {
       showDefaultFileBrowser: false,
       showRunningSessions: false
@@ -43,7 +43,7 @@ test.beforeAll(() => {
 
 async function ready(page: IJupyterLabPageFixture): Promise<void> {
   await page.goto();
-  await page.waitForSelector('body[data-jp-theme-name="JupyterLab Dark"]', {
+  await page.waitForSelector('body[data-jp-theme-name="Pierre Dark"]', {
     state: 'attached'
   });
   // Hiding the default file browser can leave the sidebar stack without a
