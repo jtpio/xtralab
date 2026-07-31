@@ -20,3 +20,6 @@ xtralab = { path = "..", editable = false }
 
 [tool.uv]
 prerelease = "allow"
+# prerelease = "allow" is needed for the ydoc chain, but the shipped
+# JupyterLab should stay on stable releases.
+constraint-dependencies = ["jupyterlab<4.7.0a0"]
