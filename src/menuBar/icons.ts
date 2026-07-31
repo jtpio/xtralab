@@ -1,10 +1,8 @@
 import { LabIcon } from '@jupyterlab/ui-components';
 
 /**
- * Hamburger mark for the collapsed main-menu button, in the same hand-drawn
- * visual language as the sidebar toggles in ../topBar/icons.ts: basic
- * geometry, `currentColor` strokes so the icon follows the top bar's text
- * color across themes, and no third-party artwork to license.
+ * Hamburger mark for the collapsed main-menu button, matching the sidebar
+ * toggles in ../topBar/icons.ts.
  */
 export const mainMenuIcon = new LabIcon({
   name: 'xtralab:main-menu',

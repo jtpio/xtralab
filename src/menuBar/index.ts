@@ -29,20 +29,14 @@ const REOPEN_GUARD_MS = 250;
 /**
  * Collapse the main menu bar into a compact menu button.
  *
- * By default the File/Edit/View/… menu bar is hidden and a single hamburger
- * button at the leading edge of the top bar opens the same menus as a
- * vertical popup with submenu flyouts (the VS Code hidden-menu-bar pattern).
- * The popup reuses the live `RankedMenu` instances owned by the `MainMenu` —
- * the same mechanism `MenuBar` itself uses to host them — so ranks,
- * separators, toggle states, and menus added or removed at runtime
- * (jupyterlab-git's Git menu, the Run/Kernel toggling in `xtralab:menus`)
- * are all reflected without any duplication.
+ * The menu bar is hidden and a hamburger button in the top bar opens the same
+ * menus as a vertical popup. The popup reuses the live `RankedMenu` instances
+ * owned by the `MainMenu`, so menus added or removed at runtime are reflected
+ * without duplication.
  *
- * Hiding covers both the bar and its `jp-menu-panel` container: the panel
- * carries its own 27px `min-height`, so hiding only the bar would leave an
- * empty strip across the window. A persisted "Show Menu Bar" toggle
- * (View → Appearance, also in the command palette) restores the classic
- * always-on bar, mirroring the statusbar-extension pattern.
+ * Hiding covers the `jp-menu-panel` container too, which has its own
+ * `min-height` and would otherwise leave an empty strip. The "Show Menu Bar"
+ * toggle restores the classic bar.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
@@ -61,21 +55,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const { commands } = app;
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
-    // The IMainMenu token resolves to the MainMenu MenuBar widget in
-    // JupyterLab core, and @jupyterlab/mainmenu is a deduplicated singleton
-    // so `instanceof` is reliable. Bail if a substitute provider ever
-    // supplies a non-widget implementation — there is nothing to hide then.
     if (!(mainMenu instanceof MainMenu)) {
       return;
     }
 
-    /**
-     * The menu bar's host panel (`jp-menu-panel`). Preferred via `parent`
-     * once the bar is attached — also correct in single-document mode, where
-     * LabShell reparents the panel out of the top area. Before the deferred
-     * attach, fall back to scanning the top area, where LabShell inserts the
-     * panel at construction time.
-     */
     const menuPanel = (): Widget | null =>
       mainMenu.parent ??
       Array.from(labShell.widgets('top')).find(w => w.id === 'jp-menu-panel') ??
@@ -93,11 +76,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
       commands.notifyCommandChanged(TOGGLE_COMMAND);
     };
 
-    // Hide before first paint: the shipped default is collapsed and settings
-    // resolve asynchronously, so waiting for them would flash the empty
-    // menu-panel strip during startup. For users who opted into the visible
-    // bar it appears at layout restore — the moment it appears anyway,
-    // because the mainmenu-extension's shell.add is deferred until then.
     mainMenu.hide();
     menuPanel()?.hide();
 
@@ -161,10 +139,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
       caption: trans.__('Toggle the visibility of the main menu bar'),
       isToggled: () => visible,
       execute: async () => {
-        // Apply immediately so the toggle feels instant, then persist; the
-        // settings `changed` signal re-applies the same state (idempotent).
-        // A failed write still leaves the in-memory toggle working for the
-        // current session.
         applyVisibility(!visible);
         if (settings !== null) {
           try {
@@ -193,24 +167,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
           commands,
           id: OPEN_COMMAND,
           icon: mainMenuIcon,
-          // Empty label keeps the button icon-only: the override is
-          // forwarded verbatim and the component skips the label span when
-          // it is falsy.
           label: '',
           caption: trans.__('Menu'),
-          // Trigger on mousedown without focusing, like the sidebar
-          // toggles — and a prerequisite for the reopen guard: mousedown
-          // fires in the same interaction as the popup's capture-phase
-          // close, so the guard window is measured press-to-press rather
-          // than press-to-release.
           noFocusOnClick: true,
           'aria-haspopup': 'menu'
         });
         button.id = 'xtralab-main-menu-button';
         button.addClass('jp-xtralab-TopBarButton');
-        // Rank 0 slots the button between the left sidebar toggle (-1) and
-        // the menu panel (100), in the slot freed by the disabled upstream
-        // logo plugin.
         labShell.add(button, 'top', { rank: 0 });
 
         const update = (): void => {
