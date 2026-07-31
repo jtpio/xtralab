@@ -4,8 +4,8 @@ import { IThemeManager } from '@jupyterlab/apputils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import type { TranslationBundle } from '@jupyterlab/translation';
 import { undoIcon } from '@jupyterlab/ui-components';
-import { EditProvider, FileDiff, type CreateEditor } from '@pierre/diffs/react';
-import { Editor } from '@pierre/diffs/edit';
+import { EditProvider, FileDiff } from '@pierre/diffs/react';
+import { Editor, type EditorOptions } from '@pierre/diffs/edit';
 import {
   diffAcceptRejectHunk,
   parseDiffFromFile,
@@ -244,6 +244,16 @@ type EditSaveState = 'idle' | 'saving' | 'saved' | 'error';
  * Quiet period after the last keystroke before an edit session autosaves.
  */
 const EDIT_AUTOSAVE_DELAY_MS = 500;
+
+/**
+ * Editor factory handed to `EditProvider`; the library components call it when
+ * an edit session starts, passing the surface's `editorOptions`.
+ */
+function createEditor(
+  options: EditorOptions<IHunkActionAnnotation>
+): Editor<IHunkActionAnnotation> {
+  return new Editor<IHunkActionAnnotation>(options);
+}
 
 interface IDiffSurfaceProps {
   /**
@@ -947,16 +957,15 @@ function EditableFileDiff(props: {
     [cancelPendingSave, persist]
   );
 
-  // The library components own the editor lifecycle: `FileDiff` calls this
-  // factory when its edit session starts (handing it the `editorOptions`
-  // below) and cleans the editor up when the session ends.
-  const createEditor = React.useCallback<CreateEditor<IHunkActionAnnotation>>(
-    options => new Editor<IHunkActionAnnotation>(options),
-    []
-  );
-
-  const editorOptions = React.useMemo(
-    () => ({ onChange: handleEditorChange }),
+  const editorOptions = React.useMemo<EditorOptions<IHunkActionAnnotation>>(
+    () => ({
+      onChange: handleEditorChange,
+      // Place the caret on the first visible editable line so the toggle is
+      // immediately typable; preventScroll keeps the reading position.
+      onAttach: editor => {
+        editor.focus({ lineNumber: 'first-visible', preventScroll: true });
+      }
+    }),
     [handleEditorChange]
   );
 
@@ -1006,19 +1015,17 @@ function EditableFileDiff(props: {
           fileDiff={fileDiff}
           edit={true}
           editorOptions={editorOptions}
-          // The editable view opts out of the worker pool: on attach the
-          // library hands the editor its main-thread highlighter for live
-          // tokenization, the editor render relies on `useTokenTransformer`
-          // (which pooled rendering replaces with the pool-wide options),
-          // and an async worker repaint would rebuild the DOM under the
-          // attached editor.
+          // Opt out of the worker pool: this surface mounts straight into an
+          // edit session, so a synchronous main-thread render produces
+          // editor-compatible markup immediately instead of a pooled paint
+          // the attach would re-render right away.
           disableWorkerPool={true}
           style={hostStyle}
           options={options}
         />
       </EditProvider>
     ),
-    [createEditor, editorOptions, fileDiff, options, hostStyle]
+    [editorOptions, fileDiff, options, hostStyle]
   );
 
   return (
