@@ -11,6 +11,7 @@ import editorIndentPlugin from './editorIndent';
 import gitPlugins from './git';
 import highlightPlugin from './highlight';
 import launcherPlugins from './launcher';
+import menuBarPlugin from './menuBar';
 import menusPlugin from './menus';
 import omniboxPlugin from './omnibox';
 import searchReplacePlugin from './searchReplace';
@@ -42,6 +43,7 @@ const plugins: JupyterFrontEndPlugin<unknown>[] = [
   ...gitPlugins,
   highlightPlugin,
   ...launcherPlugins,
+  menuBarPlugin,
   menusPlugin,
   omniboxPlugin,
   searchReplacePlugin,
