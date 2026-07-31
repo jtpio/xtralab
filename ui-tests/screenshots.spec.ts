@@ -366,13 +366,13 @@ test('terminals', async ({ page }) => {
   );
   test.setTimeout(300000);
 
-  // Narrower than the hero: the crop is a wide strip already, and the
-  // panel plus the start of the active session tell the story.
-  await page.setViewportSize({ width: 1440, height: 1160 });
+  // Much narrower than the hero: the panel plus the start of the active
+  // session tell the story.
+  await page.setViewportSize({ width: 960, height: 1160 });
   await hideWebgl(page);
   await ready(page);
   // The captured crop leans on the sidebar — give activity lines room.
-  await page.sidebar.setWidth(400);
+  await page.sidebar.setWidth(380);
   await page.evaluate(() => {
     (window as any).jupyterapp.shell.activateById('xtralab-running-terminals');
   });
@@ -417,7 +417,7 @@ test('terminals', async ({ page }) => {
   await refitRenderer(page, claudeId);
 
   await shot(page, 'terminals.png', {
-    clip: { x: 0, y: 0, width: 1440, height: 420 }
+    clip: { x: 0, y: 0, width: 960, height: 420 }
   });
 
   for (const widgetId of widgetIds) {
