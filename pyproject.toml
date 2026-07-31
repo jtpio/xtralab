@@ -115,11 +115,10 @@ constraint-dependencies = ["jupyterlab<4.7.0a0"]
 
 [tool.jupyter-releaser]
 # Skip check-npm: it runs a fresh `npm install` on the built tarball (no
-# lockfile), so a floating transitive range can pull a broken or mismatched
-# upstream release, and our @pierre/diffs pin is a prerelease a standalone
-# install resolves only with prerelease opt-in. Our builds are reproducible
-# from pnpm-lock.yaml, but a published package can't ship that lock. Revisit
-# if the npm package must install standalone.
+# lockfile), so a floating transitive range can pull a mismatched or
+# yet-unpublished upstream release. Our builds are reproducible from
+# pnpm-lock.yaml, but a published package can't ship that lock. Revisit if
+# the npm package must install standalone.
 skip = ["check-npm"]
 
 [tool.jupyter-releaser.options]
