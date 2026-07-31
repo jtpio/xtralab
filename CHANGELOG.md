@@ -2,6 +2,33 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.14.0
+
+([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.13.1...b2036ab8d16e919d66373cde2ed3acd22469b813))
+
+### Enhancements made
+
+- Show xtralab and its version in the About dialog [#81](https://github.com/jtpio/xtralab/pull/81) ([@jtpio](https://github.com/jtpio))
+
+### Bugs fixed
+
+- Search command palette entries in the omnibox [#79](https://github.com/jtpio/xtralab/pull/79) ([@jtpio](https://github.com/jtpio))
+
+### Maintenance and upkeep improvements
+
+- Update Python dependencies [#82](https://github.com/jtpio/xtralab/pull/82) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-07-28&to=2026-07-31&type=c))
+
+@jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-07-28..2026-07-31&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.13.1
 
 ([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.13.0...fab8a9cd054eea6173742638d740a382a3a2c917))
@@ -18,8 +45,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-07-27&to=2026-07-28&type=c))
 
 @jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-07-27..2026-07-28&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.13.0
 
