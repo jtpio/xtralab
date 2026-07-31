@@ -10,6 +10,9 @@ export default defineConfig({
     starlight({
       title: 'xtralab',
       description: 'An opinionated JupyterLab meta-package for coding agents.',
+      logo: {
+        src: './src/assets/logo.svg'
+      },
       favicon: '/favicon.svg',
       social: [
         {
