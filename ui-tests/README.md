@@ -30,19 +30,19 @@ Playwright starts the server itself (port 8899) with an isolated Jupyter
 config, forces the Pierre Dark theme in memory, and shuts everything down
 afterwards.
 
-## The hero capture
+## The agent captures
 
-`hero.png`, the landing-page screenshot, launches a real Claude Code session
-through the launcher's own command, so it needs the `claude` CLI installed —
-the test is skipped when the CLI is missing. On a machine that has never run
-claude in the seeded workspace, the test accepts claude's one-time
-folder-trust prompt on its own. The agent buttons in the launcher and hero
-captures reflect the agent CLIs installed on the machine running the suite.
+`hero.png` (the landing page) and `terminals.png` (the terminals panel) run
+live coding-agent sessions through the launcher's own commands: the hero
+launches Claude Code, and the terminals capture launches Codex, Claude Code,
+and GitHub Copilot side by side. These tests need the `claude`, `codex`, and
+`copilot` CLIs installed and are skipped when one is missing. On a machine
+that has never run an agent in the seeded workspace, the tests accept the
+agents' one-time trust prompts on their own. The agent buttons in the
+launcher and hero captures reflect the agent CLIs installed on the machine
+running the suite.
 
-## What is not regenerated
-
-`terminals.webp` in the docs assets is a curated capture of several live
-coding-agent sessions side by side, which the suite does not reproduce.
+## README images
 
 The images referenced by the repository README are down-scaled copies of two
 of the captures:

@@ -44,16 +44,187 @@ test.beforeAll(() => {
 });
 
 /**
- * Whether the `claude` CLI resolves in a login shell — the closest match to
- * the environment the server hands to new terminals. The hero capture runs a
- * real Claude Code session, so it is skipped on machines without the CLI.
+ * Whether a CLI resolves in a login shell — the closest match to the
+ * environment the server hands to new terminals. The captures that run real
+ * coding agents are skipped on machines without the CLIs they launch.
  */
-function hasClaudeCli(): boolean {
+function hasCli(command: string): boolean {
   const shell = process.env.SHELL ?? '/bin/sh';
   return (
-    spawnSync(shell, ['-lc', 'command -v claude'], { stdio: 'ignore' })
+    spawnSync(shell, ['-lc', `command -v ${command}`], { stdio: 'ignore' })
       .status === 0
   );
+}
+
+/**
+ * Hide WebGL from the page before it loads. Under headless capture the
+ * WebGL terminal renderer sizes its canvas for a scale factor of 1, which
+ * the page then stretches — blurry text at our 2x capture. Without WebGL
+ * the terminal falls back to the canvas renderer.
+ */
+async function hideWebgl(page: IJupyterLabPageFixture): Promise<void> {
+  await page.addInitScript(() => {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    (HTMLCanvasElement.prototype as any).getContext = function (
+      type: string,
+      ...args: any[]
+    ) {
+      if (type === 'webgl' || type === 'experimental-webgl') {
+        return null;
+      }
+      return (getContext as any).call(this, type, ...args);
+    };
+  });
+}
+
+/**
+ * Read the full text of a terminal widget's xterm buffer. JupyterLab keeps
+ * its xterm in the widget's private `_term` field — the same access the
+ * terminals panel itself uses for activity lines.
+ */
+function terminalText(
+  page: IJupyterLabPageFixture,
+  widgetId: string
+): Promise<string> {
+  return page.evaluate(id => {
+    const widgets = Array.from(
+      (window as any).jupyterapp.shell.widgets('main')
+    ) as any[];
+    const buffer = widgets.find(w => w.id === id)?.content?._term?.buffer
+      ?.active;
+    if (!buffer) {
+      return '';
+    }
+    const lines: string[] = [];
+    for (let i = 0; i < buffer.length; i++) {
+      lines.push(buffer.getLine(i)?.translateToString(true) ?? '');
+    }
+    return lines.join('\n');
+  }, widgetId);
+}
+
+/** Type Enter into a terminal's session, as if the user had pressed it. */
+function pressEnter(
+  page: IJupyterLabPageFixture,
+  widgetId: string
+): Promise<void> {
+  return page.evaluate(id => {
+    const widgets = Array.from(
+      (window as any).jupyterapp.shell.widgets('main')
+    ) as any[];
+    widgets
+      .find(w => w.id === id)
+      ?.content?.session?.send({ type: 'stdin', content: ['\r'] });
+  }, widgetId);
+}
+
+/**
+ * Wait for a freshly launched agent's TUI, accepting the Enter default of
+ * the one-time screens an agent shows when it has never run in the seeded
+ * workspace (claude's folder trust, codex's onboarding). Resolves once
+ * `until` matches the buffer — or, without `until`, best-effort once the
+ * agent has painted something beyond the shell prompt it was typed into and
+ * the buffer stops changing. Slow starters (codex resolves a toolchain shim
+ * before its first paint) otherwise pass a naive stability check while
+ * still showing only the prompt.
+ */
+async function awaitAgentReady(
+  page: IJupyterLabPageFixture,
+  widgetId: string,
+  until?: RegExp
+): Promise<void> {
+  const prompts = /do you trust|press enter|enter to continue/i;
+  const deadline = Date.now() + 90000;
+  const answered: string[] = [];
+  const initial = await terminalText(page, widgetId);
+  let previous = '';
+  let stable = 0;
+  for (;;) {
+    await page.waitForTimeout(700);
+    const text = await terminalText(page, widgetId);
+    const prompt = prompts.exec(text)?.[0]?.toLowerCase() ?? '';
+    if (prompt && !answered.includes(prompt)) {
+      answered.push(prompt);
+      await pressEnter(page, widgetId);
+    } else if (until) {
+      if (until.test(text)) {
+        return;
+      }
+    } else {
+      stable =
+        text.trim() !== '' && text !== initial && text === previous
+          ? stable + 1
+          : 0;
+      if (stable >= 3) {
+        return;
+      }
+    }
+    previous = text;
+    if (Date.now() > deadline) {
+      if (!until) {
+        return;
+      }
+      throw new Error(
+        `agent terminal never became ready; buffer ends with:\n${text.slice(-400)}`
+      );
+    }
+  }
+}
+
+/**
+ * Wait until a terminal's buffer stops changing. Capped, since parts of an
+ * agent's screen (a cycling input-box hint) never settle for good.
+ */
+async function settleTerminal(
+  page: IJupyterLabPageFixture,
+  widgetId: string
+): Promise<void> {
+  let previous = '';
+  for (let stable = 0, samples = 0; stable < 2 && samples < 15; samples++) {
+    await page.waitForTimeout(700);
+    const text = await terminalText(page, widgetId);
+    stable = text === previous ? stable + 1 : 0;
+    previous = text;
+  }
+}
+
+/**
+ * The canvas renderer sizes its layers for a scale factor of 1 when a
+ * terminal first opens under headless capture, drawing 2x glyphs off the
+ * bottom of the backing store. It re-sizes them correctly on the next real
+ * reflow, so nudge the font size to force one for a terminal that is
+ * visible in a shot.
+ */
+async function refitRenderer(
+  page: IJupyterLabPageFixture,
+  widgetId: string
+): Promise<void> {
+  await page.evaluate(id => {
+    const widgets = Array.from(
+      (window as any).jupyterapp.shell.widgets('main')
+    ) as any[];
+    const term = widgets.find(w => w.id === id)?.content?._term;
+    if (term) {
+      term.options.fontSize = 14;
+      term.options.fontSize = 13;
+    }
+  }, widgetId);
+  await settleTerminal(page, widgetId);
+}
+
+/** Shut a terminal widget's session down so it does not outlive its shot. */
+function shutdownTerminal(
+  page: IJupyterLabPageFixture,
+  widgetId: string
+): Promise<void> {
+  return page.evaluate(async id => {
+    const app = (window as any).jupyterapp;
+    const widgets = Array.from(app.shell.widgets('main')) as any[];
+    const name = widgets.find(w => w.id === id)?.content?.session?.name;
+    if (name) {
+      await app.serviceManager.terminals.shutdown(name);
+    }
+  }, widgetId);
 }
 
 async function ready(page: IJupyterLabPageFixture): Promise<void> {
@@ -76,12 +247,17 @@ async function ready(page: IJupyterLabPageFixture): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
 }
 
-async function shot(page: IJupyterLabPageFixture, name: string): Promise<void> {
+async function shot(
+  page: IJupyterLabPageFixture,
+  name: string,
+  options: { clip?: { x: number; y: number; width: number; height: number } } = {}
+): Promise<void> {
   // A short settle keeps icon fonts, git badges, and focus rings stable.
   await page.waitForTimeout(1000);
   await page.screenshot({
     path: path.join(OUTPUT, name),
-    animations: 'disabled'
+    animations: 'disabled',
+    ...options
   });
 }
 
@@ -174,11 +350,86 @@ test('ask agent', async ({ page }) => {
   await shot(page, 'ask-agent.png');
 });
 
+// The terminals-panel capture: several live coding agents side by side,
+// each row badged with the agent detected inside it and its latest line of
+// activity. Runs late so the sessions can never bleed into the feature
+// captures, and skipped when the agent CLIs are not installed.
+test('terminals', async ({ page }) => {
+  const agents = [
+    { id: 'codex', cli: 'codex' },
+    { id: 'claude', cli: 'claude' },
+    { id: 'copilot', cli: 'copilot' }
+  ];
+  test.skip(
+    !agents.every(agent => hasCli(agent.cli)),
+    'the terminals capture needs the codex, claude, and copilot CLIs'
+  );
+  test.setTimeout(300000);
+
+  // Narrower than the hero: the crop is a wide strip already, and the
+  // panel plus the start of the active session tell the story.
+  await page.setViewportSize({ width: 1440, height: 1160 });
+  await hideWebgl(page);
+  await ready(page);
+  // The captured crop leans on the sidebar — give activity lines room.
+  await page.sidebar.setWidth(400);
+  await page.evaluate(() => {
+    (window as any).jupyterapp.shell.activateById('xtralab-running-terminals');
+  });
+
+  // Launch each agent in its own terminal, letting it boot (and answering
+  // its one-time prompts) before starting the next.
+  const widgetIds: string[] = [];
+  for (const agent of agents) {
+    const widgetId: string = await page.evaluate(async agentId => {
+      const app = (window as any).jupyterapp;
+      const term = await app.commands.execute(`xtralab:start-agent:${agentId}`);
+      return term.id;
+    }, agent.id);
+    widgetIds.push(widgetId);
+    await awaitAgentReady(page, widgetId);
+  }
+
+  // Every session listed, and activity lines under (at least) most rows —
+  // an idle agent whose buffer is all chrome legitimately has none.
+  await expect(page.locator('.jp-xtralab-Terminals-item')).toHaveCount(
+    agents.length,
+    { timeout: 15000 }
+  );
+  await expect
+    .poll(
+      () => page.locator('.jp-xtralab-Terminals-item-detail').count(),
+      { timeout: 20000 }
+    )
+    .toBeGreaterThanOrEqual(agents.length - 1);
+
+  // Claude front and center: active tab in the main area, current row in
+  // the panel, crisp banner.
+  const claudeId = widgetIds[1];
+  await page.evaluate(id => {
+    (window as any).jupyterapp.shell.activateById(id);
+  }, claudeId);
+  await awaitAgentReady(
+    page,
+    claudeId,
+    /Claude Code v[\d.]+[\s\S]*❯[\s\S]*(for shortcuts|for agents|mode on)/
+  );
+  await refitRenderer(page, claudeId);
+
+  await shot(page, 'terminals.png', {
+    clip: { x: 0, y: 0, width: 1440, height: 420 }
+  });
+
+  for (const widgetId of widgetIds) {
+    await shutdownTerminal(page, widgetId);
+  }
+});
+
 // The landing-page capture: launcher, git diff, and a live Claude Code
 // session in one workspace. Kept last so the agent session can never bleed
 // into the other captures, and skipped when the CLI is not installed.
 test('hero', async ({ page }) => {
-  test.skip(!hasClaudeCli(), 'the hero capture needs the claude CLI');
+  test.skip(!hasCli('claude'), 'the hero capture needs the claude CLI');
   // Claude Code's startup is the slow part of this capture.
   test.setTimeout(180000);
 
@@ -186,21 +437,7 @@ test('hero', async ({ page }) => {
   // the sidebar, and the landing page shows it big. Tall enough for the full
   // launcher (through the changes list) above a readable terminal.
   await page.setViewportSize({ width: 2000, height: 1160 });
-  // Headless WebGL renders the terminal into a canvas sized for a scale
-  // factor of 1, which the page then stretches — blurry text at our 2x
-  // capture. Hide WebGL so the terminal falls back to the canvas renderer.
-  await page.addInitScript(() => {
-    const getContext = HTMLCanvasElement.prototype.getContext;
-    (HTMLCanvasElement.prototype as any).getContext = function (
-      type: string,
-      ...args: any[]
-    ) {
-      if (type === 'webgl' || type === 'experimental-webgl') {
-        return null;
-      }
-      return (getContext as any).call(this, type, ...args);
-    };
-  });
+  await hideWebgl(page);
   await ready(page);
 
   // Launcher fully populated: agent buttons and the changes list.
@@ -263,90 +500,17 @@ test('hero', async ({ page }) => {
     return term.id;
   }, placeholderId);
 
-  const terminalText = (): Promise<string> =>
-    page.evaluate(id => {
-      const widgets = Array.from(
-        (window as any).jupyterapp.shell.widgets('main')
-      ) as any[];
-      const buffer = widgets.find(w => w.id === id)?.content?._term?.buffer
-        ?.active;
-      if (!buffer) {
-        return '';
-      }
-      const lines: string[] = [];
-      for (let i = 0; i < buffer.length; i++) {
-        lines.push(buffer.getLine(i)?.translateToString(true) ?? '');
-      }
-      return lines.join('\n');
-    }, termId);
-
   // Wait for Claude's full welcome screen: the version banner, the `❯`
-  // input box, and the hint footer, drawn in that order. On a machine that
-  // has never run claude in the seeded workspace, a one-time folder-trust
-  // prompt comes first — accept its default.
-  let trusted = false;
-  await expect
-    .poll(
-      async () => {
-        const text = await terminalText();
-        if (!trusted && /do you trust the files/i.test(text)) {
-          trusted = true;
-          await page.evaluate(id => {
-            const widgets = Array.from(
-              (window as any).jupyterapp.shell.widgets('main')
-            ) as any[];
-            widgets
-              .find(w => w.id === id)
-              ?.content?.session?.send({ type: 'stdin', content: ['\r'] });
-          }, termId);
-          return '';
-        }
-        return text;
-      },
-      { timeout: 120000 }
-    )
-    .toMatch(/Claude Code v[\d.]+[\s\S]*❯[\s\S]*(for shortcuts|for agents|mode on)/);
-
-  const settle = async (): Promise<void> => {
-    // Let the welcome screen settle: claude repaints a few times right
-    // after the footer appears. Capped, since parts of the screen (the
-    // input-box placeholder hint) keep cycling forever.
-    let previous = '';
-    for (let stable = 0, samples = 0; stable < 2 && samples < 15; samples++) {
-      await page.waitForTimeout(700);
-      const text = await terminalText();
-      stable = text === previous ? stable + 1 : 0;
-      previous = text;
-    }
-  };
-  await settle();
-
-  // The canvas renderer sizes its layers for a scale factor of 1 when the
-  // terminal first opens under headless capture, drawing 2x glyphs off the
-  // bottom of the backing store. It re-sizes them correctly on the next
-  // real reflow, so nudge the font size to force one, then let claude
-  // repaint at the final dimensions.
-  await page.evaluate(id => {
-    const widgets = Array.from(
-      (window as any).jupyterapp.shell.widgets('main')
-    ) as any[];
-    const term = widgets.find(w => w.id === id)?.content?._term;
-    if (term) {
-      term.options.fontSize = 14;
-      term.options.fontSize = 13;
-    }
-  }, termId);
-  await settle();
+  // input box, and the hint footer, drawn in that order.
+  await awaitAgentReady(
+    page,
+    termId,
+    /Claude Code v[\d.]+[\s\S]*❯[\s\S]*(for shortcuts|for agents|mode on)/
+  );
+  await settleTerminal(page, termId);
+  await refitRenderer(page, termId);
 
   await shot(page, 'hero.png');
 
-  // Shut the agent session down so it does not outlive the capture.
-  await page.evaluate(async id => {
-    const app = (window as any).jupyterapp;
-    const widgets = Array.from(app.shell.widgets('main')) as any[];
-    const name = widgets.find(w => w.id === id)?.content?.session?.name;
-    if (name) {
-      await app.serviceManager.terminals.shutdown(name);
-    }
-  }, termId);
+  await shutdownTerminal(page, termId);
 });
