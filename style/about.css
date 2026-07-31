@@ -1,0 +1,66 @@
+/*
+ * About dialog (xtralab:about). The header block is the dialog title, so it
+ * inherits the jp-Dialog-header type (size2/600 under chrome.css) — the
+ * wordmark scales up from there and the version line drops back to body
+ * size, weight and a muted color.
+ */
+
+.jp-xtralab-About-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.jp-xtralab-About-logo {
+  flex-shrink: 0;
+}
+
+.jp-xtralab-About-header-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.jp-xtralab-About-wordmark {
+  font-size: var(--jp-ui-font-size3);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.jp-xtralab-About-version {
+  font-size: var(--jp-ui-font-size1);
+  font-weight: 400;
+  color: var(--jp-ui-font-color2);
+}
+
+.jp-xtralab-About-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 360px;
+  font-size: var(--jp-ui-font-size1);
+  color: var(--jp-ui-font-color1);
+}
+
+.jp-xtralab-About-basedOn {
+  color: var(--jp-ui-font-color2);
+}
+
+.jp-xtralab-About-externalLinks {
+  padding-top: 12px;
+}
+
+.jp-xtralab-About-externalLinks > a {
+  color: var(--jp-content-link-color);
+  text-decoration: none;
+}
+
+.jp-xtralab-About-externalLinks > a:hover {
+  text-decoration: underline;
+}
+
+.jp-xtralab-About-copyright {
+  padding-top: 12px;
+  color: var(--jp-ui-font-color3);
+}

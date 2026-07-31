@@ -1,0 +1,24 @@
+{
+  "jupyter.lab.menus": {
+    "main": [
+      {
+        "id": "jp-mainmenu-help",
+        "items": [
+          {
+            "command": "help:about",
+            "rank": 0
+          },
+          {
+            "type": "separator",
+            "rank": 0
+          }
+        ]
+      }
+    ]
+  },
+  "title": "xtralab About",
+  "description": "The About dialog showing the running xtralab and JupyterLab versions.",
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}

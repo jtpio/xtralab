@@ -3131,7 +3131,7 @@ function getLabPreloadPath(): string {
 }
 
 function getPngIconPath(): string {
-  return path.join(getDesktopRoot(), 'assets', 'jupyter.png');
+  return path.join(getDesktopRoot(), 'assets', 'xtralab.png');
 }
 
 function getLogsDir(): string {

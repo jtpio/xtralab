@@ -1,4 +1,5 @@
 import './base.css';
+import './about.css';
 import './askAgent.css';
 import './chrome.css';
 import './commandBar.css';

@@ -71,7 +71,7 @@ const config: ForgeConfig = {
     executableName,
     appBundleId,
     appCategoryType: 'public.app-category.developer-tools',
-    icon: './assets/jupyter',
+    icon: './assets/xtralab',
     asar: true,
     extraResource: ['python/runtime'],
     ...(signMacOS
@@ -112,7 +112,7 @@ const config: ForgeConfig = {
       {
         name: productName,
         format: 'ULFO',
-        icon: './assets/jupyter.icns'
+        icon: './assets/xtralab.icns'
       },
       ['darwin']
     ),
@@ -125,7 +125,7 @@ const config: ForgeConfig = {
           name: executableName,
           productName,
           bin: executableName,
-          icon: './assets/jupyter.png',
+          icon: './assets/xtralab.png',
           categories: ['Development', 'Science']
         }
       },

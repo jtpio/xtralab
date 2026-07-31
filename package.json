@@ -21,7 +21,8 @@
         "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
         "style/**/*.{css,js,eot,gif,html,jpg,json,png,svg,woff2,ttf}",
         "src/**/*.{ts,tsx}",
-        "schema/*.json"
+        "schema/*.json",
+        "logo.svg"
     ],
     "main": "lib/index.js",
     "types": "lib/index.d.ts",
@@ -141,6 +142,7 @@
             "@jupyterlab/git:notebook-diff",
             "@jupyterlab/git:plain-text-diff",
             "@jupyterlab/git:image-diff",
+            "@jupyterlab/help-extension:about",
             "@jupyterlab/launcher-extension"
         ]
     },
