@@ -1265,7 +1265,11 @@ function createLauncherWindow(tabHost: BrowserWindow | null): BrowserWindow {
   });
   window.webContents.on('page-title-updated', event => {
     event.preventDefault();
-    window.setTitle(app.getName());
+    // Only write on change: each setTitle rebuilds the native tab label,
+    // which can desync tab labels from windows mid-drag.
+    if (window.getTitle() !== app.getName()) {
+      window.setTitle(app.getName());
+    }
   });
   window.once('ready-to-show', () => {
     if (
@@ -2134,7 +2138,11 @@ function createLabWindow(
 
   window.webContents.on('page-title-updated', event => {
     event.preventDefault();
-    window.setTitle(windowTitle);
+    // Only write on change: each setTitle rebuilds the native tab label,
+    // which can desync tab labels from windows mid-drag.
+    if (window.getTitle() !== windowTitle) {
+      window.setTitle(windowTitle);
+    }
   });
 
   window.once('ready-to-show', () => {
