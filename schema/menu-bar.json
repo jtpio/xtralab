@@ -1,0 +1,37 @@
+{
+  "title": "xtralab menu bar",
+  "description": "Visibility of the main menu bar.",
+  "jupyter.lab.shortcuts": [],
+  "jupyter.lab.menus": {
+    "main": [
+      {
+        "id": "jp-mainmenu-view",
+        "items": [
+          {
+            "type": "submenu",
+            "rank": 1,
+            "submenu": {
+              "id": "jp-mainmenu-view-appearance",
+              "items": [
+                {
+                  "command": "xtralab:toggle-menu-bar",
+                  "rank": 14
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "type": "object",
+  "properties": {
+    "visible": {
+      "type": "boolean",
+      "title": "Show the menu bar",
+      "description": "When false, hides the main menu bar. Its menus stay available from the menu button at the leading edge of the top bar and the bar can be restored from View → Appearance → Show Menu Bar.",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}
