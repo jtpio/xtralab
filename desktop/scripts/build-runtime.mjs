@@ -228,9 +228,12 @@ if (!existsSync(pythonExecutable)) {
 }
 
 console.log('Installing dependencies into runtime');
+// --no-config keeps `uv pip` from reading [tool.uv] in pyproject.toml:
+// its constraint-dependencies are unpinned, which --require-hashes rejects.
 await run('uv', [
   'pip',
   'install',
+  '--no-config',
   '--python',
   pythonExecutable,
   '--break-system-packages',
@@ -248,6 +251,7 @@ console.log(`Installing xtralab wheel ${xtralabWheel.name}`);
 await run('uv', [
   'pip',
   'install',
+  '--no-config',
   '--python',
   pythonExecutable,
   '--break-system-packages',
@@ -262,6 +266,7 @@ console.log(`Installing xtralab-desktop wheel ${desktopWheel.name}`);
 await run('uv', [
   'pip',
   'install',
+  '--no-config',
   '--python',
   pythonExecutable,
   '--break-system-packages',
