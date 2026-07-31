@@ -7,11 +7,13 @@ import { cpSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import workspaceRoot from './workspace-root.js';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, 'fixtures');
-const workspace = join(here, 'workspace', 'demo-project');
+const workspace = join(workspaceRoot, 'demo-project');
 
-rmSync(join(here, 'workspace'), { recursive: true, force: true });
+rmSync(workspaceRoot, { recursive: true, force: true });
 mkdirSync(workspace, { recursive: true });
 cpSync(join(fixtures, 'demo-project'), workspace, { recursive: true });
 
