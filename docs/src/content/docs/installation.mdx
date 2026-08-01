@@ -15,17 +15,61 @@ jupyter lab
 
 ## With uv
 
-Add it to a project and run JupyterLab from the project environment:
+xtralab depends on a few prereleases: `jupyter-server-mcp`, plus the
+`jupyter-server-ydoc` and `jupyter-docprovider` 3.x line that
+[ajlab](https://github.com/jtpio/ajlab) builds on. uv only considers
+prereleases for packages you name yourself, not for a dependency's own
+dependencies, so the commands below all pass `--prerelease=allow`. Leaving it
+out does not produce an error: uv quietly walks back to a much older xtralab
+that happens to resolve without prereleases.
+
+That flag applies to every package at once, so it comes paired with
+`jupyterlab<4.7.0a0`, which keeps uv on stable JupyterLab releases instead of
+picking up the next alpha. It is the same constraint xtralab uses for its own
+environments, and it can be raised once the next JupyterLab ships.
+
+### Run it from anywhere, without installing
+
+```bash
+uvx --prerelease=allow --with "jupyterlab<4.7.0a0" --from xtralab jupyter-lab
+```
+
+uv builds a throwaway environment for xtralab and starts JupyterLab in the
+current directory, so this works from any folder and leaves an environment you
+already have alone. uv caches that environment, so every run after the first
+starts in about a second.
+
+uv also warns that `jupyter-lab` comes from `jupyterlab` rather than from
+`xtralab`, and suggests `--from jupyterlab` instead. Ignore the suggestion,
+since following it would drop xtralab from the environment.
+
+### Install it on your PATH
+
+To keep `jupyter lab` available in every shell rather than resolving it on each
+run:
+
+```bash
+uv tool install --prerelease=allow --with xtralab "jupyterlab<4.7.0a0"
+```
+
+The tool being installed is `jupyterlab`, because that is the package providing
+the `jupyter-lab` command; `--with xtralab` puts xtralab alongside it in the
+same environment.
+
+### Add it to a project
+
+Put the resolver settings in the project's `pyproject.toml`, so that later
+`uv lock` and `uv sync` runs keep resolving the same way:
+
+```toml
+[tool.uv]
+prerelease = "allow"
+constraint-dependencies = ["jupyterlab<4.7.0a0"]
+```
 
 ```bash
 uv add xtralab
 uv run jupyter lab
-```
-
-Or try it without installing anything permanently:
-
-```bash
-uvx --from xtralab jupyter-lab
 ```
 
 ## What gets installed
@@ -49,3 +93,12 @@ the above. See the [desktop app page](../desktop/) for details.
 ```bash
 pip install --upgrade xtralab
 ```
+
+A `uv tool` install upgrades under the name of the tool, `jupyterlab`:
+
+```bash
+uv tool upgrade jupyterlab
+```
+
+`uvx` reuses its cached environment; add `--refresh` to that command to rebuild
+it against the latest releases.
