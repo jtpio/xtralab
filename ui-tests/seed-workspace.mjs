@@ -1,22 +1,22 @@
-// Builds the workspace the screenshot suite runs against: a copy of the
-// fixture project turned into a git repository with a baseline commit and a
-// few working-tree changes on top, so the launcher's Changes list and the
-// diff views have something real to show.
+// Builds the workspace the screenshot suite runs against: the fixture project
+// as a git repository, with a baseline commit and working-tree changes on top.
 import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import workspaceRoot from './workspace-root.js';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, 'fixtures');
-const workspace = join(here, 'workspace', 'demo-project');
+const workspace = join(workspaceRoot, 'demo-project');
 
-rmSync(join(here, 'workspace'), { recursive: true, force: true });
+rmSync(workspaceRoot, { recursive: true, force: true });
 mkdirSync(workspace, { recursive: true });
 cpSync(join(fixtures, 'demo-project'), workspace, { recursive: true });
 
-// A fixed identity, fixed dates, and no user/system git config keep the
-// seeded repository identical from one run to the next.
+// Fixed identity and dates, no user/system config: the seeded repository is
+// identical from one run to the next.
 const env = {
   ...process.env,
   GIT_CONFIG_GLOBAL: '/dev/null',
@@ -33,8 +33,8 @@ const git = (...args) =>
 
 git('init', '--initial-branch=main');
 
-// Commit the baseline versions first, then restore the working-tree state on
-// top: a modified README.md and metrics.py plus an untracked forecast.py.
+// Commit the baseline versions, then restore the working-tree state: a
+// modified README.md and metrics.py plus an untracked forecast.py.
 rmSync(join(workspace, 'src', 'acme', 'forecast.py'));
 cpSync(join(fixtures, 'baseline'), workspace, { recursive: true });
 git('add', '-A');

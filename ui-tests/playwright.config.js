@@ -1,5 +1,6 @@
 const path = require('path');
 const baseConfig = require('@jupyterlab/galata/lib/playwright-config');
+const workspaceRoot = require('./workspace-root');
 
 module.exports = {
   ...baseConfig,
@@ -22,15 +23,10 @@ module.exports = {
     timeout: 240 * 1000,
     reuseExistingServer: false,
     env: {
-      // Root the server at the seeded project so the file browser and git
-      // integration see it, and keep user-level Jupyter config out of the
-      // run (and settings writes out of the real user config).
-      JUPYTERLAB_GALATA_ROOT_DIR: path.join(
-        __dirname,
-        'workspace',
-        'demo-project'
-      ),
-      JUPYTER_CONFIG_DIR: path.join(__dirname, 'workspace', 'jupyter-config')
+      // Root the server at the seeded project, and keep the run (including
+      // settings writes) out of the real user Jupyter config.
+      JUPYTERLAB_GALATA_ROOT_DIR: path.join(workspaceRoot, 'demo-project'),
+      JUPYTER_CONFIG_DIR: path.join(workspaceRoot, 'jupyter-config')
     }
   }
 };
