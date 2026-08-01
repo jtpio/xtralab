@@ -4,7 +4,7 @@ import { IThemeManager, Notification } from '@jupyterlab/apputils';
 import { PathExt } from '@jupyterlab/coreutils';
 import { Git } from '@jupyterlab/git';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
-import { Contents } from '@jupyterlab/services';
+import { Contents, ServerConnection } from '@jupyterlab/services';
 import type { TranslationBundle } from '@jupyterlab/translation';
 import { ReactWidget } from '@jupyterlab/ui-components';
 import { PromiseDelegate } from '@lumino/coreutils';
@@ -531,6 +531,30 @@ function ModelDiffView(props: {
     [contentsManager, serverPath]
   );
 
+  // Pre-write staleness check for both write paths. `type: 'file'` matches how
+  // the git content API reads the working tree (both go through the server's
+  // contents manager), so for an unchanged file this compares equal to the
+  // loaded diff text byte for byte — notebooks included. A missing file reads
+  // as '' for the same reason: that is what the git API returns for one.
+  const readDiskText = React.useCallback(async (): Promise<string> => {
+    try {
+      const current = await contentsManager.get(serverPath, {
+        type: 'file',
+        format: 'text',
+        content: true
+      });
+      return typeof current.content === 'string' ? current.content : '';
+    } catch (err) {
+      if (
+        err instanceof ServerConnection.ResponseError &&
+        err.response.status === 404
+      ) {
+        return '';
+      }
+      throw err;
+    }
+  }, [contentsManager, serverPath]);
+
   const hunkDiscard = React.useMemo(
     () => ({
       enabled: canDiscardHunk,
@@ -538,9 +562,10 @@ function ModelDiffView(props: {
       onAfterSave: () => {
         // Re-pull so the diff reflects the reverted hunk.
         void widget.refresh();
-      }
+      },
+      readDiskText
     }),
-    [canDiscardHunk, saveWorkingFile, widget]
+    [canDiscardHunk, saveWorkingFile, readDiskText, widget]
   );
 
   const handleLineAsk = React.useMemo(() => {
@@ -601,9 +626,16 @@ function ModelDiffView(props: {
         setState(prev =>
           prev.newText === text ? prev : { ...prev, newText: text }
         );
+      },
+      readDiskText,
+      onConflictDiscard: () => {
+        // The user kept the on-disk version: end the session (dropping its
+        // unsaved edits) and re-pull so the diff shows the file as it is now.
+        widget.setEditing(false);
+        void widget.refresh();
       }
     }),
-    [canEdit, saveWorkingFile, widget, model]
+    [canEdit, saveWorkingFile, readDiskText, widget, model]
   );
 
   return (

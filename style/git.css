@@ -293,6 +293,11 @@
   color: var(--jp-ui-inverse-font-color1);
 }
 
+.jp-xtralab-DiffWidget-saveStatus[data-state='conflict'] {
+  background-color: var(--jp-warn-color1);
+  color: var(--jp-ui-inverse-font-color1);
+}
+
 /*
  * Notebook diff. Renders one block per cell stacked vertically, plus an
  * optional notebook-level metadata block at the bottom. Each cell carries
