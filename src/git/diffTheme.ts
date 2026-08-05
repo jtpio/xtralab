@@ -25,11 +25,9 @@ const JUPYTERLAB_THEME_VARIABLES: Record<string, string> = {
 
 /**
  * Register a Shiki theme whose token colors read JupyterLab's editor
- * variables. One theme per `type` (not the library's
- * `registerCustomCSSVariableTheme`, whose factory hardcodes `type: 'dark'`):
- * the type must match the host's `themeType`, or `light-dark()` reads a
- * `--diffs-token-<themeType>` variable the editor never set and edited lines
- * fall back to the plain foreground color.
+ * variables. One theme per `type` (the library's own factory hardcodes
+ * `type: 'dark'`): it must match the host's `themeType`, or `light-dark()`
+ * reads an unset token variable and edited lines lose their colors.
  */
 function registerJupyterlabTheme(name: string, type: 'light' | 'dark'): void {
   const theme = {

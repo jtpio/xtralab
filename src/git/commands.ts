@@ -251,9 +251,8 @@ export function registerGitCommands(
         return;
       }
       const pin = typed.pin === true;
-      // A pinned tab already showing this change wins over opening a
-      // duplicate: reveal it, the way jupyterlab-git reveals an existing
-      // diff for the same file.
+      // Reveal an existing pinned tab for this change instead of opening a
+      // duplicate, as jupyterlab-git does.
       const pinned = findDiff(typed.change, true);
       if (pinned !== undefined && !pinned.isDisposed) {
         app.shell.activateById(pinned.id);

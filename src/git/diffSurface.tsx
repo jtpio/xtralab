@@ -207,62 +207,48 @@ interface IHunkDiscard {
   save: (fullText: string) => Promise<void>;
   onAfterSave: () => void;
   /**
-   * Read the current working-tree text through the same server path the diff
-   * baseline came from (a missing file reads as `''`). Checked right before a
-   * discard writes, so a rebuilt file based on a stale diff — the file changed
-   * on disk since it was loaded, e.g. by a coding agent — reloads the view
-   * instead of silently reverting the external change.
+   * Read the current working-tree text (a missing file reads as `''`).
+   * Checked before a discard writes so a stale view reloads instead of
+   * silently reverting an external change.
    */
   readDiskText: () => Promise<string>;
 }
 
 /**
- * Optional direct-editing wiring. When supplied and {@link IDiffEdit.canEdit}
- * holds, the new (additions) side of the textual diff becomes an in-place
- * editor: edits autosave to the working-tree file through {@link IDiffEdit.save}
- * (the host owns the on-disk path), and {@link IDiffEdit.onSaved} reports the
- * text after each confirmed write so the host can keep the read-only baseline
- * in sync without a server round-trip.
+ * Direct-editing wiring: when supplied and {@link IDiffEdit.canEdit} holds,
+ * the new side of the textual diff becomes an in-place editor that autosaves
+ * to the working-tree file through the host.
  */
 export interface IDiffEdit {
   /**
-   * Whether the new side maps to a savable working-tree text file. Editing is
-   * only offered when this holds (e.g. not for staged/index or binary diffs).
+   * Whether the new side maps to a savable working-tree text file.
    */
   canEdit: boolean;
   /**
-   * Persist the full edited text to disk. Must not trigger a diff reload — the
-   * editor owns the live view while a session is active.
+   * Persist the full edited text to disk, without triggering a diff reload.
    */
   save: (fullText: string) => Promise<void>;
   /**
-   * Called with the full text after each *confirmed* disk write (a failed save
-   * never advances it). The host adopts it as the read-only baseline so that
-   * view tracks disk both during and after the session.
+   * Called with the full text after each confirmed disk write; the host
+   * adopts it as the read-only baseline.
    */
   onSaved?: (fullText: string) => void;
   /**
-   * Read the current working-tree text through the same server path the diff
-   * baseline came from (a missing file reads as `''`). Checked right before
-   * every autosave: when the on-disk text no longer matches the last text this
-   * session confirmed, someone else — typically a coding agent — wrote the
-   * file, and blindly saving would revert their change. The check is
-   * best-effort (read and write are separate requests), but it closes the
-   * whole-session window during which the snapshot goes stale.
+   * Read the current working-tree text (a missing file reads as `''`).
+   * Checked before every autosave so a stale session pauses as a conflict
+   * instead of reverting an external write.
    */
   readDiskText: () => Promise<string>;
   /**
    * Called when the user resolves an autosave conflict by keeping the file on
-   * disk. The host ends the edit session and reloads the diff; the session's
-   * unsaved edits are intentionally dropped.
+   * disk; the host ends the session and reloads the diff.
    */
   onConflictDiscard?: () => void;
 }
 
 /**
- * Live save state surfaced to the user while an edit session is active.
- * `conflict` means the file changed on disk under the session; autosaving
- * stays paused until the user resolves it through the conflict notification.
+ * Save state surfaced while editing. `conflict` pauses autosaving until the
+ * user resolves it through the notification.
  */
 type EditSaveState = 'idle' | 'saving' | 'saved' | 'error' | 'conflict';
 
@@ -272,8 +258,7 @@ type EditSaveState = 'idle' | 'saving' | 'saved' | 'error' | 'conflict';
 const EDIT_AUTOSAVE_DELAY_MS = 500;
 
 /**
- * Editor factory handed to `EditProvider`; the library components call it when
- * an edit session starts, passing the surface's `editorOptions`.
+ * Editor factory handed to `EditProvider` when an edit session starts.
  */
 function createEditor(
   options: EditorOptions<IHunkActionAnnotation>
@@ -365,9 +350,8 @@ interface IDiffSurfaceProps {
    */
   onLineAsk?: (range: SelectedLineRange, anchor: DOMRect | null) => void;
   /**
-   * Whether the host has the edit toggle switched on. Only takes effect while
-   * the editable file diff is the active view (see {@link IDiffEdit.canEdit}
-   * and {@link onEditActiveChange}).
+   * Whether the host has the edit toggle switched on. Only takes effect
+   * while the diff is editable (see {@link onEditActiveChange}).
    */
   editing?: boolean;
   /**
@@ -397,8 +381,7 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
 }
 
 /**
- * The diff views themselves, mounted inside the worker-pool provider so
- * every `FileDiff` below picks the pool up from context.
+ * The diff views themselves, mounted inside the worker-pool provider.
  */
 function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
   const {
@@ -487,9 +470,8 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
     onFileDiffActiveChange?.(showFileDiff);
   }, [onFileDiffActiveChange, showFileDiff]);
 
-  // Editing applies only to a working-tree textual/code file diff: not the
-  // rendered notebook view, and not a notebook's raw JSON (editing nbformat by
-  // hand is too easy to corrupt), and only when the host wired a save path.
+  // Editing applies only to a working-tree textual/code file diff; notebooks
+  // are excluded (hand-editing nbformat is too easy to corrupt).
   const editActive =
     edit?.canEdit === true && showFileDiff && !isNotebookPath(newName);
 
@@ -497,7 +479,6 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
     onEditActiveChange?.(editActive);
   }, [onEditActiveChange, editActive]);
 
-  // The toggle only does anything while the file is actually editable.
   const effectiveEditing = editActive && editing === true;
 
   // Split ratio for the diff columns: fraction of width given to the
@@ -536,10 +517,8 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
       if (metadata === null || hunkDiscard === undefined) {
         return;
       }
-      // A discard rewrites the whole file from the loaded diff, so a view
-      // that went stale (the file changed on disk since load — e.g. a coding
-      // agent wrote it) would silently revert that external change. Reload
-      // the diff instead and let the user retry against current content.
+      // If the file changed on disk since the diff loaded, a discard would
+      // silently revert that external change — reload instead.
       let diskText: string;
       try {
         diskText = await hunkDiscard.readDiskText();
@@ -707,14 +686,10 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
     []
   );
 
-  // Fraction of width given to the deletions (left) pane, expressed as a
-  // percentage for both the shadow-root column override and the resizer.
   const leftPercent = leftRatio * 100;
 
-  // Custom property the library's shadow-root rule consumes via
-  // `var(--xtralab-split-cols, …)` (see SPLIT_RESIZE_CSS) to recompute the
-  // column tracks instantly. Memoized so its identity only changes on resize,
-  // which keeps the editable diff subtree (below) from re-rendering needlessly.
+  // Consumed inside the shadow root via `var(--xtralab-split-cols)` (see
+  // SPLIT_RESIZE_CSS). Memoized so only a resize changes its identity.
   const hostStyle = React.useMemo<React.CSSProperties>(
     () =>
       ({
@@ -723,12 +698,9 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
     [leftPercent]
   );
 
-  // Remount the read-only file diff whenever the compared contents actually
-  // change. The library's in-place transition between two different diffs is
-  // unreliable (it can paint panes from the outgoing diff, or throw in its
-  // hunk renderer), while a fresh mount always renders the new state
-  // correctly. Value comparison keeps the key stable across re-renders and
-  // refreshes that return identical text, so scroll position survives those.
+  // Remount the read-only diff when the compared contents change: the
+  // library's in-place transition between diffs is unreliable, a fresh mount
+  // is not. Value comparison keeps scroll across identical-text refreshes.
   const contentEpochRef = React.useRef(0);
   const lastContentRef = React.useRef<[string, string]>([oldText, newText]);
   const fileDiffKey = React.useMemo(() => {
@@ -740,30 +712,22 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
     return contentEpochRef.current;
   }, [oldText, newText]);
 
-  // Options shared by the read-only and editable file-diff renders. A stable
-  // identity lets the library short-circuit its option-equality check on
-  // unrelated re-renders; the editable session captures the mount-time value
-  // for its whole lifetime.
+  // Shared by the read-only and editable renders; a stable identity lets the
+  // library skip its option-equality check on unrelated re-renders.
   const fileDiffOptions = React.useMemo<FileDiffOptions<IHunkActionAnnotation>>(
     () => ({
       diffStyle,
-      // Drop the file header — the tab title already shows the file name and
-      // the panel header carries the change context.
+      // The tab title and panel header already carry the file name.
       disableFileHeader: true,
       theme: resolveDiffTheme(dark, pierreTheme),
       themeType: dark ? 'dark' : 'light',
-      // Inject the column-resize override into the shadow root via the
-      // library's `@layer unsafe` channel. Keeping the string constant lets
-      // the library short-circuit its re-render path when this is unchanged.
       unsafeCSS: SPLIT_RESIZE_CSS
     }),
     [diffStyle, dark, pierreTheme]
   );
 
-  // The read-only render additionally wires line selection + the gutter "+"
-  // button that feed the ask-agent popup; only when a handler exists so a
-  // plain diff keeps its passive gutter. Kept out of the shared options so an
-  // editable session (which freezes its options at mount) never captures it.
+  // Line selection + the ask-agent gutter button apply only to the read-only
+  // render; the editable session freezes its options at mount.
   const readOnlyFileDiffOptions = React.useMemo<
     FileDiffOptions<IHunkActionAnnotation>
   >(
@@ -884,21 +848,11 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
 }
 
 /**
- * The new (additions) side of a textual file diff, rendered as an in-place
- * editor. Hands {@link FileDiff} a `@pierre/diffs` {@link Editor} factory
- * through {@link EditProvider} (which the library requires whenever `edit` is
- * set) and autosaves edits to the working-tree file.
- *
- * The editor owns the live DOM while mounted, so the rendered diff is frozen to
- * its mount-time snapshot and memoized: neither save-status re-renders nor the
- * host adopting newly-saved text (which it does via {@link IDiffEdit.onSaved})
- * can re-hydrate it mid-edit.
- *
- * The frozen snapshot means the session can go stale: an external writer (a
- * coding agent, an editor tab) may change the file underneath it. Every
- * autosave therefore verifies the on-disk text first and pauses as a conflict
- * — with an overwrite-or-discard choice — rather than writing a stale base
- * over someone else's change (see {@link IDiffEdit.readDiskText}).
+ * The new (additions) side of a textual diff rendered as an in-place editor,
+ * autosaving to the working-tree file. The editor owns the live DOM, so the
+ * rendered diff is frozen to its mount-time snapshot; every autosave first
+ * checks the on-disk text and pauses as a conflict if an external writer
+ * changed the file underneath the session.
  */
 function EditableFileDiff(props: {
   initialFileDiff: FileDiffMetadata;
@@ -918,19 +872,14 @@ function EditableFileDiff(props: {
     trans
   } = props;
 
-  // The diff is frozen to its mount-time snapshot: the editor takes over live
-  // rendering of edits, and the host re-deriving the diff from newly-saved
-  // text must not re-hydrate it. Options are frozen for the session too — a
-  // diffStyle/theme change would otherwise force the library to repaint from
-  // the frozen snapshot while the editor is attached, desyncing the view from
-  // the live document — so the host hides the layout toggle while editing,
-  // and theme changes apply on exit.
+  // Frozen for the session: re-hydrating the diff or repainting on option
+  // changes would desync the view from the live document, so the host keeps
+  // the layout toggle inert while editing and theme changes apply on exit.
   const [fileDiff] = React.useState(initialFileDiff);
   const [options] = React.useState(initialOptions);
 
-  // The text currently in the editor and the text last *confirmed* on disk.
-  // Held in refs so neither typing nor save bookkeeping re-renders this
-  // widget. The initial on-disk text is the save baseline.
+  // Editor text and last text confirmed on disk; refs so neither typing nor
+  // save bookkeeping re-renders this widget.
   const latestTextRef = React.useRef(initialText);
   const savedTextRef = React.useRef(initialText);
 
@@ -950,31 +899,23 @@ function EditableFileDiff(props: {
 
   const [saveState, setSaveState] = React.useState<EditSaveState>('idle');
 
-  // Set while an unresolved conflict notification is showing, so retries do
-  // not stack toasts. Cleared when the user acts on it or a write lands.
+  // Set while a conflict notification is showing, so retries don't stack
+  // toasts.
   const conflictToastRef = React.useRef<string | null>(null);
-  // One save may bypass the disk check: set by the conflict notification's
-  // "Overwrite" action, whose whole point is to write over the external change.
+  // Lets one save bypass the disk check: set by the notification's
+  // "Overwrite" action.
   const skipConflictGuardRef = React.useRef(false);
-  // Set when the user resolves a conflict by keeping the file on disk: the
-  // session is being torn down and nothing may be written anymore — including
-  // the teardown flush, which would otherwise re-save the abandoned edits.
+  // Set when the user discards their edits: nothing may be written anymore,
+  // including the teardown flush.
   const abandonedRef = React.useRef(false);
-  // `persist` runs before `notifyConflict` can be defined (they reference each
-  // other), so it reaches the latest one through a ref.
+  // `persist` and `notifyConflict` reference each other, so `persist` goes
+  // through a ref.
   const notifyConflictRef = React.useRef<() => void>(() => undefined);
 
-  // Persist edits to disk, single-flight: at most one save runs at a time and
-  // the loop drains to the latest text, so writes can never overlap or land
-  // out of order. Each write is preceded by a disk check (see
-  // {@link IDiffEdit.readDiskText}): if the file no longer holds the last text
-  // this session confirmed, an external writer got there first and the save
-  // pauses as a conflict instead of reverting their change. The on-disk
-  // baseline (and the host's, via onSaved) only advances for text a write
-  // actually confirmed — or that the disk already holds — so a failed save
-  // never reads back as saved. Stable, so the once-created editor and the
-  // teardown flush call it directly; its state updates after unmount are
-  // React no-ops.
+  // Single-flight save loop: drains to the latest text so writes never
+  // overlap or land out of order. Each write first checks the disk and pauses
+  // as a conflict if an external writer got there first; baselines only
+  // advance on confirmed writes, so a failed save never reads back as saved.
   const persist = React.useCallback(async () => {
     if (savingRef.current || abandonedRef.current) {
       return;
@@ -1000,8 +941,8 @@ function EditableFileDiff(props: {
             return;
           }
           if (diskText === text) {
-            // The disk already holds the editor text (the external writer and
-            // the session converged): adopt it without writing.
+            // The disk already holds the editor text: adopt it without
+            // writing.
             savedTextRef.current = text;
             editPropRef.current.onSaved?.(text);
             didSave = true;
@@ -1024,8 +965,7 @@ function EditableFileDiff(props: {
         editPropRef.current.onSaved?.(text);
         didSave = true;
       }
-      // An unconsumed bypass (an "Overwrite" clicked after the edits were
-      // undone) must not exempt a later, unrelated save from the disk check.
+      // An unconsumed bypass must not exempt a later, unrelated save.
       skipConflictGuardRef.current = false;
       if (didSave) {
         if (conflictToastRef.current !== null) {
@@ -1039,9 +979,8 @@ function EditableFileDiff(props: {
     }
   }, []);
 
-  // Pending autosave timer. The editor reports every applied change
-  // synchronously (no built-in debounce), so this component owns the delay
-  // between the last keystroke and the disk write.
+  // The editor reports every change synchronously (no built-in debounce), so
+  // this component owns the autosave delay.
   const saveTimerRef = React.useRef<number | null>(null);
 
   const cancelPendingSave = React.useCallback(() => {
@@ -1051,12 +990,9 @@ function EditableFileDiff(props: {
     }
   }, []);
 
-  // Surface an autosave conflict and let the user pick a side; nothing is
-  // written while the notification is pending. Sticky (no auto-close) because
-  // dismissing it silently would leave the session paused with no explanation,
-  // and it must survive a closed tab — its actions are the only way left to
-  // recover the unsaved edits. Both actions stay functional after unmount:
-  // `persist` and the host callbacks only touch refs and server state.
+  // Sticky notification: dismissing it silently would leave the session
+  // paused with no explanation, and its actions must survive a closed tab
+  // (they only touch refs and server state).
   const notifyConflict = React.useCallback(() => {
     if (conflictToastRef.current !== null) {
       return;
@@ -1099,9 +1035,7 @@ function EditableFileDiff(props: {
   }, [notifyConflict]);
 
   // Fires on every applied edit. `file.contents` lazily reads the library's
-  // document; if that ever fails there is nothing readable to persist, so
-  // skip. The captured text is what teardown flushes, so it is always the
-  // live document even when the autosave timer never fires.
+  // document; the captured text is what teardown flushes.
   const handleEditorChange = React.useCallback(
     (file: FileContents) => {
       let contents: string;
@@ -1112,9 +1046,8 @@ function EditableFileDiff(props: {
       }
       latestTextRef.current = contents;
       if (contents === savedTextRef.current) {
-        // Back in sync with disk (an undo to the saved text): nothing left
-        // to write. Don't override a save still draining — its loop settles
-        // state, and may still need a corrective write back to this content.
+        // Back in sync with disk (an undo to the saved text). A save still
+        // draining settles its own state.
         cancelPendingSave();
         if (!savingRef.current) {
           setSaveState('idle');
@@ -1142,9 +1075,8 @@ function EditableFileDiff(props: {
     [handleEditorChange]
   );
 
-  // On teardown (toggle off, file swap, tab close): flush whatever the last
-  // onChange delivered instead of waiting out the autosave delay. The
-  // library tears the editor itself down when the edit session ends.
+  // Teardown flushes the last change instead of waiting out the autosave
+  // delay; the library tears the editor itself down.
   React.useEffect(() => {
     return () => {
       cancelPendingSave();
@@ -1152,8 +1084,7 @@ function EditableFileDiff(props: {
     };
   }, [cancelPendingSave, persist]);
 
-  // Let the "Saved" confirmation fade back to the steady state on its own; a
-  // persistent badge would just be noise once the write has landed.
+  // Let the "Saved" confirmation fade on its own.
   React.useEffect(() => {
     if (saveState !== 'saved') {
       return;
@@ -1162,10 +1093,8 @@ function EditableFileDiff(props: {
     return () => clearTimeout(timer);
   }, [saveState]);
 
-  // Ctrl/Cmd+S persists immediately. Together with `data-lm-suppress-shortcuts`
-  // below — which makes Lumino skip its own keybindings for events from here,
-  // so its document-level handler can't run first — this keeps the keystroke
-  // from reaching JupyterLab's save command or the browser's save dialog.
+  // Ctrl/Cmd+S persists immediately; `data-lm-suppress-shortcuts` below keeps
+  // the keystroke from Lumino's save command and the browser dialog.
   const handleKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
@@ -1178,9 +1107,8 @@ function EditableFileDiff(props: {
     [cancelPendingSave, persist]
   );
 
-  // Memoized so only a split-resize (a hostStyle change) re-renders the
-  // library component — which then early-returns off the unchanged snapshot —
-  // while status and host-baseline updates leave it untouched.
+  // Only a split-resize (hostStyle) re-renders the library component; status
+  // and host-baseline updates leave it untouched.
   const diffElement = React.useMemo(
     () => (
       <EditProvider createEditor={createEditor}>
@@ -1188,10 +1116,8 @@ function EditableFileDiff(props: {
           fileDiff={fileDiff}
           edit={true}
           editorOptions={editorOptions}
-          // Opt out of the worker pool: this surface mounts straight into an
-          // edit session, so a synchronous main-thread render produces
-          // editor-compatible markup immediately instead of a pooled paint
-          // the attach would re-render right away.
+          // This surface mounts straight into an edit session, so a sync
+          // main-thread render beats a pooled paint the attach would redo.
           disableWorkerPool={true}
           style={hostStyle}
           options={options}
@@ -1207,8 +1133,6 @@ function EditableFileDiff(props: {
       data-lm-suppress-shortcuts="true"
       onKeyDownCapture={handleKeyDown}
     >
-      {/* Sticky, zero-height bar so the save indicator stays pinned to the top
-          of the viewport while the file scrolls, without displacing the diff. */}
       <div className="jp-xtralab-DiffWidget-saveStatusBar">
         <EditSaveStatus state={saveState} trans={trans} />
       </div>
@@ -1218,9 +1142,7 @@ function EditableFileDiff(props: {
 }
 
 /**
- * Small, unobtrusive save-state indicator shown while editing. Renders nothing
- * in the steady (`idle`) state so it only appears when there is something to
- * report.
+ * Save-state indicator shown while editing; renders nothing when idle.
  */
 function EditSaveStatus(props: {
   state: EditSaveState;
@@ -1339,7 +1261,7 @@ function DiffUnifiedIcon(): React.ReactElement {
  * the same state they pass to {@link DiffSurface}. Only meaningful while the
  * textual/code file diff is the active view, so `available` mirrors the
  * surface's `onFileDiffActiveChange`. `disabled` keeps the toggle visible
- * but inert; hiding it would make the toolbar jump.
+ * but inert so the toolbar doesn't jump.
  */
 export function DiffStyleControl(props: {
   diffStyle: DiffStyle;
@@ -1397,9 +1319,7 @@ export function DiffStyleControl(props: {
 }
 
 /**
- * Pencil glyph for the edit toggle, inlined in the same style as the
- * split/unified icons so the control needs no injected sprite sheet.
- * `currentColor` lets the segmented-button styling drive the fill.
+ * Pencil glyph for the edit toggle, inlined like the split/unified icons.
  */
 function EditModeIcon(): React.ReactElement {
   return (
@@ -1410,11 +1330,8 @@ function EditModeIcon(): React.ReactElement {
 }
 
 /**
- * Edit toggle. Mirrors {@link DiffStyleControl}: the host mounts it into its
- * own toolbar and drives value/visibility from the same state it passes to
- * {@link DiffSurface}. Only meaningful while a working-tree textual/code file
- * diff is the active view, so `available` mirrors the surface's
- * `onEditActiveChange`.
+ * Edit toggle. Mirrors {@link DiffStyleControl}, with `available` driven by
+ * the surface's `onEditActiveChange`.
  */
 export function EditModeControl(props: {
   editing: boolean;

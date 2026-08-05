@@ -198,8 +198,7 @@ export class XtralabDiffWidget
   }
 
   /**
-   * Whether the user has switched the diff into direct-edit mode. Only has an
-   * effect while {@link editAvailable} holds.
+   * Whether the user has switched the diff into direct-edit mode.
    */
   get editing(): boolean {
     return this._editing;
@@ -431,9 +430,8 @@ function ModelDiffView(props: {
     []
   );
 
-  // Tracks the model whose content is currently on screen, so a `refresh()`
-  // of the same model reloads in place (keeping the rendered diff up until
-  // the new text lands) while a model swap shows the loading placeholder.
+  // A `refresh()` of the same model reloads in place; a model swap shows the
+  // loading placeholder.
   const loadedModelRef = React.useRef<IXtralabDiffModel | null>(null);
 
   // Fetch both sides whenever the model or reload nonce changes.
@@ -531,11 +529,9 @@ function ModelDiffView(props: {
     [contentsManager, serverPath]
   );
 
-  // Pre-write staleness check for both write paths. `type: 'file'` matches how
-  // the git content API reads the working tree (both go through the server's
-  // contents manager), so for an unchanged file this compares equal to the
-  // loaded diff text byte for byte — notebooks included. A missing file reads
-  // as '' for the same reason: that is what the git API returns for one.
+  // Pre-write staleness check for both write paths. `type: 'file'` matches
+  // how the git API reads the working tree, so an unchanged file compares
+  // byte-equal to the loaded diff text; a missing file reads as '' to match.
   const readDiskText = React.useCallback(async (): Promise<string> => {
     try {
       const current = await contentsManager.get(serverPath, {
@@ -603,10 +599,8 @@ function ModelDiffView(props: {
         try {
           await saveWorkingFile(text);
         } catch (err) {
-          // Surface failures — including tail saves that land after the session
-          // ended, when the inline indicator is already gone — so a failed
-          // write is never silently dropped. Rethrow so an in-session save
-          // still flips the indicator to "Save failed".
+          // Surface failures even for tail saves after the session ended;
+          // rethrow so an in-session save still shows "Save failed".
           Notification.error(
             `Failed to save edits to ${model.filename}: ${
               err instanceof Error ? err.message : String(err)
@@ -616,10 +610,8 @@ function ModelDiffView(props: {
         }
       },
       onSaved: (text: string) => {
-        // Adopt confirmed-saved text as the read-only baseline so that view
-        // tracks disk without a server round-trip. Ignore a late save from a
-        // previous file: the launcher reuses one widget across files, so an
-        // edit session (and its tail saves) can outlive the model it began on.
+        // Adopt confirmed-saved text as the baseline. Ignore a late save from
+        // a previous file: the launcher reuses one widget across files.
         if (widget.model !== model) {
           return;
         }
@@ -629,8 +621,7 @@ function ModelDiffView(props: {
       },
       readDiskText,
       onConflictDiscard: () => {
-        // The user kept the on-disk version: end the session (dropping its
-        // unsaved edits) and re-pull so the diff shows the file as it is now.
+        // The user kept the on-disk version: end the session and re-pull.
         widget.setEditing(false);
         void widget.refresh();
       }
@@ -777,8 +768,7 @@ function DiffStyleToolbarControl(props: {
     <DiffStyleControl
       diffStyle={style}
       available={fileDiffActive}
-      // The layout is frozen while editing (changing it would repaint the
-      // attached editor), so the toggle is inert until the session ends.
+      // The layout is frozen while editing, so the toggle is inert.
       disabled={editing}
       onChange={next => widget.setDiffStyle(next)}
       trans={trans}
@@ -852,10 +842,8 @@ export function addDiffToolbarItems(
   toolbar: IDiffToolbar,
   widget: XtralabDiffWidget
 ): void {
-  // The edit toggle sits to the right of the view toggles. On a very narrow
-  // diff tab it is the first item JupyterLab's reactive toolbar moves into the
-  // overflow popup, since jupyterlab-git appends a flex spacer plus its own
-  // buttons after ours and the rightmost custom item collapses first.
+  // On a narrow tab the rightmost custom item collapses into the overflow
+  // popup first (jupyterlab-git appends a spacer + its buttons after ours).
   toolbar.addItem(
     'xtralab-notebook-view-mode',
     new NotebookViewModeToolbarItem(widget)

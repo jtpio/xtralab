@@ -5,11 +5,9 @@
 module.exports = {
   module: {
     rules: [
-      // Emit the `@pierre/diffs` portable worker as a raw asset. The bundler
-      // otherwise parses the file referenced from `new URL(...)` in
-      // `src/git/diffWorkerPool.tsx` as a regular module, which executes the
-      // worker code inside the importing chunk and returns an empty exports
-      // object instead of a file URL to hand to `new Worker(...)`.
+      // Emit the `@pierre/diffs` portable worker as a raw asset; the bundler
+      // otherwise parses the `new URL(...)` reference in diffWorkerPool.tsx
+      // as a module and yields no file URL for `new Worker(...)`.
       {
         test: /@pierre[\\/]diffs[\\/]dist[\\/]worker[\\/]worker-portable\.js$/,
         type: 'asset/resource',

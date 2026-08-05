@@ -91,10 +91,7 @@
   display: flex;
   align-items: center;
 
-  /*
-   * Consistent gap from the preceding toolbar item (the pin button or another
-   * toggle), and from each other when several toggles appear at once.
-   */
+  /* Consistent gap from the preceding toolbar item and between toggles. */
   margin-left: 4px;
   font-size: var(--jp-ui-font-size0);
 }
@@ -118,9 +115,8 @@
 }
 
 /*
- * Disabled segments (the Split/Unified toggle while an edit session is
- * active) stay in place but dim; the active segment keeps its highlight so
- * the current mode stays readable.
+ * Disabled segments (the Split/Unified toggle while editing) dim in place;
+ * the active segment keeps its highlight.
  */
 .jp-xtralab-DiffWidget-segmentedButton:disabled {
   cursor: default;
@@ -250,10 +246,8 @@
 }
 
 /*
- * Editable file diff. The library renders the (now editable) additions side
- * into its own shadow root, so this wrapper only provides a positioning
- * context for the save indicator and fills the scroll area like the read-only
- * diff does.
+ * Editable file diff wrapper: a positioning context for the save indicator
+ * (the library renders the diff itself into its own shadow root).
  */
 .jp-xtralab-DiffWidget-editRegion {
   position: relative;
@@ -261,10 +255,8 @@
 }
 
 /*
- * Zero-height sticky bar that keeps the autosave indicator pinned to the top
- * of the scroll viewport while the file scrolls underneath. It takes no
- * vertical space, and `pointer-events: none` lets clicks fall through to the
- * editor below.
+ * Zero-height sticky bar pinning the autosave indicator to the viewport top;
+ * `pointer-events: none` lets clicks fall through to the editor.
  */
 .jp-xtralab-DiffWidget-saveStatusBar {
   position: sticky;
