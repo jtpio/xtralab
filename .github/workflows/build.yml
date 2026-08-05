@@ -60,7 +60,7 @@ jobs:
           done
 
           # @jupyter/docprovider-extension comes from ajlab's jupyter-docprovider
-          # (3.0.0a0), which targets @jupyter/ydoc ^4 to match JupyterLab 4.6, so
+          # (3.0.0), which targets @jupyter/ydoc ^4 to match JupyterLab 4.6, so
           # it resolves cleanly against the host. Require the strict OK.
           grep -e "@jupyter/docprovider-extension.*OK" labextensions.txt
 

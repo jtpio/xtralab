@@ -35,7 +35,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "ajlab>=0.1.10",
+    "ajlab>=0.1.11",
     "jupyter-server-mcp>=0.3.0a0",
     "jupyterlab>=4.6.2",
     "jupyterlab-cursor-light>=1.0.2",
@@ -109,8 +109,8 @@ build_dir = "xtralab/labextension"
 
 [tool.uv]
 prerelease = "allow"
-# prerelease = "allow" is needed for the ydoc chain, but dev environments
-# should stay on stable JupyterLab releases like the desktop app.
+# prerelease = "allow" is needed for jupyter-server-mcp, but dev
+# environments should stay on stable JupyterLab releases like the desktop app.
 constraint-dependencies = ["jupyterlab<4.7.0a0"]
 
 [tool.jupyter-releaser]
