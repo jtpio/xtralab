@@ -28,7 +28,7 @@ wheels = [
 
 [[package]]
 name = "ajlab"
-version = "0.1.10"
+version = "0.1.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jupyter-docprovider" },
@@ -37,9 +37,9 @@ dependencies = [
     { name = "jupyterlab" },
     { name = "jupyterlab-commands-toolkit" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/38/39/c6b13198e95e42deba9b28e3ba7a15e36b74becdc5ac71efc0335909efc2/ajlab-0.1.10.tar.gz", hash = "sha256:a7282a359a2c69fadd4f86b770cfc5014f8716bb84aa30cb10eb0289345e8d85", size = 3153, upload-time = "2026-06-23T15:37:17.725Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b2/05/95b5f71d57cd67edf9f1448a9d24e3b18986fb0acb55e2093e3442efcb9e/ajlab-0.1.11.tar.gz", hash = "sha256:148b9d8093eeafd44062928c460d7516e39507945bcab94532d928a52b9b2a4c", size = 3153, upload-time = "2026-08-05T06:07:05.643Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e6/0f/efdee55b174df8d08ca5e1ac719391aed0574466d6ff7dd4a50dc4ec533d/ajlab-0.1.10-py3-none-any.whl", hash = "sha256:fb8dc9401a5705ba505ce2dde2fb5e0916b0f3599eeb61db300551012de8c7c6", size = 3871, upload-time = "2026-06-23T15:37:16.27Z" },
+    { url = "https://files.pythonhosted.org/packages/73/d9/5e4a821cc899521271e8c1e8450ffce17d1b594c62bfc2c7a62eed0738ba/ajlab-0.1.11-py3-none-any.whl", hash = "sha256:80fd44261b30faf5408c918530ba88010a48d963c906599b0a4e50285e0ff6b7", size = 3870, upload-time = "2026-08-05T06:07:04.262Z" },
 ]
 
 [[package]]
@@ -976,11 +976,11 @@ wheels = [
 
 [[package]]
 name = "jupyter-docprovider"
-version = "3.0.0a0"
+version = "3.0.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ba/65/81fdd5a55bc6b3bc1290fb1033aad4f35b769a14769871e6ed7ab2070a7c/jupyter_docprovider-3.0.0a0.tar.gz", hash = "sha256:fe116ea81d1c0a205a4ee0b2acea442efcb05f5ed3367a4fdcf2c5c1cd642fa4", size = 73433, upload-time = "2026-06-09T16:25:12.98Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/c0/14f09acbd2c62725b3eb33529bf614bcc4065902af35b8d9aa5b4238186c/jupyter_docprovider-3.0.0.tar.gz", hash = "sha256:2d8b5c2014cb4d7af380e67855b712cd604b4ee4817490826e65ff353b1936d9", size = 182442, upload-time = "2026-08-03T19:19:35.502Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4a/02/57021f2e8a58164298e56e6241b94eda20057ecdc57139fe272d2ede6689/jupyter_docprovider-3.0.0a0-py3-none-any.whl", hash = "sha256:440f699428e5389f57ef880eec37775a39bb60174d9cbff9fd30f22c1c38be3f", size = 57157, upload-time = "2026-06-09T16:25:11.347Z" },
+    { url = "https://files.pythonhosted.org/packages/60/90/ed3ac5d98cb9d917399d763616f9c8ae63fe5fb07997d5aca5834f6f8ee9/jupyter_docprovider-3.0.0-py3-none-any.whl", hash = "sha256:18ef6bf947a576285ec84eedf650473cb883a24fe56c25071305dbb015100095", size = 164657, upload-time = "2026-08-03T19:19:33.559Z" },
 ]
 
 [[package]]
@@ -1084,7 +1084,7 @@ wheels = [
 
 [[package]]
 name = "jupyter-server-ydoc"
-version = "3.0.0a0"
+version = "3.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jsonschema" },
@@ -1095,9 +1095,9 @@ dependencies = [
     { name = "pycrdt" },
     { name = "pycrdt-websocket" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/de/e8/da460f1579eaabbbfd239ea2b7e0f9643599c44054c9afcc27845ff68e9b/jupyter_server_ydoc-3.0.0a0.tar.gz", hash = "sha256:b7c2f8ceafd31700327b3bebcf229414f3985181030d87f78dca7bbf0b0e5edd", size = 35814, upload-time = "2026-06-09T16:24:28.875Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/35/66/55bd1d21478a5baed3b4d80f9025bb0a0b2d25dbebddc3736730ad93a421/jupyter_server_ydoc-3.0.0.tar.gz", hash = "sha256:f252498e76a90bee9c0b6b8499dd75885c9646e0a928c7e61f01f456c1f85c04", size = 37162, upload-time = "2026-08-03T19:19:10.539Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/52/75/b16d3d2857fd880e0406a1db388dad7fc5b97efdd797c2b05b6ce03a5ed0/jupyter_server_ydoc-3.0.0a0-py3-none-any.whl", hash = "sha256:cccd6fa6ca82c2578982d3af5b96c7c483d1e5394ea1ab178949ac30fa1da690", size = 35054, upload-time = "2026-06-09T16:24:27.001Z" },
+    { url = "https://files.pythonhosted.org/packages/99/6c/cd724c80396a3714f1e71a710a97d71ab9dd6578a4f78a2f021a07c0ff3a/jupyter_server_ydoc-3.0.0-py3-none-any.whl", hash = "sha256:95bbfda21fdfe537fdc2e1d2a5319552e620c56f0e8262a3af3e654e5b7dc205", size = 36087, upload-time = "2026-08-03T19:19:08.925Z" },
 ]
 
 [[package]]
@@ -2299,8 +2299,8 @@ name = "secretstorage"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography" },
-    { name = "jeepney" },
+    { name = "cryptography", marker = "sys_platform != 'win32'" },
+    { name = "jeepney", marker = "sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1c/03/e834bcd866f2f8a49a85eaff47340affa3bfa391ee9912a952a1faa68c7b/secretstorage-3.5.0.tar.gz", hash = "sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be", size = 19884, upload-time = "2025-11-23T19:02:53.191Z" }
 wheels = [
@@ -2711,7 +2711,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ajlab", specifier = ">=0.1.10" },
+    { name = "ajlab", specifier = ">=0.1.11" },
     { name = "jupyter-server-mcp", specifier = ">=0.3.0a0" },
     { name = "jupyterlab", specifier = ">=4.6.2" },
     { name = "jupyterlab-cursor-dark", specifier = ">=1.0.2" },
