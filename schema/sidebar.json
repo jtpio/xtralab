@@ -1,6 +1,6 @@
 {
   "title": "xtralab sidebar",
-  "description": "Visibility of individual left-sidebar tabs.",
+  "description": "Visibility of individual sidebar tabs.",
   "jupyter.lab.shortcuts": [],
   "jupyter.lab.menus": {
     "main": [
@@ -17,8 +17,8 @@
                   "type": "submenu",
                   "rank": 12.5,
                   "submenu": {
-                    "id": "jp-mainmenu-view-appearance-left-sidebar",
-                    "label": "Left Sidebar",
+                    "id": "jp-mainmenu-view-appearance-sidebars",
+                    "label": "Sidebars",
                     "items": [
                       {
                         "command": "xtralab:toggle-terminals",
@@ -59,37 +59,37 @@
     "showTerminals": {
       "type": "boolean",
       "title": "Show the terminals panel",
-      "description": "When false, hides the xtralab Terminals (`xtralab-running-terminals`) tab from the left sidebar.",
+      "description": "When false, hides the xtralab Terminals (`xtralab-running-terminals`) tab from the sidebar.",
       "default": true
     },
     "showFileBrowser": {
       "type": "boolean",
       "title": "Show the xtralab file browser",
-      "description": "When false, hides the xtralab file browser (`xtralab:file-browser`) tab from the left sidebar. The default JupyterLab file browser is unaffected.",
+      "description": "When false, hides the xtralab file browser (`xtralab:file-browser`) tab from the sidebar. The default JupyterLab file browser is unaffected.",
       "default": true
     },
     "showGitPanel": {
       "type": "boolean",
       "title": "Show the Git panel",
-      "description": "When false, hides the `jp-git-sessions` (Git) tab from the left sidebar.",
+      "description": "When false, hides the `jp-git-sessions` (Git) tab from the sidebar.",
       "default": true
     },
     "showDefaultFileBrowser": {
       "type": "boolean",
       "title": "Show the default JupyterLab file browser",
-      "description": "When false, hides the default `filebrowser` tab from the left sidebar. The xtralab file browser is unaffected.",
+      "description": "When false, hides the default `filebrowser` tab from the sidebar. The xtralab file browser is unaffected.",
       "default": true
     },
     "showRunningSessions": {
       "type": "boolean",
       "title": "Show running terminals and kernels",
-      "description": "When false, hides the `jp-running-sessions` (Running Terminals and Kernels) tab from the left sidebar.",
+      "description": "When false, hides the `jp-running-sessions` (Running Terminals and Kernels) tab from the sidebar.",
       "default": true
     },
     "showSearchReplace": {
       "type": "boolean",
       "title": "Show search and replace",
-      "description": "When false, hides the `jp-search-replace` (Search and Replace) tab from the left sidebar.",
+      "description": "When false, hides the `jp-search-replace` (Search and Replace) tab from the sidebar.",
       "default": true
     }
   },

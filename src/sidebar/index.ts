@@ -78,24 +78,30 @@ const TARGETS: ITarget[] = [
 ];
 
 /**
- * Lets the user toggle individual left-sidebar tabs from
- * View > Appearance > Left Sidebar. Removing a widget from a `LabShell`
- * side area is done by setting `widget.parent = null`: the StackedPanel
- * emits `widgetRemoved`, which the SideBarHandler responds to by removing
- * the matching tab. The widget instance is preserved, so we can re-add it
- * later via `labShell.add` with its original rank.
+ * Lets the user toggle individual sidebar tabs from
+ * View > Appearance > Sidebars, wherever the tab currently lives — a
+ * panel moved to the right sidebar (via "Switch Sidebar Side") stays
+ * listed and is hidden from, and restored to, that side. Removing a
+ * widget from a `LabShell` side area is done by setting
+ * `widget.parent = null`: the StackedPanel emits `widgetRemoved`, which
+ * the SideBarHandler responds to by removing the matching tab. The widget
+ * instance is preserved, so we can re-add it later via `labShell.add`
+ * with its original rank.
  *
  * The menu placement is contributed declaratively in
  * `schema/sidebar.json`, so this plugin only registers commands and
  * applies state — it does not touch `IMainMenu` directly.
  *
  * The preference is persisted to `xtralab:sidebar` settings so the choice
- * survives reloads.
+ * survives reloads. Which side a hidden tab came from is only tracked
+ * in-memory: after a reload every widget starts out in the left sidebar
+ * again (extensions add it there and a hidden tab has no workspace-layout
+ * record), so re-showing it lands on the left.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
   description:
-    'Toggle visibility of individual left-sidebar tabs from the View menu.',
+    'Toggle visibility of individual sidebar tabs from the View menu.',
   autoStart: true,
   requires: [ILabShell],
   optional: [ISettingRegistry, ITranslator],
@@ -110,29 +116,40 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     // Cache widget instances so we can re-add them after `widget.parent =
     // null` has detached them from the sidebar. The widget is no longer
-    // reachable through `labShell.widgets('left')` once removed, so a
+    // reachable through `labShell.widgets(...)` once removed, so a
     // missing cache entry would leave us unable to bring the tab back.
     const widgetCache = new Map<string, Widget>();
 
-    const findInSidebar = (id: string): Widget | null => {
-      for (const w of labShell.widgets('left')) {
-        if (w.id === id) {
-          return w;
+    // Which sidebar a hidden widget was removed from, so re-showing it
+    // restores it to the same side within this session.
+    const hiddenFrom = new Map<string, 'left' | 'right'>();
+
+    const findInSidebars = (
+      id: string
+    ): { widget: Widget; area: 'left' | 'right' } | null => {
+      for (const area of ['left', 'right'] as const) {
+        for (const widget of labShell.widgets(area)) {
+          if (widget.id === id) {
+            return { widget, area };
+          }
         }
       }
       return null;
     };
+
+    const locate = (id: string): 'left' | 'right' | null =>
+      findInSidebars(id)?.area ?? null;
 
     const captureWidget = (id: string): Widget | null => {
       const cached = widgetCache.get(id);
       if (cached && !cached.isDisposed) {
         return cached;
       }
-      const found = findInSidebar(id);
+      const found = findInSidebars(id);
       if (found) {
-        widgetCache.set(id, found);
+        widgetCache.set(id, found.widget);
       }
-      return found;
+      return found?.widget ?? null;
     };
 
     let settings: ISettingRegistry.ISettings | null = null;
@@ -153,17 +170,20 @@ const plugin: JupyterFrontEndPlugin<void> = {
         // it, the preference will take effect.
         return;
       }
-      const present = findInSidebar(target.id) !== null;
-      if (!present && widget.parent !== null) {
-        // The widget lives in another area — the user moved it there, e.g.
-        // via the "Move Widget" context menu. The left-sidebar preference
-        // does not apply to it; leave the widget where it is.
+      const area = locate(target.id);
+      if (!area && widget.parent !== null) {
+        // The widget is attached somewhere outside the sidebars — leave
+        // it alone; the visibility preference only manages sidebar tabs.
         return;
       }
       const wantPresent = readPreference(target);
-      if (wantPresent && !present) {
-        labShell.add(widget, 'left', { rank: target.rank });
-      } else if (!wantPresent && present) {
+      if (wantPresent && !area) {
+        labShell.add(widget, hiddenFrom.get(target.id) ?? 'left', {
+          rank: target.rank
+        });
+        hiddenFrom.delete(target.id);
+      } else if (!wantPresent && area) {
+        hiddenFrom.set(target.id, area);
         // Setting `parent = null` triggers SideBarHandler's
         // `_onWidgetRemoved`, which strips the tab while leaving the
         // widget instance alive for a later re-add.
@@ -183,14 +203,14 @@ const plugin: JupyterFrontEndPlugin<void> = {
         isToggled: () => readPreference(target),
         isVisible: () => {
           // Only list tabs this plugin can actually manage: a widget
-          // currently in the left sidebar, or one hidden by this plugin
-          // (`parent === null`). Widgets the user moved to another area —
-          // and widgets whose extension never loaded — drop out of the
-          // View > Appearance > Left Sidebar menu.
+          // currently in one of the sidebars, or one hidden by this
+          // plugin (`parent === null`). Widgets attached elsewhere — and
+          // widgets whose extension never loaded — drop out of the
+          // View > Appearance > Sidebars menu.
           const widget = captureWidget(target.id);
           return (
             widget !== null &&
-            (widget.parent === null || findInSidebar(target.id) !== null)
+            (widget.parent === null || locate(target.id) !== null)
           );
         },
         execute: async () => {

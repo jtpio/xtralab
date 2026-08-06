@@ -120,7 +120,7 @@ Menu IDs come from the contributing extension's schema. Inspect with `Settings �
 
 **Surface (vanilla):** page config — disable `@jupyterlab/running-extension:plugin`.
 
-### Hide other left-sidebar tabs (terminals, xtralab file browser, git, search and replace)
+### Hide other sidebar tabs (terminals, xtralab file browser, git, search and replace)
 
 **Surface (xtralab):** user setting
 **File:** `lab/user-settings/xtralab/sidebar.jupyterlab-settings`
@@ -134,7 +134,7 @@ Menu IDs come from the contributing extension's schema. Inspect with `Settings �
 }
 ```
 
-Each key defaults to `true`; set only the ones to hide. Hidden tabs stay recoverable from `View → Appearance → Left Sidebar`.
+Each key defaults to `true`; set only the ones to hide. A tab is hidden from whichever sidebar it currently lives in, and hidden tabs stay recoverable from `View → Appearance → Sidebars`.
 
 ### Show hidden files in the file browser by default
 
