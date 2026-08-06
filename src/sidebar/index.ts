@@ -154,6 +154,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
         return;
       }
       const present = findInSidebar(target.id) !== null;
+      if (!present && widget.parent !== null) {
+        // The widget lives in another area — the user moved it there, e.g.
+        // via the "Move Widget" context menu. The left-sidebar preference
+        // does not apply to it; leave the widget where it is.
+        return;
+      }
       const wantPresent = readPreference(target);
       if (wantPresent && !present) {
         labShell.add(widget, 'left', { rank: target.rank });
@@ -175,6 +181,18 @@ const plugin: JupyterFrontEndPlugin<void> = {
       commands.addCommand(target.command, {
         label: target.label(trans),
         isToggled: () => readPreference(target),
+        isVisible: () => {
+          // Only list tabs this plugin can actually manage: a widget
+          // currently in the left sidebar, or one hidden by this plugin
+          // (`parent === null`). Widgets the user moved to another area —
+          // and widgets whose extension never loaded — drop out of the
+          // View > Appearance > Left Sidebar menu.
+          const widget = captureWidget(target.id);
+          return (
+            widget !== null &&
+            (widget.parent === null || findInSidebar(target.id) !== null)
+          );
+        },
         execute: async () => {
           const next = !readPreference(target);
           if (settings) {
