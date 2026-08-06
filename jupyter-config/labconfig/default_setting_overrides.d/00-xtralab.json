@@ -63,5 +63,9 @@
   },
   "@jupyterlab/notebook-extension:tracker": {
     "recordTiming": true
+  },
+  "xtralab:sidebar": {
+    "showDefaultFileBrowser": false,
+    "showRunningSessions": false
   }
 }
