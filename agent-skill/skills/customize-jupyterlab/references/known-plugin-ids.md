@@ -47,12 +47,12 @@ These are the plugins users most often configure in `default_setting_overrides.d
 
 ## xtralab plugins
 
-| Plugin ID          | What it controls                                                     |
-| ------------------ | -------------------------------------------------------------------- |
-| `xtralab:launcher` | Agent and editor cards (`agents[]`, `editors[]`); see xtralab README |
-| `xtralab:sidebar`  | `showDefaultFileBrowser`, `showRunningSessions`                      |
-| `xtralab:plugin`   | File-browser context menu, top-level xtralab commands                |
-| `xtralab:omnibox`  | `maxNumberRecents` (recently used commands and files shown on open)  |
+| Plugin ID          | What it controls                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `xtralab:launcher` | Agent and editor cards (`agents[]`, `editors[]`); see xtralab README                                                     |
+| `xtralab:sidebar`  | `showTerminals`, `showFileBrowser`, `showGitPanel`, `showDefaultFileBrowser`, `showRunningSessions`, `showSearchReplace` |
+| `xtralab:plugin`   | File-browser context menu, top-level xtralab commands                                                                    |
+| `xtralab:omnibox`  | `maxNumberRecents` (recently used commands and files shown on open)                                                      |
 
 ## Plugin ID structure
 

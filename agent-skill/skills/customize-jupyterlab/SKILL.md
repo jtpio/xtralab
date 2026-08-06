@@ -55,7 +55,7 @@ For every customization request:
 
 If the user is on xtralab (not vanilla JupyterLab), some requests have a dedicated setting that is friendlier than disabling plugins. The full settings UI is at `Settings → Settings Editor → xtralab …`:
 
-- **Sidebar tab visibility** (default file browser, running sessions): `xtralab:sidebar` settings — `showDefaultFileBrowser`, `showRunningSessions`. Prefer this over `page_config.disabledExtensions` because it preserves discoverability via the View menu.
+- **Sidebar tab visibility** (terminals, xtralab file browser, git, default file browser, running sessions, search and replace): `xtralab:sidebar` settings — `showTerminals`, `showFileBrowser`, `showGitPanel`, `showDefaultFileBrowser`, `showRunningSessions`, `showSearchReplace`. Prefer this over `page_config.disabledExtensions` because it preserves discoverability via the View menu.
 - **Launcher agents and editors**: `xtralab:launcher` — `agents[]` and `editors[]` arrays merge with built-ins by `id`. See xtralab's README for the schema; set `enabled: false` to hide a default agent, or add a new entry to introduce one.
 - **File browser context menu**: defined in xtralab's `schema/plugin.json`. The shipped menu is opinionated; users override entries by writing user-settings for `xtralab:plugin`.
 

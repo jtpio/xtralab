@@ -10,21 +10,50 @@ import type { Widget } from '@lumino/widgets';
 const PLUGIN_ID = 'xtralab:sidebar';
 
 /**
- * Each entry pairs an upstream sidebar widget id with the rank it was
- * originally added at. The ranks come from the upstream extensions —
- * `filebrowser-extension` adds the default browser at rank 100 and
- * `running-extension` adds the running panel at rank 200 — and we reuse
- * them when re-adding so the tab lands back in its usual position.
+ * Each entry pairs a sidebar widget id with the rank the owning extension
+ * originally added it at, reused when re-adding so the tab lands back in
+ * its usual position. These ranks are only fallbacks: `LabShell.add`
+ * merges the shipped `layout` setting's per-widget options over the ones
+ * passed in, so the setting's ranks win whenever it is present.
+ * `jupyterlab-search-replace` adds its panel without a rank, so its
+ * fallback is the `LabShell` default of 900.
  */
 interface ITarget {
   id: string;
   rank: number;
-  settingKey: 'showDefaultFileBrowser' | 'showRunningSessions';
+  settingKey:
+    | 'showTerminals'
+    | 'showFileBrowser'
+    | 'showGitPanel'
+    | 'showDefaultFileBrowser'
+    | 'showRunningSessions'
+    | 'showSearchReplace';
   command: string;
   label: (trans: ReturnType<ITranslator['load']>) => string;
 }
 
 const TARGETS: ITarget[] = [
+  {
+    id: 'xtralab-running-terminals',
+    rank: 1,
+    settingKey: 'showTerminals',
+    command: 'xtralab:toggle-terminals',
+    label: trans => trans.__('Terminals')
+  },
+  {
+    id: 'xtralab:file-browser',
+    rank: 2,
+    settingKey: 'showFileBrowser',
+    command: 'xtralab:toggle-file-browser',
+    label: trans => trans.__('File Browser')
+  },
+  {
+    id: 'jp-git-sessions',
+    rank: 200,
+    settingKey: 'showGitPanel',
+    command: 'xtralab:toggle-git-panel',
+    label: trans => trans.__('Git')
+  },
   {
     id: 'filebrowser',
     rank: 100,
@@ -38,6 +67,13 @@ const TARGETS: ITarget[] = [
     settingKey: 'showRunningSessions',
     command: 'xtralab:toggle-running-sessions',
     label: trans => trans.__('Running Terminals and Kernels')
+  },
+  {
+    id: 'jp-search-replace',
+    rank: 900,
+    settingKey: 'showSearchReplace',
+    command: 'xtralab:toggle-search-replace',
+    label: trans => trans.__('Search and Replace')
   }
 ];
 
@@ -59,7 +95,7 @@ const TARGETS: ITarget[] = [
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
   description:
-    'Toggle visibility of selected sidebar tabs (default file browser, running sessions) from the View menu.',
+    'Toggle visibility of individual left-sidebar tabs from the View menu.',
   autoStart: true,
   requires: [ILabShell],
   optional: [ISettingRegistry, ITranslator],
