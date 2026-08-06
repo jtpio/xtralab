@@ -546,6 +546,13 @@ launchFolderButton.addEventListener('click', async () => {
 });
 
 (async () => {
+  // Resolved before anything renders: restore rows bake the home-relative
+  // detail path in when they are created and never recompute it.
+  try {
+    homeDir = await window.xtralab.getHomeDir();
+  } catch {
+    homeDir = '';
+  }
   window.xtralab.onUpdateState(renderUpdateState);
   window.xtralab.onRestoreState(renderRestoreState);
   try {
@@ -557,11 +564,6 @@ launchFolderButton.addEventListener('click', async () => {
     renderRestoreState(await window.xtralab.getRestoreState());
   } catch {
     // The launcher stays usable when the restore state is unavailable.
-  }
-  try {
-    homeDir = await window.xtralab.getHomeDir();
-  } catch {
-    homeDir = '';
   }
   updateActionAvailability();
   await renderRecentFolders();
