@@ -10,13 +10,9 @@ import type { Widget } from '@lumino/widgets';
 const PLUGIN_ID = 'xtralab:sidebar';
 
 /**
- * Each entry pairs a sidebar widget id with the rank the owning extension
- * originally added it at, reused when re-adding so the tab lands back in
- * its usual position. These ranks are only fallbacks: `LabShell.add`
- * merges the shipped `layout` setting's per-widget options over the ones
- * passed in, so the setting's ranks win whenever it is present.
- * `jupyterlab-search-replace` adds its panel without a rank, so its
- * fallback is the `LabShell` default of 900.
+ * `rank` is the fallback used when re-adding a hidden tab; the shipped
+ * `layout` setting normally wins because `LabShell.add` merges its
+ * per-widget options over the ones passed in.
  */
 interface ITarget {
   id: string;
@@ -78,25 +74,13 @@ const TARGETS: ITarget[] = [
 ];
 
 /**
- * Lets the user toggle individual sidebar tabs from
- * View > Appearance > Sidebars, wherever the tab currently lives — a
- * panel moved to the right sidebar (via "Switch Sidebar Side") stays
- * listed and is hidden from, and restored to, that side. Removing a
- * widget from a `LabShell` side area is done by setting
- * `widget.parent = null`: the StackedPanel emits `widgetRemoved`, which
- * the SideBarHandler responds to by removing the matching tab. The widget
- * instance is preserved, so we can re-add it later via `labShell.add`
- * with its original rank.
- *
- * The menu placement is contributed declaratively in
- * `schema/sidebar.json`, so this plugin only registers commands and
- * applies state — it does not touch `IMainMenu` directly.
- *
- * The preference is persisted to `xtralab:sidebar` settings so the choice
- * survives reloads. Which side a hidden tab came from is only tracked
- * in-memory: after a reload every widget starts out in the left sidebar
- * again (extensions add it there and a hidden tab has no workspace-layout
- * record), so re-showing it lands on the left.
+ * Toggles individual sidebar tabs from View > Appearance > Sidebars,
+ * whichever side a tab currently lives on. Hiding detaches the widget
+ * (`widget.parent = null`) while keeping the instance for a later
+ * re-add; the preference persists in this plugin's settings. Which side
+ * a hidden tab came from is only tracked in-memory, so after a reload a
+ * re-shown tab lands on the left. The menu placement is contributed
+ * declaratively in `schema/sidebar.json`.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
@@ -114,14 +98,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
     const { commands } = app;
 
-    // Cache widget instances so we can re-add them after `widget.parent =
-    // null` has detached them from the sidebar. The widget is no longer
-    // reachable through `labShell.widgets(...)` once removed, so a
-    // missing cache entry would leave us unable to bring the tab back.
+    // Detached widgets are unreachable via `labShell.widgets(...)`; keep
+    // instances here so hidden tabs can be re-added.
     const widgetCache = new Map<string, Widget>();
 
-    // Which sidebar a hidden widget was removed from, so re-showing it
-    // restores it to the same side within this session.
+    // Side each hidden widget was removed from, so re-showing restores it
+    // there.
     const hiddenFrom = new Map<string, 'left' | 'right'>();
 
     const findInSidebars = (
@@ -165,15 +147,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const apply = (target: ITarget): void => {
       const widget = captureWidget(target.id);
       if (!widget) {
-        // The upstream widget hasn't been added yet (or the extension is
-        // disabled). Nothing to do — the next time `apply` runs and finds
-        // it, the preference will take effect.
+        // Not seen yet (extension disabled or not added) — nothing to do.
         return;
       }
       const area = locate(target.id);
       if (!area && widget.parent !== null) {
-        // The widget is attached somewhere outside the sidebars — leave
-        // it alone; the visibility preference only manages sidebar tabs.
+        // Attached outside the sidebars — leave it alone.
         return;
       }
       const wantPresent = readPreference(target);
@@ -184,9 +163,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
         hiddenFrom.delete(target.id);
       } else if (!wantPresent && area) {
         hiddenFrom.set(target.id, area);
-        // Setting `parent = null` triggers SideBarHandler's
-        // `_onWidgetRemoved`, which strips the tab while leaving the
-        // widget instance alive for a later re-add.
+        // Detaching makes the SideBarHandler remove the tab while the
+        // widget instance stays alive for a later re-add.
         widget.parent = null;
       }
     };
@@ -202,11 +180,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
         label: target.label(trans),
         isToggled: () => readPreference(target),
         isVisible: () => {
-          // Only list tabs this plugin can actually manage: a widget
-          // currently in one of the sidebars, or one hidden by this
-          // plugin (`parent === null`). Widgets attached elsewhere — and
-          // widgets whose extension never loaded — drop out of the
-          // View > Appearance > Sidebars menu.
+          // List only tabs this plugin can manage: in a sidebar, or
+          // hidden by this plugin (`parent === null`).
           const widget = captureWidget(target.id);
           return (
             widget !== null &&
@@ -218,9 +193,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           if (settings) {
             try {
               await settings.set(target.settingKey, next);
-              // `settings.changed` will fire and drive `apply` + the
-              // command-state refresh. Returning here keeps the toggle's
-              // single source of truth in the settings registry.
+              // `settings.changed` drives `apply` and the state refresh.
               return;
             } catch (reason) {
               console.error(
@@ -229,9 +202,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
               );
             }
           }
-          // No settings registry available (or the write failed): fall
-          // back to applying the change in-memory so the toggle still
-          // works for the current session.
+          // No settings registry (or the write failed): apply in-memory
+          // for the current session only.
           apply(target);
           commands.notifyCommandChanged(target.command);
         }
@@ -253,11 +225,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
     }
 
     void app.restored.then(() => {
-      // Capture references first so a hidden-on-startup widget is still
-      // recoverable later. `apply` would also do the lookup, but only on
-      // the targets that need to stay visible — by capturing every target
-      // here we keep the cache populated for both directions of the
-      // toggle.
+      // Capture every widget before applying, so tabs hidden on startup
+      // stay recoverable.
       for (const target of TARGETS) {
         captureWidget(target.id);
       }
