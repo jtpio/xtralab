@@ -42,6 +42,26 @@ agents' one-time trust prompts on their own. The agent buttons in the
 launcher and hero captures reflect the agent CLIs installed on the machine
 running the suite.
 
+## The desktop restore capture
+
+`restore.png` (the desktop launcher restoring a session) comes from a
+separate script, since it drives the real Electron app rather than a browser:
+
+```bash
+pnpm screenshots:restore
+```
+
+It needs the desktop development setup on top of the regular one: the bundled
+Python runtime must exist at `../desktop/python/runtime`, built once with
+`pnpm -C ../desktop build:all` (the TypeScript build itself reruns on every
+capture). The script seeds the demo workspace plus two sibling projects,
+writes a three-window session into an isolated profile under
+`~/.cache/xtralab-screenshots/desktop-userdata/`, and boots the app through a
+generated shim entry so the capture never touches a real xtralab profile. It
+screenshots the launcher while the first project window is open and the other
+two are still starting, then quits the app. The app's windows briefly appear
+on screen while it runs.
+
 ## README images
 
 The images referenced by the repository README are down-scaled copies of two
