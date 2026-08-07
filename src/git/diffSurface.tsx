@@ -5,7 +5,12 @@ import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import type { TranslationBundle } from '@jupyterlab/translation';
 import { undoIcon } from '@jupyterlab/ui-components';
 import { EditProvider, FileDiff } from '@pierre/diffs/react';
-import { Editor, type EditorOptions } from '@pierre/diffs/edit';
+import {
+  Editor,
+  type EditorOptions,
+  type Position,
+  type TextEdit
+} from '@pierre/diffs/edit';
 import {
   diffAcceptRejectHunk,
   parseDiffFromFile,
@@ -154,11 +159,18 @@ export function writeStoredNotebookViewMode(mode: NotebookDiffViewMode): void {
 
 /**
  * Annotation payload threaded through the diff library back into the
- * `renderAnnotation` callback. Carries the index of the hunk a particular
- * action button targets.
+ * `renderAnnotation` callback. The read-only render targets a whole hunk by
+ * index; the editable render targets one contiguous change block, so nearby
+ * blocks merged into a single hunk keep their own discard buttons.
  */
 interface IHunkActionAnnotation {
   hunkIndex: number;
+  block?: {
+    additions: number;
+    deletions: number;
+    additionLineIndex: number;
+    deletionLineIndex: number;
+  };
 }
 
 /**
@@ -266,6 +278,75 @@ function createEditor(
   return new Editor<IHunkActionAnnotation>(options);
 }
 
+/**
+ * Smallest single edit turning `before` into `after` (null when equal), as a
+ * zero-based line/character range into `before`.
+ */
+function minimalTextEdit(before: string, after: string): TextEdit | null {
+  if (before === after) {
+    return null;
+  }
+  let start = 0;
+  const max = Math.min(before.length, after.length);
+  while (start < max && before[start] === after[start]) {
+    start++;
+  }
+  let beforeEnd = before.length;
+  let afterEnd = after.length;
+  while (
+    beforeEnd > start &&
+    afterEnd > start &&
+    before[beforeEnd - 1] === after[afterEnd - 1]
+  ) {
+    beforeEnd--;
+    afterEnd--;
+  }
+  const toPosition = (offset: number): Position => {
+    let line = 0;
+    let lineStart = 0;
+    for (let i = 0; i < offset; i++) {
+      if (before.charCodeAt(i) === 10) {
+        line++;
+        lineStart = i + 1;
+      }
+    }
+    return { line, character: offset - lineStart };
+  };
+  return {
+    range: { start: toPosition(start), end: toPosition(beforeEnd) },
+    newText: after.slice(start, afterEnd)
+  };
+}
+
+/**
+ * Inline "discard this change" annotation button, shared by the read-only
+ * and editable diff renders.
+ */
+function HunkDiscardButton(props: {
+  payload: IHunkActionAnnotation;
+  onDiscard: (payload: IHunkActionAnnotation) => void;
+  trans: TranslationBundle;
+}): React.ReactElement {
+  const { payload, onDiscard, trans } = props;
+  return (
+    <div className="jp-xtralab-DiffWidget-hunkAnnotation">
+      <button
+        type="button"
+        className="jp-xtralab-DiffWidget-hunkButton"
+        title={trans.__('Discard this change')}
+        aria-label={trans.__('Discard change')}
+        onClick={() => onDiscard(payload)}
+      >
+        <undoIcon.react
+          tag="span"
+          className="jp-xtralab-DiffWidget-hunkButton-icon"
+          elementSize="normal"
+        />
+      </button>
+    </div>
+  );
+}
+
 interface IDiffSurfaceProps {
   /**
    * Whether the host is still resolving the file contents.
@@ -350,19 +431,9 @@ interface IDiffSurfaceProps {
    */
   onLineAsk?: (range: SelectedLineRange, anchor: DOMRect | null) => void;
   /**
-   * Whether the host has the edit toggle switched on. Only takes effect
-   * while the diff is editable (see {@link onEditActiveChange}).
-   */
-  editing?: boolean;
-  /**
    * Optional direct-editing wiring; omit for a non-editable diff.
    */
   edit?: IDiffEdit;
-  /**
-   * Called whenever the diff becomes (un)editable, so the host can show/hide
-   * its Edit toggle. True only for a working-tree textual/code file diff.
-   */
-  onEditActiveChange?: (active: boolean) => void;
   /**
    * Translation bundle for user-facing strings.
    */
@@ -402,9 +473,7 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
     onMetadataChange,
     hunkDiscard,
     onLineAsk,
-    editing,
     edit,
-    onEditActiveChange,
     trans
   } = props;
 
@@ -474,12 +543,6 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
   // are excluded (hand-editing nbformat is too easy to corrupt).
   const editActive =
     edit?.canEdit === true && showFileDiff && !isNotebookPath(newName);
-
-  React.useEffect(() => {
-    onEditActiveChange?.(editActive);
-  }, [onEditActiveChange, editActive]);
-
-  const effectiveEditing = editActive && editing === true;
 
   // Split ratio for the diff columns: fraction of width given to the
   // deletions (left) pane. Persisted across sessions so the user only
@@ -554,6 +617,13 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
     [hunkDiscard, metadata, newText, newName, trans]
   );
 
+  const handleDiscardHunkVoid = React.useCallback(
+    (payload: IHunkActionAnnotation) => {
+      void handleDiscardHunk(payload.hunkIndex);
+    },
+    [handleDiscardHunk]
+  );
+
   const renderAnnotation = React.useCallback(
     (
       annotation: DiffLineAnnotation<IHunkActionAnnotation>
@@ -561,26 +631,15 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
       if (annotation.metadata === undefined) {
         return null;
       }
-      const { hunkIndex } = annotation.metadata;
       return (
-        <div className="jp-xtralab-DiffWidget-hunkAnnotation">
-          <button
-            type="button"
-            className="jp-xtralab-DiffWidget-hunkButton"
-            title={trans.__("Discard this hunk's changes")}
-            aria-label={trans.__('Discard hunk')}
-            onClick={() => void handleDiscardHunk(hunkIndex)}
-          >
-            <undoIcon.react
-              tag="span"
-              className="jp-xtralab-DiffWidget-hunkButton-icon"
-              elementSize="normal"
-            />
-          </button>
-        </div>
+        <HunkDiscardButton
+          payload={annotation.metadata}
+          onDiscard={handleDiscardHunkVoid}
+          trans={trans}
+        />
       );
     },
-    [handleDiscardHunk, trans]
+    [handleDiscardHunkVoid, trans]
   );
 
   const handleGutterUtilityClick = React.useCallback(
@@ -713,7 +772,9 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
   }, [oldText, newText]);
 
   // Shared by the read-only and editable renders; a stable identity lets the
-  // library skip its option-equality check on unrelated re-renders.
+  // library skip its option-equality check on unrelated re-renders. Line
+  // selection + the ask-agent gutter button ride along when the host wired a
+  // handler, in both renders.
   const fileDiffOptions = React.useMemo<FileDiffOptions<IHunkActionAnnotation>>(
     () => ({
       diffStyle,
@@ -721,18 +782,7 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
       disableFileHeader: true,
       theme: resolveDiffTheme(dark, pierreTheme),
       themeType: dark ? 'dark' : 'light',
-      unsafeCSS: SPLIT_RESIZE_CSS
-    }),
-    [diffStyle, dark, pierreTheme]
-  );
-
-  // Line selection + the ask-agent gutter button apply only to the read-only
-  // render; the editable session freezes its options at mount.
-  const readOnlyFileDiffOptions = React.useMemo<
-    FileDiffOptions<IHunkActionAnnotation>
-  >(
-    () => ({
-      ...fileDiffOptions,
+      unsafeCSS: SPLIT_RESIZE_CSS,
       ...(onLineAsk !== undefined
         ? {
             enableLineSelection: true,
@@ -741,7 +791,7 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
           }
         : {})
     }),
-    [fileDiffOptions, onLineAsk, handleGutterUtilityClick]
+    [diffStyle, dark, pierreTheme, onLineAsk, handleGutterUtilityClick]
   );
 
   if (loading) {
@@ -801,13 +851,14 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
               trans={trans}
             />
           ) : showFileDiff && metadata !== null ? (
-            effectiveEditing && edit !== undefined ? (
+            editActive && edit !== undefined ? (
               <EditableFileDiff
-                initialFileDiff={metadata}
-                initialOptions={fileDiffOptions}
+                key={newName}
+                fileDiff={metadata}
+                options={fileDiffOptions}
                 hostStyle={hostStyle}
-                initialText={newText}
                 fileName={newName}
+                canDiscardHunk={canDiscardHunk}
                 edit={edit}
                 trans={trans}
               />
@@ -818,7 +869,7 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
                 lineAnnotations={lineAnnotations}
                 renderAnnotation={renderAnnotation}
                 style={hostStyle}
-                options={readOnlyFileDiffOptions}
+                options={fileDiffOptions}
               />
             )
           ) : null}
@@ -848,43 +899,76 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
 }
 
 /**
+ * One mounted edit session: the diff snapshot the editor is attached to.
+ */
+interface IEditSession {
+  epoch: number;
+  fileDiff: FileDiffMetadata;
+  options: FileDiffOptions<IHunkActionAnnotation>;
+  baseText: string;
+}
+
+/**
  * The new (additions) side of a textual diff rendered as an in-place editor,
- * autosaving to the working-tree file. The editor owns the live DOM, so the
- * rendered diff is frozen to its mount-time snapshot; every autosave first
- * checks the on-disk text and pauses as a conflict if an external writer
- * changed the file underneath the session.
+ * autosaving to the working-tree file. The mounted diff is a snapshot of the
+ * session's base text: whenever the host hands down a new diff and there are
+ * no unsaved edits, the session recycles onto it — hunks and their discard
+ * buttons track disk while caret, scroll and undo history carry over (the
+ * editor's `persistState` cache reuses the text document, which owns the
+ * undo stack, across recycles). Every autosave first checks the on-disk text
+ * and pauses as a conflict if an external writer changed the file underneath
+ * the session.
  */
 function EditableFileDiff(props: {
-  initialFileDiff: FileDiffMetadata;
-  initialOptions: FileDiffOptions<IHunkActionAnnotation>;
+  fileDiff: FileDiffMetadata;
+  options: FileDiffOptions<IHunkActionAnnotation>;
   hostStyle: React.CSSProperties;
-  initialText: string;
   fileName: string;
+  canDiscardHunk: boolean;
   edit: IDiffEdit;
   trans: TranslationBundle;
 }): React.ReactElement {
-  const {
-    initialFileDiff,
-    initialOptions,
-    hostStyle,
-    initialText,
-    edit,
-    trans
-  } = props;
+  const { options, hostStyle, canDiscardHunk, edit, trans } = props;
 
-  // Frozen for the session: re-hydrating the diff or repainting on option
-  // changes would desync the view from the live document, so the host keeps
-  // the layout toggle inert while editing and theme changes apply on exit.
-  const [fileDiff] = React.useState(initialFileDiff);
-  const [options] = React.useState(initialOptions);
+  // `persistState` requires a stable non-empty cacheKey on the attached
+  // file; it keys the cached text document reused across recycles.
+  const fileDiff = React.useMemo<FileDiffMetadata>(
+    () => ({ ...props.fileDiff, cacheKey: `xtralab-edit:${props.fileName}` }),
+    [props.fileDiff, props.fileName]
+  );
+
+  // Full text of the incoming diff's additions side (the library splits with
+  // a newline-preserving pattern, so join('') is exact).
+  const incomingBaseText = React.useMemo(
+    () => fileDiff.additionLines.join(''),
+    [fileDiff]
+  );
+
+  const [session, setSession] = React.useState<IEditSession>(() => ({
+    epoch: 0,
+    fileDiff,
+    options,
+    baseText: incomingBaseText
+  }));
+  const sessionRef = React.useRef(session);
+  React.useEffect(() => {
+    sessionRef.current = session;
+  });
 
   // Editor text and last text confirmed on disk; refs so neither typing nor
   // save bookkeeping re-renders this widget.
-  const latestTextRef = React.useRef(initialText);
-  const savedTextRef = React.useRef(initialText);
+  const latestTextRef = React.useRef(incomingBaseText);
+  const savedTextRef = React.useRef(incomingBaseText);
 
   // Guards the single-flight save loop in `persist`.
   const savingRef = React.useRef(false);
+
+  // The attached editor and its focus state, for hunk discards and for focus
+  // restoration across session recycles (`persistState` restores caret and
+  // scroll, but not DOM focus).
+  const editorRef = React.useRef<Editor<IHunkActionAnnotation> | null>(null);
+  const editorFocusedRef = React.useRef(false);
+  const restoreFocusRef = React.useRef(false);
 
   // Latest props behind refs so the once-created editor and any callback that
   // fires after unmount always see the current values.
@@ -1034,6 +1118,35 @@ function EditableFileDiff(props: {
     notifyConflictRef.current = notifyConflict;
   }, [notifyConflict]);
 
+  // Recycle the session onto the latest diff/options. Adopting is only safe
+  // when there are no unsaved edits (or the user just discarded theirs) —
+  // the fresh mount's document comes from the incoming diff, so pending
+  // edits would be lost. A skipped recycle retries after the next save.
+  const [recycleTick, setRecycleTick] = React.useState(0);
+  React.useEffect(() => {
+    const current = sessionRef.current;
+    if (current.fileDiff === fileDiff && current.options === options) {
+      return;
+    }
+    const forced = abandonedRef.current;
+    if (!forced && latestTextRef.current !== savedTextRef.current) {
+      return;
+    }
+    abandonedRef.current = false;
+    latestTextRef.current = incomingBaseText;
+    savedTextRef.current = incomingBaseText;
+    restoreFocusRef.current = editorFocusedRef.current;
+    if (forced) {
+      setSaveState('idle');
+    }
+    setSession(prev => ({
+      epoch: prev.epoch + 1,
+      fileDiff,
+      options,
+      baseText: incomingBaseText
+    }));
+  }, [fileDiff, options, incomingBaseText, recycleTick]);
+
   // Fires on every applied edit. `file.contents` lazily reads the library's
   // document; the captured text is what teardown flushes.
   const handleEditorChange = React.useCallback(
@@ -1047,11 +1160,12 @@ function EditableFileDiff(props: {
       latestTextRef.current = contents;
       if (contents === savedTextRef.current) {
         // Back in sync with disk (an undo to the saved text). A save still
-        // draining settles its own state.
+        // draining settles its own state; a skipped recycle can proceed now.
         cancelPendingSave();
         if (!savingRef.current) {
           setSaveState('idle');
         }
+        setRecycleTick(tick => tick + 1);
         return;
       }
       cancelPendingSave();
@@ -1063,12 +1177,120 @@ function EditableFileDiff(props: {
     [cancelPendingSave, persist]
   );
 
+  // Discard one change block through the live editor so it joins the undo
+  // stack. The rendered blocks describe the session's base text; with
+  // unsaved keystrokes the indexes may not match the document, so save first
+  // and let the recycled session render accurate buttons instead.
+  const discardBlock = React.useCallback(
+    (payload: IHunkActionAnnotation) => {
+      const editor = editorRef.current;
+      const block = payload.block;
+      if (editor === null || block === undefined) {
+        return;
+      }
+      cancelPendingSave();
+      const current = sessionRef.current;
+      if (editor.getText() !== current.baseText) {
+        void persist();
+        return;
+      }
+      // Splice the block's old lines over its new lines. The line arrays
+      // carry their own endings, so join('') is exact.
+      const { additionLines, deletionLines } = current.fileDiff;
+      const nextText =
+        additionLines.slice(0, block.additionLineIndex).join('') +
+        deletionLines
+          .slice(
+            block.deletionLineIndex,
+            block.deletionLineIndex + block.deletions
+          )
+          .join('') +
+        additionLines.slice(block.additionLineIndex + block.additions).join('');
+      const textEdit = minimalTextEdit(current.baseText, nextText);
+      if (textEdit !== null) {
+        editor.applyEdits([textEdit]);
+      }
+      void persist();
+    },
+    [cancelPendingSave, persist]
+  );
+
+  // One button per contiguous change block (not per hunk): the parser merges
+  // nearby blocks into a single hunk, and each block must stay individually
+  // discardable while editing.
+  const lineAnnotations = React.useMemo<
+    DiffLineAnnotation<IHunkActionAnnotation>[]
+  >(() => {
+    if (!canDiscardHunk) {
+      return [];
+    }
+    const annotations: DiffLineAnnotation<IHunkActionAnnotation>[] = [];
+    session.fileDiff.hunks.forEach((hunk, hunkIndex) => {
+      for (const content of hunk.hunkContent) {
+        if (content.type !== 'change') {
+          continue;
+        }
+        annotations.push({
+          side: 'additions',
+          // First line of the block on the new side (for a pure deletion,
+          // the line right after the removal point).
+          lineNumber: content.additionLineIndex + 1,
+          metadata: {
+            hunkIndex,
+            block: {
+              additions: content.additions,
+              deletions: content.deletions,
+              additionLineIndex: content.additionLineIndex,
+              deletionLineIndex: content.deletionLineIndex
+            }
+          }
+        });
+      }
+    });
+    return annotations;
+  }, [canDiscardHunk, session.fileDiff]);
+
+  const renderAnnotation = React.useCallback(
+    (
+      annotation: DiffLineAnnotation<IHunkActionAnnotation>
+    ): React.ReactNode => {
+      if (annotation.metadata === undefined) {
+        return null;
+      }
+      return (
+        <HunkDiscardButton
+          payload={annotation.metadata}
+          onDiscard={discardBlock}
+          trans={trans}
+        />
+      );
+    },
+    [discardBlock, trans]
+  );
+
   const editorOptions = React.useMemo<EditorOptions<IHunkActionAnnotation>>(
     () => ({
+      // Cache the text document per cacheKey so recycles keep the undo
+      // history; the library restores caret and scroll from the same cache.
+      persistState: true,
       onChange: handleEditorChange,
-      // Place the caret on the first visible editable line so the toggle is
-      // immediately typable; preventScroll keeps the reading position.
+      onFocus: () => {
+        editorFocusedRef.current = true;
+      },
+      onBlur: () => {
+        editorFocusedRef.current = false;
+      },
       onAttach: editor => {
+        editorRef.current = editor;
+        if (restoreFocusRef.current) {
+          // Recycled session: caret and scroll come back from the state
+          // cache, DOM focus does not.
+          restoreFocusRef.current = false;
+          editor.focus({ preventScroll: true });
+          return;
+        }
+        // First mount: place the caret on the first visible editable line;
+        // preventScroll keeps the reading position.
         editor.focus({ lineNumber: 'first-visible', preventScroll: true });
       }
     }),
@@ -1107,24 +1329,28 @@ function EditableFileDiff(props: {
     [cancelPendingSave, persist]
   );
 
-  // Only a split-resize (hostStyle) re-renders the library component; status
-  // and host-baseline updates leave it untouched.
+  // Keyed per session epoch: the library's in-place transition between
+  // different diffs is unreliable, a fresh mount is not. Memoized so status
+  // re-renders leave the library component untouched.
   const diffElement = React.useMemo(
     () => (
       <EditProvider createEditor={createEditor}>
         <FileDiff<IHunkActionAnnotation>
-          fileDiff={fileDiff}
+          key={session.epoch}
+          fileDiff={session.fileDiff}
           edit={true}
           editorOptions={editorOptions}
+          lineAnnotations={lineAnnotations}
+          renderAnnotation={renderAnnotation}
           // This surface mounts straight into an edit session, so a sync
           // main-thread render beats a pooled paint the attach would redo.
           disableWorkerPool={true}
           style={hostStyle}
-          options={options}
+          options={session.options}
         />
       </EditProvider>
     ),
-    [editorOptions, fileDiff, options, hostStyle]
+    [session, editorOptions, lineAnnotations, renderAnnotation, hostStyle]
   );
 
   return (
@@ -1260,17 +1486,15 @@ function DiffUnifiedIcon(): React.ReactElement {
  * hosts mount it into their own toolbar and drive its value/visibility from
  * the same state they pass to {@link DiffSurface}. Only meaningful while the
  * textual/code file diff is the active view, so `available` mirrors the
- * surface's `onFileDiffActiveChange`. `disabled` keeps the toggle visible
- * but inert so the toolbar doesn't jump.
+ * surface's `onFileDiffActiveChange`.
  */
 export function DiffStyleControl(props: {
   diffStyle: DiffStyle;
   available: boolean;
-  disabled?: boolean;
   onChange: (style: DiffStyle) => void;
   trans: TranslationBundle;
 }): React.ReactElement {
-  const { diffStyle, available, disabled = false, onChange, trans } = props;
+  const { diffStyle, available, onChange, trans } = props;
   if (!available) {
     return <></>;
   }
@@ -1286,13 +1510,8 @@ export function DiffStyleControl(props: {
         aria-selected={diffStyle === 'split'}
         data-active={diffStyle === 'split'}
         className="jp-xtralab-DiffWidget-segmentedButton jp-xtralab-DiffWidget-segmentedButton-icon"
-        title={
-          disabled
-            ? trans.__('Unavailable while editing')
-            : trans.__('Split (side-by-side) view')
-        }
+        title={trans.__('Split (side-by-side) view')}
         aria-label={trans.__('Split view')}
-        disabled={disabled}
         onClick={() => onChange('split')}
       >
         <DiffSplitIcon />
@@ -1303,61 +1522,11 @@ export function DiffStyleControl(props: {
         aria-selected={diffStyle === 'unified'}
         data-active={diffStyle === 'unified'}
         className="jp-xtralab-DiffWidget-segmentedButton jp-xtralab-DiffWidget-segmentedButton-icon"
-        title={
-          disabled
-            ? trans.__('Unavailable while editing')
-            : trans.__('Unified (inline) view')
-        }
+        title={trans.__('Unified (inline) view')}
         aria-label={trans.__('Unified view')}
-        disabled={disabled}
         onClick={() => onChange('unified')}
       >
         <DiffUnifiedIcon />
-      </button>
-    </div>
-  );
-}
-
-/**
- * Pencil glyph for the edit toggle, inlined like the split/unified icons.
- */
-function EditModeIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-      <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zm.708 1.061L11.207 2.854 13.146 4.793l1.647-1.646zM12.439 5.5 10.5 3.561 4 10.061V10.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.439zm-9.263 4.323-.214.214-1.234 3.086 3.086-1.234.214-.214A.5.5 0 0 1 5 11.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.5.5 0 0 1-.5-.5z" />
-    </svg>
-  );
-}
-
-/**
- * Edit toggle. Mirrors {@link DiffStyleControl}, with `available` driven by
- * the surface's `onEditActiveChange`.
- */
-export function EditModeControl(props: {
-  editing: boolean;
-  available: boolean;
-  onChange: (editing: boolean) => void;
-  trans: TranslationBundle;
-}): React.ReactElement {
-  const { editing, available, onChange, trans } = props;
-  if (!available) {
-    return <></>;
-  }
-  const label = editing
-    ? trans.__('Done editing')
-    : trans.__('Edit the file directly');
-  return (
-    <div className="jp-xtralab-DiffWidget-segmented">
-      <button
-        type="button"
-        aria-pressed={editing}
-        data-active={editing}
-        className="jp-xtralab-DiffWidget-segmentedButton jp-xtralab-DiffWidget-segmentedButton-icon"
-        title={label}
-        aria-label={label}
-        onClick={() => onChange(!editing)}
-      >
-        <EditModeIcon />
       </button>
     </div>
   );

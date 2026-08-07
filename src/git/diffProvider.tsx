@@ -28,27 +28,14 @@ function makeXtralabDiffFactory(
       addDiffToolbarItems(options.toolbar, widget);
     }
     // jupyterlab-git only refreshes through a manual button xtralab hides, so
-    // re-pull when the model changes; deferred while editing, whose own
-    // autosaves fire `changed` too.
-    let refreshPending = false;
+    // re-pull when the model changes. The editable surface adopts a reload
+    // only once there are no unsaved edits, so refreshing mid-edit is safe.
     const onModelChanged = (): void => {
-      if (widget.editing) {
-        refreshPending = true;
-        return;
-      }
       void widget.refresh();
     };
-    const onEditingChanged = (): void => {
-      if (!widget.editing && refreshPending) {
-        refreshPending = false;
-        void widget.refresh();
-      }
-    };
     options.model.changed.connect(onModelChanged);
-    widget.editingChanged.connect(onEditingChanged);
     widget.disposed.connect(() => {
       options.model.changed.disconnect(onModelChanged);
-      widget.editingChanged.disconnect(onEditingChanged);
     });
     return widget;
   };

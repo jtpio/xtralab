@@ -19,7 +19,6 @@ import {
   DIFF_WIDGET_CSS_CLASS,
   DiffStyleControl,
   DiffSurface,
-  EditModeControl,
   NotebookViewModeControl,
   isDarkTheme,
   isPierreTheme,
@@ -86,8 +85,6 @@ export class XtralabDiffWidget
    */
   setModel(model: IXtralabDiffModel): void {
     this._model = model;
-    // A different file may not be editable; never carry edit mode across a swap.
-    this.setEditing(false);
     this.update();
   }
 
@@ -198,49 +195,6 @@ export class XtralabDiffWidget
   }
 
   /**
-   * Whether the user has switched the diff into direct-edit mode.
-   */
-  get editing(): boolean {
-    return this._editing;
-  }
-
-  setEditing(value: boolean): void {
-    if (value === this._editing) {
-      return;
-    }
-    this._editing = value;
-    this._editingChanged.emit(value);
-  }
-
-  get editingChanged(): ISignal<this, boolean> {
-    return this._editingChanged;
-  }
-
-  /**
-   * Whether the Edit toggle currently applies (a working-tree textual diff).
-   */
-  get editAvailable(): boolean {
-    return this._editAvailable;
-  }
-
-  setEditAvailable(value: boolean): void {
-    if (value === this._editAvailable) {
-      return;
-    }
-    this._editAvailable = value;
-    // Leaving an editable view (binary, notebook, staged/index diff, …) must
-    // also drop edit mode so the toggle and the surface stay in sync.
-    if (!value && this._editing) {
-      this.setEditing(false);
-    }
-    this._editAvailableChanged.emit(value);
-  }
-
-  get editAvailableChanged(): ISignal<this, boolean> {
-    return this._editAvailableChanged;
-  }
-
-  /**
    * Emitted when a post-discard reload leaves the diff with no hunks.
    */
   get emptied(): ISignal<this, void> {
@@ -291,10 +245,6 @@ export class XtralabDiffWidget
   private _diffStyleChanged = new Signal<this, DiffStyle>(this);
   private _fileDiffActive = false;
   private _fileDiffActiveChanged = new Signal<this, boolean>(this);
-  private _editing = false;
-  private _editingChanged = new Signal<this, boolean>(this);
-  private _editAvailable = false;
-  private _editAvailableChanged = new Signal<this, boolean>(this);
   private _emptied = new Signal<this, void>(this);
 }
 
@@ -363,26 +313,6 @@ function ModelDiffView(props: {
   const handleFileDiffActiveChange = React.useCallback(
     (active: boolean) => {
       widget.setFileDiffActive(active);
-    },
-    [widget]
-  );
-
-  // Mirror toolbar-driven edit-mode changes into React state.
-  const [editing, setEditing] = React.useState<boolean>(() => widget.editing);
-  React.useEffect(() => {
-    const handler = (sender: XtralabDiffWidget, value: boolean): void => {
-      setEditing(value);
-    };
-    widget.editingChanged.connect(handler);
-    setEditing(widget.editing);
-    return () => {
-      widget.editingChanged.disconnect(handler);
-    };
-  }, [widget]);
-
-  const handleEditActiveChange = React.useCallback(
-    (active: boolean) => {
-      widget.setEditAvailable(active);
     },
     [widget]
   );
@@ -490,20 +420,29 @@ function ModelDiffView(props: {
     };
   }, [widget, model, nonce, isBinary]);
 
+  // Editing writes the working-tree file, so it only applies when the new side
+  // is the working copy (unstaged or untracked) and the diff is plain text.
+  const canEdit =
+    model.challenger.source === Git.Diff.SpecialRef.WORKING &&
+    model.hasConflict !== true &&
+    !isImage &&
+    !isBinary;
+
   // Only close after a reload, not for a file that opens already empty, and
-  // never mid-edit (editing a file down to an empty diff shouldn't close it).
+  // never for an editable diff (editing a file down to an empty diff must
+  // not close it under the user).
   React.useEffect(() => {
     if (
       !state.loading &&
       state.error === null &&
       !isBinary &&
-      !editing &&
+      !canEdit &&
       hunkCount === 0 &&
       nonce > 0
     ) {
       widget.notifyEmptied();
     }
-  }, [state.loading, state.error, isBinary, editing, hunkCount, nonce, widget]);
+  }, [state.loading, state.error, isBinary, canEdit, hunkCount, nonce, widget]);
 
   // The launcher sets `canDiscard`; jupyterlab-git models fall back to source.
   const canDiscardHunk =
@@ -582,14 +521,6 @@ function ModelDiffView(props: {
     };
   }, [askAgent, model, state.oldText, state.newText, trans]);
 
-  // Editing writes the working-tree file, so it only applies when the new side
-  // is the working copy (unstaged or untracked) and the diff is plain text.
-  const canEdit =
-    model.challenger.source === Git.Diff.SpecialRef.WORKING &&
-    model.hasConflict !== true &&
-    !isImage &&
-    !isBinary;
-
   const edit = React.useMemo<IDiffEdit>(
     () => ({
       canEdit,
@@ -621,8 +552,8 @@ function ModelDiffView(props: {
       },
       readDiskText,
       onConflictDiscard: () => {
-        // The user kept the on-disk version: end the session and re-pull.
-        widget.setEditing(false);
+        // The user kept the on-disk version: re-pull so the recycled session
+        // renders the file as it is on disk.
         void widget.refresh();
       }
     }),
@@ -648,9 +579,7 @@ function ModelDiffView(props: {
       onMetadataChange={handleMetadataChange}
       hunkDiscard={hunkDiscard}
       onLineAsk={handleLineAsk}
-      editing={editing}
       edit={edit}
-      onEditActiveChange={handleEditActiveChange}
       trans={trans}
     />
   );
@@ -739,7 +668,6 @@ function DiffStyleToolbarControl(props: {
   const [fileDiffActive, setFileDiffActive] = React.useState<boolean>(
     () => widget.fileDiffActive
   );
-  const [editing, setEditing] = React.useState<boolean>(() => widget.editing);
   React.useEffect(() => {
     const onStyle = (sender: XtralabDiffWidget, next: DiffStyle): void => {
       setStyle(next);
@@ -747,19 +675,13 @@ function DiffStyleToolbarControl(props: {
     const onActive = (sender: XtralabDiffWidget, next: boolean): void => {
       setFileDiffActive(next);
     };
-    const onEditing = (sender: XtralabDiffWidget, next: boolean): void => {
-      setEditing(next);
-    };
     widget.diffStyleChanged.connect(onStyle);
     widget.fileDiffActiveChanged.connect(onActive);
-    widget.editingChanged.connect(onEditing);
     setStyle(widget.diffStyle);
     setFileDiffActive(widget.fileDiffActive);
-    setEditing(widget.editing);
     return () => {
       widget.diffStyleChanged.disconnect(onStyle);
       widget.fileDiffActiveChanged.disconnect(onActive);
-      widget.editingChanged.disconnect(onEditing);
     };
   }, [widget]);
 
@@ -768,62 +690,8 @@ function DiffStyleToolbarControl(props: {
     <DiffStyleControl
       diffStyle={style}
       available={fileDiffActive}
-      // The layout is frozen while editing, so the toggle is inert.
-      disabled={editing}
       onChange={next => widget.setDiffStyle(next)}
       trans={trans}
-    />
-  );
-}
-
-/**
- * Edit toggle mounted into a host-owned toolbar.
- */
-class EditModeToolbarItem extends ReactWidget {
-  constructor(widget: XtralabDiffWidget) {
-    super();
-    this._widget = widget;
-    this.addClass('jp-xtralab-DiffWidget-editModeToolbarItem');
-  }
-
-  protected render(): React.ReactElement {
-    return <EditModeToolbarControl widget={this._widget} />;
-  }
-
-  private _widget: XtralabDiffWidget;
-}
-
-function EditModeToolbarControl(props: {
-  widget: XtralabDiffWidget;
-}): React.ReactElement {
-  const { widget } = props;
-  const [editing, setEditing] = React.useState<boolean>(() => widget.editing);
-  const [available, setAvailable] = React.useState<boolean>(
-    () => widget.editAvailable
-  );
-  React.useEffect(() => {
-    const onEditing = (sender: XtralabDiffWidget, next: boolean): void => {
-      setEditing(next);
-    };
-    const onAvailable = (sender: XtralabDiffWidget, next: boolean): void => {
-      setAvailable(next);
-    };
-    widget.editingChanged.connect(onEditing);
-    widget.editAvailableChanged.connect(onAvailable);
-    setEditing(widget.editing);
-    setAvailable(widget.editAvailable);
-    return () => {
-      widget.editingChanged.disconnect(onEditing);
-      widget.editAvailableChanged.disconnect(onAvailable);
-    };
-  }, [widget]);
-
-  return (
-    <EditModeControl
-      editing={editing}
-      available={available}
-      onChange={next => widget.setEditing(next)}
-      trans={widget.context.trans}
     />
   );
 }
@@ -849,5 +717,4 @@ export function addDiffToolbarItems(
     new NotebookViewModeToolbarItem(widget)
   );
   toolbar.addItem('xtralab-diff-style', new DiffStyleToolbarItem(widget));
-  toolbar.addItem('xtralab-edit-mode', new EditModeToolbarItem(widget));
 }

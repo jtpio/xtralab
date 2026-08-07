@@ -85,7 +85,6 @@
  * toggle (for textual/code diffs). The host toolbar provides its own
  * background and border, so these are just the segmented controls.
  */
-.jp-xtralab-DiffWidget-editModeToolbarItem,
 .jp-xtralab-DiffWidget-viewModeToolbarItem,
 .jp-xtralab-DiffWidget-diffStyleToolbarItem {
   display: flex;
@@ -114,16 +113,7 @@
   cursor: pointer;
 }
 
-/*
- * Disabled segments (the Split/Unified toggle while editing) dim in place;
- * the active segment keeps its highlight.
- */
-.jp-xtralab-DiffWidget-segmentedButton:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
-
-.jp-xtralab-DiffWidget-segmentedButton:hover:not(:disabled) {
+.jp-xtralab-DiffWidget-segmentedButton:hover {
   background-color: var(--jp-layout-color2);
 }
 
@@ -204,14 +194,16 @@
 }
 
 /*
- * Per-hunk action overlay. The diff library injects a row at the
- * annotation's anchor line and renders this content inside it; we keep the
- * row visually unobtrusive — a single small icon button that fades in on
- * row hover — so the annotation does not compete with the diff content.
+ * Discard-change overlay. The library injects an annotation row below the
+ * anchor line and sizes it from this slotted content: a zero-height wrapper
+ * collapses the row, and the translated button overlays the right edge of
+ * the line above (the block's first changed line) instead of taking a row.
  */
 .jp-xtralab-DiffWidget-hunkAnnotation {
   display: flex;
   justify-content: flex-end;
+  height: 0;
+  overflow: visible;
   padding: 0 8px;
   opacity: 0.4;
   transition: opacity 0.1s ease;
@@ -233,6 +225,7 @@
   background: transparent;
   color: var(--jp-ui-font-color1);
   cursor: pointer;
+  transform: translateY(-100%);
 }
 
 .jp-xtralab-DiffWidget-hunkButton:hover {
