@@ -1,14 +1,7 @@
-// Captures the desktop launcher's session-restore view for the
-// documentation. Seeds a three-project session into an isolated profile,
-// boots the real Electron app through a generated shim entry, and
-// screenshots the launcher while the first project window is open and the
-// other two are still starting, so the capture shows the progress bar
-// mid-restore with a mix of finished and pending rows.
-//
-// Requires the desktop development setup (see ../CONTRIBUTING.md): the
-// bundled Python runtime must exist at ../desktop/python/runtime, built once
-// with `pnpm -C ../desktop build:all`. The TypeScript build runs here on
-// every capture so dist/ always matches the sources.
+// Captures the desktop launcher's session-restore view for the docs:
+// seeds a three-project session into an isolated profile, boots the real
+// Electron app through a generated shim entry, and screenshots the
+// launcher mid-restore (one window open, two still starting).
 import { execFileSync } from 'node:child_process';
 import {
   cpSync,
@@ -48,6 +41,7 @@ if (!existsSync(runtimeJupyter)) {
   process.exit(1);
 }
 
+// dist/ must match the sources, so the TypeScript build reruns each capture.
 execFileSync(
   process.execPath,
   [
@@ -99,18 +93,16 @@ writeFileSync(
   'utf8'
 );
 
-// A generated shim app moves the profile under the seeded directory before
-// the real main module runs, so the capture never touches a real xtralab
-// profile and never collides with a running instance through the
-// single-instance lock. Its package.json carries the desktop version because
-// app.getVersion() reads the loaded app's manifest, and the launcher footer
-// shows that version.
+// A generated shim app relocates the profile under the seeded directory
+// before the real main module runs, so the capture never touches a real
+// xtralab profile or a running instance's single-instance lock.
 const desktopVersion = JSON.parse(
   readFileSync(join(desktopDir, 'package.json'), 'utf8')
 ).version;
 const shimDir = join(workspaceRoot, 'desktop-shim');
 rmSync(shimDir, { recursive: true, force: true });
 mkdirSync(shimDir, { recursive: true });
+// The launcher footer shows app.getVersion(), which reads this manifest.
 writeFileSync(
   join(shimDir, 'package.json'),
   `${JSON.stringify(
@@ -143,13 +135,10 @@ const electronApp = await _electron.launch({
 });
 
 try {
-  // The three lab pages load in parallel while the windows take turns being
-  // shown, so every row would flip from spinner to check mark within
-  // milliseconds of the first one. Holding the two non-leader page loads
-  // keeps their rows genuinely mid-restore (servers up, windows pending)
-  // while the first window opens, giving the screenshot a stable frame with
-  // the progress bar advanced, one finished row, and two spinners. The held
-  // requests are released after the capture so the restore completes.
+  // The three lab pages load in parallel, so every row would flip from
+  // spinner to check mark within milliseconds. Holding the two non-leader
+  // page loads keeps their rows genuinely mid-restore while the first
+  // window opens; the held requests are released after the capture.
   const heldRoutes = [];
   await electronApp.context().route(/\/lab\/workspaces\//, route => {
     if (route.request().url().includes('demo-project')) {
