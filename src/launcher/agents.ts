@@ -26,7 +26,7 @@ export interface IAgent {
    * the user types one into the launcher's prompt box. The semantics:
    *
    *   - `[]` → prompt is appended as a positional argument:
-   *     `<command> 'PROMPT'`. (Used by claude, codex, vibe.)
+   *     `<command> 'PROMPT'`. (Used by claude, codex, vibe, pi.)
    *   - `['-i']` / `['--prompt']` → the prompt is preceded by a flag:
    *     `<command> -i 'PROMPT'`. (Used by copilot, opencode.)
    *   - `undefined` → the agent does not accept an initial prompt. The
@@ -86,8 +86,9 @@ export interface IAgentSettings {
  * icons come from), but use the bare CLI names a user would type in a
  * terminal rather than the ACP wrapper binaries that project spawns.
  * Antigravity (Google's agent-first IDE/CLI, `agy`) is the Google agent.
- * Anything not on the user's `$PATH` is filtered out at activation time, so
- * the wider list is harmless.
+ * Pi (https://pi.dev, `earendil-works/pi`) is a minimal extensible coding
+ * agent; its mark comes straight from its site. Anything not on the user's
+ * `$PATH` is filtered out at activation time, so the wider list is harmless.
  */
 const DEFAULTS: IAgent[] = [
   {
@@ -178,6 +179,18 @@ const DEFAULTS: IAgent[] = [
     icon: BUILTIN_AGENT_ICONS['mistral-vibe'],
     rank: 7,
     requireAvailable: true,
+    promptArgs: []
+  },
+  {
+    id: 'pi',
+    label: 'Pi',
+    caption: 'Start Pi in a new terminal.',
+    command: 'pi',
+    icon: BUILTIN_AGENT_ICONS.pi,
+    rank: 8,
+    requireAvailable: true,
+    // `pi [messages...]` starts the interactive TUI and sends the messages
+    // as the first user prompt, so the positional form applies.
     promptArgs: []
   }
 ];

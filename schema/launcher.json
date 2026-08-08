@@ -8,7 +8,7 @@
   "properties": {
     "agents": {
       "title": "Agents",
-      "description": "Override or extend the built-in list of agents shown on the launcher. Each entry must include an `id`. When the id matches a built-in (claude, codex, antigravity, copilot, goose, opencode, kiro, mistral-vibe), the fields you set override the corresponding defaults; leave a field out to keep the default. New ids define brand-new cards. Set `enabled: false` to hide a default. Changing a built-in's `command` (for example to a shell alias like `ccm`) keeps the card visible even though the alias isn't on PATH; use `requireAvailable: false` only when you want to skip the check without changing the command. The full built-in list is shown as the default below, so you can copy an entry and tweak it in place.",
+      "description": "Override or extend the built-in list of agents shown on the launcher. Each entry must include an `id`. When the id matches a built-in (claude, codex, antigravity, copilot, goose, opencode, kiro, mistral-vibe, pi), the fields you set override the corresponding defaults; leave a field out to keep the default. New ids define brand-new cards. Set `enabled: false` to hide a default. Changing a built-in's `command` (for example to a shell alias like `ccm`) keeps the card visible even though the alias isn't on PATH; use `requireAvailable: false` only when you want to skip the check without changing the command. The full built-in list is shown as the default below, so you can copy an entry and tweak it in place.",
       "type": "array",
       "default": [],
       "items": {

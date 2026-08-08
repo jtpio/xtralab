@@ -6,11 +6,14 @@ import { LabIcon } from '@jupyterlab/ui-components';
  * (`jupyter_ai_acp_client/static/*.svg`, BSD-3-Clause); Antigravity post-dates
  * that set, so its mark is the official glyph from `@lobehub/icons-static-svg`
  * (MIT) — we ship the brand-colored `antigravity-color` variant so Antigravity
- * reads as a multi-color Google mark. Small adjustments are applied
+ * reads as a multi-color Google mark. Pi's mark is the official `logo-auto.svg`
+ * from https://pi.dev (MIT, `earendil-works/pi`). Small adjustments are applied
  * to play nicely with JupyterLab themes:
- *   - Monochrome marks (Codex, Copilot, Goose) use `currentColor` so they
+ *   - Monochrome marks (Codex, Copilot, Goose, Pi) use `currentColor` so they
  *     inherit the surrounding launcher card's text color rather than
- *     hard-coding black, which disappears on the dark theme.
+ *     hard-coding black, which disappears on the dark theme. For Pi this
+ *     replaces the upstream `prefers-color-scheme` style block, which follows
+ *     the OS scheme rather than the active JupyterLab theme.
  *   - The Goose mark upstream is rendered on a white rounded rect; we drop
  *     the rect so the silhouette can sit on the launcher card directly.
  *   - SVG ids that would collide if two copies of the same artwork ended up
@@ -179,6 +182,14 @@ const opencodeIcon = new LabIcon({
 </svg>`
 });
 
+const piIcon = new LabIcon({
+  name: 'xtralab:agent-pi',
+  svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" fill="currentColor">
+  <path fill-rule="evenodd" d="M165.29 165.29H517.36V400H400V517.36H282.65V634.72H165.29ZM282.65 282.65V400H400V282.65Z"/>
+  <path d="M517.36 400H634.72V634.72H517.36Z"/>
+</svg>`
+});
+
 const neovimIcon = new LabIcon({
   name: 'xtralab:editor-neovim',
   svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#57A143">
@@ -207,7 +218,8 @@ export const BUILTIN_AGENT_ICONS: Record<string, LabIcon> = {
   goose: gooseIcon,
   kiro: kiroIcon,
   'mistral-vibe': mistralVibeIcon,
-  opencode: opencodeIcon
+  opencode: opencodeIcon,
+  pi: piIcon
 };
 
 /**
