@@ -1814,7 +1814,11 @@ function ensureRuntimePyvenvCfg(envDir: string, binDir: string): void {
     'implementation = CPython\n' +
     `version_info = ${versionInfo}\n` +
     'include-system-site-packages = false\n';
-  writeFileSync(cfgPath, contents, 'utf8');
+  try {
+    writeFileSync(cfgPath, contents, 'utf8');
+  } catch (error) {
+    log(`Could not write ${cfgPath}: ${formatError(error)}`);
+  }
 }
 
 function getSupervisorEnvironment(
@@ -1827,11 +1831,7 @@ function getSupervisorEnvironment(
     PYTHONNOUSERSITE: '1'
   };
   clearInheritedPythonEnvironment(environment);
-  exportPythonEnvironmentRoot(
-    environment,
-    managedEnvironment,
-    projectEnvironment
-  );
+  exportPythonEnvironmentRoot(environment, projectEnvironment);
 
   // Advertise an iTerm2-class terminal so coding agents (Claude Code, Codex, …)
   // take their OSC 9 notification path on the default `auto` setting; without a
@@ -1861,7 +1861,6 @@ function getSupervisorEnvironment(
 
 function exportPythonEnvironmentRoot(
   environment: NodeJS.ProcessEnv,
-  managedEnvironment: ManagedEnvironment,
   projectEnvironment: ProjectRuntimeEnvironment | null
 ): void {
   // ty resolves third-party imports from the environment named by VIRTUAL_ENV
@@ -1882,7 +1881,6 @@ function exportPythonEnvironmentRoot(
       return;
     }
   }
-  environment.VIRTUAL_ENV = managedEnvironment.envDir;
 }
 
 function startSupervisor(

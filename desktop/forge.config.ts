@@ -8,10 +8,13 @@ import { notarize } from '@electron/notarize';
 import MakerAppImage from '@reforged/maker-appimage';
 import { execFileSync } from 'node:child_process';
 import {
+  chmodSync,
   closeSync,
+  existsSync,
   openSync,
   readFileSync,
   readSync,
+  renameSync,
   writeFileSync
 } from 'node:fs';
 import { join } from 'node:path';
@@ -47,6 +50,21 @@ const machOMagics = new Set([
   0xfeedface, 0xcefaedfe, 0xfeedfacf, 0xcffaedfe, 0xcafebabe, 0xbebafeca,
   0xcafebabf, 0xbfbafeca
 ]);
+
+const appImageLauncherScript = `#!/bin/sh
+HERE=$(dirname "$(readlink -f "$0")")
+exec "$HERE/${executableName}.bin" --no-sandbox "$@"
+`;
+
+function installAppImageLauncher(outputPath: string): void {
+  const launcherPath = join(outputPath, executableName);
+  const binaryPath = `${launcherPath}.bin`;
+  if (!existsSync(binaryPath)) {
+    renameSync(launcherPath, binaryPath);
+  }
+  writeFileSync(launcherPath, appImageLauncherScript, 'utf8');
+  chmodSync(launcherPath, 0o755);
+}
 
 function isMachO(filePath: string): boolean {
   try {
@@ -158,6 +176,14 @@ const config: ForgeConfig = {
         packageJsonPath,
         `${JSON.stringify(packageJson, null, 2)}\n`
       );
+    },
+    postPackage: async (forgeConfig, packageResult) => {
+      if (packageResult.platform !== 'linux') {
+        return;
+      }
+      for (const outputPath of packageResult.outputPaths) {
+        installAppImageLauncher(outputPath);
+      }
     },
     // Forge's osxSign/osxNotarize cover only the .app. Apple's disk-image
     // guidance is to sign the DMG itself, then notarize and staple it, so the
