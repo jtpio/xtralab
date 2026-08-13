@@ -18,6 +18,36 @@ export function toCanonicalPath(child: Contents.IModel): string {
 }
 
 /**
+ * Compute the canonical parent path for a canonical path. Returns
+ * {@link ROOT_LOAD_KEY} for top-level entries.
+ */
+export function parentOf(canonicalPath: string): string {
+  const trimmed = canonicalPath.endsWith(DIR_SUFFIX)
+    ? canonicalPath.slice(0, -DIR_SUFFIX.length)
+    : canonicalPath;
+  const idx = trimmed.lastIndexOf(DIR_SUFFIX);
+  if (idx < 0) {
+    return ROOT_LOAD_KEY;
+  }
+  return `${trimmed.slice(0, idx)}${DIR_SUFFIX}`;
+}
+
+/**
+ * The last segment of a canonical path. Directories keep their trailing
+ * slash, so appending the result to a canonical directory path yields a
+ * canonical path again.
+ */
+export function canonicalBasename(canonicalPath: string): string {
+  const isDir = canonicalPath.endsWith(DIR_SUFFIX);
+  const trimmed = isDir
+    ? canonicalPath.slice(0, -DIR_SUFFIX.length)
+    : canonicalPath;
+  const idx = trimmed.lastIndexOf(DIR_SUFFIX);
+  const base = idx < 0 ? trimmed : trimmed.slice(idx + DIR_SUFFIX.length);
+  return isDir ? `${base}${DIR_SUFFIX}` : base;
+}
+
+/**
  * Strip the trailing slash that `@pierre/trees` uses for canonical directory
  * paths so the value can be sent to the Jupyter contents API.
  */

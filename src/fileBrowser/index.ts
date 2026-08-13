@@ -48,7 +48,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
       docManager,
       onOpenFile: (serverPath: string) => {
         void app.commands.execute('docmanager:open', { path: serverPath });
-      }
+      },
+      translator: translator ?? undefined
     });
     // Ranks just under the Terminals panel in the left sidebar. The shipped
     // `layout` setting assigns the default ranks (rank only, no area pin),

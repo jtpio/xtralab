@@ -7,6 +7,7 @@ import {
 } from '@jupyterlab/apputils';
 import { IDocumentManager } from '@jupyterlab/docmanager';
 import { Contents } from '@jupyterlab/services';
+import { ITranslator } from '@jupyterlab/translation';
 import {
   AccordionToolbar,
   PanelWithToolbar,
@@ -45,6 +46,7 @@ interface IXtralabFileBrowserOptions {
   contentsManager: Contents.IManager;
   docManager: IDocumentManager;
   onOpenFile?: (serverPath: string) => void;
+  translator?: ITranslator;
 }
 
 /**
@@ -197,6 +199,7 @@ export class XtralabFileBrowser
     this._contentsManager = options.contentsManager;
     this._docManager = options.docManager;
     this._onOpenFile = options.onOpenFile;
+    this._translator = options.translator;
     this.id = FILE_BROWSER_ID;
     this.title.icon = xtralabFileBrowserIcon;
     this.title.caption = 'xtralab File Browser';
@@ -210,6 +213,7 @@ export class XtralabFileBrowser
       contentsManager: this._contentsManager,
       docManager: this._docManager,
       onOpenFile: this._onOpenFile,
+      translator: this._translator,
       browser: this
     });
     this._content.addClass(CONTENT_CSS_CLASS);
@@ -452,6 +456,7 @@ export class XtralabFileBrowser
   private _contentsManager: Contents.IManager;
   private _docManager: IDocumentManager;
   private _onOpenFile: ((serverPath: string) => void) | undefined;
+  private _translator: ITranslator | undefined;
   private _selectedPaths: readonly string[] = [];
   private _selectionChanged = new Signal<this, readonly string[]>(this);
   private _refreshRequested = new Signal<this, void>(this);
@@ -474,6 +479,7 @@ interface IFileTreeContentOptions {
   contentsManager: Contents.IManager;
   docManager: IDocumentManager;
   onOpenFile?: (serverPath: string) => void;
+  translator?: ITranslator;
   browser: XtralabFileBrowser;
 }
 
@@ -493,6 +499,7 @@ class XtralabFileTreeContent extends ReactWidget {
         contentsManager={this._options.contentsManager}
         docManager={this._options.docManager}
         onOpenFile={this._options.onOpenFile}
+        translator={this._options.translator}
         widget={this._options.browser}
       />
     );
