@@ -80,14 +80,39 @@ class FileChangeDiffModel implements IXtralabDiffModel {
     };
   }
 
+  /**
+   * A signal emitted when the reference or challenger changes; this static
+   * model never emits it.
+   */
   readonly changed: ISignal<Git.Diff.IModel, Git.Diff.IModelChange> =
     new Signal<Git.Diff.IModel, Git.Diff.IModelChange>(this);
+  /**
+   * The reference (old) side of the diff.
+   */
   reference: Git.Diff.IContent;
+  /**
+   * The challenger (new) side of the diff.
+   */
   challenger: Git.Diff.IContent;
+  /**
+   * Repo-relative path of the changed file.
+   */
   readonly filename: string;
+  /**
+   * The rename source path; `undefined` for non-renames.
+   */
   readonly oldFilename: string | undefined;
+  /**
+   * Path of the git repository, relative to the server root.
+   */
   readonly repositoryPath: string;
+  /**
+   * Whether the file content is binary.
+   */
   readonly isBinary: boolean;
+  /**
+   * Whether hunks can be discarded through a working-tree save.
+   */
   readonly canDiscard: boolean;
 }
 

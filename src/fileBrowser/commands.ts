@@ -59,11 +59,29 @@ export namespace CommandIDs {
  */
 const OPEN_WITH_SUBMENU_ID = 'jp-contextmenu-xtralab-open-with';
 
+/**
+ * Options for registering the xtralab file browser commands.
+ */
 interface IRegisterCommandsOptions {
+  /**
+   * The JupyterLab application the commands are registered on.
+   */
   app: JupyterFrontEnd;
+  /**
+   * The file browser widget the commands act on.
+   */
   browser: IXtralabFileBrowser;
+  /**
+   * The document manager used to resolve the current widget's file path.
+   */
   docManager: IDocumentManager;
+  /**
+   * The command palette the commands are added to, or `null` when unavailable.
+   */
   palette: ICommandPalette | null;
+  /**
+   * The translator for user-facing strings; `null` falls back to English.
+   */
   translator: ITranslator | null;
 }
 

@@ -14,7 +14,13 @@ import { ROOT_LOAD_KEY, canonicalBasename, parentOf } from './contents';
  * One tree-model move a drop performs, as canonical paths.
  */
 export interface IDropMove {
+  /**
+   * The canonical path of the dragged item.
+   */
   from: string;
+  /**
+   * The canonical destination path: its basename under the target directory.
+   */
   to: string;
 }
 
@@ -89,8 +95,17 @@ export function createTreeDragAndDropConfig(
   };
 }
 
+/**
+ * Options for {@link useRootDropZone}.
+ */
 interface IRootDropZoneOptions {
+  /**
+   * The tree model, queried for the selection at drag start.
+   */
   model: FileTree;
+  /**
+   * The drop handler ref, filled by the contents-sync effect.
+   */
   handlerRef: React.RefObject<ITreeDropHandler | null>;
   /**
    * The light-DOM wrapper around the tree host; composed drag events

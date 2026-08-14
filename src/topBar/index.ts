@@ -13,6 +13,9 @@ const PLUGIN_ID = 'xtralab:top-bar';
 const TOGGLE_LEFT_AREA = 'application:toggle-left-area';
 const TOGGLE_RIGHT_AREA = 'application:toggle-right-area';
 
+/**
+ * A specification for one sidebar toggle button in the top area.
+ */
 interface IButtonSpec {
   /**
    * Stable widget id (required by `LabShell.add`).
@@ -22,7 +25,13 @@ interface IButtonSpec {
    * Command the button triggers and mirrors the state of.
    */
   command: string;
+  /**
+   * The icon rendered on the button.
+   */
   icon: LabIcon;
+  /**
+   * The localized tooltip of the button.
+   */
   caption: (trans: ReturnType<ITranslator['load']>) => string;
   /**
    * Rank in the `top` area: the menu bar sits at 100 and the rank-0 upstream

@@ -37,8 +37,17 @@ export { DIFF_WIDGET_CSS_CLASS };
  * `Git.Diff.IModel` plus optional xtralab-only metadata.
  */
 export interface IXtralabDiffModel extends Git.Diff.IModel {
+  /**
+   * Whether the file is binary, so no text contents are fetched.
+   */
   isBinary?: boolean;
+  /**
+   * Whether hunks may be discarded; when absent, a working-tree heuristic decides.
+   */
   canDiscard?: boolean;
+  /**
+   * The old-side path when the diff represents a rename.
+   */
   oldFilename?: string;
 }
 
@@ -46,13 +55,27 @@ export interface IXtralabDiffModel extends Git.Diff.IModel {
  * Application-level services the diff model does not carry.
  */
 export interface IXtralabDiffContext {
+  /**
+   * The contents manager used to save hunk-discard results.
+   */
   contentsManager: Contents.IManager;
+  /**
+   * The rendermime registry for rendered notebook diffs, or `null` to
+   * force the textual fallback.
+   */
   rendermime: IRenderMimeRegistry | null;
+  /**
+   * The theme manager used to track theme changes, or `null` to watch
+   * the body attribute instead.
+   */
   themeManager: IThemeManager | null;
   /**
    * When available, diff line selections get an "ask an agent" gutter button.
    */
   askAgent: IAskAgent | null;
+  /**
+   * The application translation bundle.
+   */
   trans: TranslationBundle;
 }
 
@@ -74,6 +97,9 @@ export class XtralabDiffWidget
     this.addClass(DIFF_WIDGET_CSS_CLASS);
   }
 
+  /**
+   * The git diff model being rendered.
+   */
   get model(): Git.Diff.IModel {
     return this._model;
   }
@@ -123,10 +149,16 @@ export class XtralabDiffWidget
     await done.promise;
   }
 
+  /**
+   * The current rendered-vs-JSON choice for notebook diffs.
+   */
   get notebookViewMode(): NotebookDiffViewMode {
     return this._notebookViewMode;
   }
 
+  /**
+   * Set the notebook view mode and persist it.
+   */
   setNotebookViewMode(mode: NotebookDiffViewMode): void {
     if (mode === this._notebookViewMode) {
       return;
@@ -136,14 +168,23 @@ export class XtralabDiffWidget
     this._notebookViewModeChanged.emit(mode);
   }
 
+  /**
+   * A signal emitted when the notebook view mode changes.
+   */
   get notebookViewModeChanged(): ISignal<this, NotebookDiffViewMode> {
     return this._notebookViewModeChanged;
   }
 
+  /**
+   * Whether a rendered notebook view is currently available.
+   */
   get hasNotebookView(): boolean {
     return this._hasNotebookView;
   }
 
+  /**
+   * Set whether a rendered notebook view is available.
+   */
   setHasNotebookView(value: boolean): void {
     if (value === this._hasNotebookView) {
       return;
@@ -152,14 +193,23 @@ export class XtralabDiffWidget
     this._hasNotebookViewChanged.emit(value);
   }
 
+  /**
+   * A signal emitted when rendered-notebook availability changes.
+   */
   get hasNotebookViewChanged(): ISignal<this, boolean> {
     return this._hasNotebookViewChanged;
   }
 
+  /**
+   * The current split/unified layout for textual file diffs.
+   */
   get diffStyle(): DiffStyle {
     return this._diffStyle;
   }
 
+  /**
+   * Set the diff style and persist it.
+   */
   setDiffStyle(style: DiffStyle): void {
     if (style === this._diffStyle) {
       return;
@@ -169,6 +219,9 @@ export class XtralabDiffWidget
     this._diffStyleChanged.emit(style);
   }
 
+  /**
+   * A signal emitted when the diff style changes.
+   */
   get diffStyleChanged(): ISignal<this, DiffStyle> {
     return this._diffStyleChanged;
   }
@@ -180,6 +233,9 @@ export class XtralabDiffWidget
     return this._fileDiffActive;
   }
 
+  /**
+   * Set whether the textual file diff is the active view.
+   */
   setFileDiffActive(value: boolean): void {
     if (value === this._fileDiffActive) {
       return;
@@ -188,6 +244,9 @@ export class XtralabDiffWidget
     this._fileDiffActiveChanged.emit(value);
   }
 
+  /**
+   * A signal emitted when {@link fileDiffActive} changes.
+   */
   get fileDiffActiveChanged(): ISignal<this, boolean> {
     return this._fileDiffActiveChanged;
   }
@@ -199,16 +258,25 @@ export class XtralabDiffWidget
     return this._emptied;
   }
 
+  /**
+   * Emit the {@link emptied} signal.
+   */
   notifyEmptied(): void {
     this._emptied.emit();
   }
 
+  /**
+   * Resolve and clear the pending `refresh()` promise, if any.
+   */
   settleRefresh(): void {
     const pending = this._pendingRefresh;
     this._pendingRefresh = null;
     pending?.resolve();
   }
 
+  /**
+   * Dispose of the resources held by the widget.
+   */
   dispose(): void {
     // jupyterlab-git awaits refresh() to re-show its diff button; release any
     // in-flight awaiter so it does not hang on mid-fetch teardown.
@@ -216,14 +284,23 @@ export class XtralabDiffWidget
     super.dispose();
   }
 
+  /**
+   * A counter incremented on each `refresh()` to trigger a content re-fetch.
+   */
   get reloadNonce(): number {
     return this._reloadNonce;
   }
 
+  /**
+   * The application-level services used by the rendered diff.
+   */
   get context(): IXtralabDiffContext {
     return this._context;
   }
 
+  /**
+   * Render the diff view for the current model.
+   */
   protected render(): React.ReactElement {
     return <ModelDiffView widget={this} />;
   }
@@ -245,10 +322,25 @@ export class XtralabDiffWidget
   private _emptied = new Signal<this, void>(this);
 }
 
+/**
+ * Resolved file-contents state for {@link ModelDiffView}.
+ */
 interface IModelDiffState {
+  /**
+   * Whether the file contents are still being fetched.
+   */
   loading: boolean;
+  /**
+   * The resolved reference-side text.
+   */
   oldText: string;
+  /**
+   * The resolved challenger-side text.
+   */
   newText: string;
+  /**
+   * The fetch error message, or `null` if none.
+   */
   error: string | null;
 }
 
@@ -492,6 +584,9 @@ class NotebookViewModeToolbarItem extends ReactWidget {
     this.addClass('jp-xtralab-DiffWidget-viewModeToolbarItem');
   }
 
+  /**
+   * Render the Notebook/JSON toggle.
+   */
   protected render(): React.ReactElement {
     return <NotebookViewModeToolbarControl widget={this._widget} />;
   }
@@ -550,6 +645,9 @@ class DiffStyleToolbarItem extends ReactWidget {
     this.addClass('jp-xtralab-DiffWidget-diffStyleToolbarItem');
   }
 
+  /**
+   * Render the Split/Unified toggle.
+   */
   protected render(): React.ReactElement {
     return <DiffStyleToolbarControl widget={this._widget} />;
   }
@@ -597,6 +695,9 @@ function DiffStyleToolbarControl(props: {
  * Structural toolbar type shared across host package boundaries.
  */
 interface IDiffToolbar {
+  /**
+   * Add an item to the toolbar under the given name.
+   */
   addItem(name: string, widget: Widget): boolean;
 }
 

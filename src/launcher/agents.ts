@@ -7,11 +7,29 @@ import { BUILTIN_AGENT_ICONS } from './icons';
  * new terminal, so interactive-shell aliases resolve.
  */
 export interface IAgent {
+  /**
+   * Stable id; keys the settings merge and the per-agent launch command.
+   */
   id: string;
+  /**
+   * Card label, e.g. "Claude".
+   */
   label: string;
+  /**
+   * Card tooltip; also the palette command caption.
+   */
   caption: string;
+  /**
+   * The literal command typed into the new terminal.
+   */
   command: string;
+  /**
+   * Brand icon for the card.
+   */
   icon: LabIcon;
+  /**
+   * Sort position among the launcher's agent cards.
+   */
   rank: number;
   /**
    * When false, skip the `which`-based availability check — for aliases or
@@ -31,15 +49,30 @@ export interface IAgent {
  * override a single field on a default agent; new ids define new agent cards.
  */
 export interface IAgentSettings {
+  /**
+   * Id of the agent to override; a new id defines a new card.
+   */
   id: string;
+  /**
+   * See `IAgent.label`.
+   */
   label?: string;
+  /**
+   * See `IAgent.caption`.
+   */
   caption?: string;
+  /**
+   * See `IAgent.command`.
+   */
   command?: string;
   /**
    * Inline SVG icon. Required for new ids; overrides the built-in when set on
    * a default id.
    */
   iconSvg?: string;
+  /**
+   * See `IAgent.rank`.
+   */
   rank?: number;
   /**
    * When false, hides the agent from the launcher and the command palette.

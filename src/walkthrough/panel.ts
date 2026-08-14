@@ -15,7 +15,13 @@ const HIGHLIGHT_LINES_COMMAND = 'xtralab:highlight-lines';
  * A rich visual embedded in a step (rendered through the rendermime registry).
  */
 export interface IWalkthroughMedia {
+  /**
+   * The MIME type of the media payload.
+   */
   mimeType: string;
+  /**
+   * The payload handed to the renderer for the MIME type.
+   */
   data: ReadonlyPartialJSONValue;
 }
 
@@ -23,18 +29,48 @@ export interface IWalkthroughMedia {
  * One step of a walkthrough. Every field is optional, but a step needs at least one.
  */
 export interface IWalkthroughStep {
+  /**
+   * A heading rendered above the step content.
+   */
   title?: string;
+  /**
+   * The body of the step, rendered as Markdown.
+   */
   body?: string;
+  /**
+   * A rich visual rendered after the body.
+   */
   media?: IWalkthroughMedia;
+  /**
+   * The file the step points at; when set, the step renders a jump link.
+   */
   path?: string;
+  /**
+   * The first line to highlight when the jump link is followed.
+   */
   line?: number;
+  /**
+   * The last line of the highlighted range.
+   */
   endLine?: number;
 }
 
 export namespace WalkthroughPanel {
+  /**
+   * The instantiation options for a walkthrough panel.
+   */
   export interface IOptions {
+    /**
+     * The rendermime registry used to render step bodies and media.
+     */
     rendermime: IRenderMimeRegistry;
+    /**
+     * The command registry used to execute the jump-to-line command.
+     */
     commands: CommandRegistry;
+    /**
+     * The translation bundle for UI strings.
+     */
     trans: TranslationBundle;
   }
 }

@@ -37,6 +37,10 @@ import { agentCommandId } from './tokens';
  * opaque callback so the widget itself never imports `app.shell`.
  */
 interface ILauncherDashboardOptions {
+  /**
+   * The application command registry, used to launch terminals and run git
+   * commands.
+   */
   commands: CommandRegistry;
   /**
    * Agent list to render, already filtered by availability and sorted by rank.
@@ -82,6 +86,9 @@ export class LauncherDashboard extends ReactWidget {
     this._options = options;
   }
 
+  /**
+   * Render the launcher dashboard component.
+   */
   protected render(): React.ReactElement {
     return <LauncherDashboardComponent {...this._options} />;
   }
@@ -89,9 +96,22 @@ export class LauncherDashboard extends ReactWidget {
   private _options: ILauncherDashboardOptions;
 }
 
+/**
+ * State of the changes-section git status fetch.
+ */
 interface IGitState {
+  /**
+   * Whether the initial status fetch is still pending.
+   */
   loading: boolean;
+  /**
+   * The latest status result, or `null` before the first success or after a
+   * failure.
+   */
   result: IGitStatusResult | null;
+  /**
+   * The latest fetch error message, or `null` when the last fetch succeeded.
+   */
   error: string | null;
 }
 

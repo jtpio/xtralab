@@ -310,6 +310,9 @@ export class OmniboxWidget extends ReactWidget {
     this.addClass('jp-ThemedContainer');
   }
 
+  /**
+   * Render the omnibox overlay content.
+   */
   render(): JSX.Element {
     return <OmniboxComponent {...this._options} />;
   }
@@ -322,12 +325,18 @@ export namespace OmniboxWidget {
    * Construction options for {@link OmniboxWidget}.
    */
   export interface IOptions {
+    /**
+     * The command registry used to look up and execute commands.
+     */
     commands: CommandRegistry;
     /**
      * Snapshot of the command palette's items, read once when the overlay
      * opens; empty when the palette isn't available.
      */
     paletteItems: ReadonlyArray<CommandPalette.IItem>;
+    /**
+     * The document registry used to pick file icons.
+     */
     docRegistry: DocumentRegistry;
     /**
      * Snapshot of the available agents, read once when the overlay opens.

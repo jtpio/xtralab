@@ -18,18 +18,48 @@ export type TerminalWidget = MainAreaWidget<ITerminal.ITerminal>;
  * If upstream renames the field, the activity line is simply omitted.
  */
 interface IXtermBufferLine {
+  /**
+   * Whether this row is a soft-wrap continuation of the previous row.
+   */
   readonly isWrapped: boolean;
+  /**
+   * Translate the row to its text, trimming trailing whitespace on request.
+   */
   translateToString(trimRight?: boolean): string;
 }
+/**
+ * An xterm.js buffer exposing the cursor position and row access.
+ */
 interface IXtermBuffer {
+  /**
+   * Buffer row of the viewport's top line when scrolled to the bottom.
+   */
   readonly baseY: number;
+  /**
+   * The cursor's row relative to the viewport top.
+   */
   readonly cursorY: number;
+  /**
+   * Get the line at the given buffer row, or `undefined` if out of range.
+   */
   getLine(index: number): IXtermBufferLine | undefined;
 }
+/**
+ * An xterm.js terminal narrowed to its buffer namespace.
+ */
 interface IXtermTerminal {
+  /**
+   * The buffer namespace; `active` is the buffer currently on screen.
+   */
   readonly buffer: { readonly active: IXtermBuffer };
 }
+/**
+ * The terminal widget content with its private xterm.js instance exposed.
+ */
 interface ITerminalContentInternals extends ITerminal.ITerminal {
+  /**
+   * The underlying xterm.js terminal; absent until the widget creates it.
+   */
   _term?: IXtermTerminal;
 }
 
@@ -98,6 +128,9 @@ export class SessionRegistry implements IDisposable {
     return this._stateChanged;
   }
 
+  /**
+   * Whether the registry has been disposed.
+   */
   get isDisposed(): boolean {
     return this._isDisposed;
   }
@@ -231,6 +264,9 @@ export class SessionRegistry implements IDisposable {
     return rank;
   }
 
+  /**
+   * Dispose of the registry's polls and signal connections.
+   */
   dispose(): void {
     if (this._isDisposed) {
       return;
@@ -493,8 +529,17 @@ export class SessionRegistry implements IDisposable {
  * Construction options for {@link SessionRegistry}.
  */
 export namespace SessionRegistry {
+  /**
+   * The instantiation options for a session registry.
+   */
   export interface IOptions {
+    /**
+     * The service manager whose terminal manager supplies the sessions.
+     */
     serviceManager: ServiceManager.IManager;
+    /**
+     * The tracker of open terminal widgets.
+     */
     tracker: ITerminalTracker;
     /**
      * Used to highlight the row of the current main-area terminal. Optional:
@@ -522,6 +567,9 @@ export namespace SessionRegistry {
 }
 
 namespace Private {
+  /**
+   * Whether two detection maps hold identical entries.
+   */
   export function detectedEqual(
     a: Map<string, string | null>,
     b: Map<string, string | null>
@@ -579,6 +627,9 @@ namespace Private {
     return null;
   }
 
+  /**
+   * Read a buffer row as sanitized text; empty when the row is missing.
+   */
   export function lineText(buffer: IXtermBuffer, row: number): string {
     return sanitizeActivity(buffer.getLine(row)?.translateToString(true) ?? '');
   }
@@ -618,6 +669,9 @@ namespace Private {
       : text;
   }
 
+  /**
+   * Replace control and rule characters with spaces and collapse whitespace.
+   */
   export function sanitizeActivity(value: string): string {
     let result = '';
     for (const char of value) {

@@ -51,14 +51,23 @@ export const IEditorRegistry = new Token<IEditorRegistry>(
  * {@link set} is kept off the shared token.
  */
 class EditorRegistry implements IEditorRegistry {
+  /**
+   * The merged editor list (disabled entries removed).
+   */
   get editors(): IEditor[] {
     return this._editors;
   }
 
+  /**
+   * The launcher-tile editor, or `null` when none qualifies.
+   */
   get current(): IEditor | null {
     return this._current;
   }
 
+  /**
+   * Emitted whenever {@link editors} or {@link current} changes.
+   */
   get changed(): ISignal<IEditorRegistry, void> {
     return this._changed;
   }

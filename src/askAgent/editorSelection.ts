@@ -12,8 +12,17 @@ import type { IAskAgentContext, IAskAgentRequest } from './tokens';
  * and, for notebooks, the owning cell.
  */
 interface IEditorTarget {
+  /**
+   * The CodeMirror view holding the selection.
+   */
   view: EditorView;
+  /**
+   * The path of the document the view belongs to.
+   */
   path: string;
+  /**
+   * The index and type of the owning notebook cell; absent for file editors.
+   */
   cell?: {
     index: number;
     type: string;

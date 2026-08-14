@@ -42,10 +42,26 @@ const ACCORDION_CSS_CLASS = 'jp-xtralab-FileBrowser-accordion';
 
 const MOVABLE_SECTION_CLASS = 'jp-movable-section';
 
+/**
+ * The options used to create an {@link XtralabFileBrowser}.
+ */
 interface IXtralabFileBrowserOptions {
+  /**
+   * The contents manager backing the tree.
+   */
   contentsManager: Contents.IManager;
+  /**
+   * The document manager used to open files from the tree.
+   */
   docManager: IDocumentManager;
+  /**
+   * Callback invoked with a file's server path when its row is
+   * double-clicked. No double-click handler is installed when absent.
+   */
   onOpenFile?: (serverPath: string) => void;
+  /**
+   * The application language translator.
+   */
   translator?: ITranslator;
 }
 
@@ -152,6 +168,10 @@ export interface IXtralabFileBrowser {
    */
   toggleFileFilter(): void;
 
+  /**
+   * The DOM node of the movable "Files" section, used to locate the panel
+   * currently hosting the tree.
+   */
   readonly sectionNode: HTMLElement;
 }
 
@@ -203,46 +223,79 @@ export class XtralabFileBrowser
     layout.addWidget(this._section);
   }
 
+  /**
+   * The contents manager backing the tree.
+   */
   get contentsManager(): Contents.IManager {
     return this._contentsManager;
   }
 
+  /**
+   * The toolbar above the tree.
+   */
   get toolbar(): Toolbar {
     return this._toolbar;
   }
 
+  /**
+   * Canonical selected paths; folder paths carry a trailing slash.
+   */
   get selectedPaths(): readonly string[] {
     return this._selectedPaths;
   }
 
+  /**
+   * A signal emitted when the tree's selection changes.
+   */
   get selectionChanged(): ISignal<this, readonly string[]> {
     return this._selectionChanged;
   }
 
+  /**
+   * A signal emitted when {@link refresh} is called.
+   */
   get refreshRequested(): ISignal<this, void> {
     return this._refreshRequested;
   }
 
+  /**
+   * A signal emitting a newly-created canonical path for the tree to insert.
+   */
   get pathAdded(): ISignal<this, string> {
     return this._pathAdded;
   }
 
+  /**
+   * A signal emitting a canonical path to load, expand, select, and scroll to.
+   */
   get revealRequested(): ISignal<this, string> {
     return this._revealRequested;
   }
 
+  /**
+   * A signal emitted when the tree should return to the workspace root.
+   */
   get rootRequested(): ISignal<this, void> {
     return this._rootRequested;
   }
 
+  /**
+   * A signal emitted when every expanded folder should collapse.
+   */
   get collapseAllRequested(): ISignal<this, void> {
     return this._collapseAllRequested;
   }
 
+  /**
+   * Whether the filter box above the tree is shown.
+   */
   get fileFilterVisible(): boolean {
     return this._fileFilterVisible;
   }
 
+  /**
+   * A signal emitted when {@link fileFilterVisible} changes.
+   */
   get fileFilterVisibleChanged(): ISignal<this, boolean> {
     return this._fileFilterVisibleChanged;
   }
@@ -255,14 +308,24 @@ export class XtralabFileBrowser
     this._selectionChanged.emit(paths);
   }
 
+  /**
+   * Trigger a refresh of every loaded directory in the tree.
+   */
   refresh(): void {
     this._refreshRequested.emit();
   }
 
+  /**
+   * Notify the tree that a new canonical path was created.
+   */
   notifyPathAdded(canonicalPath: string): void {
     this._pathAdded.emit(canonicalPath);
   }
 
+  /**
+   * Reveal a non-empty canonical path in the tree; use {@link scrollToRoot}
+   * for the workspace root, which has no tree row of its own.
+   */
   reveal(canonicalPath: string): void {
     if (canonicalPath.length === 0) {
       throw new Error(
@@ -272,14 +335,23 @@ export class XtralabFileBrowser
     this._revealRequested.emit(canonicalPath);
   }
 
+  /**
+   * Return to the workspace root: clear the selection and scroll to the top.
+   */
   scrollToRoot(): void {
     this._rootRequested.emit();
   }
 
+  /**
+   * Ask the tree to collapse every currently expanded folder.
+   */
   collapseAll(): void {
     this._collapseAllRequested.emit();
   }
 
+  /**
+   * Show or hide the filter box above the tree.
+   */
   setFileFilterVisible(visible: boolean): void {
     if (this._fileFilterVisible === visible) {
       return;
@@ -288,30 +360,51 @@ export class XtralabFileBrowser
     this._fileFilterVisibleChanged.emit(visible);
   }
 
+  /**
+   * Toggle the filter box above the tree.
+   */
   toggleFileFilter(): void {
     this.setFileFilterVisible(!this._fileFilterVisible);
   }
 
+  /**
+   * The DOM node of the movable "Files" section.
+   */
   get sectionNode(): HTMLElement {
     return this._section.node;
   }
 
+  /**
+   * Whether the panel currently holds no sections, its own tree included.
+   */
   get isEmpty(): boolean {
     return this._panelLayout.widgets.length === 0;
   }
 
+  /**
+   * A signal emitted when a section is added to or removed from the panel.
+   */
   get contentChanged(): ISignal<this, void> {
     return this._contentChanged;
   }
 
+  /**
+   * A signal emitting each section entry announced to the move plugin.
+   */
   get sectionAdded(): ISignal<this, ISectionEntry> {
     return this._sectionAdded;
   }
 
+  /**
+   * The accordion hosting the sections, or `null` while the tree sits alone.
+   */
   get accordionPanel(): AccordionPanel | null {
     return this._accordion;
   }
 
+  /**
+   * Section widgets hosted from other panels; the tree section is excluded.
+   */
   get sections(): ReadonlyArray<Widget> {
     if (!this._accordion) {
       return [];
@@ -335,6 +428,10 @@ export class XtralabFileBrowser
       : [];
   }
 
+  /**
+   * Detach and return the tree section so the move plugin can re-host it;
+   * `null` for any other id or when the section is already away from home.
+   */
   removeSectionById(sectionId: string): Widget | null {
     if (sectionId !== TREE_SECTION_ID || !this._isSectionHome()) {
       return null;
@@ -351,6 +448,9 @@ export class XtralabFileBrowser
     return this._section;
   }
 
+  /**
+   * Re-attach the tree section after a move back to this panel.
+   */
   reinsertSection(widget: Widget): void {
     if (this._accordion) {
       this._accordion.insertWidget(0, widget);
@@ -392,6 +492,10 @@ export class XtralabFileBrowser
     this._contentChanged.emit();
   }
 
+  /**
+   * Remove a hosted section; the accordion is torn down once only the
+   * panel's own tree section (or nothing) remains.
+   */
   removeSectionWidget(widget: Widget): void {
     if (!this._accordion || widget.parent !== this._accordion) {
       return;
@@ -449,11 +553,30 @@ export class XtralabFileBrowser
   private _sectionAdded = new Signal<this, ISectionEntry>(this);
 }
 
+/**
+ * The options used to create an {@link XtralabFileTreeContent}.
+ */
 interface IFileTreeContentOptions {
+  /**
+   * The contents manager backing the tree.
+   */
   contentsManager: Contents.IManager;
+  /**
+   * The document manager used to open files from the tree.
+   */
   docManager: IDocumentManager;
+  /**
+   * Callback invoked with a file's server path when its row is
+   * double-clicked. No double-click handler is installed when absent.
+   */
   onOpenFile?: (serverPath: string) => void;
+  /**
+   * The application language translator.
+   */
   translator?: ITranslator;
+  /**
+   * The host widget the React tree reports selection and state changes to.
+   */
   browser: XtralabFileBrowser;
 }
 
@@ -466,6 +589,9 @@ class XtralabFileTreeContent extends ReactWidget {
     this._options = options;
   }
 
+  /**
+   * Render the file browser React component.
+   */
   protected render(): React.ReactElement {
     return (
       <FileBrowserComponent

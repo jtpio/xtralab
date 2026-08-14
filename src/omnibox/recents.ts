@@ -7,6 +7,9 @@ export type RecentKind = 'command' | 'file';
  * A single recorded use: a command that was run or a file that was opened.
  */
 interface IRecentEntry {
+  /**
+   * Whether the entry records a command run or a file opened.
+   */
   kind: RecentKind;
   /**
    * The command id, or the workspace-relative file path.
@@ -45,6 +48,9 @@ export class OmniboxRecents {
   get maxItems(): number {
     return this._maxItems;
   }
+  /**
+   * Set the maximum entries kept per kind.
+   */
   set maxItems(value: number) {
     const normalized = Math.max(0, Math.floor(value));
     if (normalized === this._maxItems) {

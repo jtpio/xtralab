@@ -72,6 +72,9 @@ export type DiffStyle = 'split' | 'unified';
 
 const DIFF_STYLE_STORAGE_KEY = 'xtralab:diff-style';
 
+/**
+ * Read the persisted diff style, defaulting to `'split'`.
+ */
 export function readStoredDiffStyle(): DiffStyle {
   try {
     const raw = window.localStorage.getItem(DIFF_STYLE_STORAGE_KEY);
@@ -84,6 +87,9 @@ export function readStoredDiffStyle(): DiffStyle {
   return 'split';
 }
 
+/**
+ * Persist the diff style to local storage (best-effort).
+ */
 export function writeStoredDiffStyle(style: DiffStyle): void {
   try {
     window.localStorage.setItem(DIFF_STYLE_STORAGE_KEY, style);
@@ -96,6 +102,9 @@ export type NotebookDiffViewMode = 'notebook' | 'json';
 
 const NOTEBOOK_DIFF_VIEW_MODE_STORAGE_KEY = 'xtralab:notebook-diff-view-mode';
 
+/**
+ * Read the persisted notebook view mode, defaulting to `'notebook'`.
+ */
 export function readStoredNotebookViewMode(): NotebookDiffViewMode {
   try {
     const raw = window.localStorage.getItem(
@@ -110,6 +119,9 @@ export function readStoredNotebookViewMode(): NotebookDiffViewMode {
   return 'notebook';
 }
 
+/**
+ * Persist the notebook view mode to local storage (best-effort).
+ */
 export function writeStoredNotebookViewMode(mode: NotebookDiffViewMode): void {
   try {
     window.localStorage.setItem(NOTEBOOK_DIFF_VIEW_MODE_STORAGE_KEY, mode);
@@ -122,6 +134,9 @@ export function writeStoredNotebookViewMode(mode: NotebookDiffViewMode): void {
  * Annotation payload threaded back into `renderAnnotation`; carries the target hunk index.
  */
 interface IHunkActionAnnotation {
+  /**
+   * The index of the hunk the action targets.
+   */
   hunkIndex: number;
 }
 
@@ -157,11 +172,23 @@ export function isPierreTheme(themeManager: IThemeManager | null): boolean {
  * host owns the write via `save`, then refreshes in `onAfterSave`.
  */
 interface IHunkDiscard {
+  /**
+   * Whether hunk discarding is available.
+   */
   enabled: boolean;
+  /**
+   * Persist the full post-discard file text.
+   */
   save: (fullText: string) => Promise<void>;
+  /**
+   * Called after a successful save so the host can refresh the diff.
+   */
   onAfterSave: () => void;
 }
 
+/**
+ * The props for the {@link DiffSurface} component.
+ */
 interface IDiffSurfaceProps {
   /**
    * Whether the host is still resolving the file contents.

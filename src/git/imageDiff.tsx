@@ -94,13 +94,25 @@ function formatBytes(bytes: number): string {
   return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unit]}`;
 }
 
+/**
+ * One side of the image comparison, decoded from its base64 payload.
+ */
 interface IImageSide {
   /**
    * Cleaned base64 payload; empty string means the side does not exist.
    */
   data: string;
+  /**
+   * Whether this side exists; added and deleted files lack one side.
+   */
   present: boolean;
+  /**
+   * The `data:` URI for the image, or `null` when the side is absent.
+   */
   uri: string | null;
+  /**
+   * Decoded size of the payload in bytes.
+   */
   bytes: number;
 }
 
@@ -115,6 +127,9 @@ function toSide(raw: string, fileType: string): IImageSide {
   };
 }
 
+/**
+ * Props for {@link ImageDiffView}.
+ */
 interface IImageDiffViewProps {
   /**
    * Base64 of the reference (old) revision; empty when added.
@@ -199,9 +214,21 @@ export function ImageDiffView(props: IImageDiffViewProps): React.ReactElement {
   );
 }
 
+/**
+ * Props shared by the 2-up, swipe, and onion-skin views.
+ */
 interface ISideViewProps {
+  /**
+   * The reference (old) side.
+   */
   reference: IImageSide;
+  /**
+   * The challenger (new) side.
+   */
   challenger: IImageSide;
+  /**
+   * Translation bundle for user-facing strings.
+   */
   trans: TranslationBundle;
 }
 

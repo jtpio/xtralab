@@ -22,31 +22,97 @@ const NOTEBOOK_DIFF_CSS_CLASS = 'jp-xtralab-NotebookDiff';
  * Minimal slice of nbformat 4.x that the diff inspects.
  */
 interface INotebookCell {
+  /**
+   * The cell type ('code', 'markdown', or 'raw').
+   */
   cell_type: string;
+  /**
+   * Stable cell id (nbformat >= 4.5); absent in older notebooks.
+   */
   id?: string;
+  /**
+   * The cell source, as a single string or an array of lines.
+   */
   source: string | string[];
+  /**
+   * Execution outputs; present on code cells only.
+   */
   outputs?: INotebookOutput[];
+  /**
+   * The cell-level metadata.
+   */
   metadata?: Record<string, unknown>;
+  /**
+   * Execution count of a code cell; `null` when the cell has not run.
+   */
   execution_count?: number | null;
+  /**
+   * Media attachments keyed by name (markdown and raw cells).
+   */
   attachments?: Record<string, unknown>;
 }
 
+/**
+ * Minimal slice of an nbformat 4.x cell output that the diff inspects.
+ */
 interface INotebookOutput {
+  /**
+   * The output type ('stream', 'execute_result', 'display_data', or 'error').
+   */
   output_type: string;
+  /**
+   * The mime bundle of an `execute_result` or `display_data` output.
+   */
   data?: Record<string, unknown>;
+  /**
+   * The text of a `stream` output.
+   */
   text?: string | string[];
+  /**
+   * The stream name ('stdout' or 'stderr') of a `stream` output.
+   */
   name?: string;
+  /**
+   * The exception name of an `error` output.
+   */
   ename?: string;
+  /**
+   * The exception message of an `error` output.
+   */
   evalue?: string;
+  /**
+   * The traceback lines of an `error` output; may contain ANSI escapes.
+   */
   traceback?: string[];
+  /**
+   * The execution count of an `execute_result` output.
+   */
   execution_count?: number | null;
+  /**
+   * The output-level metadata.
+   */
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * Minimal slice of an nbformat 4.x notebook that the diff inspects.
+ */
 interface INotebook {
+  /**
+   * The notebook cells.
+   */
   cells: INotebookCell[];
+  /**
+   * The notebook-level metadata.
+   */
   metadata: Record<string, unknown>;
+  /**
+   * The nbformat major version.
+   */
   nbformat: number;
+  /**
+   * The nbformat minor version.
+   */
   nbformat_minor: number;
 }
 
@@ -84,8 +150,17 @@ type NotebookCellDiff =
  * Notebook-level diff result returned by {@link buildNotebookDiff}.
  */
 export interface INotebookDiffResult {
+  /**
+   * The parsed old revision of the notebook.
+   */
   oldNotebook: INotebook;
+  /**
+   * The parsed new revision of the notebook.
+   */
   newNotebook: INotebook;
+  /**
+   * Per-cell diff entries, in new-notebook order with removed cells appended.
+   */
   cells: NotebookCellDiff[];
   /**
    * Kernel language from `metadata.language_info.name`; picks the highlighting filename.
@@ -324,8 +399,17 @@ function alignNotebookCells(
   return entries;
 }
 
+/**
+ * Options for {@link buildNotebookDiff}.
+ */
 interface IBuildNotebookDiffOptions {
+  /**
+   * The raw text of the old notebook revision.
+   */
   oldText: string;
+  /**
+   * The raw text of the new notebook revision.
+   */
   newText: string;
 }
 
@@ -429,8 +513,17 @@ function pierreFiles(
   };
 }
 
+/**
+ * One rendered sub-diff (source or metadata) of a cell entry.
+ */
 interface ICellSubDiff {
+  /**
+   * The cell section the diff covers.
+   */
   kind: 'source' | 'metadata';
+  /**
+   * The parsed `@pierre/diffs` diff for the section.
+   */
   metadata: FileDiffMetadata;
 }
 
@@ -721,13 +814,25 @@ function MarkdownPreviewSection(props: {
   );
 }
 
+/**
+ * Props for {@link NotebookDiffView}.
+ */
 interface INotebookDiffViewProps {
+  /**
+   * The notebook diff to render.
+   */
   diff: INotebookDiffResult;
+  /**
+   * Whether the active JupyterLab theme is dark.
+   */
   dark: boolean;
   /**
    * Whether a Pierre JupyterLab theme is active; selects Pierre highlighting vs the CSS-variable theme.
    */
   pierreTheme: boolean;
+  /**
+   * Registry rendering markdown and output previews; `null` falls back to plain text.
+   */
   rendermime: IRenderMimeRegistry | null;
   /**
    * Translation bundle for user-facing strings.
@@ -824,10 +929,25 @@ function EmptyCellPlaceholder(props: {
   );
 }
 
+/**
+ * Cell counts per diff kind, shown in the header.
+ */
 interface INotebookDiffSummary {
+  /**
+   * The number of added cells.
+   */
   added: number;
+  /**
+   * The number of removed cells.
+   */
   removed: number;
+  /**
+   * The number of modified cells.
+   */
   modified: number;
+  /**
+   * The number of unchanged cells.
+   */
   unchanged: number;
 }
 
@@ -896,18 +1016,45 @@ function cellEntryKey(entry: NotebookCellDiff): string {
   return `${entry.kind}:${entry.newIndex}:${entry.newCell.id ?? entry.oldCell.id ?? ''}`;
 }
 
+/**
+ * Props shared by {@link CellEntryRow} and {@link CellDiffBlock}.
+ */
 interface ICellDiffBlockProps {
+  /**
+   * The cell diff entry to render.
+   */
   entry: NotebookCellDiff;
+  /**
+   * The kernel language driving code-cell highlighting.
+   */
   language: string | undefined;
+  /**
+   * The `@pierre/diffs` theme name.
+   */
   theme: DiffsThemeNames;
+  /**
+   * Whether the active JupyterLab theme is dark.
+   */
   dark: boolean;
+  /**
+   * Registry rendering markdown and output previews; `null` falls back to plain text.
+   */
   rendermime: IRenderMimeRegistry | null;
+  /**
+   * The translation bundle for user-facing strings.
+   */
   trans: TranslationBundle;
 }
 
 type CellPlacement = 'full' | 'left' | 'right';
 
+/**
+ * Cell diff block props with a resolved grid placement.
+ */
 interface IPlacedCellDiffBlockProps extends ICellDiffBlockProps {
+  /**
+   * The grid column the block occupies: both ('full'), old ('left'), or new ('right').
+   */
   placement: CellPlacement;
 }
 

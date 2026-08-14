@@ -316,6 +316,9 @@ export class AskAgentPopup extends ReactWidget {
     this.addClass('jp-ThemedContainer');
   }
 
+  /**
+   * Render the popup content.
+   */
   render(): JSX.Element {
     return <AskAgentPopupComponent {...this._options} />;
   }

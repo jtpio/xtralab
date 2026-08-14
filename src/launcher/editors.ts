@@ -46,15 +46,30 @@ export interface IEditor {
  * Mirrors `IAgentSettings` minus `promptArgs`.
  */
 export interface IEditorSettings {
+  /**
+   * Id of the editor to override; a new id defines a new editor.
+   */
   id: string;
+  /**
+   * See {@link IEditor.label}.
+   */
   label?: string;
+  /**
+   * See {@link IEditor.caption}.
+   */
   caption?: string;
+  /**
+   * See {@link IEditor.command}.
+   */
   command?: string;
   /**
    * Inline SVG icon. Required for new ids; overrides the built-in when set on
    * a built-in id.
    */
   iconSvg?: string;
+  /**
+   * See {@link IEditor.rank}.
+   */
   rank?: number;
   /**
    * When false, hides the editor. Disable both built-ins to drop the editor

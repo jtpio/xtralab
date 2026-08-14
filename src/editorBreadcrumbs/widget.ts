@@ -19,9 +19,21 @@ const SEPARATOR_CLASS = 'jp-BreadCrumbs-separator';
  */
 const REVEAL_COMMAND = 'xtralab:reveal-path';
 
+/**
+ * The options used to create an `EditorBreadcrumbs` widget.
+ */
 interface IEditorBreadcrumbsOptions {
+  /**
+   * The document context whose path is rendered.
+   */
   context: DocumentRegistry.IContext<DocumentRegistry.IModel>;
+  /**
+   * The command registry used to dispatch the reveal command.
+   */
   commands: CommandRegistry;
+  /**
+   * The application translation bundle.
+   */
   trans: TranslationBundle;
 }
 
@@ -52,6 +64,9 @@ export class EditorBreadcrumbs extends Widget {
     this._render();
   }
 
+  /**
+   * Dispose of the resources held by the widget.
+   */
   dispose(): void {
     if (this.isDisposed) {
       return;

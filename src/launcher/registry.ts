@@ -8,10 +8,16 @@ import type { IAgentRegistry } from './tokens';
  * is the only writer, so {@link setAgents} is kept off the shared token.
  */
 export class AgentRegistry implements IAgentRegistry {
+  /**
+   * The current agents, filtered by availability and sorted by rank.
+   */
   get agents(): IAgent[] {
     return this._agents;
   }
 
+  /**
+   * Emitted whenever {@link agents} changes.
+   */
   get changed(): ISignal<IAgentRegistry, void> {
     return this._changed;
   }

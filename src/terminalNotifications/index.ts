@@ -24,11 +24,26 @@ const MAX_TEXT_LENGTH = 256;
 
 // JupyterLab's terminal keeps its xterm in a private `_term` field; structural
 // types use its hooks without `@xterm/xterm`, going inert (warning) if renamed.
+/**
+ * A handle returned by an xterm listener registration.
+ */
 interface IXtermDisposable {
+  /**
+   * Unregister the listener.
+   */
   dispose(): void;
 }
+/**
+ * The subset of the xterm.js API used to observe bells and OSC sequences.
+ */
 interface IXtermTerminal {
+  /**
+   * Register a handler invoked when the terminal bell rings.
+   */
   onBell(handler: () => void): IXtermDisposable;
+  /**
+   * The escape-sequence parser used to register OSC handlers.
+   */
   parser: {
     registerOscHandler(
       ident: number,
@@ -36,8 +51,17 @@ interface IXtermTerminal {
     ): IXtermDisposable;
   };
 }
+/**
+ * A JupyterLab terminal widget content with its private xterm exposed.
+ */
 interface ITerminalContentInternals extends ITerminal.ITerminal {
+  /**
+   * A promise resolving once the underlying xterm exists.
+   */
   ready: Promise<void>;
+  /**
+   * The private xterm instance; `undefined` if upstream renames the field.
+   */
   _term?: IXtermTerminal;
 }
 
@@ -45,12 +69,22 @@ type TerminalWidget = MainAreaWidget<ITerminal.ITerminal>;
 
 // The renderer→main bridge the desktop shell injects on the lab window. Absent
 // for pip-install users in a browser, who fall back to web Notifications.
+/**
+ * The desktop notification API exposed on `window.xtralab`.
+ */
 interface IDesktopBridge {
+  /**
+   * Show a native notification, tagged with the emitting terminal session.
+   */
   notify?: (
     title: string,
     body: string,
     session?: string
   ) => Promise<void> | void;
+  /**
+   * Register a callback invoked with the tagged terminal session name when
+   * the user clicks a notification.
+   */
   onFocusTerminal?: (callback: (session: string) => void) => void;
 }
 

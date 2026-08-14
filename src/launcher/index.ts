@@ -211,6 +211,9 @@ function filterAgents(
 namespace Private {
   let counter = 0;
 
+  /**
+   * Generate a unique id for a launcher widget.
+   */
   export function nextId(): string {
     return `launcher-${counter++}`;
   }

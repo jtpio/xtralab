@@ -317,6 +317,9 @@ export class AskAgentQueuePanel extends ReactWidget {
     options.queue.changed.connect(this._onQueueChanged, this);
   }
 
+  /**
+   * Render the panel content.
+   */
   render(): JSX.Element {
     return <QueuePanelComponent {...this._options} />;
   }

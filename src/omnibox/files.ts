@@ -6,6 +6,9 @@ import { ServerConnection } from '@jupyterlab/services';
  * (relative to the server root, `""` for the root) to bare filenames.
  */
 interface IQuickOpenContents {
+  /**
+   * Filenames grouped by their containing directory.
+   */
   contents: { [dir: string]: string[] };
 }
 

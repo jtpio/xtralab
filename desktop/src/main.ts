@@ -34,117 +34,340 @@ import {
   type MenuItemConstructorOptions
 } from 'electron';
 
+/**
+ * Connection details reported by a ready supervisor.
+ */
 interface ServerInfo {
+  /**
+   * The URL the lab window loads to open JupyterLab.
+   */
   url: string;
+  /**
+   * The Jupyter server base URL.
+   */
   baseUrl: string;
+  /**
+   * The Jupyter server authentication token.
+   */
   token: string;
 }
 
+/**
+ * How a supervisor process exited.
+ */
 interface SupervisorExitInfo {
+  /**
+   * The exit code, or null when the process ended on a signal.
+   */
   code: number | null;
+  /**
+   * The terminating signal, or null when the process exited normally.
+   */
   signal: NodeJS.Signals | null;
+  /**
+   * The last captured stderr output, kept for error reporting.
+   */
   stderrTail: string;
 }
 
+/**
+ * A running `xtralab serve` supervisor process.
+ */
 interface SupervisorHandle {
+  /**
+   * The spawned supervisor child process.
+   */
   process: ChildProcessWithoutNullStreams;
+  /**
+   * Resolves with the server info once the supervisor reports ready.
+   */
   ready: Promise<ServerInfo>;
+  /**
+   * Resolves with the exit details when the supervisor process ends.
+   */
   exited: Promise<SupervisorExitInfo>;
+  /**
+   * Stop the supervisor and wait for it to exit.
+   */
   stop: () => Promise<void>;
 }
 
+/**
+ * The bundled Python runtime shipped with the app.
+ */
 interface ManagedEnvironment {
+  /**
+   * The root directory of the runtime.
+   */
   envDir: string;
+  /**
+   * The directory holding the runtime executables.
+   */
   binDir: string;
+  /**
+   * The absolute path of the runtime Python interpreter.
+   */
   pythonPath: string;
+  /**
+   * The absolute path of the bundled xtralab CLI.
+   */
   xtralabPath: string;
 }
 
+/**
+ * A Python environment offered in the interpreter picker.
+ */
 interface PythonEnvironmentOption {
+  /**
+   * The short environment name shown in the picker and kernel names.
+   */
   label: string;
+  /**
+   * The descriptive subtitle shown under the label, such as the
+   * Python version and interpreter path.
+   */
   detail: string;
+  /**
+   * The origin of the environment: the bundled runtime, the project
+   * folder, or a user-picked interpreter.
+   */
   kind: 'managed' | 'project' | 'custom';
+  /**
+   * The absolute interpreter path, or null for the managed runtime.
+   */
   pythonPath: string | null;
+  /**
+   * The environment root (sys.prefix), or null when unknown.
+   */
   environmentRoot: string | null;
+  /**
+   * Whether ipykernel is importable in the environment.
+   */
   hasIpykernel: boolean;
 }
 
+/**
+ * The outcome of resolving a folder and its Python environments.
+ */
 interface FolderEnvironmentResult {
+  /**
+   * Whether the folder resolved and its environments were inspected.
+   */
   ok: boolean;
+  /**
+   * The normalized folder path, once resolved.
+   */
   folderPath?: string;
+  /**
+   * The Python environments discovered for the folder.
+   */
   environments?: PythonEnvironmentOption[];
+  /**
+   * The preselected interpreter path; null selects the managed runtime.
+   */
   selectedPythonPath?: string | null;
+  /**
+   * The failure message, when the preparation failed.
+   */
   error?: string;
 }
 
+/**
+ * A project Python environment prepared for running kernels.
+ */
 interface ProjectRuntimeEnvironment {
+  /**
+   * The inspected environment kernels run in.
+   */
   option: PythonEnvironmentOption;
+  /**
+   * The Jupyter data path holding the generated project kernelspec.
+   */
   kernelDataPath: string;
 }
 
+/**
+ * The remembered interpreter choice for a folder.
+ */
 interface FolderEnvironmentPreference {
+  /**
+   * The chosen interpreter path; null means the managed runtime.
+   */
   pythonPath: string | null;
+  /**
+   * The ISO timestamp of the last choice.
+   */
   updatedAt: string;
 }
 
+/**
+ * A running project session tied to a lab window.
+ */
 interface LabSession {
+  /**
+   * The project folder the session serves.
+   */
   folderPath: string;
+  /**
+   * The project kernel environment; null means kernels use the
+   * managed runtime.
+   */
   projectEnvironment: ProjectRuntimeEnvironment | null;
+  /**
+   * The supervisor running the project's Jupyter server.
+   */
   supervisor: SupervisorHandle;
+  /**
+   * The lab window showing the session.
+   */
   window: BrowserWindow;
 }
 
+/**
+ * The outcome of opening a folder as a project.
+ */
 interface OpenFolderResult {
+  /**
+   * Whether the project opened.
+   */
   ok: boolean;
+  /**
+   * The normalized folder path, once resolved.
+   */
   folderPath?: string;
+  /**
+   * The failure message, when opening failed.
+   */
   error?: string;
 }
 
+/**
+ * The plain (unmaximized) frame of a session window.
+ */
 interface SessionWindowBounds {
+  /**
+   * The left edge of the frame, in screen coordinates.
+   */
   x: number;
+  /**
+   * The top edge of the frame, in screen coordinates.
+   */
   y: number;
+  /**
+   * The frame width.
+   */
   width: number;
+  /**
+   * The frame height.
+   */
   height: number;
 }
 
 // One lab window as persisted in session-state.json. groupId ties windows of
 // the same native macOS tab group for reassembly; focusSequence orders
 // windows by most recent focus so the restore can reselect the active one.
+/**
+ * The persisted state of one lab window.
+ */
 interface SessionWindowState {
+  /**
+   * The project folder the window shows.
+   */
   folderPath: string;
+  /**
+   * The native tab group the window belongs to.
+   */
   groupId: string;
+  /**
+   * The plain window frame, or null when unknown.
+   */
   bounds: SessionWindowBounds | null;
+  /**
+   * Whether the window was maximized.
+   */
   maximized: boolean;
+  /**
+   * Whether the window was in full screen.
+   */
   fullScreen: boolean;
+  /**
+   * The monotonic focus counter; the highest value marks the last
+   * active window.
+   */
   focusSequence: number;
 }
 
+/**
+ * A session window state bound to a live BrowserWindow.
+ */
 interface TrackedSessionWindow extends SessionWindowState {
+  /**
+   * The id of the tracked BrowserWindow.
+   */
   windowId: number;
 }
 
+/**
+ * A window reopened by the session restore.
+ */
 interface RestoredSessionWindow {
+  /**
+   * The reopened lab window.
+   */
   window: BrowserWindow;
+  /**
+   * The saved state the window was restored from.
+   */
   state: SessionWindowState;
 }
 
+/**
+ * A project the session restore could not reopen.
+ */
 interface RestoreFailure {
+  /**
+   * The project folder that failed to reopen.
+   */
   folderPath: string;
+  /**
+   * The human-readable failure reason.
+   */
   reason: string;
 }
 
 type RestoreProjectStatus = 'starting' | 'ready' | 'opened' | 'failed';
 
 // One project of the startup restore, rendered by the launcher's restore view.
+/**
+ * The restore status of one project.
+ */
 interface RestoreProjectState {
+  /**
+   * The project folder being restored.
+   */
   folderPath: string;
+  /**
+   * The project's place in the restore lifecycle.
+   */
   status: RestoreProjectStatus;
+  /**
+   * The failure message when the restore failed, else null.
+   */
   error: string | null;
 }
 
 // Shown in the launcher while the startup restore reopens projects.
+/**
+ * The overall progress of the startup session restore.
+ */
 interface RestoreProgressState {
+  /**
+   * Whether the restore is still running.
+   */
   restoring: boolean;
+  /**
+   * The per-project restore states.
+   */
   projects: RestoreProjectState[];
 }
 
@@ -158,17 +381,49 @@ type RestoreProgressUpdater = (
 // wait for the group's previous tab before appearing, join the group through
 // the last-shown window. onAborted reports a window that died before it
 // appeared.
+/**
+ * Restore instructions for a window reopened by the session restore.
+ */
 interface SessionRestoreRequest {
+  /**
+   * The saved window state to reapply.
+   */
   state: SessionWindowState;
+  /**
+   * Resolves once the group's previous tab has been shown.
+   */
   waitForPredecessor: Promise<void>;
+  /**
+   * Get the last-shown group window to attach to as a tab, or null
+   * when none survives.
+   */
   getTabHost: () => BrowserWindow | null;
+  /**
+   * Called once the restored window is shown.
+   */
   onShown: () => void;
+  /**
+   * Called with a reason when the window dies before it is shown.
+   */
   onAborted: (reason: string) => void;
 }
 
+/**
+ * A started project server, before its window exists.
+ */
 interface ProjectSession {
+  /**
+   * The connection details of the ready server.
+   */
   serverInfo: ServerInfo;
+  /**
+   * The supervisor running the project's Jupyter server.
+   */
   supervisor: SupervisorHandle;
+  /**
+   * The project kernel environment; null means kernels use the
+   * managed runtime.
+   */
   projectEnvironment: ProjectRuntimeEnvironment | null;
 }
 
@@ -294,10 +549,25 @@ type UpdateStatus =
   | 'up-to-date'
   | 'error';
 
+/**
+ * The auto-update state reported to the launcher.
+ */
 interface UpdateState {
+  /**
+   * The current stage of the update flow.
+   */
   status: UpdateStatus;
+  /**
+   * The version of the running app.
+   */
   currentVersion: string;
+  /**
+   * The newest known release version, or null before one is found.
+   */
   latestVersion: string | null;
+  /**
+   * The last update error message, or null when none.
+   */
   error: string | null;
 }
 

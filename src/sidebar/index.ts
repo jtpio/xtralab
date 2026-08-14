@@ -15,8 +15,17 @@ const PLUGIN_ID = 'xtralab:sidebar';
  * per-widget options over the ones passed in.
  */
 interface ITarget {
+  /**
+   * The shell widget id of the sidebar tab.
+   */
   id: string;
+  /**
+   * The sidebar rank used when re-adding the hidden tab.
+   */
   rank: number;
+  /**
+   * The boolean plugin setting controlling the tab's visibility.
+   */
   settingKey:
     | 'showTerminals'
     | 'showFileBrowser'
@@ -24,7 +33,13 @@ interface ITarget {
     | 'showDefaultFileBrowser'
     | 'showRunningSessions'
     | 'showSearchReplace';
+  /**
+   * The id of the toggle command registered for the tab.
+   */
   command: string;
+  /**
+   * The localized label of the toggle command.
+   */
   label: (trans: ReturnType<ITranslator['load']>) => string;
 }
 

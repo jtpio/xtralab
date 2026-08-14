@@ -60,6 +60,9 @@ export function toServerPath(canonicalPath: string): string {
     : canonicalPath;
 }
 
+/**
+ * The immediate children of a directory, as canonical `@pierre/trees` paths.
+ */
 interface IListedDirectory {
   /**
    * Canonical paths for every immediate child of the requested directory.

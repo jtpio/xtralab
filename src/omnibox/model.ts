@@ -17,6 +17,9 @@ type OmniboxItemKind = 'command' | 'file' | 'agent';
  * A single result row, with the action it runs when chosen.
  */
 export interface IOmniboxItem {
+  /**
+   * The source category of the row: command, file, or agent.
+   */
   kind: OmniboxItemKind;
   /**
    * Stable React key.
@@ -52,26 +55,56 @@ interface IOmniboxSections {
    * Recently used commands and files, shown while the term is empty.
    */
   recent: IOmniboxItem[];
+  /**
+   * Commands matching the term.
+   */
   commands: IOmniboxItem[];
+  /**
+   * Workspace files matching the term.
+   */
   files: IOmniboxItem[];
+  /**
+   * Per-agent "Ask" rows carrying the term as a prompt.
+   */
   agents: IOmniboxItem[];
 }
 
+/**
+ * Inputs for {@link computeSections}.
+ */
 interface IComputeOptions {
+  /**
+   * Raw query text from the input.
+   */
   query: string;
+  /**
+   * The command registry used to look up and execute commands.
+   */
   commands: CommandRegistry;
   /**
    * Palette items, whose labels are computed with each item's args — the only
    * form in which entries like "Use Theme: …" exist.
    */
   paletteItems: ReadonlyArray<CommandPalette.IItem>;
+  /**
+   * The document registry used to pick file icons.
+   */
   docRegistry: DocumentRegistry;
+  /**
+   * The available agents; prompt-capable ones get "Ask" rows.
+   */
   agents: IAgent[];
+  /**
+   * Workspace-relative file paths to match against.
+   */
   files: string[];
   /**
    * Recently-used tracker; `null` disables the recent rows and recording.
    */
   recents: OmniboxRecents | null;
+  /**
+   * Translation bundle for row labels.
+   */
   trans: TranslationBundle;
 }
 

@@ -21,6 +21,10 @@ const PLUGIN_ID = 'xtralab:editor-breadcrumbs';
 const EDITOR_FACTORY = 'Editor';
 const TOOLBAR_ITEM_NAME = 'xtralab-editor-breadcrumbs';
 
+/**
+ * A widget extension that adds an `EditorBreadcrumbs` item to the toolbar of
+ * each new editor widget.
+ */
 class EditorBreadcrumbsExtension implements DocumentRegistry.IWidgetExtension<
   IDocumentWidget<Widget, DocumentRegistry.IModel>,
   DocumentRegistry.IModel
@@ -30,6 +34,9 @@ class EditorBreadcrumbsExtension implements DocumentRegistry.IWidgetExtension<
     this._trans = trans;
   }
 
+  /**
+   * Create the breadcrumbs toolbar item for a new editor widget.
+   */
   createNew(
     widget: IDocumentWidget<Widget, DocumentRegistry.IModel>,
     context: DocumentRegistry.IContext<DocumentRegistry.IModel>

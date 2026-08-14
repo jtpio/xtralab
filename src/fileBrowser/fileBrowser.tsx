@@ -82,10 +82,25 @@ const FILE_TREE_UNSAFE_CSS =
   'box-shadow: inset 0 0 0 2px var(--trees-accent);' +
   '}';
 
+/**
+ * Props for {@link FileBrowserComponent}.
+ */
 interface IFileBrowserProps {
+  /**
+   * The Jupyter contents manager backing the tree.
+   */
   contentsManager: Contents.IManager;
+  /**
+   * The document manager used to rename files on drag-and-drop moves.
+   */
   docManager: IDocumentManager;
+  /**
+   * Called with the server path of an activated file.
+   */
   onOpenFile?: (serverPath: string) => void;
+  /**
+   * The application translator; defaults to `nullTranslator`.
+   */
   translator?: ITranslator;
   /**
    * The host widget; selection changes are pushed up for command handlers.

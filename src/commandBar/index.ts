@@ -33,17 +33,26 @@ class CommandBar extends Widget {
     this._onActivate = options.onActivate;
   }
 
+  /**
+   * Handle the DOM events for the command bar.
+   */
   handleEvent(event: Event): void {
     if (event.type === 'click') {
       this._onActivate();
     }
   }
 
+  /**
+   * A message handler invoked on an `'after-attach'` message.
+   */
   protected onAfterAttach(): void {
     // Keyboard Enter/Space on the focused button raises the same synthetic click.
     this.node.addEventListener('click', this);
   }
 
+  /**
+   * A message handler invoked on a `'before-detach'` message.
+   */
   protected onBeforeDetach(): void {
     this.node.removeEventListener('click', this);
   }
@@ -52,6 +61,9 @@ class CommandBar extends Widget {
 }
 
 namespace CommandBar {
+  /**
+   * The options used to create a `CommandBar`.
+   */
   export interface IOptions {
     /**
      * Placeholder-style text shown inside the pill.
@@ -71,6 +83,9 @@ namespace CommandBar {
     onActivate: () => void;
   }
 
+  /**
+   * Create the DOM node for a command bar.
+   */
   export function createNode(
     label: string,
     caption: string,

@@ -69,6 +69,9 @@ export class AgentTerminals implements IAgentTerminals {
     this._registry.stateChanged.connect(this._onRegistryStateChanged, this);
   }
 
+  /**
+   * Snapshot of the sessions with a detection-confirmed running agent.
+   */
   sessions(): IAgentTerminalSession[] {
     const result: IAgentTerminalSession[] = [];
     for (const name of this._registry.sessionNames()) {
@@ -86,10 +89,17 @@ export class AgentTerminals implements IAgentTerminals {
     return result;
   }
 
+  /**
+   * A signal emitted whenever the {@link sessions} snapshot may have changed.
+   */
   get changed(): ISignal<IAgentTerminals, void> {
     return this._changed;
   }
 
+  /**
+   * Paste the prompt into the named session and press Enter, re-validating
+   * with the server first that an agent still runs there.
+   */
   async sendPrompt(name: string, prompt: string): Promise<void> {
     // Re-validate against the server: prose pasted into the shell prompt an
     // exited agent left behind would be *executed* on the Enter below.

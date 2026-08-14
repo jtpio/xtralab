@@ -36,8 +36,17 @@ const FALLBACK_INDENT_BY_MIME: Record<string, number> = {
   'text/yaml': 2
 };
 
+/**
+ * The indentation resolved for a document.
+ */
 interface IResolvedIndent {
+  /**
+   * The string inserted per indent level (spaces or a tab), for `indentUnit`.
+   */
   unit: string;
+  /**
+   * The indent width in columns, for `EditorState.tabSize`.
+   */
   width: number;
 }
 

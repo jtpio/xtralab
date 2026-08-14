@@ -90,23 +90,39 @@ export class RunningTerminals
     this.addWidget(section);
   }
 
+  /**
+   * The accordion panel hosting the sections; read by the move plugin.
+   */
   get accordionPanel(): AccordionPanel {
     return this.content as AccordionPanel;
   }
 
+  /**
+   * A signal emitted when a section is announced to the move plugin.
+   */
   get sectionAdded(): ISignal<this, ISectionEntry> {
     return this._sectionAdded;
   }
 
+  /**
+   * The hosted section widgets, excluding the panel's own Terminals section.
+   */
   get sections(): ReadonlyArray<Widget> {
     return this.accordionPanel.widgets.filter(w => w !== this._section);
   }
 
+  /**
+   * Get the movable sections: just the Terminals section, while attached here.
+   */
   getSections(): ReadonlyArray<ISectionEntry> {
     const entry = this._sectionEntry();
     return entry ? [entry] : [];
   }
 
+  /**
+   * Detach the Terminals section for the move plugin and return it; `null`
+   * for an unknown id or when the section is already hosted elsewhere.
+   */
   removeSectionById(sectionId: string): Widget | null {
     if (
       sectionId !== TERMINALS_SECTION_ID ||
@@ -118,14 +134,23 @@ export class RunningTerminals
     return this._section;
   }
 
+  /**
+   * Re-attach the Terminals section after it moves back to this panel.
+   */
   reinsertSection(widget: Widget): void {
     this.addWidget(widget);
   }
 
+  /**
+   * Host a section moved in from another sidebar panel.
+   */
   addSection(widget: Widget): void {
     this.addWidget(widget);
   }
 
+  /**
+   * Detach a hosted section when it moves back to its own panel.
+   */
   removeSectionWidget(widget: Widget): void {
     if (widget.parent === this.content) {
       widget.parent = null;
@@ -155,6 +180,9 @@ export class RunningTerminals
     }
   }
 
+  /**
+   * Dispose of the panel and the registry it owns.
+   */
   dispose(): void {
     if (this.isDisposed) {
       return;
@@ -184,8 +212,17 @@ export class RunningTerminals
 }
 
 export namespace RunningTerminals {
+  /**
+   * The instantiation options for a {@link RunningTerminals} panel.
+   */
   export interface IOptions {
+    /**
+     * The session registry the panel renders and takes ownership of.
+     */
     registry: SessionRegistry;
+    /**
+     * The translation bundle for the panel's labels; untranslated if omitted.
+     */
     trans?: TranslationBundle;
     /**
      * Resolve a row's running-agent command to its icon; supplied by the
@@ -228,6 +265,9 @@ class TerminalsListing extends ReactWidget {
     this.addClass('jp-xtralab-Terminals-listing');
   }
 
+  /**
+   * Render the listing, re-rendering on every registry state change.
+   */
   protected render(): React.ReactElement {
     return (
       <UseSignal signal={this._options.registry.stateChanged}>
