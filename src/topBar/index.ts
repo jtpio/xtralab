@@ -14,7 +14,13 @@ const TOGGLE_LEFT_AREA = 'application:toggle-left-area';
 const TOGGLE_RIGHT_AREA = 'application:toggle-right-area';
 
 interface IButtonSpec {
+  /**
+   * Stable widget id (required by `LabShell.add`).
+   */
   id: string;
+  /**
+   * Command the button triggers and mirrors the state of.
+   */
   command: string;
   icon: LabIcon;
   caption: (trans: ReturnType<ITranslator['load']>) => string;
@@ -23,6 +29,9 @@ interface IButtonSpec {
    * logo is disabled; `margin-left: auto` (topBar.css) floats the right button.
    */
   rank: number;
+  /**
+   * Side-specific class, used by the stylesheet for placement.
+   */
   sideClass: string;
 }
 

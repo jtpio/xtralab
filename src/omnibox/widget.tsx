@@ -333,9 +333,21 @@ export namespace OmniboxWidget {
      * Snapshot of the available agents, read once when the overlay opens.
      */
     agents: IAgent[];
+    /**
+     * Placeholder text for the input.
+     */
     placeholder: string;
+    /**
+     * Seed text for the input.
+     */
     initialQuery: string;
+    /**
+     * Recently-used tracker; `null` disables the recent rows and recording.
+     */
     recents: OmniboxRecents | null;
+    /**
+     * Translation bundle for the overlay's own labels.
+     */
     trans: TranslationBundle;
     /**
      * Dismiss the overlay (the plugin disposes the widget).

@@ -87,6 +87,9 @@ interface IFileBrowserProps {
   docManager: IDocumentManager;
   onOpenFile?: (serverPath: string) => void;
   translator?: ITranslator;
+  /**
+   * The host widget; selection changes are pushed up for command handlers.
+   */
   widget?: XtralabFileBrowser;
 }
 

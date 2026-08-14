@@ -345,8 +345,14 @@ export namespace AskAgentQueuePanel {
    * Construction options for {@link AskAgentQueuePanel}.
    */
   export interface IOptions {
+    /**
+     * The queue the panel lists and edits.
+     */
     queue: PromptQueue;
 
+    /**
+     * Command registry used to open queued locations in the editor.
+     */
     commands: CommandRegistry;
 
     /**
@@ -365,6 +371,9 @@ export namespace AskAgentQueuePanel {
      */
     sending: () => boolean;
 
+    /**
+     * Translation bundle for the panel's own labels.
+     */
     trans: TranslationBundle;
 
     /**

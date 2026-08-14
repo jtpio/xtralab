@@ -12,6 +12,10 @@ interface IRecentEntry {
    * The command id, or the workspace-relative file path.
    */
   id: string;
+  /**
+   * Arguments the command ran with, for palette-style entries whose label and
+   * behavior depend on them.
+   */
   args?: ReadonlyPartialJSONObject;
 }
 
@@ -160,6 +164,9 @@ export namespace OmniboxRecents {
    * Construction options for {@link OmniboxRecents}.
    */
   export interface IOptions {
+    /**
+     * The state database to persist through, if available.
+     */
     state?: IStateDB | null;
   }
 }

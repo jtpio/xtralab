@@ -87,7 +87,13 @@ export interface INotebookDiffResult {
   oldNotebook: INotebook;
   newNotebook: INotebook;
   cells: NotebookCellDiff[];
+  /**
+   * Kernel language from `metadata.language_info.name`; picks the highlighting filename.
+   */
   language: string | undefined;
+  /**
+   * Diff of notebook-level metadata when it differs between revisions; `null` otherwise.
+   */
   notebookMetadataDiff: FileDiffMetadata | null;
 }
 
@@ -718,8 +724,14 @@ function MarkdownPreviewSection(props: {
 interface INotebookDiffViewProps {
   diff: INotebookDiffResult;
   dark: boolean;
+  /**
+   * Whether a Pierre JupyterLab theme is active; selects Pierre highlighting vs the CSS-variable theme.
+   */
   pierreTheme: boolean;
   rendermime: IRenderMimeRegistry | null;
+  /**
+   * Translation bundle for user-facing strings.
+   */
   trans: TranslationBundle;
 }
 

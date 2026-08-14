@@ -18,14 +18,29 @@ type OmniboxItemKind = 'command' | 'file' | 'agent';
  */
 export interface IOmniboxItem {
   kind: OmniboxItemKind;
+  /**
+   * Stable React key.
+   */
   key: string;
+  /**
+   * Primary text shown on the row.
+   */
   label: string;
   /**
    * Indices of matched characters in `label`, for highlighting. May be empty.
    */
   matchIndices: readonly number[];
+  /**
+   * Optional secondary text shown trailing the label.
+   */
   caption?: string;
+  /**
+   * Optional leading icon.
+   */
   icon?: LabIcon;
+  /**
+   * Run the row's action.
+   */
   execute: () => void;
 }
 
@@ -33,6 +48,9 @@ export interface IOmniboxItem {
  * Results grouped by source; each group is already capped and sorted.
  */
 interface IOmniboxSections {
+  /**
+   * Recently used commands and files, shown while the term is empty.
+   */
   recent: IOmniboxItem[];
   commands: IOmniboxItem[];
   files: IOmniboxItem[];
@@ -42,10 +60,17 @@ interface IOmniboxSections {
 interface IComputeOptions {
   query: string;
   commands: CommandRegistry;
+  /**
+   * Palette items, whose labels are computed with each item's args — the only
+   * form in which entries like "Use Theme: …" exist.
+   */
   paletteItems: ReadonlyArray<CommandPalette.IItem>;
   docRegistry: DocumentRegistry;
   agents: IAgent[];
   files: string[];
+  /**
+   * Recently-used tracker; `null` disables the recent rows and recording.
+   */
   recents: OmniboxRecents | null;
   trans: TranslationBundle;
 }

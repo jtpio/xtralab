@@ -331,6 +331,9 @@ export namespace AskAgentPopup {
    * Construction options for {@link AskAgentPopup}.
    */
   export interface IOptions {
+    /**
+     * The code selection the prompt is about.
+     */
     context: IAskAgentContext;
     /**
      * Viewport rectangle to anchor to; `null` centers near the top.
@@ -344,13 +347,22 @@ export namespace AskAgentPopup {
      * Snapshot of the running agent terminals, taken when the popup opens.
      */
     targets: ISessionTarget[];
+    /**
+     * Preferred agent id (the last one used), when still available.
+     */
     initialAgentId: string | null;
     /**
      * Session to preselect as the target, or `null` to preselect the new
      * terminal. Must be `null` or the name of an entry in {@link targets}.
      */
     initialTargetName: string | null;
+    /**
+     * Number of prompts already queued, shown on the queue button.
+     */
     queueCount?: number;
+    /**
+     * Translation bundle for the popup's own labels.
+     */
     trans: TranslationBundle;
     /**
      * Send the instruction to the chosen target (the plugin closes the popup).

@@ -9,11 +9,29 @@ import { BUILTIN_EDITOR_ICONS } from './icons';
  * terminals panel.
  */
 export interface IEditor {
+  /**
+   * Stable id; also the default `$PATH` command probed for availability.
+   */
   id: string;
+  /**
+   * Tile label, e.g. "Neovim".
+   */
   label: string;
+  /**
+   * Tile tooltip.
+   */
   caption: string;
+  /**
+   * The literal command typed into the new terminal, e.g. `nvim`.
+   */
   command: string;
+  /**
+   * Brand icon for the tile.
+   */
   icon: LabIcon;
+  /**
+   * Preference order: the first qualifying candidate by rank wins the tile.
+   */
   rank: number;
   /**
    * When false, skip the `which`-based availability check — for aliases or
@@ -38,7 +56,15 @@ export interface IEditorSettings {
    */
   iconSvg?: string;
   rank?: number;
+  /**
+   * When false, hides the editor. Disable both built-ins to drop the editor
+   * tile entirely.
+   */
   enabled?: boolean;
+  /**
+   * See {@link IEditor.requireAvailable}. Defaults to true, but flips to false
+   * once `command` is overridden (a user-chosen alias is trusted).
+   */
   requireAvailable?: boolean;
 }
 

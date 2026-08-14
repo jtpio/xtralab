@@ -41,7 +41,14 @@ export interface IAgentSettings {
    */
   iconSvg?: string;
   rank?: number;
+  /**
+   * When false, hides the agent from the launcher and the command palette.
+   */
   enabled?: boolean;
+  /**
+   * See `IAgent.requireAvailable`. Defaults to true, but flips to false once
+   * `command` is overridden (a user-chosen alias is trusted).
+   */
   requireAvailable?: boolean;
   /**
    * See `IAgent.promptArgs`. `null` explicitly turns off an agent's default

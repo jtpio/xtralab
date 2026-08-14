@@ -95,6 +95,9 @@ function formatBytes(bytes: number): string {
 }
 
 interface IImageSide {
+  /**
+   * Cleaned base64 payload; empty string means the side does not exist.
+   */
   data: string;
   present: boolean;
   uri: string | null;
@@ -113,9 +116,21 @@ function toSide(raw: string, fileType: string): IImageSide {
 }
 
 interface IImageDiffViewProps {
+  /**
+   * Base64 of the reference (old) revision; empty when added.
+   */
   reference: string;
+  /**
+   * Base64 of the challenger (new) revision; empty when deleted.
+   */
   challenger: string;
+  /**
+   * MIME subtype from {@link imageDataType}.
+   */
   fileType: string;
+  /**
+   * Translation bundle for user-facing strings.
+   */
   trans: TranslationBundle;
 }
 

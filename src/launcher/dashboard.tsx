@@ -38,9 +38,22 @@ import { agentCommandId } from './tokens';
  */
 interface ILauncherDashboardOptions {
   commands: CommandRegistry;
+  /**
+   * Agent list to render, already filtered by availability and sorted by rank.
+   */
   agents: IAgent[];
+  /**
+   * Terminal editor for the "Open" section, or `null` when none is installed.
+   */
   editor: IEditor | null;
+  /**
+   * Launch-tag registry so the terminals panel badges editor launches right
+   * away; `null` when the provider plugin is unavailable.
+   */
   agentSessions: IAgentSessions | null;
+  /**
+   * Called with the launched widget; the plugin swaps it into the launcher's tab.
+   */
   onAgentLaunch: (item: Widget) => void;
   /**
    * Repo path for the changes section. Empty string lets git resolve the
@@ -52,6 +65,10 @@ interface ILauncherDashboardOptions {
    * server root.
    */
   cwd: string;
+  /**
+   * The translation bundle used to localize the dashboard's user-facing
+   * strings.
+   */
   trans: TranslationBundle;
 }
 

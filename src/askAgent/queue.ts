@@ -14,8 +14,14 @@ export interface IQueuedPrompt {
    */
   id: string;
 
+  /**
+   * The code selection the instruction is about.
+   */
   context: IAskAgentContext;
 
+  /**
+   * The user's typed comment.
+   */
   instruction: string;
 
   /**

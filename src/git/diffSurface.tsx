@@ -163,23 +163,79 @@ interface IHunkDiscard {
 }
 
 interface IDiffSurfaceProps {
+  /**
+   * Whether the host is still resolving the file contents.
+   */
   loading: boolean;
+  /**
+   * Fatal error message to show instead of a diff, or `null`.
+   */
   error: string | null;
+  /**
+   * Whether the file is binary (no textual diff is rendered).
+   */
   isBinary: boolean;
+  /**
+   * Resolved old/reference text. Ignored while loading/binary/errored.
+   */
   oldText: string;
+  /**
+   * Resolved new/challenger text. Ignored while loading/binary/errored.
+   */
   newText: string;
+  /**
+   * New-side path; drives notebook detection and the highlighting filename.
+   */
   newName: string;
+  /**
+   * Old-side path; differs from {@link newName} only for renames.
+   */
   oldName?: string;
+  /**
+   * Whether to render with the dark `@pierre/diffs` theme.
+   */
   dark: boolean;
+  /**
+   * Whether the diff should keep Pierre's own syntax palette.
+   */
   pierreTheme: boolean;
+  /**
+   * Used by the notebook view; `null` in stripped-down hosts, which forces a textual fallback.
+   */
   rendermime: IRenderMimeRegistry | null;
+  /**
+   * Rendered-vs-JSON choice for notebook diffs (host-controlled).
+   */
   notebookViewMode: NotebookDiffViewMode;
+  /**
+   * Split vs unified layout for the textual file diff (host-controlled).
+   */
   diffStyle: DiffStyle;
+  /**
+   * Fires when rendered-notebook availability changes so the host can toggle its Notebook/JSON control.
+   */
   onNotebookAvailabilityChange?: (available: boolean) => void;
+  /**
+   * Fires when the textual file diff becomes (in)active — the only view the split/unified choice affects.
+   */
   onFileDiffActiveChange?: (active: boolean) => void;
+  /**
+   * Fires after each diff computation with the hunk count (`null` when no
+   * textual diff); hosts use it to auto-close emptied diffs.
+   */
   onMetadataChange?: (info: { hunkCount: number | null }) => void;
+  /**
+   * Optional per-hunk discard wiring; omit for a read-only diff.
+   */
   hunkDiscard?: IHunkDiscard;
+  /**
+   * Enables line selection and the gutter "+" button; called with the
+   * selected range and the button's viewport rect (`null` when unmeasurable).
+   */
   onLineAsk?: (range: SelectedLineRange, anchor: DOMRect | null) => void;
+  /**
+   * Translation bundle for user-facing strings.
+   */
   trans: TranslationBundle;
 }
 

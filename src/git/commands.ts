@@ -201,11 +201,29 @@ function createDiffWidget(
 interface IRegisterGitCommandsOptions {
   app: JupyterFrontEnd;
   themeManager: IThemeManager | null;
+  /**
+   * Contents manager used to write hunk-discard results.
+   */
   contentsManager: Contents.IManager;
+  /**
+   * Rendermime registry used by notebook diffs; may be `null`.
+   */
   rendermime: IRenderMimeRegistry | null;
+  /**
+   * Ask-agent popup for prompting an agent about diff lines; may be `null`.
+   */
   askAgent: IAskAgent | null;
+  /**
+   * Translation bundle for user-facing strings.
+   */
   trans: TranslationBundle;
+  /**
+   * Track newly created diff widgets before they are added to the shell.
+   */
   trackDiff(widget: DiffMainAreaWidget): Promise<void>;
+  /**
+   * Look up an already-open diff widget for a file change.
+   */
   findDiff(change: IFileChange, pin?: boolean): DiffMainAreaWidget | undefined;
   onPinned(widget: DiffMainAreaWidget): void;
 }

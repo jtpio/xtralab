@@ -49,6 +49,9 @@ export interface IXtralabDiffContext {
   contentsManager: Contents.IManager;
   rendermime: IRenderMimeRegistry | null;
   themeManager: IThemeManager | null;
+  /**
+   * When available, diff line selections get an "ask an agent" gutter button.
+   */
   askAgent: IAskAgent | null;
   trans: TranslationBundle;
 }

@@ -71,8 +71,14 @@ export interface IXtralabFileBrowser {
    */
   readonly selectedPaths: readonly string[];
 
+  /**
+   * Emits when the tree's selection changes.
+   */
   readonly selectionChanged: ISignal<IXtralabFileBrowser, readonly string[]>;
 
+  /**
+   * Emits when {@link refresh} is called.
+   */
   readonly refreshRequested: ISignal<IXtralabFileBrowser, void>;
 
   /**
@@ -93,6 +99,9 @@ export interface IXtralabFileBrowser {
    */
   readonly rootRequested: ISignal<IXtralabFileBrowser, void>;
 
+  /**
+   * Emits when every expanded folder should collapse.
+   */
   readonly collapseAllRequested: ISignal<IXtralabFileBrowser, void>;
 
   /**
@@ -101,6 +110,9 @@ export interface IXtralabFileBrowser {
    */
   readonly fileFilterVisible: boolean;
 
+  /**
+   * Emits when {@link fileFilterVisible} changes.
+   */
   readonly fileFilterVisibleChanged: ISignal<IXtralabFileBrowser, boolean>;
 
   /**

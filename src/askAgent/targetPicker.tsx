@@ -10,12 +10,24 @@ import type { IAgent } from '../launcher/agents';
  * plugin so these components stay presentation-only.
  */
 export interface ISessionTarget {
+  /**
+   * The terminal session name.
+   */
   name: string;
 
+  /**
+   * The session's display label (usually the agent's name).
+   */
   label: string;
 
+  /**
+   * The agent's latest activity line, when one is available.
+   */
   activity: string | null;
 
+  /**
+   * The running agent's icon.
+   */
   icon: LabIcon;
 }
 

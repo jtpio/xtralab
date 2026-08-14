@@ -23,6 +23,10 @@ import {
  * built-ins merged with the user's `editors` setting.
  */
 export interface IEditorRegistry {
+  /**
+   * The merged editor list (disabled entries removed); the terminals panel
+   * uses it to badge running editors.
+   */
   readonly editors: IEditor[];
 
   /**
@@ -31,6 +35,9 @@ export interface IEditorRegistry {
    */
   readonly current: IEditor | null;
 
+  /**
+   * Emitted whenever {@link editors} or {@link current} changes.
+   */
   readonly changed: ISignal<IEditorRegistry, void>;
 }
 
