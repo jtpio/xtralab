@@ -1,4 +1,9 @@
 import {
+  IMovableSectionDestination,
+  IMovableSectionSource,
+  ISectionEntry
+} from '@jupyterlab/apputils';
+import {
   type TranslationBundle,
   nullTranslator
 } from '@jupyterlab/translation';
@@ -6,11 +11,16 @@ import {
   addIcon,
   closeIcon,
   LabIcon,
+  PanelWithToolbar,
   ReactWidget,
+  SidePanel,
   stopIcon,
   terminalIcon,
+  ToolbarButton,
   UseSignal
 } from '@jupyterlab/ui-components';
+import { ISignal, Signal } from '@lumino/signaling';
+import { AccordionPanel, Widget } from '@lumino/widgets';
 import * as React from 'react';
 
 import { SessionRegistry } from './model';
@@ -22,37 +32,134 @@ import { SessionRegistry } from './model';
 const RUNNING_TERMINALS_ID = 'xtralab-running-terminals';
 
 /**
- * Left-sidebar panel listing every running terminal session. It is the
- * sidebar counterpart of the launcher's terminal tiles: where the
- * launcher *starts* sessions, this panel surfaces the ones already
- * running so the user can jump back to a backgrounded agent — including
- * sessions whose tab has been closed but which are still alive on the
- * server. Each row is labelled with the session's title and, for a session
- * running a coding agent, a smaller line below it showing the agent's latest
- * line of output (from {@link SessionRegistry.activityFor}).
- *
- * Backed by {@link SessionRegistry}: a `UseSignal` re-renders the list
- * whenever the registry emits `stateChanged`, so it tracks
- * `runningChanged` and the agent-title cache without any local state.
- * Click behavior (activate vs. reopen, shutdown, new terminal) is
- * delegated to plugin-supplied callbacks so the widget never imports
- * `app`.
+ * Id of the accordion section holding the terminals list. Persisted by the
+ * movable-sections plugin, so it must stay stable across releases.
  */
-export class RunningTerminals extends ReactWidget {
+const TERMINALS_SECTION_ID = 'xtralab-terminals-section';
+
+/**
+ * Left-sidebar panel listing every running terminal session, including the
+ * sessions whose tab is closed but which are still alive on the server. The
+ * list is a single movable "Terminals" section.
+ */
+export class RunningTerminals
+  extends SidePanel
+  implements IMovableSectionSource, IMovableSectionDestination
+{
   constructor(options: RunningTerminals.IOptions) {
     super();
     this._registry = options.registry;
-    this._trans = options.trans ?? nullTranslator.load('jupyterlab');
-    this._iconForCommand = options.iconForCommand;
-    this._onActivate = options.onActivate;
-    this._onShutdown = options.onShutdown;
-    this._onShutdownAll = options.onShutdownAll;
-    this._onCreate = options.onCreate;
+    const trans = options.trans ?? nullTranslator.load('jupyterlab');
 
     this.id = RUNNING_TERMINALS_ID;
     this.title.icon = terminalIcon;
-    this.title.caption = this._trans.__('Running Terminals');
+    this.title.caption = trans.__('Running Terminals');
     this.addClass('jp-xtralab-Terminals');
+
+    const section = (this._section = new PanelWithToolbar());
+    section.id = TERMINALS_SECTION_ID;
+    section.title.label = trans.__('Terminals');
+    section.addClass('jp-xtralab-Terminals-section');
+
+    const shutdownAll = new ToolbarButton({
+      icon: stopIcon,
+      onClick: options.onShutdownAll,
+      tooltip: trans.__('Shut Down All Terminals'),
+      enabled: this._registry.sessionNames().length > 0
+    });
+    this._registry.stateChanged.connect(() => {
+      shutdownAll.enabled = this._registry.sessionNames().length > 0;
+    });
+    section.toolbar.addItem('shutdown-all', shutdownAll);
+
+    const newTerminal = new ToolbarButton({
+      icon: addIcon,
+      onClick: () => {
+        // Anchor whatever the plugin shows (usually an agent menu) to the
+        // button's bottom-left, in the viewport coordinates `Menu.open` wants.
+        const rect = newTerminal.node.getBoundingClientRect();
+        options.onCreate({ x: rect.left, y: rect.bottom });
+      },
+      tooltip: trans.__('New Terminal')
+    });
+    section.toolbar.addItem('new-terminal', newTerminal);
+
+    section.addWidget(
+      new TerminalsListing({
+        registry: this._registry,
+        trans,
+        iconForCommand: options.iconForCommand,
+        onActivate: options.onActivate,
+        onShutdown: options.onShutdown
+      })
+    );
+
+    this.addWidget(section);
+  }
+
+  get accordionPanel(): AccordionPanel {
+    return this.content as AccordionPanel;
+  }
+
+  get sectionAdded(): ISignal<this, ISectionEntry> {
+    return this._sectionAdded;
+  }
+
+  get sections(): ReadonlyArray<Widget> {
+    return this.accordionPanel.widgets.filter(w => w !== this._section);
+  }
+
+  getSections(): ReadonlyArray<ISectionEntry> {
+    const entry = this._sectionEntry();
+    return entry ? [entry] : [];
+  }
+
+  removeSectionById(sectionId: string): Widget | null {
+    if (
+      sectionId !== TERMINALS_SECTION_ID ||
+      this._section.parent !== this.content
+    ) {
+      return null;
+    }
+    this._section.parent = null;
+    return this._section;
+  }
+
+  reinsertSection(widget: Widget): void {
+    this.addWidget(widget);
+  }
+
+  addSection(widget: Widget): void {
+    this.addWidget(widget);
+  }
+
+  removeSectionWidget(widget: Widget): void {
+    if (widget.parent === this.content) {
+      widget.parent = null;
+    }
+  }
+
+  /**
+   * The layout restorer stores a section as collapsed whenever its panel is off
+   * screen at save time, so it can come back collapsed without the user asking.
+   */
+  expandOwnSection(): void {
+    const accordion = this.accordionPanel;
+    const index = Array.from(accordion.widgets).indexOf(this._section);
+    if (index >= 0) {
+      accordion.expand(index);
+    }
+  }
+
+  /**
+   * The move plugin reconciles persisted moves only against sections announced
+   * after `registerSource`, and this panel builds its section in the constructor.
+   */
+  announceSections(): void {
+    const entry = this._sectionEntry();
+    if (entry) {
+      this._sectionAdded.emit(entry);
+    }
   }
 
   dispose(): void {
@@ -65,31 +172,23 @@ export class RunningTerminals extends ReactWidget {
     super.dispose();
   }
 
-  protected render(): React.ReactElement {
-    return (
-      <UseSignal signal={this._registry.stateChanged}>
-        {() => (
-          <RunningTerminalsComponent
-            registry={this._registry}
-            trans={this._trans}
-            iconForCommand={this._iconForCommand}
-            onActivate={this._onActivate}
-            onShutdown={this._onShutdown}
-            onShutdownAll={this._onShutdownAll}
-            onCreate={this._onCreate}
-          />
-        )}
-      </UseSignal>
-    );
+  private _sectionEntry(): ISectionEntry | null {
+    const accordion = this.accordionPanel;
+    const index = Array.from(accordion.widgets).indexOf(this._section);
+    const titleNode = accordion.titles[index] as HTMLElement | undefined;
+    if (index < 0 || !titleNode) {
+      return null;
+    }
+    return {
+      id: TERMINALS_SECTION_ID,
+      titleNode,
+      widget: this._section
+    };
   }
 
   private _registry: SessionRegistry;
-  private _trans: TranslationBundle;
-  private _iconForCommand: (command: string | null) => LabIcon;
-  private _onActivate: (sessionName: string) => void;
-  private _onShutdown: (sessionName: string) => void;
-  private _onShutdownAll: () => void;
-  private _onCreate: (anchor: { x: number; y: number }) => void;
+  private _section: PanelWithToolbar;
+  private _sectionAdded = new Signal<this, ISectionEntry>(this);
 }
 
 export namespace RunningTerminals {
@@ -128,24 +227,55 @@ export namespace RunningTerminals {
   }
 }
 
+/**
+ * The body of the Terminals section.
+ */
+class TerminalsListing extends ReactWidget {
+  constructor(options: {
+    registry: SessionRegistry;
+    trans: TranslationBundle;
+    iconForCommand: (command: string | null) => LabIcon;
+    onActivate: (sessionName: string) => void;
+    onShutdown: (sessionName: string) => void;
+  }) {
+    super();
+    this._options = options;
+    this.addClass('jp-xtralab-Terminals-listing');
+  }
+
+  protected render(): React.ReactElement {
+    return (
+      <UseSignal signal={this._options.registry.stateChanged}>
+        {() => (
+          <RunningTerminalsComponent
+            registry={this._options.registry}
+            trans={this._options.trans}
+            iconForCommand={this._options.iconForCommand}
+            onActivate={this._options.onActivate}
+            onShutdown={this._options.onShutdown}
+          />
+        )}
+      </UseSignal>
+    );
+  }
+
+  private _options: {
+    registry: SessionRegistry;
+    trans: TranslationBundle;
+    iconForCommand: (command: string | null) => LabIcon;
+    onActivate: (sessionName: string) => void;
+    onShutdown: (sessionName: string) => void;
+  };
+}
+
 function RunningTerminalsComponent(props: {
   registry: SessionRegistry;
   trans: TranslationBundle;
   iconForCommand: (command: string | null) => LabIcon;
   onActivate: (sessionName: string) => void;
   onShutdown: (sessionName: string) => void;
-  onShutdownAll: () => void;
-  onCreate: (anchor: { x: number; y: number }) => void;
 }): React.ReactElement {
-  const {
-    registry,
-    trans,
-    iconForCommand,
-    onActivate,
-    onShutdown,
-    onShutdownAll,
-    onCreate
-  } = props;
+  const { registry, trans, iconForCommand, onActivate, onShutdown } = props;
   const names = registry.sessionNames();
   // The session whose terminal is the current widget in the main area, so its
   // row can be highlighted. `null` when the current tab is a notebook or any
@@ -154,37 +284,6 @@ function RunningTerminalsComponent(props: {
 
   return (
     <div className="jp-xtralab-Terminals-body">
-      <div className="jp-xtralab-Terminals-header">
-        <h2 className="jp-xtralab-Terminals-title">{trans.__('Terminals')}</h2>
-        <div className="jp-xtralab-Terminals-actions">
-          <button
-            type="button"
-            className="jp-xtralab-Terminals-action jp-xtralab-Terminals-shutdown-all"
-            onClick={onShutdownAll}
-            disabled={names.length === 0}
-            title={trans.__('Shut Down All Terminals')}
-            aria-label={trans.__('Shut Down All Terminals')}
-          >
-            <stopIcon.react tag="span" verticalAlign="middle" />
-          </button>
-          <button
-            type="button"
-            className="jp-xtralab-Terminals-action jp-xtralab-Terminals-new"
-            onClick={event => {
-              // Anchor whatever the plugin shows (usually an agent menu) to
-              // the button's bottom-left, in viewport coordinates — what
-              // `Menu.open(x, y)` expects.
-              const rect = event.currentTarget.getBoundingClientRect();
-              onCreate({ x: rect.left, y: rect.bottom });
-            }}
-            title={trans.__('New Terminal')}
-            aria-label={trans.__('New Terminal')}
-            aria-haspopup="menu"
-          >
-            <addIcon.react tag="span" verticalAlign="middle" />
-          </button>
-        </div>
-      </div>
       {names.length === 0 ? (
         <p className="jp-xtralab-Terminals-empty">
           {trans.__('No running terminals.')}

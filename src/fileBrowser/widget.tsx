@@ -1,10 +1,20 @@
 import * as React from 'react';
 
+import {
+  IMovableSectionDestination,
+  IMovableSectionSource,
+  ISectionEntry
+} from '@jupyterlab/apputils';
 import { IDocumentManager } from '@jupyterlab/docmanager';
 import { Contents } from '@jupyterlab/services';
-import { ReactWidget, Toolbar } from '@jupyterlab/ui-components';
+import {
+  AccordionToolbar,
+  PanelWithToolbar,
+  ReactWidget,
+  Toolbar
+} from '@jupyterlab/ui-components';
 import { Signal, ISignal } from '@lumino/signaling';
-import { PanelLayout, Widget } from '@lumino/widgets';
+import { AccordionPanel, PanelLayout, Widget } from '@lumino/widgets';
 
 import { FileBrowserComponent } from './fileBrowser';
 import { xtralabFileBrowserIcon } from './icons';
@@ -12,15 +22,24 @@ import { xtralabFileBrowserIcon } from './icons';
 export const FILE_BROWSER_ID = 'xtralab:file-browser';
 
 /**
- * The CSS class added to the xtralab file browser widget. The selectors that
- * bind application context menu items hang off this class, so it must remain
- * specific enough not to clash with other browsers (such as the default
- * `jp-FileBrowser`).
+ * Persisted by the movable-sections plugin, so it must stay stable.
+ */
+const TREE_SECTION_ID = 'xtralab-file-tree-section';
+
+/**
+ * Context menu selectors hang off this class, so it sits on the section and
+ * keeps matching once the tree moves to another panel.
  */
 const FILE_BROWSER_CSS_CLASS = 'jp-xtralab-FileBrowser';
 
+const PANEL_CSS_CLASS = 'jp-xtralab-FileBrowserPanel';
+
 const TOOLBAR_CSS_CLASS = 'jp-xtralab-FileBrowser-toolbar';
 const CONTENT_CSS_CLASS = 'jp-xtralab-FileBrowser-content';
+
+const ACCORDION_CSS_CLASS = 'jp-xtralab-FileBrowser-accordion';
+
+const MOVABLE_SECTION_CLASS = 'jp-movable-section';
 
 interface IXtralabFileBrowserOptions {
   contentsManager: Contents.IManager;
@@ -155,17 +174,25 @@ export interface IXtralabFileBrowser {
    * Toggle the filter box above the tree.
    */
   toggleFileFilter(): void;
+
+  readonly sectionNode: HTMLElement;
 }
 
 /**
- * Lumino widget that hosts the React-based `@pierre/trees` file browser.
- * The widget is laid out with a JupyterLab `Toolbar` on top and the tree
- * filling the remaining space.
+ * Lumino widget hosting the React-based `@pierre/trees` file browser. The tree
+ * and its toolbar form one movable "Files" section, and sections from other
+ * panels can be moved in below it.
  */
-export class XtralabFileBrowser extends Widget implements IXtralabFileBrowser {
+export class XtralabFileBrowser
+  extends Widget
+  implements
+    IXtralabFileBrowser,
+    IMovableSectionSource,
+    IMovableSectionDestination
+{
   constructor(options: IXtralabFileBrowserOptions) {
     super();
-    const layout = (this.layout = new PanelLayout());
+    const layout = (this._panelLayout = this.layout = new PanelLayout());
 
     this._contentsManager = options.contentsManager;
     this._docManager = options.docManager;
@@ -173,12 +200,11 @@ export class XtralabFileBrowser extends Widget implements IXtralabFileBrowser {
     this.id = FILE_BROWSER_ID;
     this.title.icon = xtralabFileBrowserIcon;
     this.title.caption = 'xtralab File Browser';
-    this.addClass(FILE_BROWSER_CSS_CLASS);
+    this.addClass(PANEL_CSS_CLASS);
 
     this._toolbar = new Toolbar();
     this._toolbar.addClass(TOOLBAR_CSS_CLASS);
     this._toolbar.node.setAttribute('aria-label', 'file browser');
-    layout.addWidget(this._toolbar);
 
     this._content = new XtralabFileTreeContent({
       contentsManager: this._contentsManager,
@@ -187,7 +213,15 @@ export class XtralabFileBrowser extends Widget implements IXtralabFileBrowser {
       browser: this
     });
     this._content.addClass(CONTENT_CSS_CLASS);
-    layout.addWidget(this._content);
+
+    this._section = new PanelWithToolbar({ toolbar: this._toolbar });
+    this._section.id = TREE_SECTION_ID;
+    // Only an accordion host draws this; a plain `PanelLayout` shows no title.
+    this._section.title.label = 'Files';
+    this._section.addClass(FILE_BROWSER_CSS_CLASS);
+    this._section.addWidget(this._toolbar);
+    this._section.addWidget(this._content);
+    layout.addWidget(this._section);
   }
 
   get contentsManager(): Contents.IManager {
@@ -280,6 +314,141 @@ export class XtralabFileBrowser extends Widget implements IXtralabFileBrowser {
     this.setFileFilterVisible(!this._fileFilterVisible);
   }
 
+  get sectionNode(): HTMLElement {
+    return this._section.node;
+  }
+
+  get isEmpty(): boolean {
+    return this._panelLayout.widgets.length === 0;
+  }
+
+  get contentChanged(): ISignal<this, void> {
+    return this._contentChanged;
+  }
+
+  get sectionAdded(): ISignal<this, ISectionEntry> {
+    return this._sectionAdded;
+  }
+
+  get accordionPanel(): AccordionPanel | null {
+    return this._accordion;
+  }
+
+  get sections(): ReadonlyArray<Widget> {
+    if (!this._accordion) {
+      return [];
+    }
+    return this._accordion.widgets.filter(w => w !== this._section);
+  }
+
+  /**
+   * The toolbar is the section's title node: it is the tree's header row at
+   * home, and an accordion host renders it inside the section title.
+   */
+  getSections(): ReadonlyArray<ISectionEntry> {
+    return this._isSectionHome()
+      ? [
+          {
+            id: TREE_SECTION_ID,
+            titleNode: this._toolbar.node,
+            widget: this._section
+          }
+        ]
+      : [];
+  }
+
+  removeSectionById(sectionId: string): Widget | null {
+    if (sectionId !== TREE_SECTION_ID || !this._isSectionHome()) {
+      return null;
+    }
+    this._section.parent = null;
+    if (this._accordion && this._accordion.widgets.length === 0) {
+      this._accordion.dispose();
+      this._accordion = null;
+    }
+    // Away from home the toolbar must not offer "Move to …" as well;
+    // `getSections` re-marks it on the way back.
+    this._toolbar.node.classList.remove(MOVABLE_SECTION_CLASS);
+    this._contentChanged.emit();
+    return this._section;
+  }
+
+  reinsertSection(widget: Widget): void {
+    if (this._accordion) {
+      this._accordion.insertWidget(0, widget);
+    } else {
+      this._panelLayout.addWidget(widget);
+      this._restoreToolbar();
+    }
+    this._contentChanged.emit();
+  }
+
+  /**
+   * The move plugin reconciles persisted moves only against sections announced
+   * after `registerSource`, and this panel builds its section in the constructor.
+   */
+  announceSections(): void {
+    for (const entry of this.getSections()) {
+      this._sectionAdded.emit(entry);
+    }
+  }
+
+  /**
+   * The first hosted section moves the tree into an accordion.
+   */
+  addSection(widget: Widget): void {
+    if (!this._accordion) {
+      const accordion = new AccordionPanel({
+        layout: AccordionToolbar.createLayout({})
+      });
+      accordion.addClass(ACCORDION_CSS_CLASS);
+      if (this._section.parent === this) {
+        accordion.addWidget(this._section);
+      }
+      accordion.addWidget(widget);
+      this._accordion = accordion;
+      this._panelLayout.addWidget(accordion);
+    } else {
+      this._accordion.addWidget(widget);
+    }
+    this._contentChanged.emit();
+  }
+
+  removeSectionWidget(widget: Widget): void {
+    if (!this._accordion || widget.parent !== this._accordion) {
+      return;
+    }
+    widget.parent = null;
+    const remaining = this._accordion.widgets;
+    const treeOnly = remaining.length === 1 && remaining[0] === this._section;
+    if (treeOnly || remaining.length === 0) {
+      if (treeOnly) {
+        if (this._section.isHidden) {
+          this._section.show();
+        }
+        this._panelLayout.addWidget(this._section);
+        this._restoreToolbar();
+      }
+      this._accordion.dispose();
+      this._accordion = null;
+    }
+    this._contentChanged.emit();
+  }
+
+  private _isSectionHome(): boolean {
+    const parent = this._section.parent;
+    return parent === this || (!!this._accordion && parent === this._accordion);
+  }
+
+  /**
+   * An accordion host moves the toolbar node into the section title and leaves
+   * it orphaned on detach; re-parenting makes the layout attach it again.
+   */
+  private _restoreToolbar(): void {
+    this._toolbar.parent = null;
+    this._section.insertWidget(0, this._toolbar);
+  }
+
   private _contentsManager: Contents.IManager;
   private _docManager: IDocumentManager;
   private _onOpenFile: ((serverPath: string) => void) | undefined;
@@ -294,6 +463,11 @@ export class XtralabFileBrowser extends Widget implements IXtralabFileBrowser {
   private _fileFilterVisibleChanged = new Signal<this, boolean>(this);
   private _toolbar: Toolbar;
   private _content: XtralabFileTreeContent;
+  private _section: PanelWithToolbar;
+  private _panelLayout: PanelLayout;
+  private _accordion: AccordionPanel | null = null;
+  private _contentChanged = new Signal<this, void>(this);
+  private _sectionAdded = new Signal<this, ISectionEntry>(this);
 }
 
 interface IFileTreeContentOptions {

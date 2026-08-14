@@ -4,16 +4,16 @@ import {
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
 
-import { ICommandPalette } from '@jupyterlab/apputils';
+import { ICommandPalette, IMovableSectionRegistry } from '@jupyterlab/apputils';
 
 import { IDocumentManager } from '@jupyterlab/docmanager';
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 
-import { ITranslator } from '@jupyterlab/translation';
+import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 
 import { populateToolbar, registerCommands } from './commands';
-import { XtralabFileBrowser } from './widget';
+import { FILE_BROWSER_ID, XtralabFileBrowser } from './widget';
 
 const PLUGIN_ID = 'xtralab:plugin';
 
@@ -27,14 +27,21 @@ const plugin: JupyterFrontEndPlugin<void> = {
     'A path-first file browser for JupyterLab built on @pierre/trees.',
   autoStart: true,
   requires: [IDocumentManager],
-  optional: [ILayoutRestorer, ISettingRegistry, ICommandPalette, ITranslator],
+  optional: [
+    ILayoutRestorer,
+    ISettingRegistry,
+    ICommandPalette,
+    ITranslator,
+    IMovableSectionRegistry
+  ],
   activate: (
     app: JupyterFrontEnd,
     docManager: IDocumentManager,
     restorer: ILayoutRestorer | null,
     settingRegistry: ISettingRegistry | null,
     palette: ICommandPalette | null,
-    translator: ITranslator | null
+    translator: ITranslator | null,
+    movableSections: IMovableSectionRegistry | null
   ): void => {
     const browser = new XtralabFileBrowser({
       contentsManager: app.serviceManager.contents,
@@ -54,6 +61,33 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     registerCommands({ app, browser, docManager, palette, translator });
     populateToolbar({ app, browser });
+
+    if (movableSections) {
+      const label = (translator ?? nullTranslator)
+        .load('jupyterlab')
+        .__('Files');
+      movableSections.registerSource(FILE_BROWSER_ID, label, browser);
+      movableSections.registerTarget(FILE_BROWSER_ID, label, browser);
+
+      // Only a user move should switch the sidebar, not the startup restoration.
+      let settled = false;
+      void app.restored.then(() => {
+        settled = true;
+      });
+      browser.contentChanged.connect(() => {
+        if (browser.isEmpty) {
+          if (browser.parent) {
+            browser.parent = null;
+          }
+        } else if (!browser.parent) {
+          app.shell.add(browser, 'left', { rank: 2 });
+          if (settled) {
+            app.shell.activateById(browser.id);
+          }
+        }
+      });
+      browser.announceSections();
+    }
 
     if (settingRegistry) {
       settingRegistry.load(PLUGIN_ID).catch(reason => {

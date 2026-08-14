@@ -4,6 +4,7 @@ import aboutPlugin from './about';
 import agentSessionsPlugin from './agentSessions';
 import askAgentPlugin from './askAgent';
 import commandBarPlugin from './commandBar';
+import customPanelPlugin from './customPanel';
 import fileBrowserPlugin from './fileBrowser';
 import fileTypeIconsPlugin from './fileTypeIcons';
 import editorBreadcrumbsPlugin from './editorBreadcrumbs';
@@ -36,6 +37,7 @@ const plugins: JupyterFrontEndPlugin<unknown>[] = [
   agentSessionsPlugin,
   askAgentPlugin,
   commandBarPlugin,
+  customPanelPlugin,
   editorBreadcrumbsPlugin,
   editorIndentPlugin,
   fileBrowserPlugin,

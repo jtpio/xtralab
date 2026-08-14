@@ -3,7 +3,11 @@ import {
   JupyterFrontEnd,
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
-import { Dialog, showDialog } from '@jupyterlab/apputils';
+import {
+  Dialog,
+  IMovableSectionRegistry,
+  showDialog
+} from '@jupyterlab/apputils';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ITerminalTracker } from '@jupyterlab/terminal';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
@@ -36,9 +40,11 @@ const PLUGIN_ID = 'xtralab:terminals';
  *
  * Clicking a row activates the existing tab if one is open, or reopens
  * the session in a fresh terminal widget (`terminal:open`). The inline
- * `×` button shuts the session down on the server. The header carries a
- * `+` button and a stop button (the latter shuts every session down at
- * once, after a confirmation).
+ * `×` button shuts the session down on the server. The Terminals
+ * section's title toolbar carries a `+` button and a stop button (the
+ * latter shuts every session down at once, after a confirmation).
+ *
+ * The list is one movable section, and other panels' sections can move in.
  *
  * The `+` button drops down a menu — built from the launcher's shared
  * `IAgentRegistry` — listing each available agent (Claude, Codex, …)
@@ -65,7 +71,8 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
     IAgentRegistry,
     IEditorRegistry,
     IAgentSessions,
-    ISettingRegistry
+    ISettingRegistry,
+    IMovableSectionRegistry
   ],
   activate: (
     app: JupyterFrontEnd,
@@ -75,7 +82,8 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
     agentRegistry: IAgentRegistry | null,
     editorRegistry: IEditorRegistry | null,
     agentSessions: IAgentSessions | null,
-    settingRegistry: ISettingRegistry | null
+    settingRegistry: ISettingRegistry | null,
+    movableSections: IMovableSectionRegistry | null
   ): IAgentTerminals => {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
@@ -260,6 +268,16 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
     app.shell.add(panel, 'left', { rank: 1 });
     if (restorer) {
       restorer.add(panel, panel.id);
+    }
+
+    void app.restored.then(() => {
+      panel.expandOwnSection();
+    });
+
+    if (movableSections) {
+      movableSections.registerSource(PLUGIN_ID, trans.__('Terminals'), panel);
+      movableSections.registerTarget(PLUGIN_ID, trans.__('Terminals'), panel);
+      panel.announceSections();
     }
 
     // The latest-activity line under each agent row is on by default; honour
