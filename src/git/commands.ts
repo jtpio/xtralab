@@ -3,7 +3,6 @@ import { IThemeManager, MainAreaWidget } from '@jupyterlab/apputils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { Contents } from '@jupyterlab/services';
 import type { TranslationBundle } from '@jupyterlab/translation';
-import { ToolbarButton, launchIcon } from '@jupyterlab/ui-components';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { ISignal, Signal } from '@lumino/signaling';
 
@@ -147,15 +146,6 @@ function createDiffWidget(
 
   const onPinned = options.onPinned ?? ((): void => undefined);
 
-  const pinButton = new ToolbarButton({
-    icon: launchIcon,
-    tooltip: trans.__('Pin tab'),
-    onClick: () => widget.pin()
-  });
-  if (widget.pinned) {
-    pinButton.hide();
-  }
-  widget.toolbar.addItem('pin', pinButton);
   addDiffToolbarItems(widget.toolbar, content);
 
   // Keep chrome visible only while there is a relevant toolbar control.
@@ -163,7 +153,7 @@ function createDiffWidget(
     if (widget.isDisposed) {
       return;
     }
-    if (!widget.pinned || content.hasNotebookView || content.fileDiffActive) {
+    if (content.hasNotebookView || content.fileDiffActive) {
       widget.toolbar.show();
     } else {
       widget.toolbar.hide();
@@ -173,18 +163,14 @@ function createDiffWidget(
     sender: DiffMainAreaWidget,
     value: boolean
   ): void => {
+    if (widget.isDisposed || !value) {
+      return;
+    }
+    onPinned(widget);
     if (widget.isDisposed) {
       return;
     }
-    if (value) {
-      pinButton.hide();
-      onPinned(widget);
-      if (widget.isDisposed) {
-        return;
-      }
-      widget.title.className = '';
-    }
-    syncToolbarVisibility();
+    widget.title.className = '';
   };
   // Auto-close once a discard leaves nothing to show.
   const onEmptied = (): void => {
@@ -265,13 +251,20 @@ export function registerGitCommands(
         return;
       }
       const pin = typed.pin === true;
-      const existing = findDiff(typed.change, pin);
-      if (existing !== undefined && !existing.isDisposed) {
-        if (!pin) {
-          existing.setChange(typed.repoPath, typed.change);
-        }
-        app.shell.activateById(existing.id);
+      // Reveal an existing pinned tab for this change instead of opening a
+      // duplicate, as jupyterlab-git does.
+      const pinned = findDiff(typed.change, true);
+      if (pinned !== undefined && !pinned.isDisposed) {
+        app.shell.activateById(pinned.id);
         return;
+      }
+      if (!pin) {
+        const preview = findDiff(typed.change);
+        if (preview !== undefined && !preview.isDisposed) {
+          preview.setChange(typed.repoPath, typed.change);
+          app.shell.activateById(preview.id);
+          return;
+        }
       }
       const widget = createDiffWidget({
         repoPath: typed.repoPath,

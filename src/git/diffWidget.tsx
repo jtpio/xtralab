@@ -1,10 +1,10 @@
 import * as React from 'react';
 
-import { IThemeManager } from '@jupyterlab/apputils';
+import { IThemeManager, Notification } from '@jupyterlab/apputils';
 import { PathExt } from '@jupyterlab/coreutils';
 import { Git } from '@jupyterlab/git';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
-import { Contents } from '@jupyterlab/services';
+import { Contents, ServerConnection } from '@jupyterlab/services';
 import type { TranslationBundle } from '@jupyterlab/translation';
 import { ReactWidget } from '@jupyterlab/ui-components';
 import { PromiseDelegate } from '@lumino/coreutils';
@@ -27,6 +27,7 @@ import {
   writeStoredDiffStyle,
   writeStoredNotebookViewMode,
   type DiffStyle,
+  type IDiffEdit,
   type NotebookDiffViewMode
 } from './diffSurface';
 import { imageDataType } from './imageDiff';
@@ -114,8 +115,8 @@ export class XtralabDiffWidget
    * Re-pull both sides of the model and re-render.
    */
   async refresh(): Promise<void> {
-    // Settle any refresh still awaiting so a rapid second call cannot orphan
-    // the earlier caller's promise.
+    // The fetch effect only settles the latest delegate, so release any
+    // in-flight waiter now that a newer reload supersedes it.
     this.settleRefresh();
     const done = new PromiseDelegate<void>();
     this._pendingRefresh = done;
@@ -359,6 +360,10 @@ function ModelDiffView(props: {
     []
   );
 
+  // A `refresh()` of the same model reloads in place; a model swap shows the
+  // loading placeholder.
+  const loadedModelRef = React.useRef<IXtralabDiffModel | null>(null);
+
   // Fetch both sides whenever the model or reload nonce changes.
   React.useEffect(() => {
     let cancelled = false;
@@ -371,7 +376,9 @@ function ModelDiffView(props: {
         cancelled = true;
       };
     }
-    setState({ loading: true, oldText: '', newText: '', error: null });
+    if (loadedModelRef.current !== model) {
+      setState({ loading: true, oldText: '', newText: '', error: null });
+    }
     void (async () => {
       try {
         const [oldText, newText] = await Promise.all([
@@ -381,6 +388,7 @@ function ModelDiffView(props: {
         if (cancelled) {
           return;
         }
+        loadedModelRef.current = model;
         setState({
           loading: false,
           oldText: oldText ?? '',
@@ -391,6 +399,9 @@ function ModelDiffView(props: {
         if (cancelled) {
           return;
         }
+        // Force the next attempt back through the loading placeholder: with
+        // the content cleared there is nothing sensible to keep on screen.
+        loadedModelRef.current = null;
         setState({
           loading: false,
           oldText: '',
@@ -409,18 +420,29 @@ function ModelDiffView(props: {
     };
   }, [widget, model, nonce, isBinary]);
 
-  // Only close after a reload, not for a file that opens already empty.
+  // Editing writes the working-tree file, so it only applies when the new side
+  // is the working copy (unstaged or untracked) and the diff is plain text.
+  const canEdit =
+    model.challenger.source === Git.Diff.SpecialRef.WORKING &&
+    model.hasConflict !== true &&
+    !isImage &&
+    !isBinary;
+
+  // Only close after a reload, not for a file that opens already empty, and
+  // never for an editable diff (editing a file down to an empty diff must
+  // not close it under the user).
   React.useEffect(() => {
     if (
       !state.loading &&
       state.error === null &&
       !isBinary &&
+      !canEdit &&
       hunkCount === 0 &&
       nonce > 0
     ) {
       widget.notifyEmptied();
     }
-  }, [state.loading, state.error, isBinary, hunkCount, nonce, widget]);
+  }, [state.loading, state.error, isBinary, canEdit, hunkCount, nonce, widget]);
 
   // The launcher sets `canDiscard`; jupyterlab-git models fall back to source.
   const canDiscardHunk =
@@ -433,22 +455,52 @@ function ModelDiffView(props: {
     [model.repositoryPath, model.filename]
   );
 
+  // Both hunk discard and direct editing persist by rewriting the whole
+  // working-tree file through the contents API.
+  const saveWorkingFile = React.useCallback(
+    async (text: string) => {
+      await contentsManager.save(serverPath, {
+        type: 'file',
+        format: 'text',
+        content: text
+      });
+    },
+    [contentsManager, serverPath]
+  );
+
+  // Pre-write staleness check for both write paths. `type: 'file'` matches
+  // how the git API reads the working tree, so an unchanged file compares
+  // byte-equal to the loaded diff text; a missing file reads as '' to match.
+  const readDiskText = React.useCallback(async (): Promise<string> => {
+    try {
+      const current = await contentsManager.get(serverPath, {
+        type: 'file',
+        format: 'text',
+        content: true
+      });
+      return typeof current.content === 'string' ? current.content : '';
+    } catch (err) {
+      if (
+        err instanceof ServerConnection.ResponseError &&
+        err.response.status === 404
+      ) {
+        return '';
+      }
+      throw err;
+    }
+  }, [contentsManager, serverPath]);
+
   const hunkDiscard = React.useMemo(
     () => ({
       enabled: canDiscardHunk,
-      save: async (text: string) => {
-        await contentsManager.save(serverPath, {
-          type: 'file',
-          format: 'text',
-          content: text
-        });
-      },
+      save: saveWorkingFile,
       onAfterSave: () => {
         // Re-pull so the diff reflects the reverted hunk.
         void widget.refresh();
-      }
+      },
+      readDiskText
     }),
-    [canDiscardHunk, contentsManager, serverPath, widget]
+    [canDiscardHunk, saveWorkingFile, readDiskText, widget]
   );
 
   const handleLineAsk = React.useMemo(() => {
@@ -469,6 +521,45 @@ function ModelDiffView(props: {
     };
   }, [askAgent, model, state.oldText, state.newText, trans]);
 
+  const edit = React.useMemo<IDiffEdit>(
+    () => ({
+      canEdit,
+      save: async (text: string) => {
+        // Persist without re-pulling: the editor owns the live view during a
+        // session, and a reload would discard the cursor and in-flight edit.
+        try {
+          await saveWorkingFile(text);
+        } catch (err) {
+          // Surface failures even for tail saves after the session ended;
+          // rethrow so an in-session save still shows "Save failed".
+          Notification.error(
+            `Failed to save edits to ${model.filename}: ${
+              err instanceof Error ? err.message : String(err)
+            }`
+          );
+          throw err;
+        }
+      },
+      onSaved: (text: string) => {
+        // Adopt confirmed-saved text as the baseline. Ignore a late save from
+        // a previous file: the launcher reuses one widget across files.
+        if (widget.model !== model) {
+          return;
+        }
+        setState(prev =>
+          prev.newText === text ? prev : { ...prev, newText: text }
+        );
+      },
+      readDiskText,
+      onConflictDiscard: () => {
+        // The user kept the on-disk version: re-pull so the recycled session
+        // renders the file as it is on disk.
+        void widget.refresh();
+      }
+    }),
+    [canEdit, saveWorkingFile, readDiskText, widget, model]
+  );
+
   return (
     <DiffSurface
       loading={state.loading}
@@ -488,6 +579,7 @@ function ModelDiffView(props: {
       onMetadataChange={handleMetadataChange}
       hunkDiscard={hunkDiscard}
       onLineAsk={handleLineAsk}
+      edit={edit}
       trans={trans}
     />
   );
@@ -573,23 +665,23 @@ function DiffStyleToolbarControl(props: {
 }): React.ReactElement {
   const { widget } = props;
   const [style, setStyle] = React.useState<DiffStyle>(() => widget.diffStyle);
-  const [available, setAvailable] = React.useState<boolean>(
+  const [fileDiffActive, setFileDiffActive] = React.useState<boolean>(
     () => widget.fileDiffActive
   );
   React.useEffect(() => {
     const onStyle = (sender: XtralabDiffWidget, next: DiffStyle): void => {
       setStyle(next);
     };
-    const onAvailable = (sender: XtralabDiffWidget, next: boolean): void => {
-      setAvailable(next);
+    const onActive = (sender: XtralabDiffWidget, next: boolean): void => {
+      setFileDiffActive(next);
     };
     widget.diffStyleChanged.connect(onStyle);
-    widget.fileDiffActiveChanged.connect(onAvailable);
+    widget.fileDiffActiveChanged.connect(onActive);
     setStyle(widget.diffStyle);
-    setAvailable(widget.fileDiffActive);
+    setFileDiffActive(widget.fileDiffActive);
     return () => {
       widget.diffStyleChanged.disconnect(onStyle);
-      widget.fileDiffActiveChanged.disconnect(onAvailable);
+      widget.fileDiffActiveChanged.disconnect(onActive);
     };
   }, [widget]);
 
@@ -597,7 +689,7 @@ function DiffStyleToolbarControl(props: {
   return (
     <DiffStyleControl
       diffStyle={style}
-      available={available}
+      available={fileDiffActive}
       onChange={next => widget.setDiffStyle(next)}
       trans={trans}
     />
@@ -618,6 +710,8 @@ export function addDiffToolbarItems(
   toolbar: IDiffToolbar,
   widget: XtralabDiffWidget
 ): void {
+  // On a narrow tab the rightmost custom item collapses into the overflow
+  // popup first (jupyterlab-git appends a spacer + its buttons after ours).
   toolbar.addItem(
     'xtralab-notebook-view-mode',
     new NotebookViewModeToolbarItem(widget)

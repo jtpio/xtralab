@@ -58,6 +58,26 @@ const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
       return existing ?? undefined;
     };
 
+    // Clicking the preview tab's label pins it, as in jupyterlab-git.
+    // Delegated in capture phase so it survives Lumino tab re-renders;
+    // `jp-mod-preview` is only ever set by the launcher's preview diff.
+    document.addEventListener(
+      'click',
+      event => {
+        const target = event.target instanceof Element ? event.target : null;
+        const label = target?.closest('.lm-TabBar-tabLabel') ?? null;
+        if (label === null || label.closest('.jp-mod-preview') === null) {
+          return;
+        }
+        tracker
+          .find(
+            widget => !widget.isDisposed && widget.id === PREVIEW_DIFF_WIDGET_ID
+          )
+          ?.pin();
+      },
+      true
+    );
+
     registerGitCommands({
       app,
       themeManager,

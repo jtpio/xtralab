@@ -23,6 +23,11 @@
   font-style: italic;
 }
 
+/* xtralab's diff provider re-pulls automatically (see diffProvider.tsx). */
+.jp-git-diff-parent-widget .jp-git-diff-refresh {
+  display: none;
+}
+
 /*
  * Flex-column container: an optional toolbar at the top (notebook view
  * mode toggle) plus a body that hosts the scrollable diff and the
@@ -84,14 +89,10 @@
 .jp-xtralab-DiffWidget-diffStyleToolbarItem {
   display: flex;
   align-items: center;
-  font-size: var(--jp-ui-font-size0);
-}
 
-/*
- * Breathing room when both toggles appear (notebook diff in JSON view).
- */
-.jp-xtralab-DiffWidget-diffStyleToolbarItem {
+  /* Consistent gap from the preceding toolbar item and between toggles. */
   margin-left: 4px;
+  font-size: var(--jp-ui-font-size0);
 }
 
 .jp-xtralab-DiffWidget-segmented {
@@ -193,14 +194,16 @@
 }
 
 /*
- * Per-hunk action overlay. The diff library injects a row at the
- * annotation's anchor line and renders this content inside it; we keep the
- * row visually unobtrusive — a single small icon button that fades in on
- * row hover — so the annotation does not compete with the diff content.
+ * Discard-change overlay. The library injects an annotation row below the
+ * anchor line and sizes it from this slotted content: a zero-height wrapper
+ * collapses the row, and the translated button overlays the right edge of
+ * the line above (the block's first changed line) instead of taking a row.
  */
 .jp-xtralab-DiffWidget-hunkAnnotation {
   display: flex;
   justify-content: flex-end;
+  height: 0;
+  overflow: visible;
   padding: 0 8px;
   opacity: 0.4;
   transition: opacity 0.1s ease;
@@ -222,6 +225,7 @@
   background: transparent;
   color: var(--jp-ui-font-color1);
   cursor: pointer;
+  transform: translateY(-100%);
 }
 
 .jp-xtralab-DiffWidget-hunkButton:hover {
@@ -232,6 +236,51 @@
   display: inline-flex;
   width: 14px;
   height: 14px;
+}
+
+/*
+ * Editable file diff wrapper: a positioning context for the save indicator
+ * (the library renders the diff itself into its own shadow root).
+ */
+.jp-xtralab-DiffWidget-editRegion {
+  position: relative;
+  min-height: 100%;
+}
+
+/*
+ * Zero-height sticky bar pinning the autosave indicator to the viewport top;
+ * `pointer-events: none` lets clicks fall through to the editor.
+ */
+.jp-xtralab-DiffWidget-saveStatusBar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: flex-end;
+  height: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.jp-xtralab-DiffWidget-saveStatus {
+  margin: 6px 12px 0 0;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background-color: var(--jp-layout-color3);
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size0);
+  line-height: 1.6;
+  user-select: none;
+}
+
+.jp-xtralab-DiffWidget-saveStatus[data-state='error'] {
+  background-color: var(--jp-error-color1);
+  color: var(--jp-ui-inverse-font-color1);
+}
+
+.jp-xtralab-DiffWidget-saveStatus[data-state='conflict'] {
+  background-color: var(--jp-warn-color1);
+  color: var(--jp-ui-inverse-font-color1);
 }
 
 /*
