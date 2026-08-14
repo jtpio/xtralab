@@ -1,22 +1,36 @@
 import * as React from 'react';
 
-import { IDocumentManager } from '@jupyterlab/docmanager';
+import { showErrorMessage } from '@jupyterlab/apputils';
+import { IDocumentManager, renameFile } from '@jupyterlab/docmanager';
 import { Contents } from '@jupyterlab/services';
-import { fileIcon } from '@jupyterlab/ui-components';
-import { MimeData, PromiseDelegate } from '@lumino/coreutils';
-import { Drag } from '@lumino/dragdrop';
+import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { Poll } from '@lumino/polling';
 
 import { FileTree, useFileTree } from '@pierre/trees/react';
 import type {
   FileTreeBatchOperation,
   FileTreeDirectoryHandle,
+  FileTreeDropContext,
+  FileTreeDropResult,
   GitStatusEntry
 } from '@pierre/trees';
 
 import type { Ignore } from 'ignore';
 
-import { ROOT_LOAD_KEY, listDirectory, toServerPath } from './contents';
+import {
+  ROOT_LOAD_KEY,
+  listDirectory,
+  parentOf,
+  toServerPath
+} from './contents';
+import {
+  IDropMove,
+  ITreeDropHandler,
+  computeDropMoves,
+  computeRootDropMoves,
+  createTreeDragAndDropConfig,
+  useRootDropZone
+} from './dragAndDrop';
 import { buildIgnoredEntries, loadGitignoreMatcher } from './gitignore';
 import { loadGitStatusEntries } from './gitStatus';
 import { FILE_BROWSER_ICONS } from './icons';
@@ -28,23 +42,6 @@ import type { XtralabFileBrowser } from './widget';
  * subscribe/diff loop can decide whether to fetch their contents on expand.
  */
 type LoadState = 'unloaded' | 'loading' | 'loaded';
-
-/**
- * MIME types used by the dock panel and other JupyterLab drop targets.
- * `FACTORY_MIME` is the lumino dock-panel contract: the value must be a
- * synchronous function that returns a Widget. The contents MIME types
- * mirror what the default file browser sends so other drop targets that
- * understand them (the file browser itself, custom drop zones) keep
- * working when the user drags out of xtralab.
- */
-const FACTORY_MIME = 'application/vnd.lumino.widget-factory';
-const CONTENTS_MIME = 'application/x-jupyter-icontents';
-
-/**
- * Threshold in pixels before a press-and-drag is treated as a drag rather
- * than a click. Matches the value used by the default JupyterLab listing.
- */
-const DRAG_THRESHOLD = 5;
 
 /**
  * Polling cadence for the git status decoration. Out-of-band changes (a
@@ -98,7 +95,10 @@ const FILE_TREE_TAG = 'file-tree-container';
  * box unless the host carries the visibility marker set by the filter
  * bridge effect below — `@pierre/trees` always renders the box when
  * `search` is enabled, and its stylesheet lives in the shadow root where
- * outside CSS cannot reach.
+ * outside CSS cannot reach. The third rule restyles the drag-hover row:
+ * the library paints it with the selection background, which xtralab
+ * maps to a full-strength brand color that is illegible without the
+ * inverted selection foreground — hence the quieter ring.
  */
 const FILE_TREE_UNSAFE_CSS =
   '[data-type="item"][data-item-selected="true"] ' +
@@ -108,12 +108,17 @@ const FILE_TREE_UNSAFE_CSS =
   ':host(:not([data-xtralab-filter-visible])) ' +
   '[data-file-tree-search-container] {' +
   'display: none;' +
+  '}' +
+  '[data-type="item"][data-item-drag-target="true"] {' +
+  'background-color: var(--trees-bg-muted);' +
+  'box-shadow: inset 0 0 0 2px var(--trees-accent);' +
   '}';
 
 interface IFileBrowserProps {
   contentsManager: Contents.IManager;
   docManager: IDocumentManager;
   onOpenFile?: (serverPath: string) => void;
+  translator?: ITranslator;
   /**
    * The host widget. Selection-change events are pushed up so context-menu
    * commands can react to what the user has selected.
@@ -133,7 +138,14 @@ interface IFileBrowserProps {
 export function FileBrowserComponent(
   props: IFileBrowserProps
 ): React.ReactElement {
-  const { contentsManager, docManager, onOpenFile, widget } = props;
+  const { contentsManager, docManager, onOpenFile, translator, widget } = props;
+
+  const trans = React.useMemo(
+    () => (translator ?? nullTranslator).load('jupyterlab'),
+    [translator]
+  );
+
+  const dropHandlerRef = React.useRef<ITreeDropHandler | null>(null);
 
   const { model } = useFileTree({
     paths: [],
@@ -141,7 +153,8 @@ export function FileBrowserComponent(
     search: true,
     icons: FILE_BROWSER_ICONS,
     itemHeight: 24,
-    unsafeCSS: FILE_TREE_UNSAFE_CSS
+    unsafeCSS: FILE_TREE_UNSAFE_CSS,
+    dragAndDrop: createTreeDragAndDropConfig(dropHandlerRef)
   });
 
   React.useEffect(() => {
@@ -273,21 +286,6 @@ export function FileBrowserComponent(
         );
         knownDirs.set(canonicalPath, 'unloaded');
       }
-    };
-
-    /**
-     * Compute the canonical parent path for a given canonical path.
-     * Returns {@link ROOT_LOAD_KEY} for top-level entries.
-     */
-    const parentOf = (canonicalPath: string): string => {
-      const trimmed = canonicalPath.endsWith('/')
-        ? canonicalPath.slice(0, -1)
-        : canonicalPath;
-      const idx = trimmed.lastIndexOf('/');
-      if (idx < 0) {
-        return ROOT_LOAD_KEY;
-      }
-      return `${trimmed.slice(0, idx)}/`;
     };
 
     /**
@@ -712,6 +710,148 @@ export function FileBrowserComponent(
       }
     };
 
+    /**
+     * Re-key the load-state mirrors after the tree model moved
+     * `fromPath` to `toPath`; a moved directory rewrites every entry
+     * under its old prefix.
+     */
+    const rekeyMirrors = (fromPath: string, toPath: string): void => {
+      if (fromPath.endsWith('/')) {
+        for (const path of [...loadedPaths]) {
+          if (path.startsWith(fromPath)) {
+            loadedPaths.delete(path);
+            loadedPaths.add(`${toPath}${path.slice(fromPath.length)}`);
+          }
+        }
+        for (const [dir, state] of [...knownDirs.entries()]) {
+          if (dir !== ROOT_LOAD_KEY && dir.startsWith(fromPath)) {
+            knownDirs.delete(dir);
+            knownDirs.set(`${toPath}${dir.slice(fromPath.length)}`, state);
+          }
+        }
+      } else if (loadedPaths.delete(fromPath)) {
+        loadedPaths.add(toPath);
+      }
+    };
+
+    /**
+     * Rename through the document manager, so collisions surface the
+     * standard overwrite dialog and open widgets follow their file.
+     * Resolves false when the move did not happen — a declined
+     * overwrite (upstream's 'File not renamed' sentinel) or a failure.
+     */
+    const renameOnServer = async (
+      fromPath: string,
+      toPath: string
+    ): Promise<boolean> => {
+      try {
+        await renameFile(
+          docManager,
+          toServerPath(fromPath),
+          toServerPath(toPath)
+        );
+        return true;
+      } catch (err) {
+        if (err !== 'File not renamed') {
+          await showErrorMessage(trans.__('Move failed'), err as Error);
+        }
+        return false;
+      }
+    };
+
+    /**
+     * Persist moves the tree model already applied. A move that did
+     * not reach the disk leaves the tree out of step, so a full
+     * refresh then restores server truth.
+     */
+    const persistDropMoves = async (moves: IDropMove[]): Promise<void> => {
+      let failed = false;
+      for (const move of moves) {
+        if (!(await renameOnServer(move.from, move.to))) {
+          failed = true;
+        }
+        if (cancelled) {
+          return;
+        }
+      }
+      if (failed) {
+        void refreshAll();
+      }
+    };
+
+    const completeDrop = (result: FileTreeDropResult): void => {
+      if (cancelled) {
+        return;
+      }
+      const moves = computeDropMoves(result);
+      for (const move of moves) {
+        rekeyMirrors(move.from, move.to);
+      }
+      syncGitStatus();
+      void persistDropMoves(moves);
+    };
+
+    /**
+     * Server-side renames for moves the tree model did not apply; the
+     * `fileChanged` signals nudge the listing poll to reconcile.
+     */
+    const persistFallbackMoves = async (moves: IDropMove[]): Promise<void> => {
+      for (const move of moves) {
+        await renameOnServer(move.from, move.to);
+        if (cancelled) {
+          return;
+        }
+      }
+    };
+
+    /**
+     * The tree refused the drop and left its model untouched — almost
+     * always a name collision at the destination.
+     */
+    const failedDrop = (error: string, context: FileTreeDropContext): void => {
+      if (cancelled) {
+        return;
+      }
+      const moves = computeDropMoves(context);
+      if (moves.length === 0) {
+        console.error('xtralab: drop failed', error);
+        return;
+      }
+      void persistFallbackMoves(moves);
+    };
+
+    /**
+     * Move the dragged paths to the workspace root: apply to the model
+     * first so the rows relocate instantly, then persist. A path the
+     * model cannot move (name collision) falls back to the server-side
+     * rename and its dialog.
+     */
+    const dropOnRoot = (draggedPaths: readonly string[]): void => {
+      if (cancelled) {
+        return;
+      }
+      const applied: IDropMove[] = [];
+      const fallback: IDropMove[] = [];
+      for (const move of computeRootDropMoves(draggedPaths)) {
+        try {
+          model.move(move.from, move.to);
+          rekeyMirrors(move.from, move.to);
+          applied.push(move);
+        } catch {
+          fallback.push(move);
+        }
+      }
+      if (applied.length > 0) {
+        syncGitStatus();
+        void persistDropMoves(applied);
+      }
+      if (fallback.length > 0) {
+        void persistFallbackMoves(fallback);
+      }
+    };
+
+    dropHandlerRef.current = { completeDrop, failedDrop, dropOnRoot };
+
     knownDirs.set(ROOT_LOAD_KEY, 'unloaded');
     void fetchDirectory(ROOT_LOAD_KEY);
     void refreshGitignoreMatcher();
@@ -818,6 +958,7 @@ export function FileBrowserComponent(
 
     return () => {
       cancelled = true;
+      dropHandlerRef.current = null;
       gitStatusPoll.dispose();
       contentsManager.fileChanged.disconnect(onContentsFileChanged);
       listingPoll.dispose();
@@ -840,7 +981,7 @@ export function FileBrowserComponent(
         }
       }
     };
-  }, [model, contentsManager, widget]);
+  }, [model, contentsManager, widget, docManager, trans]);
 
   // Bridge the tree's selection state up to the widget so command handlers
   // can read it without depending on React internals. The tree exposes its
@@ -1000,168 +1141,7 @@ export function FileBrowserComponent(
     };
   }, []);
 
-  // Drag a file row out of the tree onto the JupyterLab main area. The row
-  // lives in the `@pierre/trees` shadow DOM, so we listen to mousedown on
-  // the wrapper and walk `composedPath()` to recover the row. The drag
-  // payload uses Lumino's `FACTORY_MIME` contract: the dock panel calls the
-  // factory function on drop and adds the returned widget to its layout.
-  React.useEffect(() => {
-    const wrapper = wrapperRef.current;
-    if (wrapper === null) {
-      return;
-    }
-
-    let press: { x: number; y: number; path: string } | null = null;
-    let activeDrag: Drag | null = null;
-
-    const findRow = (event: MouseEvent): HTMLElement | null => {
-      for (const target of event.composedPath()) {
-        if (!(target instanceof HTMLElement)) {
-          continue;
-        }
-        if (target.dataset.type === 'item') {
-          return target;
-        }
-      }
-      return null;
-    };
-
-    const cleanup = (): void => {
-      press = null;
-      document.removeEventListener('mousemove', handleMouseMove, true);
-      document.removeEventListener('mouseup', handleMouseUp, true);
-    };
-
-    const handleMouseDown = (event: MouseEvent): void => {
-      // Only react to the primary button. Do not interfere with right-click
-      // (handled by the contextmenu bridge) or middle-click (browser default).
-      if (event.button !== 0) {
-        return;
-      }
-      if (activeDrag !== null) {
-        return;
-      }
-      const row = findRow(event);
-      if (row === null || row.dataset.itemType !== 'file') {
-        return;
-      }
-      const itemPath = row.dataset.itemPath;
-      if (itemPath === undefined || itemPath.length === 0) {
-        return;
-      }
-      press = { x: event.clientX, y: event.clientY, path: itemPath };
-      document.addEventListener('mousemove', handleMouseMove, true);
-      document.addEventListener('mouseup', handleMouseUp, true);
-    };
-
-    const handleMouseMove = (event: MouseEvent): void => {
-      if (press === null) {
-        return;
-      }
-      const dx = Math.abs(event.clientX - press.x);
-      const dy = Math.abs(event.clientY - press.y);
-      if (dx < DRAG_THRESHOLD && dy < DRAG_THRESHOLD) {
-        return;
-      }
-      const startedFrom = press;
-      cleanup();
-      startDrag(startedFrom.path, event.clientX, event.clientY);
-    };
-
-    const handleMouseUp = (): void => {
-      cleanup();
-    };
-
-    /**
-     * Build the list of file paths to drag. If the user pressed on a row
-     * that is part of the current selection, drag every selected file.
-     * Otherwise, drag just the row that was pressed. Folders never join a
-     * drag-out — they have no docmanager widget to open.
-     */
-    const collectDragPaths = (sourcePath: string): string[] => {
-      const selection = model.getSelectedPaths();
-      const sourceInSelection = selection.includes(sourcePath);
-      const candidates = sourceInSelection ? selection : [sourcePath];
-      const fileServerPaths: string[] = [];
-      for (const candidate of candidates) {
-        if (candidate.endsWith('/')) {
-          continue;
-        }
-        fileServerPaths.push(toServerPath(candidate));
-      }
-      // The source row is always a file, so the list cannot be empty.
-      if (fileServerPaths.length === 0) {
-        fileServerPaths.push(toServerPath(sourcePath));
-      }
-      return fileServerPaths;
-    };
-
-    const startDrag = (
-      sourcePath: string,
-      clientX: number,
-      clientY: number
-    ): void => {
-      const paths = collectDragPaths(sourcePath);
-      const sourceServerPath = toServerPath(sourcePath);
-
-      const dragImage = createDragImage(paths.length);
-
-      const drag = new Drag({
-        dragImage,
-        mimeData: new MimeData(),
-        supportedActions: 'copy-move',
-        proposedAction: 'move'
-      });
-
-      drag.mimeData.setData(CONTENTS_MIME, paths);
-
-      // The factory is called by the lumino dock panel on drop. It must
-      // return a Widget synchronously. For multi-file drags we open the
-      // remaining files asynchronously after the first one is placed,
-      // mirroring the default file browser's behavior.
-      const otherPaths = paths.filter(p => p !== sourceServerPath);
-      drag.mimeData.setData(FACTORY_MIME, () => {
-        let widget = docManager.findWidget(sourceServerPath);
-        if (widget === undefined) {
-          widget = docManager.open(sourceServerPath);
-        }
-        if (otherPaths.length > 0) {
-          const firstPlaced = new PromiseDelegate<void>();
-          void firstPlaced.promise.then(() => {
-            let prev = widget;
-            for (const otherPath of otherPaths) {
-              const opened = docManager.openOrReveal(
-                otherPath,
-                undefined,
-                undefined,
-                prev !== undefined
-                  ? { ref: prev.id, mode: 'tab-after' }
-                  : undefined
-              );
-              if (opened !== undefined) {
-                prev = opened;
-              }
-            }
-          });
-          firstPlaced.resolve();
-        }
-        return widget;
-      });
-
-      activeDrag = drag;
-      void drag.start(clientX, clientY).then(() => {
-        activeDrag = null;
-      });
-    };
-
-    wrapper.addEventListener('mousedown', handleMouseDown);
-    return () => {
-      wrapper.removeEventListener('mousedown', handleMouseDown);
-      cleanup();
-      activeDrag?.dispose();
-      activeDrag = null;
-    };
-  }, [model, docManager]);
+  useRootDropZone({ model, handlerRef: dropHandlerRef, wrapperRef });
 
   return (
     <div
@@ -1171,26 +1151,4 @@ export function FileBrowserComponent(
       <FileTree model={model} style={{ height: '100%', width: '100%' }} />
     </div>
   );
-}
-
-/**
- * Build the small badge shown next to the cursor while dragging. The
- * default file browser renders a richer image with the file's icon, but
- * we don't have a per-file icon at this layer — just the count of files
- * being dragged is enough to give the user feedback.
- */
-function createDragImage(count: number): HTMLElement {
-  const node = document.createElement('div');
-  node.className = 'jp-xtralab-DragImage';
-  const iconWrapper = document.createElement('span');
-  iconWrapper.className = 'jp-xtralab-DragImage-icon';
-  fileIcon.element({ container: iconWrapper, stylesheet: 'menuItem' });
-  node.appendChild(iconWrapper);
-  if (count > 1) {
-    const badge = document.createElement('span');
-    badge.className = 'jp-xtralab-DragImage-count';
-    badge.textContent = String(count);
-    node.appendChild(badge);
-  }
-  return node;
 }
