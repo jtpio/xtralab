@@ -2,6 +2,42 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.15.0
+
+([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.14.1...8b584be04dc0ecc66b8d6a91e3cabc25f3ffd63c))
+
+### Enhancements made
+
+- Move files by drag and drop in the file browser [#94](https://github.com/jtpio/xtralab/pull/94) ([@jtpio](https://github.com/jtpio))
+- Support movable sidebar sections in the Terminals and file browser [#93](https://github.com/jtpio/xtralab/pull/93) ([@jtpio](https://github.com/jtpio))
+- Add the Pi coding agent to the launcher [#92](https://github.com/jtpio/xtralab/pull/92) ([@jtpio](https://github.com/jtpio))
+- Add visibility toggles for the remaining sidebar panels [#91](https://github.com/jtpio/xtralab/pull/91) ([@jtpio](https://github.com/jtpio))
+
+### Bugs fixed
+
+- Merge sparse launcher settings over built-in defaults in the composite [#96](https://github.com/jtpio/xtralab/pull/96) ([@jtpio](https://github.com/jtpio))
+- Fix the Linux AppImage failing to launch and to open projects [#95](https://github.com/jtpio/xtralab/pull/95) ([@jtpio](https://github.com/jtpio))
+
+### Maintenance and upkeep improvements
+
+- Update ajlab to 0.1.11 [#88](https://github.com/jtpio/xtralab/pull/88) ([@jtpio](https://github.com/jtpio))
+
+### Documentation improvements
+
+- Generate the desktop session restore screenshot [#90](https://github.com/jtpio/xtralab/pull/90) ([@jtpio](https://github.com/jtpio))
+- Generate the landing page hero screenshot [#86](https://github.com/jtpio/xtralab/pull/86) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-07-31&to=2026-08-14&type=c))
+
+@jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-07-31..2026-08-14&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.14.1
 
 ([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.14.0...6290cb6f53c54aeedd1e4cda43db0cfe1908994f))
@@ -26,8 +62,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-07-31&to=2026-07-31&type=c))
 
 @jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-07-31..2026-07-31&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.14.0
 
