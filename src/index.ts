@@ -23,7 +23,6 @@ import terminalsPlugin from './terminals';
 import topBarPlugin from './topBar';
 import walkthroughPlugin from './walkthrough';
 
-/** Every plugin contributed by xtralab; JupyterLab activates each one independently. */
 const plugins: JupyterFrontEndPlugin<unknown>[] = [
   aboutPlugin,
   agentSessionsPlugin,

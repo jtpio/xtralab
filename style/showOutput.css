@@ -1,5 +1,3 @@
-/* The panel `xtralab:show` renders its output into. */
-
 .jp-xtralab-ShowPanel {
   overflow: auto;
   padding: 8px;

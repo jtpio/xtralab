@@ -55,9 +55,6 @@ export function computeDropMoves(context: FileTreeDropContext): IDropMove[] {
     .map(path => ({ from: path, to: `${dir}${canonicalBasename(path)}` }));
 }
 
-/**
- * The drop target the tree reports for a move to the workspace root.
- */
 const ROOT_DROP_TARGET: FileTreeDropTarget = {
   directoryPath: null,
   flattenedSegmentPath: null,

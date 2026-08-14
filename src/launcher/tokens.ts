@@ -9,10 +9,8 @@ import type { IAgent } from './agents';
  * plugins (e.g. the terminals panel) can surface the same agents and icons.
  */
 export interface IAgentRegistry {
-  /** The current agents, filtered by availability and sorted by rank. */
   readonly agents: IAgent[];
 
-  /** Emitted whenever {@link agents} changes. */
   readonly changed: ISignal<IAgentRegistry, void>;
 }
 

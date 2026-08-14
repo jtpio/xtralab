@@ -20,7 +20,6 @@ const PASTE_SUBMIT_DELAY_MS = 150;
 const PASTE_OPEN = '\x1b[200~';
 const PASTE_CLOSE = '\x1b[201~';
 
-/** How long to wait for the websocket to reach `connected` before failing the send. */
 const CONNECT_TIMEOUT_MS = 10_000;
 
 /**
@@ -116,8 +115,6 @@ export class AgentTerminals implements IAgentTerminals {
       );
     }
 
-    // Write to the session's websocket without revealing its tab, so focus
-    // stays put; a closed tab gets a short-lived client connection, no widget.
     const widget = this._findWidget(name);
     const session =
       widget !== null
@@ -138,7 +135,6 @@ export class AgentTerminals implements IAgentTerminals {
         window.setTimeout(resolve, PASTE_SUBMIT_DELAY_MS)
       );
       if (session.isDisposed) {
-        // The tab closed during the pause; Enter can no longer be delivered.
         throw new Error(
           this._trans.__('The terminal closed before the prompt was submitted.')
         );
@@ -181,27 +177,10 @@ export namespace AgentTerminals {
    */
   export interface IOptions {
     registry: SessionRegistry;
-
-    /**
-     * Tracker of open terminal widgets, to reuse an open tab's connection.
-     */
     tracker: ITerminalTracker;
-
-    /**
-     * The terminal session manager, for validation and ad-hoc connections.
-     */
     terminals: Terminal.IManager;
-
-    /**
-     * Names to detect — same list the registry polls with.
-     */
     detectCommands: () => string[];
-
-    /**
-     * Whether a detected command belongs to a coding agent (not an editor).
-     */
     isAgentCommand: (command: string) => boolean;
-
     trans: TranslationBundle;
   }
 }

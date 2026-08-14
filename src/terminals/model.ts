@@ -10,9 +10,6 @@ import type { Title, Widget } from '@lumino/widgets';
 import type { IAgentSessions } from '../agentSessions';
 import { fetchRunningAgents } from './detection';
 
-/**
- * The widget shape every entry in `ITerminalTracker` takes.
- */
 export type TerminalWidget = MainAreaWidget<ITerminal.ITerminal>;
 
 /**
@@ -36,15 +33,8 @@ interface ITerminalContentInternals extends ITerminal.ITerminal {
   _term?: IXtermTerminal;
 }
 
-/**
- * How often to ask the server which agent (if any) runs in each terminal.
- */
 const DETECT_POLL_INTERVAL_MS = 3000;
 
-/**
- * Backoff cap when detection fails repeatedly (e.g. the endpoint is missing
- * on an older server).
- */
 const DETECT_POLL_MAX_MS = 300_000;
 
 /**
@@ -53,9 +43,6 @@ const DETECT_POLL_MAX_MS = 300_000;
  */
 const LAUNCH_GRACE_MS = 4000;
 
-/**
- * How often to re-read each open agent terminal's buffer for the activity line.
- */
 const ACTIVITY_POLL_INTERVAL_MS = 1500;
 
 /**
@@ -78,8 +65,6 @@ export class SessionRegistry implements IDisposable {
     this._tracker.forEach(widget => this._trackWidget(widget));
     this._refreshLive();
 
-    // currentChanged is optional on the shell interface; without it the
-    // highlight stays off.
     this._shell?.currentChanged?.connect(this._onShellCurrentChanged, this);
     this._updateCurrent();
 
@@ -209,7 +194,6 @@ export class SessionRegistry implements IDisposable {
     }
     this._activityEnabled = enabled;
     if (enabled) {
-      // Repopulate immediately rather than waiting for the next poll tick.
       void this._refreshActivity();
     } else {
       this._activity.clear();
@@ -538,10 +522,6 @@ export namespace SessionRegistry {
 }
 
 namespace Private {
-  /**
-   * Value-equality for two detection maps, so a poll that changes nothing
-   * doesn't trigger a re-render.
-   */
   export function detectedEqual(
     a: Map<string, string | null>,
     b: Map<string, string | null>
@@ -557,14 +537,8 @@ namespace Private {
     return true;
   }
 
-  /**
-   * Rows above the cursor to scan when looking for the latest output.
-   */
   const ACTIVITY_SCAN_ROWS = 64;
 
-  /**
-   * Clamp for the activity string so one runaway block can't bloat a row.
-   */
   const ACTIVITY_MAX_LENGTH = 160;
 
   /**
@@ -593,7 +567,6 @@ namespace Private {
       if (!isMeaningfulActivity(lineText(buffer, row))) {
         continue;
       }
-      // `row` is the block's bottom; walk up to its first row.
       let topRow = row;
       while (
         topRow > limit &&
@@ -606,9 +579,6 @@ namespace Private {
     return null;
   }
 
-  /**
-   * Sanitized text of one buffer row.
-   */
   export function lineText(buffer: IXtermBuffer, row: number): string {
     return sanitizeActivity(buffer.getLine(row)?.translateToString(true) ?? '');
   }
@@ -648,10 +618,6 @@ namespace Private {
       : text;
   }
 
-  /**
-   * Collapse a raw buffer row into displayable text: control and rule
-   * characters become spaces, whitespace runs are squeezed, ends trimmed.
-   */
   export function sanitizeActivity(value: string): string {
     let result = '';
     for (const char of value) {

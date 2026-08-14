@@ -61,16 +61,18 @@ export interface IXtralabFileBrowser {
    */
   readonly contentsManager: Contents.IManager;
 
-  /** The toolbar above the tree, populated by plugin code after construction. */
+  /**
+   * The toolbar above the tree, populated by plugin code after construction.
+   */
   readonly toolbar: Toolbar;
 
-  /** Canonical selected paths; folder paths carry a trailing slash. */
+  /**
+   * Canonical selected paths; folder paths carry a trailing slash.
+   */
   readonly selectedPaths: readonly string[];
 
-  /** Emits when the tree's selection changes. */
   readonly selectionChanged: ISignal<IXtralabFileBrowser, readonly string[]>;
 
-  /** Emits when {@link refresh} is called. */
   readonly refreshRequested: ISignal<IXtralabFileBrowser, void>;
 
   /**
@@ -91,7 +93,6 @@ export interface IXtralabFileBrowser {
    */
   readonly rootRequested: ISignal<IXtralabFileBrowser, void>;
 
-  /** Emits when every expanded folder should collapse. */
   readonly collapseAllRequested: ISignal<IXtralabFileBrowser, void>;
 
   /**
@@ -100,7 +101,6 @@ export interface IXtralabFileBrowser {
    */
   readonly fileFilterVisible: boolean;
 
-  /** Emits when {@link fileFilterVisible} changes. */
   readonly fileFilterVisibleChanged: ISignal<IXtralabFileBrowser, boolean>;
 
   /**
@@ -120,7 +120,9 @@ export interface IXtralabFileBrowser {
    */
   reveal(canonicalPath: string): void;
 
-  /** Return to the workspace root: clear the selection and scroll to the top. */
+  /**
+   * Return to the workspace root: clear the selection and scroll to the top.
+   */
   scrollToRoot(): void;
 
   /**
@@ -233,7 +235,9 @@ export class XtralabFileBrowser
     return this._fileFilterVisibleChanged;
   }
 
-  /** Update the cached selection from the React tree. */
+  /**
+   * Update the cached selection from the React tree.
+   */
   updateSelection(paths: readonly string[]): void {
     this._selectedPaths = paths;
     this._selectionChanged.emit(paths);
@@ -441,7 +445,9 @@ interface IFileTreeContentOptions {
   browser: XtralabFileBrowser;
 }
 
-/** The React-rendered region below the toolbar that hosts the actual tree. */
+/**
+ * The React-rendered region below the toolbar that hosts the actual tree.
+ */
 class XtralabFileTreeContent extends ReactWidget {
   constructor(options: IFileTreeContentOptions) {
     super();

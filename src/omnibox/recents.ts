@@ -1,9 +1,6 @@
 import type { IStateDB } from '@jupyterlab/statedb';
 import type { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 
-/**
- * Kinds of omnibox results whose uses are recorded.
- */
 export type RecentKind = 'command' | 'file';
 
 /**
@@ -15,10 +12,6 @@ interface IRecentEntry {
    * The command id, or the workspace-relative file path.
    */
   id: string;
-  /**
-   * Arguments the command ran with, for palette-style entries whose label and
-   * behavior depend on them.
-   */
   args?: ReadonlyPartialJSONObject;
 }
 
@@ -42,7 +35,9 @@ export class OmniboxRecents {
     this._state = options.state ?? null;
   }
 
-  /** Maximum entries kept per kind; lowering trims immediately, `0` disables recents. */
+  /**
+   * Maximum entries kept per kind; lowering trims immediately, `0` disables recents.
+   */
   get maxItems(): number {
     return this._maxItems;
   }
@@ -59,14 +54,18 @@ export class OmniboxRecents {
     }
   }
 
-  /** The recorded entries, most recent first, optionally filtered to one kind. */
+  /**
+   * The recorded entries, most recent first, optionally filtered to one kind.
+   */
   entries(kind?: RecentKind): IRecentEntry[] {
     return kind
       ? this._entries.filter(entry => entry.kind === kind)
       : [...this._entries];
   }
 
-  /** Record a use, moving the entry to the front of its kind's list. */
+  /**
+   * Record a use, moving the entry to the front of its kind's list.
+   */
   touch(kind: RecentKind, id: string, args?: ReadonlyPartialJSONObject): void {
     const entry: IRecentEntry =
       args === undefined ? { kind, id } : { kind, id, args };
@@ -125,7 +124,9 @@ export class OmniboxRecents {
     this._entries = this._trim(merged);
   }
 
-  /** Keep at most `maxItems` entries of each kind, preserving order. */
+  /**
+   * Keep at most `maxItems` entries of each kind, preserving order.
+   */
   private _trim(entries: IRecentEntry[]): IRecentEntry[] {
     const counts = new Map<RecentKind, number>();
     return entries.filter(entry => {

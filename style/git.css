@@ -3,8 +3,6 @@
  * and the jupyterlab-git diff providers.
  */
 
-/* Vertical scroll lives on the inner content div; horizontal scroll inside
-   each code block is owned by @pierre/diffs. */
 .jp-xtralab-DiffWidget {
   background-color: var(--jp-layout-color1);
   color: var(--jp-ui-font-color1);
@@ -14,8 +12,6 @@
   font-style: italic;
 }
 
-/* Optional toolbar + body. The split keeps the resize handle pinned to the
-   viewport while the diff scrolls underneath. */
 .jp-xtralab-DiffWidget-content {
   display: flex;
   flex-direction: column;
@@ -24,7 +20,6 @@
   background-color: var(--jp-layout-color1);
   color: var(--jp-ui-font-color1);
 
-  /* Feed JupyterLab theme colors into @pierre/diffs. */
   --diffs-bg-override: var(--jp-layout-color1);
   --diffs-bg-buffer-override: var(--jp-layout-color1);
   --diffs-bg-context-override: var(--jp-layout-color1);
@@ -54,8 +49,6 @@
   overflow: auto;
 }
 
-/* Segmented toolbar controls: the Notebook/JSON view toggle and the
-   Split/Unified diff-style toggle. */
 .jp-xtralab-DiffWidget-viewModeToolbarItem,
 .jp-xtralab-DiffWidget-diffStyleToolbarItem {
   display: flex;
@@ -63,7 +56,6 @@
   font-size: var(--jp-ui-font-size0);
 }
 
-/* Breathing room when both toggles appear. */
 .jp-xtralab-DiffWidget-diffStyleToolbarItem {
   margin-left: 4px;
 }
@@ -90,7 +82,6 @@
   background-color: var(--jp-layout-color2);
 }
 
-/* Brand fill + inverse font, the pair JupyterLab uses for selected items. */
 .jp-xtralab-DiffWidget-segmentedButton[data-active='true'] {
   background-color: var(--jp-brand-color1);
   color: var(--jp-ui-inverse-font-color1);
@@ -100,8 +91,6 @@
   background-color: var(--jp-brand-color1);
 }
 
-/* The inline SVGs fill with currentColor, so the color rules above reach
-   the glyph. */
 .jp-xtralab-DiffWidget-segmentedButton-icon {
   display: inline-flex;
   align-items: center;
@@ -115,8 +104,6 @@
   height: 14px;
 }
 
-/* Column splitter. translateX(-50%) centers the strip on the boundary the
-   inline `left` percentage points to. */
 .jp-xtralab-DiffWidget-resizer {
   position: absolute;
   top: 0;
@@ -154,8 +141,7 @@
   color: var(--jp-ui-font-color1);
 }
 
-/* Per-hunk action overlay: the diff library injects a row at the anchor
-   line; a small icon button fades in on row hover. */
+/* The diff library injects this per-hunk row at the anchor line. */
 .jp-xtralab-DiffWidget-hunkAnnotation {
   display: flex;
   justify-content: flex-end;
@@ -193,7 +179,7 @@
 }
 
 /* Notebook diff: one block per cell plus an optional notebook-level
-   metadata block; data-kind drives the colored badges. */
+   metadata block. */
 .jp-xtralab-NotebookDiff {
   display: flex;
   flex-direction: column;
@@ -201,8 +187,6 @@
   gap: 8px;
 }
 
-/* Two columns mirror old/new: modified/unchanged entries span both,
-   added/removed sit in one with a placeholder opposite. */
 .jp-xtralab-NotebookDiff-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -222,8 +206,6 @@
   grid-column: 2;
 }
 
-/* Dashed placeholder opposite an added/removed cell, keeping the alignment
-   gap visible. */
 .jp-xtralab-NotebookDiff-empty {
   display: flex;
   align-items: center;
@@ -378,8 +360,6 @@
   border-bottom: 1px solid var(--jp-border-color3);
 }
 
-/* Verbatim source of an expanded unchanged cell — no diff to render, but
-   matched to the diff library's monospace rhythm. */
 .jp-xtralab-NotebookDiff-unchangedSource {
   margin: 0;
   padding: 8px 12px;
@@ -400,8 +380,6 @@
   border-top: 1px solid var(--jp-border-color3);
 }
 
-/* Side-by-side panes for outputs and markdown preview, mirroring the split
-   FileDiff's left=old / right=new. */
 .jp-xtralab-NotebookDiff-sideBySide {
   display: flex;
   flex-direction: column;
@@ -419,8 +397,6 @@
   grid-template-columns: 1fr;
 }
 
-/* data-side backgrounds keep old vs new distinguishable where the diff
-   library's column tint is subtle. */
 .jp-xtralab-NotebookDiff-sidePane {
   padding: 8px 12px;
   min-width: 0;
@@ -437,8 +413,6 @@
   background-color: var(--jp-layout-color1);
 }
 
-/* Constrain rendermime output so a wide table or image cannot push the
-   grid out of shape. */
 .jp-xtralab-NotebookDiff-sidePane .jp-RenderedHTMLCommon,
 .jp-xtralab-NotebookDiff-sidePane .jp-OutputArea {
   max-width: 100%;
@@ -508,9 +482,6 @@
   margin: 0;
 }
 
-/* Theme-aware checkerboard so transparency reads in both themes. The swipe
-   view carries it on its image-sized frame rather than the panel, keeping
-   the divider handles at the image edges. */
 .jp-xtralab-ImageDiff-frame,
 .jp-xtralab-ImageDiff-stack,
 .jp-xtralab-ImageDiff-swipeFrame {
@@ -573,8 +544,7 @@
   gap: 12px;
 }
 
-/* Onion-skin: both revisions share one grid cell; place-items: center
-   keeps each image at its own size. */
+/* Onion-skin: both revisions share one grid cell. */
 .jp-xtralab-ImageDiff-stack {
   flex: 1 1 auto;
   min-height: 0;
@@ -595,8 +565,6 @@
   object-fit: contain;
 }
 
-/* Centers the image-sized frame; the checkerboard lives on the frame, not
-   here. */
 .jp-xtralab-ImageDiff-swipeArea {
   flex: 1 1 auto;
   min-height: 0;
@@ -622,8 +590,6 @@
   touch-action: none;
 }
 
-/* Both revisions fill the frame, so a clip inset of N% and the divider at
-   `left: N%` cut at the same x. */
 .jp-xtralab-ImageDiff-swipeImg {
   position: absolute;
   inset: 0;
@@ -635,8 +601,7 @@
 
 /* The natural seam between the clipped revisions is barely visible, so an
    explicit high-contrast divider is drawn on top: white core + dark
-   outline reads on any image. Only the divider and handles show the
-   ew-resize cursor; clicks still bubble to the frame's drag handler. */
+   outline reads on any image. */
 .jp-xtralab-ImageDiff-swipeDivider {
   position: absolute;
   top: 0;
@@ -658,7 +623,6 @@
     0 0 6px rgb(0 0 0 / 45%);
 }
 
-/* Handle pucks with left/right chevrons — GitHub's swipe affordance. */
 .jp-xtralab-ImageDiff-swipeDividerHandle {
   position: absolute;
   left: 50%;
@@ -685,7 +649,6 @@
   bottom: -14px;
 }
 
-/* Chevrons drawn with borders; no asset needed. */
 .jp-xtralab-ImageDiff-swipeDividerArrow {
   width: 0;
   height: 0;

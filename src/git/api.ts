@@ -9,16 +9,8 @@ import {
   IGitStatusResult
 } from './tokens';
 
-/**
- * URL prefix of the `jupyterlab_git` server extension: `/git/<repoPath>/<endpoint>`,
- * collapsing to `/git/<endpoint>` for an empty repoPath (also accepted).
- */
 const GIT_NAMESPACE = 'git';
 
-/**
- * `POST` a `jupyterlab_git` endpoint (`/git/<path>/<endpoint>`); non-2xx
- * surfaces as a `ResponseError` carrying the body's `message`.
- */
 async function postWithPath<T>(
   endpoint: string,
   repoPath: string,
@@ -99,7 +91,6 @@ export function expandStatusFiles(files: IGitStatusFile[]): IFileChange[] {
  */
 function porcelainToFileChanges(file: IGitStatusFile): IFileChange[] {
   const result: IFileChange[] = [];
-  // Untracked files are reported with `??` and only appear under "Changes".
   if (file.x === '?' && file.y === '?') {
     return [
       {

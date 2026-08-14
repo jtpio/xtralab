@@ -6,9 +6,6 @@ import type { ISignal } from '@lumino/signaling';
  * entry of {@link IAgentTerminals.sessions}.
  */
 export interface IAgentTerminalSession {
-  /**
-   * The terminal session name (terminado's, e.g. `1`).
-   */
   name: string;
 
   /**
@@ -17,9 +14,6 @@ export interface IAgentTerminalSession {
    */
   command: string;
 
-  /**
-   * Display label — the session's real (program-published) title.
-   */
   label: string;
 
   /**

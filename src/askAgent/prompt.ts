@@ -31,10 +31,6 @@ function fenceFor(text: string): string {
   return '`'.repeat(Math.max(3, longest + 1));
 }
 
-/**
- * Trim `text` to {@link MAX_SNIPPET_CHARS}, cutting at a line boundary.
- * Returns the (possibly shortened) snippet and whether anything was dropped.
- */
 function clampSnippet(text: string): { snippet: string; truncated: boolean } {
   if (text.length <= MAX_SNIPPET_CHARS) {
     return { snippet: text, truncated: false };
@@ -76,11 +72,6 @@ function locatorFor(context: IAskAgentContext): string {
   return where.join(', ');
 }
 
-/**
- * The blocks describing one comment: `headline`, the selected snippet in a
- * code fence (when there is one), then the user's instruction. Blocks are
- * joined with blank lines by the callers.
- */
 function commentParts(
   context: IAskAgentContext,
   instruction: string,

@@ -27,7 +27,9 @@ import { SessionRegistry } from './model';
 
 const RUNNING_TERMINALS_ID = 'xtralab-running-terminals';
 
-/** Persisted by the movable-sections plugin — must stay stable across releases. */
+/**
+ * Persisted by the movable-sections plugin — must stay stable across releases.
+ */
 const TERMINALS_SECTION_ID = 'xtralab-terminals-section';
 
 /**
@@ -68,8 +70,6 @@ export class RunningTerminals
     const newTerminal = new ToolbarButton({
       icon: addIcon,
       onClick: () => {
-        // Anchor to the button's bottom-left, in the viewport coordinates
-        // `Menu.open` wants.
         const rect = newTerminal.node.getBoundingClientRect();
         options.onCreate({ x: rect.left, y: rect.bottom });
       },
@@ -187,22 +187,12 @@ export namespace RunningTerminals {
   export interface IOptions {
     registry: SessionRegistry;
     trans?: TranslationBundle;
-    /**
-     * Resolve a row's running-agent command to its icon; supplied by the
-     * plugin so the widget never imports the agent list.
-     */
     iconForCommand: (command: string | null) => LabIcon;
     /**
      * Activate the named session's open tab, or reopen it in a fresh widget.
      */
     onActivate: (sessionName: string) => void;
-    /**
-     * Shut the named session down on the server.
-     */
     onShutdown: (sessionName: string) => void;
-    /**
-     * Shut down every running terminal; the plugin confirms with the user first.
-     */
     onShutdownAll: () => void;
     /**
      * Handle the "+" button, anchored at its bottom-left in viewport

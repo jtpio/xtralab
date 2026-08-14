@@ -23,12 +23,6 @@ import { RunningTerminals } from './widget';
 
 const PLUGIN_ID = 'xtralab:terminals';
 
-/**
- * Left-sidebar panel listing every running terminal session by the real title
- * the running program published (cached so it survives closing the tab), with
- * agent logo badges, an optional latest-activity line, and launch/shutdown
- * actions. Also provides {@link IAgentTerminals} for the ask-agent popup.
- */
 const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
   id: PLUGIN_ID,
   description:
@@ -76,8 +70,6 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
       return editor?.icon ?? terminalIcon;
     };
 
-    // Each agent/editor's `command` plus its canonical `id` (the real CLI
-    // name), so an aliased command is still recognised by the process it spawns.
     const detectCommands = (): string[] => {
       const names = new Set<string>();
       for (const agent of agentRegistry?.agents ?? []) {
@@ -91,8 +83,6 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
       return Array.from(names);
     };
 
-    // Only agent sessions get a latest-activity line and are offered as
-    // prompt targets; editor terminals stay badge-only.
     const isAgentCommand = (command: string): boolean =>
       agentRegistry?.agents.some(
         a => a.command === command || a.id === command
@@ -107,8 +97,8 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
       isAgentCommand
     });
 
-    // Mirror the detected agent/editor onto each open tab's icon. `Title.icon`
-    // ignores an unchanged assignment, so re-running per stateChanged is cheap.
+    // `Title.icon` ignores an unchanged assignment, so re-running per
+    // stateChanged is cheap.
     const syncTabIcons = (): void => {
       tracker.forEach(widget => {
         const session = widget.content.session;
@@ -241,9 +231,6 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
   }
 };
 
-/**
- * Read a boolean setting value, falling back when it is missing or invalid.
- */
 function boolOption(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback;
 }

@@ -1,9 +1,3 @@
-/*
- * Sidebar panel listing running terminal sessions as a movable "Terminals"
- * section: per-row program-published title, latest agent-output line, and a
- * shutdown button that fades in on hover.
- */
-
 .jp-xtralab-Terminals {
   min-width: 200px;
   overflow: hidden;
@@ -54,8 +48,8 @@
   background-color: var(--jp-layout-color2);
 }
 
-/* Main click target filling the row. Top-aligned so the icon stays on the
- * title line when the activity line wraps to a second line. */
+/* Top-aligned so the icon stays on the title line when the activity line
+ * wraps to a second line. */
 .jp-xtralab-Terminals-item-activate {
   display: flex;
   flex: 1 1 auto;
@@ -95,7 +89,6 @@
   white-space: nowrap;
 }
 
-/* Latest line of agent output, shown under the title. */
 .jp-xtralab-Terminals-item-detail {
   display: -webkit-box;
   overflow: hidden;
@@ -143,19 +136,15 @@
   height: 16px;
 }
 
-/* The terminal that is the shell's current widget, in the file listing's
- * brand-color treatment; driven from `widget.tsx` via the terminal tracker. */
 .jp-xtralab-Terminals-item.jp-mod-current {
   color: var(--jp-ui-inverse-font-color1);
   background-color: var(--jp-brand-color1);
 }
 
-/* Hovering the current row keeps the highlight. */
 .jp-xtralab-Terminals-item.jp-mod-current:hover {
   background-color: var(--jp-brand-color1);
 }
 
-/* Keep the activity line legible on the brand background. */
 .jp-xtralab-Terminals-item.jp-mod-current .jp-xtralab-Terminals-item-detail {
   color: var(--jp-ui-inverse-font-color1);
   opacity: 0.85;
@@ -171,14 +160,12 @@
   fill: var(--jp-brand-color1);
 }
 
-/* Keep the shutdown button legible on the brand background, hover included. */
 .jp-xtralab-Terminals-item.jp-mod-current .jp-xtralab-Terminals-item-close,
 .jp-xtralab-Terminals-item.jp-mod-current
   .jp-xtralab-Terminals-item-close:hover {
   color: var(--jp-ui-inverse-font-color1);
 }
 
-/* Focus rings need a color that contrasts with the brand background. */
 .jp-xtralab-Terminals-item.jp-mod-current
   .jp-xtralab-Terminals-item-activate:focus-visible,
 .jp-xtralab-Terminals-item.jp-mod-current

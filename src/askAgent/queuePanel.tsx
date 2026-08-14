@@ -19,9 +19,6 @@ import type { IQueuedPrompt, PromptQueue } from './queue';
 import type { ISessionTarget } from './targetPicker';
 import type { AskAgentTarget } from './tokens';
 
-/**
- * Command the context buttons dispatch; keeps the panel decoupled from the plugin.
- */
 const HIGHLIGHT_LINES_COMMAND = 'xtralab:highlight-lines';
 
 /**
@@ -32,10 +29,6 @@ function rowsFor(text: string): number {
   return Math.min(8, Math.max(2, text.split('\n').length));
 }
 
-/**
- * A target as a `<select>` option value: `session:<name>`, `new:<agentId>`,
- * or `''` for a missing target (the placeholder option).
- */
 function encodeTarget(target: AskAgentTarget | null): string {
   if (target === null) {
     return '';
@@ -55,10 +48,6 @@ function decodeTarget(value: string): AskAgentTarget | null {
   return null;
 }
 
-/**
- * Whether `target` can be sent to right now: its session is still running,
- * or its agent still accepts a command-line prompt.
- */
 function targetIsLive(
   target: AskAgentTarget | null,
   agents: readonly IAgent[],
@@ -141,8 +130,6 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
           const missing = item.instruction.trim().length === 0;
           const target = item.target;
           const live = targetIsLive(target, agents, targets);
-          // Badge each prompt with its agent's icon so a mixed queue scans
-          // without opening dropdowns.
           let icon: LabIcon | null = null;
           let targetTitle = trans.__(
             'The destination picked for this prompt is gone — choose another'
@@ -360,9 +347,6 @@ export namespace AskAgentQueuePanel {
   export interface IOptions {
     queue: PromptQueue;
 
-    /**
-     * Command registry used to open queued locations in the editor.
-     */
     commands: CommandRegistry;
 
     /**

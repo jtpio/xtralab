@@ -13,14 +13,14 @@ import type { Widget } from '@lumino/widgets';
 
 const PLUGIN_ID = 'xtralab:highlight';
 
-/** Both commands are meant to be driven by an agent over the MCP bridge. */
 const HIGHLIGHT_LINES_COMMAND = 'xtralab:highlight-lines';
 const CLEAR_HIGHLIGHTS_COMMAND = 'xtralab:clear-highlights';
 
-/** CodeMirror line-decoration class; styled in style/highlight.css. */
 const HIGHLIGHT_LINE_CLASS = 'jp-xtralab-highlightLine';
 
-/** Carries the 1-indexed inclusive line range to highlight, or `null` to clear. */
+/**
+ * Carries the 1-indexed inclusive line range to highlight, or `null` to clear.
+ */
 const setHighlight = StateEffect.define<{
   start: number;
   end: number;
@@ -58,10 +58,6 @@ const highlightField = StateField.define<DecorationSet>({
   provide: field => EditorView.decorations.from(field)
 });
 
-/**
- * The CodeMirror view backing a widget's file editor, or `null` when the
- * widget is not a CodeMirror-based text editor.
- */
 function viewForWidget(widget: Widget | null): EditorView | null {
   const content = (widget as { content?: unknown } | null)?.content;
   return content instanceof FileEditor &&
@@ -70,7 +66,6 @@ function viewForWidget(widget: Widget | null): EditorView | null {
     : null;
 }
 
-/** Coerce a JSON arg to a positive integer line number, else `fallback`. */
 function toLine(value: unknown, fallback: number): number {
   const n = Math.trunc(Number(value));
   return Number.isFinite(n) && n >= 1 ? n : fallback;
@@ -97,7 +92,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const { commands, shell } = app;
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
-    // Editors currently carrying a highlight; disposed ones drop on the next clear.
     const highlighted = new Set<EditorView>();
 
     const ensureField = (view: EditorView): void => {
@@ -189,7 +183,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
           effects.push(EditorView.scrollIntoView(anchor, { y: 'center' }));
         }
         view.dispatch({ effects });
-        // Drop editors that have since been closed.
         for (const tracked of highlighted) {
           if (!tracked.dom.isConnected) {
             highlighted.delete(tracked);

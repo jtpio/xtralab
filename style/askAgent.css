@@ -94,7 +94,6 @@
   color: var(--jp-ui-font-color2);
 }
 
-/* Target chips: "New terminal" plus one chip per running agent terminal. */
 .jp-xtralab-AskAgent-targets {
   display: flex;
   flex-wrap: wrap;
@@ -299,8 +298,6 @@
   color: var(--jp-ui-font-color2);
 }
 
-/* `min-height: 0` lets the list shrink below its content height, so a long
- * queue scrolls here instead of pushing the footer out of the panel. */
 .jp-xtralab-AskAgentQueue-list {
   display: flex;
   flex: 1 1 auto;
@@ -449,7 +446,6 @@
   height: 16px;
 }
 
-/* The select is core's jp-HTMLSelect (the notebook-toolbar dropdown). */
 .jp-xtralab-AskAgentQueue-itemTarget {
   flex: 1 1 auto;
   min-width: 0;

@@ -6,16 +6,22 @@ import type { ReadonlyPartialJSONValue } from '@lumino/coreutils';
 import type { Message } from '@lumino/messaging';
 import { Panel, Widget } from '@lumino/widgets';
 
-/** Command the jump links dispatch; keeps the panel decoupled from the plugin. */
+/**
+ * Command the jump links dispatch; keeps the panel decoupled from the plugin.
+ */
 const HIGHLIGHT_LINES_COMMAND = 'xtralab:highlight-lines';
 
-/** A rich visual embedded in a step (rendered through the rendermime registry). */
+/**
+ * A rich visual embedded in a step (rendered through the rendermime registry).
+ */
 export interface IWalkthroughMedia {
   mimeType: string;
   data: ReadonlyPartialJSONValue;
 }
 
-/** One step of a walkthrough. Every field is optional, but a step needs at least one. */
+/**
+ * One step of a walkthrough. Every field is optional, but a step needs at least one.
+ */
 export interface IWalkthroughStep {
   title?: string;
   body?: string;
@@ -47,7 +53,9 @@ export class WalkthroughPanel extends Panel {
     this.addClass('jp-xtralab-Walkthrough');
   }
 
-  /** Remove every step, leaving an empty panel. */
+  /**
+   * Remove every step, leaving an empty panel.
+   */
   clear(): void {
     while (this.widgets.length > 0) {
       this.widgets[0].dispose();
@@ -63,7 +71,9 @@ export class WalkthroughPanel extends Panel {
     this.dispose();
   }
 
-  /** Append a step and scroll it into view. */
+  /**
+   * Append a step and scroll it into view.
+   */
   async addStep(step: IWalkthroughStep): Promise<void> {
     const card = new Panel();
     card.addClass('jp-xtralab-Walkthrough-step');

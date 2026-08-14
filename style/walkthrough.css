@@ -1,8 +1,3 @@
-/*
- * Read-only walkthrough panel (`xtralab:walkthrough`) in the side area: a
- * scrollable column of step cards.
- */
-
 .jp-xtralab-Walkthrough {
   overflow-y: auto;
   padding: 4px 0;

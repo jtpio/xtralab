@@ -179,8 +179,6 @@ const launcherMinContentWidth = 560;
 const launcherMinContentHeight = 480;
 const labSessions = new Map<number, LabSession>();
 const pendingSupervisors = new Set<SupervisorHandle>();
-// Shared by lab windows so macOS groups them per the user's "Prefer tabs"
-// setting and the Window menu can merge or split them.
 const labWindowTabbingIdentifier = 'xtralab-project';
 
 let launcherWindow: BrowserWindow | null = null;
@@ -204,8 +202,6 @@ let pendingRestoreWindows: SessionWindowState[] = [];
 // follow during teardown from shrinking the saved session.
 let sessionStateFrozen = false;
 let sessionStateSaveTimer: NodeJS.Timeout | null = null;
-// Monotonic stamp handed out on every window focus, persisted per window so
-// the restore can order windows by how recently they were active.
 let focusSequenceCounter = 0;
 // Startup-restore progress for the launcher's restore view; kept after a
 // failed restore until the launcher dismisses the summary.
@@ -305,8 +301,6 @@ interface UpdateState {
   error: string | null;
 }
 
-// Shown in the launcher footer. 'unsupported' covers builds that cannot
-// self-update; setUpAutoUpdates() promotes it to 'idle' when Squirrel works.
 const updateState: UpdateState = {
   status: 'unsupported',
   currentVersion: app.getVersion(),
@@ -314,7 +308,6 @@ const updateState: UpdateState = {
   error: null
 };
 let updateCheckInFlight = false;
-// Versions already offered via dialog, so one release prompts once per run.
 const offeredUpdateVersions = new Set<string>();
 
 function canAutoUpdate(): boolean {
@@ -1105,8 +1098,6 @@ function deliverDesktopNotification(
       selectSenderTab();
       return;
     }
-    // Raise the anchor so macOS switches to the group's Space, and select the
-    // sender tab only once focus lands there.
     let settled = false;
     const settle = (): void => {
       if (settled) {
@@ -1128,8 +1119,6 @@ function deliverDesktopNotification(
 }
 
 function sanitizeNotificationText(value: string): string {
-  // Strip control characters (no terminal escape sequences), collapse
-  // whitespace, and clamp the length.
   let result = '';
   for (const char of value) {
     const code = char.codePointAt(0) ?? 0;
@@ -1315,8 +1304,6 @@ async function openFolder(
     !sourceWindow.isDestroyed()
       ? sourceWindow
       : null;
-  // When the launcher lives as a tab in a lab window's group, the new
-  // project joins that group in the launcher tab's place.
   const attachGroupId =
     process.platform === 'darwin' && sourceLauncher !== null
       ? launcherTabGroupId
@@ -2020,7 +2007,6 @@ function createLabWindow(
 
     if (!wasShown && !quitInProgress) {
       if (restore !== undefined) {
-        // The restore driver records the failure in the launcher's restore view.
         restore.onAborted(reason);
         return;
       }
@@ -2813,8 +2799,6 @@ async function restorePreviousSession(
 
   const anyFailed = progress.some(project => project.status === 'failed');
   if (anyFailed) {
-    // The launcher stays up to show which projects could not come back; the
-    // dialog is the fallback for when it was closed during the restore.
     pushRestoreProgress();
     if (launcherWindow === null || launcherWindow.isDestroyed()) {
       reportRestoreFailures(failures);
@@ -2935,7 +2919,6 @@ async function restoreSessionGroup(
     leader.window.maximize();
   }
 
-  // Reselect the tab that was active in this group.
   if (groupWindows.length > 1) {
     const selected = groupWindows.reduce((best, candidate) =>
       candidate.state.focusSequence > best.state.focusSequence
@@ -3001,8 +2984,6 @@ function getManagedEnvironmentExecutablePath(
   return path.join(getManagedEnvironmentBinDir(envDir), platformExecutableName);
 }
 
-// Short, stable per-folder identifier keying the state xtralab keeps under
-// app data (kernels, JupyterLab workspace).
 function getProjectHash(folderPath: string): string {
   return createHash('sha256').update(folderPath).digest('hex').slice(0, 16);
 }

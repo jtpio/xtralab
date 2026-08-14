@@ -12,14 +12,8 @@ import type { IAgent } from '../launcher/agents';
 export interface ISessionTarget {
   name: string;
 
-  /**
-   * The session's display label (usually the agent's name).
-   */
   label: string;
 
-  /**
-   * The agent's latest activity line, when one is available.
-   */
   activity: string | null;
 
   icon: LabIcon;
@@ -63,9 +57,6 @@ function onRadioGroupKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
  * (a new terminal is then the only possibility).
  */
 export function TargetChips(props: {
-  /**
-   * Agents that could start in a new terminal; gates the "New terminal" chip.
-   */
   agents: IAgent[];
   targets: ISessionTarget[];
   /**
@@ -182,7 +173,6 @@ export function AgentChoices(props: {
             'jp-xtralab-AskAgent-agentButton' +
             (agent.id === agentId ? ' jp-mod-selected' : '')
           }
-          // Keep focus where the user is typing while picking an agent.
           onMouseDown={event => event.preventDefault()}
           onClick={() => onSelect(agent.id)}
         >

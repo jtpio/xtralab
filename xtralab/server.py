@@ -23,8 +23,6 @@ try:
 except ImportError:  # pragma: no cover - psutil is a declared dependency
     psutil = None  # type: ignore[assignment]
 
-# Executables whose identity is their script argument (``node …/bin/claude``):
-# only for these does the first non-flag argv token count as a candidate name.
 _INTERPRETERS = frozenset(
     {"node", "nodejs", "python", "python3", "deno", "bun", "ruby", "perl"}
 )

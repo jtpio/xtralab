@@ -1,13 +1,9 @@
-/* Omnibox overlay (xtralab:omnibox): a centered search box over the shell. */
-
 /* The widget node attaches to `document.body` and carries `jp-ThemedContainer`
    for theme variables; the React tree renders the fixed overlay below. */
 .jp-xtralab-Omnibox {
   position: absolute;
 }
 
-/* Transparent full-viewport layer that centers the panel and catches
-   click-outside to dismiss. */
 .jp-xtralab-Omnibox-overlay {
   position: fixed;
   inset: 0;
@@ -23,8 +19,6 @@
   width: min(640px, 92vw);
   max-height: 60vh;
   overflow: hidden;
-
-  /* Drop just below the top bar so it reads as a command-center dropdown. */
   margin-top: calc(var(--jp-private-menubar-height, 28px) + 4px);
   background: var(--jp-layout-color1);
   border: var(--jp-border-width) solid
@@ -48,8 +42,6 @@
   color: var(--jp-ui-font-color3);
 }
 
-/* Side gutters float the active-row highlight inside the panel edge,
-   matching the menu/palette treatment. */
 .jp-xtralab-Omnibox-results {
   padding: 5px 6px;
   overflow-y: auto;

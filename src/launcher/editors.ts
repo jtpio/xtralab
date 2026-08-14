@@ -9,13 +9,11 @@ import { BUILTIN_EDITOR_ICONS } from './icons';
  * terminals panel.
  */
 export interface IEditor {
-  /** Stable id; also the default `$PATH` command probed for availability. */
   id: string;
   label: string;
   caption: string;
   command: string;
   icon: LabIcon;
-  /** Preference order: the first qualifying candidate by rank wins the tile. */
   rank: number;
   /**
    * When false, skip the `which`-based availability check — for aliases or
@@ -40,22 +38,10 @@ export interface IEditorSettings {
    */
   iconSvg?: string;
   rank?: number;
-  /**
-   * When false, hides the editor. Disable both built-ins to drop the editor
-   * tile entirely.
-   */
   enabled?: boolean;
-  /**
-   * See {@link IEditor.requireAvailable}. Defaults to true, but flips to false
-   * once `command` is overridden (a user-chosen alias is trusted).
-   */
   requireAvailable?: boolean;
 }
 
-/**
- * Built-in candidates in preference order: Neovim wins over Vim when both are
- * installed.
- */
 const DEFAULTS: IEditor[] = [
   {
     id: 'nvim',
@@ -131,8 +117,6 @@ export function mergeEditors(overrides: IEditorSettings[]): IEditor[] {
         ? resolveEditorIcon(base.id, override.iconSvg)
         : base.icon,
       rank: override.rank ?? base.rank,
-      // See `mergeAgents`: a user-chosen command may be an alias `which` can't
-      // resolve, so the check applies only while the command is the default.
       requireAvailable:
         command === base.command
           ? (override.requireAvailable ?? base.requireAvailable)
@@ -140,8 +124,6 @@ export function mergeEditors(overrides: IEditorSettings[]): IEditor[] {
     });
   }
 
-  // Remaining override ids are new editors; the settings schema validates the
-  // shape, so missing fields just fall back.
   let nextRank =
     merged.reduce((max, editor) => Math.max(max, editor.rank), -1) + 1;
   for (const entry of overrideById.values()) {

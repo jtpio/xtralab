@@ -11,10 +11,6 @@ import { aboutLogoIcon } from './icons';
 
 const PLUGIN_ID = 'xtralab:about';
 
-/**
- * Upstream command id, reused so the Help menu entry, palette muscle memory,
- * and external callers of `help:about` keep working.
- */
 const CommandIDs = {
   about: 'help:about'
 };

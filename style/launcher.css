@@ -1,9 +1,3 @@
-/*
- * Launcher dashboard widget. It replaces JupyterLab's stock `jp-Launcher`,
- * so every selector is scoped under `jp-xtralab-Launcher` rather than the
- * `jp-Launcher-*` classes.
- */
-
 .jp-xtralab-Launcher {
   display: flex;
   flex-direction: column;
@@ -27,8 +21,6 @@
   box-sizing: border-box;
 }
 
-/* Sections: the agent picker is a `<section>`, the collapsible panels are
- * `<details>`; both share the same gap + alignment. */
 .jp-xtralab-Launcher-section {
   display: flex;
   flex-direction: column;
@@ -147,8 +139,6 @@
   font-size: var(--jp-ui-font-size1);
 }
 
-/* Changed files list. Each row is a button; the letter is the file's git
- * status, colored to match the @pierre/trees decorations. */
 .jp-xtralab-Launcher-changes {
   list-style: none;
   margin: 0;
@@ -203,8 +193,6 @@
   outline-offset: -1px;
 }
 
-/* Bare colored letter matching the @pierre/trees status decorations; the
- * fixed width keeps the paths column-aligned. */
 .jp-xtralab-Launcher-change-badge {
   display: inline-flex;
   align-items: center;
@@ -255,7 +243,6 @@
   letter-spacing: 0.04em;
 }
 
-/* Prompt textarea + agent grid. */
 .jp-xtralab-Launcher-prompt {
   width: 100%;
   min-height: 72px;
@@ -342,10 +329,6 @@
   text-align: center;
 }
 
-/* MCP registration hint: collapsed `<details>` listing `mcp add` commands. */
-
-/* Lighter, sentence-case summary so the collapsed hint doesn't read as a
- * misplaced top-level section. */
 .jp-xtralab-Launcher-mcp-section .jp-xtralab-Launcher-section-title {
   font-weight: 500;
   text-transform: none;

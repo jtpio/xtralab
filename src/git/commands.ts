@@ -35,9 +35,6 @@ export namespace CommandArguments {
   }
 }
 
-/**
- * Widget id of the single, reused preview diff tab.
- */
 export const PREVIEW_DIFF_WIDGET_ID = 'xtralab:diff:preview';
 
 /**
@@ -116,9 +113,6 @@ interface ICreateDiffWidgetOptions {
   onPinned?: (widget: DiffMainAreaWidget) => void;
 }
 
-/**
- * Build the launcher's diff tab around the shared diff widget.
- */
 function createDiffWidget(
   options: ICreateDiffWidgetOptions
 ): DiffMainAreaWidget {
@@ -158,7 +152,6 @@ function createDiffWidget(
   widget.toolbar.addItem('pin', pinButton);
   addDiffToolbarItems(widget.toolbar, content);
 
-  // Keep chrome visible only while there is a relevant toolbar control.
   const syncToolbarVisibility = (): void => {
     if (widget.isDisposed) {
       return;
@@ -186,7 +179,6 @@ function createDiffWidget(
     }
     syncToolbarVisibility();
   };
-  // Auto-close once a discard leaves nothing to show.
   const onEmptied = (): void => {
     if (!widget.isDisposed) {
       widget.close();
@@ -209,22 +201,10 @@ function createDiffWidget(
 interface IRegisterGitCommandsOptions {
   app: JupyterFrontEnd;
   themeManager: IThemeManager | null;
-  /**
-   * Contents manager used to write hunk-discard results.
-   */
   contentsManager: Contents.IManager;
-  /**
-   * Rendermime registry used by notebook diffs; may be `null`.
-   */
   rendermime: IRenderMimeRegistry | null;
-  /**
-   * Ask-agent popup for prompting an agent about diff lines; may be `null`.
-   */
   askAgent: IAskAgent | null;
   trans: TranslationBundle;
-  /**
-   * Track newly created diff widgets before they are added to the shell.
-   */
   trackDiff(widget: DiffMainAreaWidget): Promise<void>;
   findDiff(change: IFileChange, pin?: boolean): DiffMainAreaWidget | undefined;
   onPinned(widget: DiffMainAreaWidget): void;

@@ -41,7 +41,6 @@ interface IResolvedIndent {
   width: number;
 }
 
-/** Detect the indent from the file content, in CodeMirror terms. */
 function detectFromContent(text: string): IResolvedIndent | null {
   if (text.length === 0) {
     return null;

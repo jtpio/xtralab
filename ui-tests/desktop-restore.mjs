@@ -51,8 +51,6 @@ execFileSync(
   { stdio: 'inherit' }
 );
 
-// The same seeded workspace the web captures use, plus two sibling projects
-// so the restore lists three windows from one native tab group.
 execFileSync(process.execPath, [join(here, 'seed-workspace.mjs')], {
   stdio: 'inherit'
 });

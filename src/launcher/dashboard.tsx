@@ -38,16 +38,9 @@ import { agentCommandId } from './tokens';
  */
 interface ILauncherDashboardOptions {
   commands: CommandRegistry;
-  /** Agent list to render, already filtered by availability and sorted by rank. */
   agents: IAgent[];
-  /** Terminal editor for the "Open" section, or `null` when none is installed. */
   editor: IEditor | null;
-  /**
-   * Launch-tag registry so the terminals panel badges editor launches right
-   * away; `null` when the provider plugin is unavailable.
-   */
   agentSessions: IAgentSessions | null;
-  /** Called with the launched widget; the plugin swaps it into the launcher's tab. */
   onAgentLaunch: (item: Widget) => void;
   /**
    * Repo path for the changes section. Empty string lets git resolve the
@@ -62,7 +55,9 @@ interface ILauncherDashboardOptions {
   trans: TranslationBundle;
 }
 
-/** Lumino host for the React-based launcher dashboard. */
+/**
+ * Lumino host for the React-based launcher dashboard.
+ */
 export class LauncherDashboard extends ReactWidget {
   constructor(options: ILauncherDashboardOptions) {
     super();
@@ -89,7 +84,6 @@ interface IGitState {
  */
 const CHANGES_POLL_INTERVAL_MS = 8000;
 
-/** Backoff cap on failures, matching the plugin's other polls. */
 const CHANGES_POLL_MAX_MS = 300_000;
 
 function LauncherDashboardComponent(
@@ -125,8 +119,6 @@ function LauncherDashboardComponent(
     }
   }, [repoPath]);
 
-  // A Lumino Poll stops polling while the tab is hidden and backs off on
-  // repeated failures.
   React.useEffect(() => {
     const poll = new Poll({
       name: '@xtralab/launcher:gitChanges',
@@ -205,8 +197,6 @@ function LauncherDashboardComponent(
     if (!editor) {
       return;
     }
-    // An editor launch is an agent launch minus the prompt, so it shares
-    // `launchInTerminal` and tags the session the same way.
     const result = await launchInTerminal(commands, {
       cwd,
       invocation: editor.command,
@@ -375,8 +365,6 @@ function AgentSection(props: {
   const { agents, prompt, onPromptChange, onLaunch, trans } = props;
   const trimmed = prompt.trim();
   const promptActive = trimmed.length > 0;
-  // The first prompt-capable agent is the Cmd/Ctrl+Enter target; the hint
-  // below the textarea names it.
   const primaryAgent = agents.find(agent => agent.promptArgs !== undefined);
   const hintId = 'jp-xtralab-Launcher-agent-hint';
 
@@ -463,7 +451,6 @@ function AgentSection(props: {
  */
 const MCP_ADD_AGENT_IDS = new Set(['claude', 'codex', 'copilot']);
 
-/** The stdio proxy console script that bridges an agent to the MCP server. */
 const MCP_PROXY_COMMAND = 'jupyter-server-mcp-proxy';
 
 /**
@@ -517,7 +504,6 @@ function McpSection(props: {
   };
 
   const copy = (command: string, id: string): void => {
-    // Flag "Copied" only once a copy actually succeeds.
     const clipboard = navigator.clipboard;
     if (clipboard) {
       void clipboard.writeText(command).then(

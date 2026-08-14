@@ -10,21 +10,11 @@ import { leftSidebarIcon, rightSidebarIcon } from './icons';
 
 const PLUGIN_ID = 'xtralab:top-bar';
 
-/**
- * Upstream commands that collapse or expand the side areas; binding to them
- * keeps behavior and `isToggled`/`isEnabled` in lockstep with the View menu.
- */
 const TOGGLE_LEFT_AREA = 'application:toggle-left-area';
 const TOGGLE_RIGHT_AREA = 'application:toggle-right-area';
 
 interface IButtonSpec {
-  /**
-   * Stable widget id (required by `LabShell.add`).
-   */
   id: string;
-  /**
-   * Command the button triggers and mirrors the state of.
-   */
   command: string;
   icon: LabIcon;
   caption: (trans: ReturnType<ITranslator['load']>) => string;
@@ -33,9 +23,6 @@ interface IButtonSpec {
    * logo is disabled; `margin-left: auto` (topBar.css) floats the right button.
    */
   rank: number;
-  /**
-   * Side-specific class, used by the stylesheet for placement.
-   */
   sideClass: string;
 }
 
@@ -94,7 +81,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
           commands,
           id: spec.command,
           icon: spec.icon,
-          // Empty label keeps the button icon-only.
           label: '',
           caption: spec.caption(trans),
           // ToolbarButtonComponent otherwise focuses the button on click,

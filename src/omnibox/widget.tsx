@@ -11,10 +11,8 @@ import { computeSections, IOmniboxItem } from './model';
 import { loadWorkspaceFiles } from './files';
 import type { OmniboxRecents } from './recents';
 
-/** DOM id of the results listbox, referenced by the input's `aria-controls`. */
 const LIST_ID = 'jp-xtralab-Omnibox-list';
 
-/** Stable DOM id for the result row at `index`, for `aria-activedescendant`. */
 function optionId(index: number): string {
   return `jp-xtralab-Omnibox-option-${index}`;
 }
@@ -121,7 +119,6 @@ function OmniboxComponent(props: OmniboxWidget.IOptions): JSX.Element {
   );
   const hasResults = flat.length > 0;
 
-  // Keep the highlighted row in range as the result set changes.
   React.useEffect(() => {
     setActive(current => (current < flat.length ? current : 0));
   }, [flat]);
@@ -338,9 +335,6 @@ export namespace OmniboxWidget {
     agents: IAgent[];
     placeholder: string;
     initialQuery: string;
-    /**
-     * Recently-used tracker; `null` disables the recent rows and recording.
-     */
     recents: OmniboxRecents | null;
     trans: TranslationBundle;
     /**

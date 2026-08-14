@@ -39,8 +39,7 @@ export type GitReference =
   | { git: string };
 
 /**
- * Response shape of `POST /git/<path>/content`. Binary files are flagged in
- * the status response and surfaced without rendering their diff.
+ * Response shape of `POST /git/<path>/content`.
  */
 export interface IGitContentResult {
   code: number;
@@ -48,16 +47,8 @@ export interface IGitContentResult {
   message?: string;
 }
 
-/**
- * Where a file's change lives relative to the index. A staged file modified
- * again in the worktree appears as two entries, one per group.
- */
 type FileChangeGroup = 'staged' | 'unstaged';
 
-/**
- * The user-facing status of a file change. Drives the single-letter badge
- * (M/A/D/R/U/?) shown next to each entry in the panel.
- */
 export type FileChangeStatus =
   | 'modified'
   | 'added'

@@ -11,9 +11,6 @@ import { agentCommandId } from '../launcher/tokens';
 
 import type { OmniboxRecents, RecentKind } from './recents';
 
-/**
- * The source a result row came from, used to group rows under a header.
- */
 type OmniboxItemKind = 'command' | 'file' | 'agent';
 
 /**
@@ -21,9 +18,6 @@ type OmniboxItemKind = 'command' | 'file' | 'agent';
  */
 export interface IOmniboxItem {
   kind: OmniboxItemKind;
-  /**
-   * Stable React key.
-   */
   key: string;
   label: string;
   /**
@@ -39,9 +33,6 @@ export interface IOmniboxItem {
  * Results grouped by source; each group is already capped and sorted.
  */
 interface IOmniboxSections {
-  /**
-   * Recently used commands and files, shown while the term is empty.
-   */
   recent: IOmniboxItem[];
   commands: IOmniboxItem[];
   files: IOmniboxItem[];
@@ -51,17 +42,10 @@ interface IOmniboxSections {
 interface IComputeOptions {
   query: string;
   commands: CommandRegistry;
-  /**
-   * Palette items, whose labels are computed with each item's args — the only
-   * form in which entries like "Use Theme: …" exist.
-   */
   paletteItems: ReadonlyArray<CommandPalette.IItem>;
   docRegistry: DocumentRegistry;
   agents: IAgent[];
   files: string[];
-  /**
-   * Recently-used tracker; `null` disables the recent rows and recording.
-   */
   recents: OmniboxRecents | null;
   trans: TranslationBundle;
 }
@@ -69,11 +53,8 @@ interface IComputeOptions {
 const COMMAND_LIMIT = 7;
 const FILE_LIMIT = 10;
 
-/**
- * A leading `>` narrows the search to commands, `/` to files (relative paths
- * never start with `/`, so it is unambiguous).
- */
 const COMMAND_PREFIX = '>';
+// Unambiguous: workspace-relative paths never start with '/'.
 const FILE_PREFIX = '/';
 
 type Mode = 'all' | 'commands' | 'files';
@@ -111,12 +92,13 @@ export function computeSections(options: IComputeOptions): IOmniboxSections {
     recent: [],
     commands: mode === 'files' ? [] : matchCommands(options, term),
     files: mode === 'commands' ? [] : matchFiles(options, term),
-    // Agents only in the unprefixed view; the prompt is the full typed query.
     agents: mode === 'all' ? buildAgentItems(commands, agents, term, trans) : []
   };
 }
 
-/** Run a command and record the use on success, so failures never enter the recents. */
+/**
+ * Run a command and record the use on success, so failures never enter the recents.
+ */
 function executeCommand(
   commands: CommandRegistry,
   recents: OmniboxRecents | null,
@@ -133,7 +115,6 @@ function executeCommand(
     });
 }
 
-/** Open a file and record the use on success. */
 function openFile(
   commands: CommandRegistry,
   recents: OmniboxRecents | null,
@@ -246,8 +227,6 @@ function matchCommands(options: IComputeOptions, term: string): IOmniboxItem[] {
     let visible = true;
     let caption = '';
     try {
-      // Accessors can throw when the command assumes a context (e.g. an
-      // active notebook) the omnibox doesn't provide; skip those.
       label = item.label;
       visible = item.isVisible;
       caption = item.caption;

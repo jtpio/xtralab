@@ -26,7 +26,6 @@ export const DIFF_WIDGET_CSS_CLASS = 'jp-xtralab-DiffWidget';
 
 const SPLIT_RATIO_STORAGE_KEY = 'xtralab:diff-split-ratio';
 
-/** Bounds keep both panes visible; dragging to 0/100 would hide a column. */
 const MIN_SPLIT_RATIO = 0.1;
 const MAX_SPLIT_RATIO = 0.9;
 const DEFAULT_SPLIT_RATIO = 0.5;
@@ -69,7 +68,6 @@ function writeStoredSplitRatio(ratio: number): void {
   }
 }
 
-/** Layout for textual diffs, forwarded to `@pierre/diffs` as its `diffStyle` option. */
 export type DiffStyle = 'split' | 'unified';
 
 const DIFF_STYLE_STORAGE_KEY = 'xtralab:diff-style';
@@ -94,7 +92,6 @@ export function writeStoredDiffStyle(style: DiffStyle): void {
   }
 }
 
-/** `notebook` is the cell-by-cell rendered view; `json` the raw nbformat file diff. */
 export type NotebookDiffViewMode = 'notebook' | 'json';
 
 const NOTEBOOK_DIFF_VIEW_MODE_STORAGE_KEY = 'xtralab:notebook-diff-view-mode';
@@ -121,7 +118,9 @@ export function writeStoredNotebookViewMode(mode: NotebookDiffViewMode): void {
   }
 }
 
-/** Annotation payload threaded back into `renderAnnotation`; carries the target hunk index. */
+/**
+ * Annotation payload threaded back into `renderAnnotation`; carries the target hunk index.
+ */
 interface IHunkActionAnnotation {
   hunkIndex: number;
 }
@@ -169,34 +168,17 @@ interface IDiffSurfaceProps {
   isBinary: boolean;
   oldText: string;
   newText: string;
-  /** New-side path; drives notebook detection and the highlighting filename. */
   newName: string;
-  /** Old-side path; differs from {@link newName} only for renames. */
   oldName?: string;
   dark: boolean;
-  /** Whether the diff should keep Pierre's own syntax palette. */
   pierreTheme: boolean;
-  /** Used by the notebook view; `null` in stripped-down hosts, which forces a textual fallback. */
   rendermime: IRenderMimeRegistry | null;
-  /** Rendered-vs-JSON choice for notebook diffs (host-controlled). */
   notebookViewMode: NotebookDiffViewMode;
-  /** Split vs unified layout for the textual file diff (host-controlled). */
   diffStyle: DiffStyle;
-  /** Fires when rendered-notebook availability changes so the host can toggle its Notebook/JSON control. */
   onNotebookAvailabilityChange?: (available: boolean) => void;
-  /** Fires when the textual file diff becomes (in)active — the only view the split/unified choice affects. */
   onFileDiffActiveChange?: (active: boolean) => void;
-  /**
-   * Fires after each diff computation with the hunk count (`null` when no
-   * textual diff); hosts use it to auto-close emptied diffs.
-   */
   onMetadataChange?: (info: { hunkCount: number | null }) => void;
-  /** Optional per-hunk discard wiring; omit for a read-only diff. */
   hunkDiscard?: IHunkDiscard;
-  /**
-   * Enables line selection and the gutter "+" button; called with the
-   * selected range and the button's viewport rect (`null` when unmeasurable).
-   */
   onLineAsk?: (range: SelectedLineRange, anchor: DOMRect | null) => void;
   trans: TranslationBundle;
 }
@@ -245,7 +227,6 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     return parseDiffFromFile(oldFile, newFile);
   }, [hasContent, imageType, oldText, newText, oldName, newName]);
 
-  // Kept distinct from `metadata` so an unparseable notebook falls back to the file diff.
   const notebookDiff = React.useMemo<INotebookDiffResult | null>(() => {
     if (!hasContent || imageType !== null || !isNotebookPath(newName)) {
       return null;
@@ -293,7 +274,6 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     }
     return metadata.hunks.map((hunk, hunkIndex) => ({
       side: 'additions',
-      // First new-file line of the hunk, so the button sits at the top of its body.
       lineNumber: hunk.additionStart,
       metadata: { hunkIndex }
     }));
@@ -398,7 +378,6 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
         handle.removeEventListener('pointermove', onPointerMove);
         handle.removeEventListener('pointerup', onPointerEnd);
         handle.removeEventListener('pointercancel', onPointerEnd);
-        // Persist only on drag-end to avoid a write per intermediate position.
         writeStoredSplitRatio(leftRatioRef.current);
       };
       handle.addEventListener('pointermove', onPointerMove);
@@ -486,7 +465,6 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     );
   }
 
-  // Consumed by SPLIT_RESIZE_CSS inside the shadow root.
   const leftPercent = leftRatio * 100;
   const hostStyle = {
     '--xtralab-split-cols': `${leftPercent}% ${100 - leftPercent}%`
@@ -515,13 +493,11 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
               disableWorkerPool={true}
               options={{
                 diffStyle,
-                // The tab title already shows the file name.
                 disableFileHeader: true,
                 theme: resolveDiffTheme(dark, pierreTheme),
                 themeType: dark ? 'dark' : 'light',
                 // Constant string lets the library skip its unsafeCSS re-render path.
                 unsafeCSS: SPLIT_RESIZE_CSS,
-                // Only wired when a handler exists so a plain diff keeps a passive gutter.
                 ...(onLineAsk !== undefined
                   ? {
                       enableLineSelection: true,

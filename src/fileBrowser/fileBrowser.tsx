@@ -36,10 +36,6 @@ import { loadGitStatusEntries } from './gitStatus';
 import { FILE_BROWSER_ICONS } from './icons';
 import type { XtralabFileBrowser } from './widget';
 
-/**
- * Load state for a directory, tracked from first observation so the
- * subscribe/diff loop can decide whether to fetch on expand.
- */
 type LoadState = 'unloaded' | 'loading' | 'loaded';
 
 /**
@@ -48,7 +44,6 @@ type LoadState = 'unloaded' | 'loading' | 'loaded';
  */
 const GIT_STATUS_POLL_INTERVAL_MS = 5000;
 
-/** Backoff cap for the git status poll; matches the other polls. */
 const GIT_STATUS_POLL_MAX_MS = 300_000;
 
 /**
@@ -57,7 +52,6 @@ const GIT_STATUS_POLL_MAX_MS = 300_000;
  */
 const FILE_LISTING_REFRESH_INTERVAL_MS = 10000;
 
-/** Backoff cap for the listing poll; matches the default file browser's. */
 const FILE_LISTING_REFRESH_MAX_MS = 300_000;
 
 /**
@@ -66,7 +60,6 @@ const FILE_LISTING_REFRESH_MAX_MS = 300_000;
  */
 const GIT_REPO_PATH = '';
 
-/** The `@pierre/trees` shadow-host tag. */
 const FILE_TREE_TAG = 'file-tree-container';
 
 /**
@@ -94,7 +87,6 @@ interface IFileBrowserProps {
   docManager: IDocumentManager;
   onOpenFile?: (serverPath: string) => void;
   translator?: ITranslator;
-  /** The host widget; selection changes are pushed up for command handlers. */
   widget?: XtralabFileBrowser;
 }
 
@@ -155,7 +147,6 @@ export function FileBrowserComponent(
       model.setGitStatus(entries);
     };
 
-    /** Reload `.gitignore` and re-apply the ignored statuses. */
     const refreshGitignoreMatcher = async (): Promise<void> => {
       let next: Ignore | null = null;
       try {
@@ -170,7 +161,6 @@ export function FileBrowserComponent(
       syncGitStatus();
     };
 
-    /** Re-fetch the porcelain status and re-apply it to the tree. */
     const refreshGitStatus = async (): Promise<void> => {
       const next = await loadGitStatusEntries(GIT_REPO_PATH);
       if (cancelled) {
@@ -383,7 +373,6 @@ export function FileBrowserComponent(
           if (newChildren.has(lp)) {
             continue;
           }
-          // Gone since the last tick; tracked descendants go with it.
           ops.push({ type: 'remove', path: lp, recursive: true });
           removals.push(lp);
           if (lp.endsWith('/')) {
@@ -472,7 +461,6 @@ export function FileBrowserComponent(
       }
     };
 
-    /** Collapse every expanded loaded directory. */
     const collapseAll = (): void => {
       if (cancelled) {
         return;
@@ -697,10 +685,6 @@ export function FileBrowserComponent(
       }
     };
 
-    /**
-     * The tree refused the drop and left its model untouched — almost
-     * always a name collision at the destination.
-     */
     const failedDrop = (error: string, context: FileTreeDropContext): void => {
       if (cancelled) {
         return;

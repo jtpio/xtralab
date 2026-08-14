@@ -120,7 +120,6 @@ const plugin: JupyterFrontEndPlugin<IOmnibox> = {
       label: trans.__('Search…'),
       caption: trans.__('Search files and commands, or ask an agent'),
       execute: args => {
-        // Toggle: a second press closes it.
         if (current && !current.isDisposed) {
           close();
           return;

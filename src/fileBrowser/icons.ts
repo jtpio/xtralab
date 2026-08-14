@@ -47,16 +47,11 @@ export const FILE_BROWSER_ICONS: FileTreeIconConfig = {
   }
 };
 
-/**
- * Built-in sheet plus the notebook sheet, so {@link extractSymbol} can find
- * any symbol the tree itself can render.
- */
 const COMBINED_SPRITE_SHEETS = [
   getBuiltInSpriteSheet(FILE_BROWSER_ICONS.set ?? 'complete'),
   JUPYTER_NOTEBOOK_SPRITE_SHEET
 ].join('\n');
 
-/** Shared resolver; pure relative to the icon config, so built once. */
 const treeIconResolver = createFileTreeIconResolver(FILE_BROWSER_ICONS);
 
 /**
@@ -65,10 +60,6 @@ const treeIconResolver = createFileTreeIconResolver(FILE_BROWSER_ICONS);
  */
 const TREE_ICON_CACHE = new Map<string, LabIcon>();
 
-/**
- * Inner SVG markup and viewBox of the `<symbol>` with the given id in
- * {@link COMBINED_SPRITE_SHEETS}, or `null` when absent.
- */
 function extractSymbol(
   symbolId: string
 ): { viewBox: string; inner: string } | null {
@@ -161,9 +152,6 @@ function getBuiltInFileIconColor(token: string): string | undefined {
   return `var(--trees-file-icon-color-${token}, var(--trees-file-icon-color, ${fallback}))`;
 }
 
-/**
- * Resolve a tree glyph into a standalone `LabIcon`.
- */
 function resolveTreeIcon(filePath: string): {
   icon: LabIcon | null;
   specific: boolean;

@@ -45,8 +45,6 @@
   --trees-item-margin-x-override: 0px;
 }
 
-/* Match the default file browser's toolbar spacing; jp-Toolbar's default
- * border + padding looks heavier than the rest of the sidebar. */
 .jp-xtralab-FileBrowser-toolbar.jp-Toolbar {
   flex: 0 0 auto;
   height: auto;
@@ -116,7 +114,6 @@
   min-height: 0;
 }
 
-/* In an accordion the toolbar shares the title row, so it must shrink. */
 .jp-AccordionPanel-title > .jp-xtralab-FileBrowser-toolbar {
   flex: 0 1 auto;
   min-width: 0;

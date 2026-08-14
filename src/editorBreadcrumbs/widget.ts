@@ -14,7 +14,9 @@ const ITEM_CLASS = 'jp-BreadCrumbs-item';
 const CURRENT_ITEM_CLASS = 'jp-mod-current';
 const SEPARATOR_CLASS = 'jp-BreadCrumbs-separator';
 
-/** Registered by the file browser plugin; only the name is shared here. */
+/**
+ * Registered by the file browser plugin; only the name is shared here.
+ */
 const REVEAL_COMMAND = 'xtralab:reveal-path';
 
 interface IEditorBreadcrumbsOptions {

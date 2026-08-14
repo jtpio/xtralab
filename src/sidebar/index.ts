@@ -99,7 +99,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
     // instances here so hidden tabs can be re-added.
     const widgetCache = new Map<string, Widget>();
 
-    // Side each hidden widget came from, so re-showing restores it there.
     const hiddenFrom = new Map<string, 'left' | 'right'>();
 
     const findInSidebars = (
@@ -143,7 +142,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const apply = (target: ITarget): void => {
       const widget = captureWidget(target.id);
       if (!widget) {
-        // Not seen yet (extension disabled or not added) — nothing to do.
         return;
       }
       const area = locate(target.id);

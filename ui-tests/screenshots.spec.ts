@@ -96,7 +96,6 @@ function terminalText(
   }, widgetId);
 }
 
-/** Send Enter to a terminal's session. */
 function pressEnter(
   page: IJupyterLabPageFixture,
   widgetId: string
@@ -199,7 +198,9 @@ async function refitRenderer(
   await settleTerminal(page, widgetId);
 }
 
-/** Shut a terminal widget's session down so it does not outlive its shot. */
+/**
+ * Shut a terminal widget's session down so it does not outlive its shot.
+ */
 function shutdownTerminal(
   page: IJupyterLabPageFixture,
   widgetId: string
@@ -380,7 +381,6 @@ test('terminals', async ({ page }) => {
     )
     .toBeGreaterThanOrEqual(agents.length - 1);
 
-  // Claude front and center: active tab, current row, crisp banner.
   const claudeId = widgetIds[1];
   await page.evaluate(id => {
     (window as any).jupyterapp.shell.activateById(id);

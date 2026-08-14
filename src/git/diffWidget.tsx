@@ -49,9 +49,6 @@ export interface IXtralabDiffContext {
   contentsManager: Contents.IManager;
   rendermime: IRenderMimeRegistry | null;
   themeManager: IThemeManager | null;
-  /**
-   * When available, diff line selections get an "ask an agent" gutter button.
-   */
   askAgent: IAskAgent | null;
   trans: TranslationBundle;
 }
@@ -339,14 +336,12 @@ function ModelDiffView(props: {
     };
   }, [themeManager]);
 
-  // Image diffs use the server's base64 payloads; other binaries show a placeholder.
   const isImage = React.useMemo(
     () => imageDataType(model.filename) !== null,
     [model.filename]
   );
   const isBinary = model.isBinary === true && !isImage;
 
-  // Used by the launcher to auto-close an emptied diff after discard.
   const [hunkCount, setHunkCount] = React.useState<number | null>(null);
   const handleMetadataChange = React.useCallback(
     (info: { hunkCount: number | null }) => {
@@ -415,7 +410,6 @@ function ModelDiffView(props: {
     }
   }, [state.loading, state.error, isBinary, hunkCount, nonce, widget]);
 
-  // The launcher sets `canDiscard`; jupyterlab-git models fall back to source.
   const canDiscardHunk =
     model.canDiscard ??
     (model.challenger.source === Git.Diff.SpecialRef.WORKING &&

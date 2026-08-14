@@ -9,16 +9,24 @@ import { ISignal, Signal } from '@lumino/signaling';
  * panel (reader) can share it without an activation cycle.
  */
 export interface IAgentSessions {
-  /** The agent command a session was launched with, or `null` if unknown. */
+  /**
+   * The agent command a session was launched with, or `null` if unknown.
+   */
   get(sessionName: string): string | null;
 
-  /** Record that a session was launched as the given agent command. */
+  /**
+   * Record that a session was launched as the given agent command.
+   */
   set(sessionName: string, command: string): void;
 
-  /** Forget a session so the map stays bounded. */
+  /**
+   * Forget a session so the map stays bounded.
+   */
   delete(sessionName: string): void;
 
-  /** Emitted with the session name whenever a record is added or removed. */
+  /**
+   * Emitted with the session name whenever a record is added or removed.
+   */
   readonly changed: ISignal<IAgentSessions, string>;
 }
 

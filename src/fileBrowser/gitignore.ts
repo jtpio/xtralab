@@ -5,10 +5,6 @@ import { Contents } from '@jupyterlab/services';
 
 import type { GitStatusEntry } from '@pierre/trees';
 
-/**
- * Workspace `.gitignore`, relative to the contents root — the same base the
- * patterns are evaluated against.
- */
 const GITIGNORE_PATH = '.gitignore';
 
 /**

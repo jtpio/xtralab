@@ -1,11 +1,8 @@
-/* Sidebar toggle buttons in the top bar (xtralab:top-bar). */
-
 .jp-xtralab-TopBarButton {
   display: flex;
   align-items: center;
 }
 
-/* `margin-left: auto` floats the button to the far right of `#jp-top-panel`. */
 .jp-xtralab-TopBarButton-right {
   margin-left: auto;
 }

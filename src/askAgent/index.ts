@@ -59,7 +59,9 @@ const NEW_TARGET_VALUE = 'new';
 
 const SESSION_TARGET_PREFIX = 'session:';
 
-/** Delay before showing the pill, so it does not flicker along a drag. */
+/**
+ * Delay before showing the pill, so it does not flicker along a drag.
+ */
 const SELECTION_SETTLE_MS = 250;
 
 /**
@@ -106,7 +108,9 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
   ): IAskAgent => {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
-    /** Best-effort state-database write; a failure only loses a restored default. */
+    /**
+     * Best-effort state-database write; a failure only loses a restored default.
+     */
     const saveState = (key: string, value: ReadonlyPartialJSONValue): void => {
       state?.save(key, value).catch(error => {
         console.error('xtralab: failed to persist ask-agent state', error);
@@ -145,9 +149,6 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       saveState(LAST_TARGET_STATE_KEY, value);
     };
 
-    /**
-     * Agents that can receive an initial prompt on their command line.
-     */
     const promptAgents = (): IAgent[] =>
       (agentRegistry?.agents ?? []).filter(
         agent => agent.promptArgs !== undefined
@@ -205,7 +206,6 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       successMessage: string
     ): Promise<void> => {
       if (agentTerminals === null) {
-        // Session targets are only offered when the terminals plugin is present.
         throw new Error('xtralab: agent terminals are unavailable');
       }
       try {
@@ -395,7 +395,6 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
         });
       };
 
-      /** Empty the queue, with an undo toast (typed comments are work). */
       const clearQueue = (): void => {
         const removed = promptQueue.items;
         if (removed.length === 0) {
@@ -442,7 +441,6 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
           // Closable so it gets a close button when dragged out of the side
           // area; closing disposes it and it is recreated on demand.
           created.title.closable = true;
-          // The chips mirror the live agent list and terminal sessions.
           agentRegistry?.changed.connect(created.update, created);
           agentTerminals?.changed.connect(created.update, created);
           labShell.add(created, 'right', { rank: 900 });
@@ -463,8 +461,6 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
 
       queuePrompt = (request, target, instruction) => {
         const wasEmpty = promptQueue.items.length === 0;
-        // Queueing is a target choice like sending: remember it for the
-        // next popup's preselection.
         if (target.kind === 'session') {
           rememberTarget(SESSION_TARGET_PREFIX + target.name);
         } else {
@@ -472,12 +468,9 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
           rememberTarget(NEW_TARGET_VALUE);
         }
         promptQueue.add(request.context, instruction, target);
-        // Queueing is background: hand focus back to the widget the ask
-        // came from.
         app.shell.currentWidget?.activate();
         const queuePanel = ensurePanel();
         if (queuePanel.isVisible) {
-          // The list visibly grows; no extra feedback needed.
           return;
         }
         if (wasEmpty) {
@@ -682,8 +675,6 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
         hidePill();
         return;
       }
-      // Only with no prompt-capable agent and no running session is there
-      // nothing to offer.
       if (
         promptAgents().length === 0 &&
         (agentTerminals?.sessions() ?? []).length === 0

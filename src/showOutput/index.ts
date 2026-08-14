@@ -36,7 +36,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const { commands } = app;
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
-    // One reusable panel per `id`, so repeated shows refresh in place.
     const panels = new Map<string, Panel>();
 
     commands.addCommand(SHOW_COMMAND, {

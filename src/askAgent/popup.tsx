@@ -58,7 +58,6 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
     const known = agents.find(agent => agent.id === initialAgentId);
     return (known ?? agents[0])?.id ?? '';
   });
-  // The running session the prompt goes to, or `null` for a new terminal.
   const [targetName, setTargetName] = React.useState<string | null>(
     initialTargetName
   );
@@ -184,7 +183,6 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
-      // A keyboard dismissal places no focus of its own; restore it.
       dismiss(true);
     }
   };
@@ -333,9 +331,6 @@ export namespace AskAgentPopup {
    * Construction options for {@link AskAgentPopup}.
    */
   export interface IOptions {
-    /**
-     * The code selection the prompt is about.
-     */
     context: IAskAgentContext;
     /**
      * Viewport rectangle to anchor to; `null` centers near the top.
@@ -349,18 +344,12 @@ export namespace AskAgentPopup {
      * Snapshot of the running agent terminals, taken when the popup opens.
      */
     targets: ISessionTarget[];
-    /**
-     * Preferred agent id (the last one used), when still available.
-     */
     initialAgentId: string | null;
     /**
      * Session to preselect as the target, or `null` to preselect the new
      * terminal. Must be `null` or the name of an entry in {@link targets}.
      */
     initialTargetName: string | null;
-    /**
-     * Number of prompts already queued, shown on the queue button.
-     */
     queueCount?: number;
     trans: TranslationBundle;
     /**

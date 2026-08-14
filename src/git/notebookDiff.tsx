@@ -18,7 +18,9 @@ import { resolveDiffTheme } from './diffTheme';
 
 const NOTEBOOK_DIFF_CSS_CLASS = 'jp-xtralab-NotebookDiff';
 
-/** Minimal slice of nbformat 4.x that the diff inspects. */
+/**
+ * Minimal slice of nbformat 4.x that the diff inspects.
+ */
 interface INotebookCell {
   cell_type: string;
   id?: string;
@@ -78,14 +80,14 @@ type NotebookCellDiff =
       oldIndex: number;
     };
 
-/** Notebook-level diff result returned by {@link buildNotebookDiff}. */
+/**
+ * Notebook-level diff result returned by {@link buildNotebookDiff}.
+ */
 export interface INotebookDiffResult {
   oldNotebook: INotebook;
   newNotebook: INotebook;
   cells: NotebookCellDiff[];
-  /** Kernel language from `metadata.language_info.name`; picks the highlighting filename. */
   language: string | undefined;
-  /** Diff of notebook-level metadata when it differs between revisions; `null` otherwise. */
   notebookMetadataDiff: FileDiffMetadata | null;
 }
 
@@ -126,7 +128,6 @@ function emptyNotebook(): INotebook {
   };
 }
 
-/** nbformat multiline fields may be a string or a string array; normalize to one string. */
 function joinMultiline(value: string | string[] | undefined): string {
   if (value === undefined) {
     return '';
@@ -182,7 +183,6 @@ function formatOutput(output: INotebookOutput): string {
     case 'error': {
       const ename = output.ename ?? 'Error';
       const evalue = output.evalue ?? '';
-      // Strip ANSI escapes so tracebacks don't diff on coloring noise.
       const traceback = (output.traceback ?? []).map(stripAnsi).join('\n');
       return `[error]\n${ename}: ${evalue}\n${traceback}`;
     }
@@ -211,7 +211,6 @@ function canonicalMetadata(cell: INotebookCell): string {
   return stableStringify(md);
 }
 
-/** Stable JSON of the notebook-level metadata bundle, diffed as a single block. */
 function canonicalNotebookMetadata(notebook: INotebook): string {
   return stableStringify({
     metadata: notebook.metadata,
@@ -267,7 +266,6 @@ function alignNotebookCells(
   const consumed = new Set<number>();
   const entries: NotebookCellDiff[] = [];
 
-  // Only advances forward so one old cell is never matched twice.
   let positionalCursor = 0;
 
   for (let newIndex = 0; newIndex < newCells.length; newIndex++) {
@@ -403,7 +401,6 @@ function cellFilename(
   }
 }
 
-/** Build the FileContents pair; `kind` picks the filename and thus the highlighter. */
 function pierreFiles(
   kind: 'source' | 'metadata',
   oldText: string,
@@ -481,10 +478,6 @@ function buildCellSubDiffs(
   return subdiffs;
 }
 
-/**
- * Diff library options shared by every sub-diff. Split mode gives each cell
- * the same left=old / right=new reading as the file-diff path.
- */
 function diffLibraryOptions(theme: DiffsThemeNames, dark: boolean) {
   return {
     diffStyle: 'split' as const,
@@ -690,7 +683,9 @@ function OutputsSection(props: {
   );
 }
 
-/** Rendered markdown preview beside the source diff; skipped for non-markdown cells. */
+/**
+ * Rendered markdown preview beside the source diff; skipped for non-markdown cells.
+ */
 function MarkdownPreviewSection(props: {
   entry: NotebookCellDiff;
   rendermime: IRenderMimeRegistry | null;
@@ -723,7 +718,6 @@ function MarkdownPreviewSection(props: {
 interface INotebookDiffViewProps {
   diff: INotebookDiffResult;
   dark: boolean;
-  /** Whether a Pierre JupyterLab theme is active; selects Pierre highlighting vs the CSS-variable theme. */
   pierreTheme: boolean;
   rendermime: IRenderMimeRegistry | null;
   trans: TranslationBundle;
@@ -899,11 +893,6 @@ interface ICellDiffBlockProps {
   trans: TranslationBundle;
 }
 
-/**
- * Cell card position in the outer grid: `full` spans both columns,
- * `left`/`right` take one. Single-column placement switches the source
- * diff to unified mode and renders only the populated side.
- */
 type CellPlacement = 'full' | 'left' | 'right';
 
 interface IPlacedCellDiffBlockProps extends ICellDiffBlockProps {
@@ -1039,7 +1028,7 @@ function CellSubDiff(props: {
       <FileDiff
         fileDiff={metadata}
         // The worker bootstrap can't resolve through JupyterLab's federation
-        // pipeline (see diffWidget.tsx); run on the main thread.
+        // pipeline (see diffSurface.tsx); run on the main thread.
         disableWorkerPool={true}
         options={{ ...diffLibraryOptions(theme, dark), diffStyle }}
       />

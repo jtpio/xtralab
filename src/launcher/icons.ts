@@ -182,7 +182,6 @@ const vimIcon = new LabIcon({
 </svg>`
 });
 
-/** Built-in icons keyed by agent id; custom agents fall back to the terminal icon. */
 export const BUILTIN_AGENT_ICONS: Record<string, LabIcon> = {
   antigravity: antigravityIcon,
   claude: claudeIcon,
@@ -195,7 +194,6 @@ export const BUILTIN_AGENT_ICONS: Record<string, LabIcon> = {
   pi: piIcon
 };
 
-/** Built-in icons keyed by editor id; custom editors fall back to the text-editor icon. */
 export const BUILTIN_EDITOR_ICONS: Record<string, LabIcon> = {
   nvim: neovimIcon,
   vim: vimIcon

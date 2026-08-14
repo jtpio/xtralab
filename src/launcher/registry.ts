@@ -16,7 +16,9 @@ export class AgentRegistry implements IAgentRegistry {
     return this._changed;
   }
 
-  /** Replace the agent list and notify observers. */
+  /**
+   * Replace the agent list and notify observers.
+   */
   setAgents(agents: IAgent[]): void {
     this._agents = agents;
     this._changed.emit();

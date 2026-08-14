@@ -85,10 +85,6 @@ function getTargetPath(
   return browser.selectedPaths[0];
 }
 
-/**
- * Kind of the right-clicked item, from the data attributes on
- * `@pierre/trees` rows; `undefined` when the target is not a tree item.
- */
 function getTargetKind(app: JupyterFrontEnd): 'file' | 'folder' | undefined {
   const node = app.contextMenuHitTest(
     n => n.dataset !== undefined && n.dataset.type === 'item'
@@ -121,9 +117,6 @@ function getOpenPaths(
   return candidates.filter(path => !path.endsWith('/'));
 }
 
-/**
- * True iff there is an actionable target for a command on the right-click.
- */
 function hasTarget(
   app: JupyterFrontEnd,
   browser: IXtralabFileBrowser
@@ -557,13 +550,11 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
     }
   });
 
-  // `currentChanged` is optional on the shell interface.
   const onCurrentChanged = (): void => {
     commands.notifyCommandChanged(CommandIDs.revealInFileTree);
   };
   app.shell.currentChanged?.connect(onCurrentChanged);
 
-  // The file-tab context-menu entry is declared in `schema/plugin.json`.
   const paletteItem = palette?.addItem({
     command: CommandIDs.revealInFileTree,
     category: trans.__('File Browser')

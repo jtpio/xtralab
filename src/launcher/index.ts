@@ -58,14 +58,11 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
 
     const registry = new AgentRegistry();
 
-    // Disposed and re-registered on settings changes so the command palette
-    // doesn't accumulate stale entries.
     let registered: IDisposable | null = null;
 
     const applyAgents = async (overrides: IAgentSettings[]): Promise<void> => {
       const agents = mergeAgents(overrides);
 
-      // `requireAvailable: false` entries (e.g. shell aliases) skip the probe.
       const probe = Array.from(
         new Set(
           agents
@@ -108,7 +105,6 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
         });
       } catch (reason) {
         console.error('xtralab: failed to load launcher settings', reason);
-        // Fall back to defaults so the launcher still has cards.
         await applyAgents([]);
       }
     } else {
@@ -133,7 +129,6 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
           editor: editorRegistry?.current ?? null,
           agentSessions,
           onAgentLaunch,
-          // Empty repoPath/cwd let the server resolve from its root directory.
           repoPath: '',
           cwd: '',
           trans

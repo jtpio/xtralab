@@ -23,10 +23,6 @@ import {
  * built-ins merged with the user's `editors` setting.
  */
 export interface IEditorRegistry {
-  /**
-   * The merged editor list (disabled entries removed); the terminals panel
-   * uses it to badge running editors.
-   */
   readonly editors: IEditor[];
 
   /**
@@ -35,14 +31,9 @@ export interface IEditorRegistry {
    */
   readonly current: IEditor | null;
 
-  /** Emitted whenever {@link editors} or {@link current} changes. */
   readonly changed: ISignal<IEditorRegistry, void>;
 }
 
-/**
- * DI token for {@link IEditorRegistry}, shared so the launcher tile and the
- * terminals panel agree on the list and icons.
- */
 export const IEditorRegistry = new Token<IEditorRegistry>(
   'xtralab:IEditorRegistry',
   'A read-only, observable view of the launcher terminal editors, shared so the launcher tile and the terminals panel agree on the list and icons.'
@@ -65,7 +56,9 @@ class EditorRegistry implements IEditorRegistry {
     return this._changed;
   }
 
-  /** Replace both lists and notify observers. */
+  /**
+   * Replace both lists and notify observers.
+   */
   set(editors: IEditor[], current: IEditor | null): void {
     this._editors = editors;
     this._current = current;
@@ -97,7 +90,6 @@ export const editorRegistryPlugin: JupyterFrontEndPlugin<IEditorRegistry> = {
 
     const apply = async (overrides: IEditorSettings[]): Promise<void> => {
       const editors = mergeEditors(overrides);
-      // `requireAvailable: false` entries (e.g. shell aliases) skip the probe.
       const probe = Array.from(
         new Set(
           editors
@@ -132,7 +124,6 @@ export const editorRegistryPlugin: JupyterFrontEndPlugin<IEditorRegistry> = {
         });
       } catch (reason) {
         console.error('xtralab: failed to load editor settings', reason);
-        // Fall back to the built-ins so the launcher tile still resolves.
         await apply([]);
       }
     } else {

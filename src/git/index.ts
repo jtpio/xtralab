@@ -41,7 +41,6 @@ const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
     askAgent: IAskAgent | null
   ): void => {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
-    // Track open diffs so repeated opens reveal the existing tab.
     const tracker = new WidgetTracker<DiffMainAreaWidget>({
       namespace: GIT_DIFF_TRACKER_NAMESPACE
     });

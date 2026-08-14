@@ -41,12 +41,7 @@ export interface IAgentSettings {
    */
   iconSvg?: string;
   rank?: number;
-  /** When false, hides the agent from the launcher and the command palette. */
   enabled?: boolean;
-  /**
-   * See `IAgent.requireAvailable`. Defaults to true, but flips to false once
-   * `command` is overridden (a user-chosen alias is trusted).
-   */
   requireAvailable?: boolean;
   /**
    * See `IAgent.promptArgs`. `null` explicitly turns off an agent's default
@@ -214,13 +209,10 @@ export function mergeAgents(overrides: IAgentSettings[]): IAgent[] {
         ? resolveIcon(base.id, override.iconSvg)
         : base.icon,
       rank: override.rank ?? base.rank,
-      // A user-chosen command is often a shell alias `shutil.which` can't see,
-      // so the availability check applies only while the command is the default.
       requireAvailable:
         command === base.command
           ? (override.requireAvailable ?? base.requireAvailable)
           : false,
-      // `null` explicitly opts out of the agent's default prompt support.
       promptArgs:
         override.promptArgs === null
           ? undefined
@@ -228,8 +220,6 @@ export function mergeAgents(overrides: IAgentSettings[]): IAgent[] {
     });
   }
 
-  // Remaining override ids are new agents; the settings schema validates the
-  // shape, so missing fields just fall back.
   let nextRank =
     merged.reduce((max, agent) => Math.max(max, agent.rank), -1) + 1;
   for (const entry of overrideById.values()) {

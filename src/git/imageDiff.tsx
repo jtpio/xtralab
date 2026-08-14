@@ -39,9 +39,6 @@ export function imageDataType(path: string): string | null {
   return IMAGE_DATA_TYPES[lower.slice(dot)] ?? null;
 }
 
-/**
- * Comparison layouts, matching jupyterlab-git's image diff modes.
- */
 type ImageDiffViewMode = '2-up' | 'swipe' | 'onion';
 
 const IMAGE_DIFF_VIEW_MODE_STORAGE_KEY = 'xtralab:image-diff-view-mode';
@@ -75,9 +72,6 @@ function cleanBase64(value: string): string {
   return value.replace(/\s+/g, '');
 }
 
-/**
- * Decoded byte length of a (whitespace-free) base64 string.
- */
 function base64ByteLength(clean: string): number {
   if (clean.length === 0) {
     return 0;
@@ -101,9 +95,6 @@ function formatBytes(bytes: number): string {
 }
 
 interface IImageSide {
-  /**
-   * Cleaned base64 payload; empty string means the side does not exist.
-   */
   data: string;
   present: boolean;
   uri: string | null;
@@ -122,17 +113,8 @@ function toSide(raw: string, fileType: string): IImageSide {
 }
 
 interface IImageDiffViewProps {
-  /**
-   * Base64 of the reference (old) revision; empty when added.
-   */
   reference: string;
-  /**
-   * Base64 of the challenger (new) revision; empty when deleted.
-   */
   challenger: string;
-  /**
-   * MIME subtype from {@link imageDataType}.
-   */
   fileType: string;
   trans: TranslationBundle;
 }
@@ -288,10 +270,6 @@ function TwoUp({
   );
 }
 
-/**
- * Range slider shared by the swipe and onion-skin views. A native
- * `<input type="range">` keeps the bundle free of a UI component dependency.
- */
 function RangeSlider(props: {
   value: number;
   onChange: (value: number) => void;
@@ -339,9 +317,6 @@ function containBox(
   return { width: naturalWidth * scale, height: naturalHeight * scale };
 }
 
-/**
- * Track an element's content-box size, kept current across layout changes.
- */
 function useElementSize(): readonly [
   React.RefObject<HTMLDivElement>,
   { width: number; height: number }
@@ -400,7 +375,6 @@ function Swipe({
 
   const onPointerDown = React.useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      // Only react to the primary pointer (left click / touch / pen tip).
       if (event.button !== 0) {
         return;
       }

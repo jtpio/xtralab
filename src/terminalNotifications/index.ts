@@ -78,7 +78,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
     let enabled = true;
     let notifyOnBell = true;
 
-    // WeakMaps let disposed widgets be collected; hooks are torn down on close.
     const lastNotified = new WeakMap<TerminalWidget, number>();
     const hooks = new WeakMap<TerminalWidget, IXtermDisposable[]>();
 
@@ -95,7 +94,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
         );
         return;
       }
-      // Plain-browser fallback (pip install): the Web Notifications API.
       if (typeof Notification === 'undefined') {
         return;
       }
@@ -184,8 +182,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
             );
             return;
           }
-          // Handlers are wrapped so a parse slip cannot break xterm's parser; an
-          // OSC handler returns whether it consumed the sequence.
           const disposables: IXtermDisposable[] = [
             term.onBell(() => guard(() => onBell(widget))),
             term.parser.registerOscHandler(OSC_ITERM2_GROWL, data =>

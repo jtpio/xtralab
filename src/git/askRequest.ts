@@ -32,9 +32,6 @@ function sideName(side: DiffSide): string {
   return side === 'deletions' ? 'old side' : 'new side';
 }
 
-/**
- * Extract lines `startLine`–`endLine` (1-indexed, inclusive) from `text`.
- */
 function sliceLines(text: string, startLine: number, endLine: number): string {
   return text
     .split('\n')
@@ -91,12 +88,10 @@ export function buildDiffAskRequest(options: {
       ...base,
       startLine,
       endLine,
-      // Only new-side lines of a working-tree diff index the file on disk.
       linesInWorkingFile:
         !isOld && model.challenger.source === Git.Diff.SpecialRef.WORKING,
       text: sliceLines(isOld ? oldText : newText, startLine, endLine),
       location: `the ${sideName(startSide)} (${ref}) of the current git diff`,
-      // New-side lines read as current content; only old-side needs a tag.
       ...(isOld ? { note: trans.__('old version') } : {})
     },
     anchor

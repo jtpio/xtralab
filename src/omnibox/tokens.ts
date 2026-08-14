@@ -16,7 +16,6 @@ export interface IOmnibox {
   close(): void;
 }
 
-/** DI token for {@link IOmnibox}. */
 export const IOmnibox = new Token<IOmnibox>(
   'xtralab:IOmnibox',
   'Opens the omnibox overlay that searches files and commands and prompts agents.'

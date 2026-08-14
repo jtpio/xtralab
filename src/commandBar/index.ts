@@ -12,13 +12,8 @@ import { IOmnibox, OMNIBOX_OPEN_COMMAND } from '../omnibox/tokens';
 
 const PLUGIN_ID = 'xtralab:command-bar';
 
-/** Factory name of JupyterLab's settings-driven top bar toolbar (`#jp-top-bar`). */
 const TOPBAR_FACTORY = 'TopBar';
 
-/**
- * Name of the pill item within that toolbar; its rank in schema/command-bar.json
- * places it after the core spacer (rank 50), at the trailing end.
- */
 const ITEM_NAME = 'omnibox';
 
 /**
@@ -58,17 +53,8 @@ class CommandBar extends Widget {
 
 namespace CommandBar {
   export interface IOptions {
-    /**
-     * Placeholder-style text shown inside the pill.
-     */
     label: string;
-    /**
-     * Tooltip and accessible name for the button.
-     */
     caption: string;
-    /**
-     * Formatted keyboard shortcut shown as a trailing hint, if any.
-     */
     shortcut?: string;
     onActivate: () => void;
   }
@@ -104,7 +90,6 @@ namespace CommandBar {
       const hint = document.createElement('span');
       hint.className = 'jp-xtralab-CommandBar-shortcut';
       hint.textContent = shortcut;
-      // Decorative: the button's aria-label already names the action.
       hint.setAttribute('aria-hidden', 'true');
       button.appendChild(hint);
     }
@@ -140,8 +125,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
     toolbarRegistry.addFactory(TOPBAR_FACTORY, ITEM_NAME, () => {
-      // Derive the shortcut hint from the live binding (xtralab:omnibox
-      // activates first as the IOmnibox provider); empty when none exists.
       const binding = app.commands.keyBindings.find(
         keyBinding => keyBinding.command === OMNIBOX_OPEN_COMMAND
       );

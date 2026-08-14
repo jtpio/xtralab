@@ -50,7 +50,6 @@ def _serve_main(args: argparse.Namespace) -> int:
     elif args.collab_ystore_db is not None:
         db_path = Path(args.collab_ystore_db).expanduser().resolve()
         db_path.parent.mkdir(parents=True, exist_ok=True)
-        # SQLiteYStore ships with jupyter-server-ydoc.
         extra_args.append(f"--SQLiteYStore.db_path={db_path}")
 
     try:
