@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
 """Sync the desktop sub-project version to the root version.
 
-Run by jupyter-releaser as an ``after-bump-version`` hook, after
-``hatch version`` has updated the root ``package.json``. Propagates the new
+jupyter-releaser ``after-bump-version`` hook: propagates the bumped root
 version to ``desktop/package.json``, ``desktop/pyproject.toml``, and
-``desktop/uv.lock`` so the "Publish X.Y.Z" commit picks them up.
-
-``desktop/pnpm-lock.yaml`` does not record the workspace's own version
-(only its dependencies), so no JS lockfile update is needed.
+``desktop/uv.lock`` (``pnpm-lock.yaml`` records only dependencies).
 """
 
 from __future__ import annotations

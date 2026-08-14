@@ -1,19 +1,7 @@
 /* Command bar pill in the top bar toolbar (xtralab:command-bar). */
 
-/*
- * The widget is a settings-driven item of JupyterLab's top bar toolbar
- * (`#jp-top-bar`, factory "TopBar"), declared in schema/command-bar.json with
- * a rank past the toolbar's built-in spacer, so it sits at the trailing end of
- * the toolbar next to the right-sidebar toggle button.
- *
- * The widget's root (`.jp-xtralab-CommandBar`) is a plain wrapper that takes
- * the core `.jp-Toolbar > .jp-Toolbar-item` sizing — full toolbar height,
- * centered flex — so it needs no rules of its own; the pill button inside
- * keeps its own compact height. It is styled with the theme's input-field
- * fill so it reads as a search box and tracks each theme's input styling
- * across light and dark (a flat layout color is near-black in some dark
- * themes).
- */
+/* The bare root takes core toolbar-item sizing; the input-field fill reads as
+ * a search box (a flat layout color is near-black in some dark themes). */
 .jp-xtralab-CommandBar-button {
   display: flex;
   flex: 0 0 auto;
@@ -56,9 +44,8 @@
   height: 14px;
 }
 
-/* The built-in JupyterLab search icon (@jupyterlab/ui-components) paints with a
-   fixed `jp-icon3` theme gray; override it to currentColor so the magnifier
-   tracks the pill's text color and brightens with the label on hover. */
+/* Core's search icon paints with a fixed `jp-icon3` gray; currentColor makes
+   the magnifier track the pill's text color. */
 .jp-xtralab-CommandBar-button .jp-icon3[fill] {
   fill: currentcolor;
 }

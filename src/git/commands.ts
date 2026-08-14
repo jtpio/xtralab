@@ -221,24 +221,17 @@ interface IRegisterGitCommandsOptions {
    * Ask-agent popup for prompting an agent about diff lines; may be `null`.
    */
   askAgent: IAskAgent | null;
-  /**
-   * Translation bundle for user-facing strings.
-   */
   trans: TranslationBundle;
   /**
    * Track newly created diff widgets before they are added to the shell.
    */
   trackDiff(widget: DiffMainAreaWidget): Promise<void>;
-  /**
-   * Look up an already-open diff widget for a file change.
-   */
   findDiff(change: IFileChange, pin?: boolean): DiffMainAreaWidget | undefined;
   onPinned(widget: DiffMainAreaWidget): void;
 }
 
 /**
- * Register the launcher's git diff command on the application command
- * registry.
+ * Register the launcher's git diff command.
  */
 export function registerGitCommands(
   options: IRegisterGitCommandsOptions

@@ -23,15 +23,7 @@ import terminalsPlugin from './terminals';
 import topBarPlugin from './topBar';
 import walkthroughPlugin from './walkthrough';
 
-/**
- * Every plugin contributed by `xtralab`. The entry point of the
- * labextension is an array because the package bundles several independent
- * enhancements (file browser, git diff providers, …) — JupyterLab activates
- * each plugin individually and only the ones whose required tokens are
- * available end up running. `gitPlugins` and `launcherPlugins` are themselves
- * arrays (the git diff providers; the launcher plus its editor registry), so
- * they are spread in.
- */
+/** Every plugin contributed by xtralab; JupyterLab activates each one independently. */
 const plugins: JupyterFrontEndPlugin<unknown>[] = [
   aboutPlugin,
   agentSessionsPlugin,

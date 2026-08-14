@@ -56,12 +56,9 @@ class EditorBreadcrumbsExtension implements DocumentRegistry.IWidgetExtension<
 }
 
 /**
- * Adds a VS Code-style path breadcrumb to text editor toolbars. Each
- * segment is clickable: clicking dispatches `xtralab:reveal-path` so
- * any plugin that listens (today, the file browser) can surface the
- * underlying folder or file. The breadcrumbs plugin therefore does not
- * import the file browser at all — the JupyterLab command registry is
- * the only seam between them.
+ * Adds a clickable path breadcrumb to text editor toolbars. Clicks dispatch
+ * `xtralab:reveal-path`; the command registry is the only seam with the file
+ * browser.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,

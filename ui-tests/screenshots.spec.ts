@@ -112,11 +112,10 @@ function pressEnter(
 }
 
 /**
- * Wait for a freshly launched agent's TUI, accepting the Enter default of
- * the one-time screens an agent shows on first run (claude's folder trust,
- * codex's onboarding). Resolves when `until` matches, or without it once the
- * buffer has painted past the shell prompt and gone quiet — slow starters
- * pass a plain stability check while still showing only that prompt.
+ * Wait for a freshly launched agent's TUI, answering one-time first-run
+ * screens (claude's folder trust, codex's onboarding) with Enter. Resolves
+ * when `until` matches, or without it once the buffer has painted past the
+ * shell prompt and gone quiet.
  */
 async function awaitAgentReady(
   page: IJupyterLabPageFixture,
@@ -180,9 +179,8 @@ async function settleTerminal(
 
 /**
  * The canvas renderer sizes its layers for a scale factor of 1 when a
- * terminal first opens under headless capture, drawing 2x glyphs off the
- * bottom of the backing store. Nudging the font size forces the reflow that
- * re-sizes them.
+ * terminal first opens under headless capture; nudging the font size forces
+ * the reflow that re-sizes them.
  */
 async function refitRenderer(
   page: IJupyterLabPageFixture,
@@ -265,7 +263,6 @@ test('launcher', async ({ page }) => {
 
 test('git diff', async ({ page }) => {
   await ready(page);
-  // Pair the git panel on the left with the diff in the main area.
   await page.evaluate(() => {
     (window as any).jupyterapp.shell.activateById('jp-git-sessions');
   });
@@ -335,9 +332,8 @@ test('ask agent', async ({ page }) => {
   await shot(page, 'ask-agent.png');
 });
 
-// The terminals-panel capture: live coding agents side by side, each row
-// badged with the agent detected inside it and its latest activity. Runs
-// late so the sessions cannot bleed into the feature captures.
+// The terminals-panel capture: live coding agents side by side. Runs late so
+// the sessions cannot bleed into the feature captures.
 test('terminals', async ({ page }) => {
   const agents = [
     { id: 'codex', cli: 'codex' },
@@ -360,7 +356,6 @@ test('terminals', async ({ page }) => {
     (window as any).jupyterapp.shell.activateById('xtralab-running-terminals');
   });
 
-  // Launch each agent in its own terminal, one at a time.
   const widgetIds: string[] = [];
   for (const agent of agents) {
     const widgetId: string = await page.evaluate(async agentId => {
@@ -407,20 +402,18 @@ test('terminals', async ({ page }) => {
 });
 
 // The landing-page capture: launcher, git diff, and a live Claude Code
-// session in one workspace. Kept last so the session cannot bleed into the
-// other captures.
+// session. Kept last so the session cannot bleed into the other captures.
 test('hero', async ({ page }) => {
   test.skip(!hasCli('claude'), 'the hero capture needs the claude CLI');
   // Claude Code's startup is the slow part of this capture.
   test.setTimeout(180000);
 
-  // A larger canvas than the feature shots: three panes plus the sidebar,
-  // tall enough for the full launcher above a readable terminal.
+  // Three panes plus the sidebar, tall enough for the full launcher above a
+  // readable terminal.
   await page.setViewportSize({ width: 2000, height: 1160 });
   await hideWebgl(page);
   await ready(page);
 
-  // Launcher fully populated: agent buttons and the changes list.
   await page.locator('.jp-xtralab-Launcher-body').waitFor();
   await page
     .locator('button', { hasText: 'Claude' })
@@ -430,7 +423,6 @@ test('hero', async ({ page }) => {
     .locator('.jp-xtralab-Launcher-change', { hasText: 'src/acme/metrics.py' })
     .waitFor({ timeout: 15000 });
 
-  // Open the metrics.py diff, then dock it to the right of the launcher.
   await page
     .locator('.jp-xtralab-Launcher-change', { hasText: 'src/acme/metrics.py' })
     .click();
@@ -443,9 +435,8 @@ test('hero', async ({ page }) => {
     shell._dockPanel.addWidget(diff, { mode: 'split-right', ref: launcher });
   });
 
-  // Carve out a full-width bottom pane weighted like a real session. A
-  // placeholder shapes it first so the agent session opens into its final
-  // geometry — claude paints its welcome once, and a resize garbles it.
+  // A placeholder shapes the bottom pane first so the agent opens into its
+  // final geometry: claude paints its welcome once, and a resize garbles it.
   const placeholderId: string = await page.evaluate(async () => {
     const app = (window as any).jupyterapp;
     const placeholder = await app.commands.execute('terminal:create-new');
@@ -462,7 +453,6 @@ test('hero', async ({ page }) => {
   // Let the placeholder's xterm fit the pane before the agent tabs in.
   await page.waitForTimeout(1000);
 
-  // Start Claude through the launcher's own command, then drop the placeholder.
   const termId: string = await page.evaluate(async id => {
     const app = (window as any).jupyterapp;
     const term = await app.commands.execute('xtralab:start-agent:claude');

@@ -148,8 +148,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           }
         };
         setIcon();
-        // Keep the tab icon right after a rename, and release the listener
-        // when the document closes.
+        // Keep the tab icon current across renames.
         widget.context.pathChanged.connect(setIcon);
         widget.disposed.connect(() => {
           widget.context.pathChanged.disconnect(setIcon);

@@ -25,25 +25,13 @@ export interface IOmniboxItem {
    * Stable React key.
    */
   key: string;
-  /**
-   * Primary text shown on the row.
-   */
   label: string;
   /**
    * Indices of matched characters in `label`, for highlighting. May be empty.
    */
   matchIndices: readonly number[];
-  /**
-   * Optional secondary text shown trailing the label.
-   */
   caption?: string;
-  /**
-   * Optional leading icon.
-   */
   icon?: LabIcon;
-  /**
-   * Run the row's action.
-   */
   execute: () => void;
 }
 
@@ -64,8 +52,8 @@ interface IComputeOptions {
   query: string;
   commands: CommandRegistry;
   /**
-   * The command palette's items, whose labels are computed with each item's
-   * args — the only form in which entries like "Use Theme: …" exist.
+   * Palette items, whose labels are computed with each item's args — the only
+   * form in which entries like "Use Theme: …" exist.
    */
   paletteItems: ReadonlyArray<CommandPalette.IItem>;
   docRegistry: DocumentRegistry;
@@ -82,9 +70,8 @@ const COMMAND_LIMIT = 7;
 const FILE_LIMIT = 10;
 
 /**
- * Prefixes that narrow the search to a single source: a leading `>` to
- * commands, a leading `/` to files (relative paths never start with `/`, so it
- * is unambiguous). Without a prefix, every source is searched.
+ * A leading `>` narrows the search to commands, `/` to files (relative paths
+ * never start with `/`, so it is unambiguous).
  */
 const COMMAND_PREFIX = '>';
 const FILE_PREFIX = '/';
@@ -93,11 +80,9 @@ type Mode = 'all' | 'commands' | 'files';
 
 /**
  * Build the grouped result set for a query. A leading `>` searches only
- * commands and a leading `/` only files; otherwise commands and files are
- * fuzzy-matched and every prompt-capable agent is offered an "Ask" row
- * carrying the query as its prompt. An empty term yields the recently used
- * rows for the active mode instead (and the widget shows a hint when there
- * are none).
+ * commands, `/` only files; otherwise every prompt-capable agent also gets an
+ * "Ask" row carrying the query as its prompt. An empty term yields the
+ * recently used rows for the active mode.
  */
 export function computeSections(options: IComputeOptions): IOmniboxSections {
   const { query, commands, agents, trans } = options;
@@ -131,10 +116,7 @@ export function computeSections(options: IComputeOptions): IOmniboxSections {
   };
 }
 
-/**
- * Run a command and record the use on success, so failed commands never enter
- * the recents list.
- */
+/** Run a command and record the use on success, so failures never enter the recents. */
 function executeCommand(
   commands: CommandRegistry,
   recents: OmniboxRecents | null,
@@ -151,9 +133,7 @@ function executeCommand(
     });
 }
 
-/**
- * Open a file and record the use on success.
- */
+/** Open a file and record the use on success. */
 function openFile(
   commands: CommandRegistry,
   recents: OmniboxRecents | null,
@@ -171,9 +151,8 @@ function openFile(
 
 /**
  * Read a command's label, visibility and caption, or `null` when the command
- * is missing, hidden, label-less, or its accessors throw (a command's
- * accessors can assume a context — e.g. an active notebook — the omnibox
- * doesn't provide).
+ * is missing, hidden, label-less, or its accessors throw (they can assume a
+ * context the omnibox doesn't provide).
  */
 function commandDisplay(
   commands: CommandRegistry,
@@ -196,10 +175,9 @@ function commandDisplay(
 
 /**
  * The recently used rows for the empty term: both kinds interleaved by
- * recency in the unprefixed view, or only the mode's kind under a bare `>` or
- * `/`. Commands that no longer resolve are dropped, as are files missing from
- * the loaded workspace listing (while the listing is still loading — or
- * unavailable — file entries are shown as recorded).
+ * recency, or only the mode's kind under a bare `>` or `/`. Unresolvable
+ * commands are dropped, as are files absent from the workspace listing once
+ * it loads.
  */
 function buildRecentItems(
   options: IComputeOptions,
@@ -250,11 +228,10 @@ function buildRecentItems(
 }
 
 /**
- * Match the query against the palette's items first — their labels carry each
- * item's args (one "Use Theme: …" per theme, one row per font-size key), which
- * a raw registry scan can never produce — then against registry commands the
- * palette doesn't present. Palette-covered ids are skipped in the registry
- * pass so a command never also surfaces under its argless label.
+ * Match palette items first — their labels carry per-item args (one "Use
+ * Theme: …" per theme), which a registry scan can never produce — then
+ * registry commands the palette doesn't present, skipping palette-covered ids
+ * so a command never also surfaces under its argless label.
  */
 function matchCommands(options: IComputeOptions, term: string): IOmniboxItem[] {
   const { commands, paletteItems, recents } = options;
@@ -269,8 +246,8 @@ function matchCommands(options: IComputeOptions, term: string): IOmniboxItem[] {
     let visible = true;
     let caption = '';
     try {
-      // An item's accessors can throw if the command assumes a context (e.g.
-      // an active notebook) the omnibox doesn't provide; skip those.
+      // Accessors can throw when the command assumes a context (e.g. an
+      // active notebook) the omnibox doesn't provide; skip those.
       label = item.label;
       visible = item.isVisible;
       caption = item.caption;
@@ -311,8 +288,6 @@ function matchCommands(options: IComputeOptions, term: string): IOmniboxItem[] {
     let visible = true;
     let caption = '';
     try {
-      // A command's accessors can throw if they assume a context (e.g. an
-      // active notebook) the omnibox doesn't provide; skip those.
       label = commands.label(id);
       visible = commands.isVisible(id);
       caption = commands.caption(id);
@@ -385,7 +360,7 @@ function buildAgentItems(
   const items: IOmniboxItem[] = [];
   for (const agent of agents) {
     // Agents without `promptArgs` can't take an inline prompt (the launcher
-    // would drop it), so they don't belong in an "Ask …" row.
+    // would drop it).
     if (agent.promptArgs === undefined) {
       continue;
     }

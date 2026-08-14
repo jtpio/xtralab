@@ -12,25 +12,18 @@ import { IOmnibox, OMNIBOX_OPEN_COMMAND } from '../omnibox/tokens';
 
 const PLUGIN_ID = 'xtralab:command-bar';
 
-/**
- * Factory name of JupyterLab's settings-driven top bar toolbar (`#jp-top-bar`,
- * built by `@jupyterlab/application-extension:top-bar`).
- */
+/** Factory name of JupyterLab's settings-driven top bar toolbar (`#jp-top-bar`). */
 const TOPBAR_FACTORY = 'TopBar';
 
 /**
- * Name of the pill item within that toolbar. Its placement is declared under
- * `jupyter.lab.toolbars` in this plugin's settings schema
- * (schema/command-bar.json): the core toolbar ships a spacer at rank 50, so
- * the pill's higher rank lands it at the trailing end of the toolbar, next to
- * the right-sidebar toggle button.
+ * Name of the pill item within that toolbar; its rank in schema/command-bar.json
+ * places it after the core spacer (rank 50), at the trailing end.
  */
 const ITEM_NAME = 'omnibox';
 
 /**
- * A search-bar-styled launcher pill. It holds no text input of its own:
- * clicking it (or pressing Enter/Space while it is focused) runs `onActivate`,
- * which opens the omnibox.
+ * A search-bar-styled launcher pill with no input of its own: activating it
+ * runs `onActivate`, which opens the omnibox.
  */
 class CommandBar extends Widget {
   constructor(options: CommandBar.IOptions) {
@@ -52,9 +45,7 @@ class CommandBar extends Widget {
   }
 
   protected onAfterAttach(): void {
-    // The click bubbles from the inner pill button up to the root node
-    // listened on here; keyboard Enter/Space on the focused button raises the
-    // same synthetic click.
+    // Keyboard Enter/Space on the focused button raises the same synthetic click.
     this.node.addEventListener('click', this);
   }
 
@@ -79,9 +70,6 @@ namespace CommandBar {
      * Formatted keyboard shortcut shown as a trailing hint, if any.
      */
     shortcut?: string;
-    /**
-     * Runs on click or keyboard activation.
-     */
     onActivate: () => void;
   }
 
@@ -90,10 +78,8 @@ namespace CommandBar {
     caption: string,
     shortcut?: string
   ): HTMLElement {
-    // The root is a plain wrapper: as a toolbar item it receives the core
-    // `.jp-Toolbar > .jp-Toolbar-item` sizing (full height, centered flex),
-    // which would otherwise stretch the pill itself; the button inside keeps
-    // its own compact pill height.
+    // Plain wrapper: the core `.jp-Toolbar-item` sizing would otherwise
+    // stretch the pill itself.
     const wrapper = document.createElement('div');
 
     const button = document.createElement('button');
@@ -129,19 +115,10 @@ namespace CommandBar {
 }
 
 /**
- * Contribute a search-bar-styled command bar to JupyterLab's top bar toolbar.
- * Clicking it opens the omnibox — a launcher overlay that fuzzy-searches files
- * and commands and routes a typed prompt to an agent.
- *
- * The pill is a regular settings-driven toolbar item: this plugin registers a
- * widget factory for it on the `IToolbarWidgetRegistry` and declares its rank
- * in schema/command-bar.json, so users can move or disable it from the Top
- * Bar settings like any other toolbar item.
- *
- * The factory is only registered when the omnibox is available — the
- * `IOmnibox` token is provided by `xtralab:omnibox` — so the pill never
- * appears with nothing to open (without a factory, the toolbar item resolves
- * to an empty command button that renders nothing).
+ * Contribute a search-bar-styled pill to the top bar toolbar that opens the
+ * omnibox. It is a settings-driven toolbar item (factory here, rank in
+ * schema/command-bar.json) registered only when `IOmnibox` is provided —
+ * without a factory the item resolves to an empty button that renders nothing.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
@@ -163,10 +140,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
     toolbarRegistry.addFactory(TOPBAR_FACTORY, ITEM_NAME, () => {
-      // Show the omnibox's keyboard shortcut as a hint in the pill, derived
-      // from the live binding (registered by xtralab:omnibox, which activates
-      // first as the IOmnibox provider) so it stays correct and uses the
-      // platform's modifier symbols. Empty when no binding is registered.
+      // Derive the shortcut hint from the live binding (xtralab:omnibox
+      // activates first as the IOmnibox provider); empty when none exists.
       const binding = app.commands.keyBindings.find(
         keyBinding => keyBinding.command === OMNIBOX_OPEN_COMMAND
       );

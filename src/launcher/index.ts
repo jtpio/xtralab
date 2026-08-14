@@ -25,26 +25,10 @@ import { IAgentRegistry } from './tokens';
 const PLUGIN_ID = 'xtralab:launcher';
 
 /**
- * The xtralab launcher plugin. Replaces the stock JupyterLab launcher
- * (which is disabled via `package.json`'s `jupyterlab.disabledExtensions`)
- * with an agent-focused dashboard: an optional initial prompt, a row of
- * agent buttons (Claude, Codex, Antigravity, …), and a collapsible list of
- * changed files (clickable into the diff viewer) below them. Clicking an
- * agent opens a fresh terminal and pipes the agent's command into it; if
- * the prompt textarea is non-empty, the prompt is shell-quoted and
- * spliced into the launch line per the agent's `promptArgs` recipe.
- *
- * The agent list is the merge of xtralab's defaults with the user's
- * `xtralab:launcher` settings, then filtered by a server-side `which`
- * check so users only see agents that are actually installed. Agents with
- * `requireAvailable: false` skip the filter, as does any built-in whose
- * `command` the user has overridden (a user-chosen command — often a shell
- * alias the server can't resolve — is trusted and always shown).
- *
- * The plugin deliberately does NOT provide the `ILauncher` token: other
- * extensions register notebook/console/terminal cards on it as a side
- * effect, which would defeat the point of the agent-only launcher. If an
- * extension needs to surface itself, we'll add it here explicitly.
+ * The xtralab launcher plugin: replaces the stock JupyterLab launcher
+ * (disabled via `jupyterlab.disabledExtensions`) with an agent-focused
+ * dashboard. It deliberately does NOT provide `ILauncher` — other extensions
+ * would register their cards on it and defeat the agent-only design.
  */
 const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
   id: PLUGIN_ID,
@@ -72,23 +56,16 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
     const { commands, shell } = app;
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
-    // The shared agent registry this plugin provides on `IAgentRegistry`.
-    // It holds the active agent list (updated whenever settings change), so
-    // every freshly-created launcher widget — and any other plugin that
-    // consumes the token, e.g. the terminals panel — renders the latest list.
     const registry = new AgentRegistry();
 
-    // Track command registrations so a settings change can wipe them
-    // before re-registering — without this the command palette would
-    // accumulate stale entries when the agent list shrinks.
+    // Disposed and re-registered on settings changes so the command palette
+    // doesn't accumulate stale entries.
     let registered: IDisposable | null = null;
 
     const applyAgents = async (overrides: IAgentSettings[]): Promise<void> => {
       const agents = mergeAgents(overrides);
 
-      // Probe the server's `$PATH` so we only surface agents that are actually
-      // installed. Agents with `requireAvailable: false` opt out (their command
-      // may be a shell alias that `which` can't see) and are kept regardless.
+      // `requireAvailable: false` entries (e.g. shell aliases) skip the probe.
       const probe = Array.from(
         new Set(
           agents
@@ -131,8 +108,7 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
         });
       } catch (reason) {
         console.error('xtralab: failed to load launcher settings', reason);
-        // Settings load failed — fall back to defaults so the launcher
-        // still has cards instead of going silent.
+        // Fall back to defaults so the launcher still has cards.
         await applyAgents([]);
       }
     } else {
@@ -144,11 +120,8 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
       execute: (args: ReadonlyPartialJSONObject) => {
         const id = Private.nextId();
         const onAgentLaunch = (item: Widget): void => {
-          // When an agent command returns a Widget that ends up in the main
-          // area, slot it where this launcher used to sit so opening an
-          // agent feels like the launcher transformed into the terminal.
-          // Disposing the inner ReactWidget cascades to the MainAreaWidget
-          // host via its `content.disposed` connection.
+          // Slot the widget where this launcher sits; disposing the inner
+          // ReactWidget cascades to its MainAreaWidget host via `content.disposed`.
           if (find(shell.widgets('main'), w => w === item)) {
             shell.add(item, 'main', { ref: id });
             launcher.dispose();
@@ -160,9 +133,7 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
           editor: editorRegistry?.current ?? null,
           agentSessions,
           onAgentLaunch,
-          // Empty repoPath/cwd matches the JupyterLab convention used by
-          // the git panel and the stock launcher: let the server resolve
-          // the working tree from its root directory.
+          // Empty repoPath/cwd let the server resolve from its root directory.
           repoPath: '',
           cwd: '',
           trans
@@ -171,9 +142,7 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
         launcher.title.label = trans.__('Launcher');
 
         const main = new MainAreaWidget({ content: launcher });
-        // Hide the close button when the launcher is the only thing in the
-        // main area: closing it would leave the user staring at an empty
-        // shell with no way back.
+        // Closing the only main-area widget would leave an empty shell.
         main.title.closable = !!Array.from(shell.widgets('main')).length;
         main.id = id;
 
@@ -210,9 +179,7 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
         labShell.layoutModified.connect(() => {
           maybeCreate();
         });
-        // Layout has settled by the time `app.restored` resolves; if it's
-        // empty (fresh start, no restored widgets) the connect above won't
-        // fire on its own — kick it off here.
+        // If the restored layout is already empty the connect never fires.
         maybeCreate();
       });
 
@@ -230,14 +197,9 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
 };
 
 /**
- * Drop agents whose command isn't on `$PATH`, except entries that opt out via
- * `requireAvailable: false` (e.g. shell aliases the user wants surfaced
- * regardless). `available` is the resolved set from
- * {@link fetchAvailableCommands}.
- *
- * When `available` is `null` (the endpoint couldn't be reached) we fail open
- * and return the input unchanged — better to show an unreachable agent than
- * to hide the entire launcher because the server extension didn't load.
+ * Drop agents whose command isn't on `$PATH`, keeping `requireAvailable:
+ * false` entries. When `available` is `null` (probe failed), fail open and
+ * return the input unchanged.
  */
 function filterAgents(
   agents: IAgent[],
@@ -254,9 +216,6 @@ function filterAgents(
 namespace Private {
   let counter = 0;
 
-  /**
-   * Returns the next unique launcher widget id.
-   */
   export function nextId(): string {
     return `launcher-${counter++}`;
   }

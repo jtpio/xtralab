@@ -14,10 +14,8 @@ import detectIndent from 'detect-indent';
 const PLUGIN_ID = 'xtralab:editor-indent';
 
 /**
- * Mime types whose newly-created (or too-short-to-detect) files should default
- * to a 2-space indent. Matches Prettier's defaults for web languages; mime
- * types not listed here inherit whatever the user has set in JupyterLab.
- * Covers .ts/.tsx/.jsx/.js variants registered by `@jupyterlab/codemirror`.
+ * 2-space fallback for new or undetectable files, matching Prettier's
+ * web-language defaults; unlisted mime types keep the user's setting.
  */
 const FALLBACK_INDENT_BY_MIME: Record<string, number> = {
   'application/ecmascript': 2,
@@ -43,10 +41,7 @@ interface IResolvedIndent {
   width: number;
 }
 
-/**
- * Run `detect-indent` against the file's content and convert its result into
- * something we can hand to CodeMirror.
- */
+/** Detect the indent from the file content, in CodeMirror terms. */
 function detectFromContent(text: string): IResolvedIndent | null {
   if (text.length === 0) {
     return null;
@@ -76,9 +71,8 @@ function resolveIndent(text: string, mimeType: string): IResolvedIndent | null {
 }
 
 function buildExtension(resolved: IResolvedIndent): Extension {
-  // `Prec.highest` keeps these values first in their respective facets so
-  // they beat both `defaultConfig` and per-editor `editorConfig.indentUnit`,
-  // both of which JupyterLab registers at default precedence.
+  // `Prec.highest` beats both `defaultConfig` and per-editor
+  // `editorConfig.indentUnit`, which JupyterLab registers at default precedence.
   return Prec.highest([
     indentUnit.of(resolved.unit),
     EditorState.tabSize.of(resolved.width)
@@ -86,18 +80,10 @@ function buildExtension(resolved: IResolvedIndent): Extension {
 }
 
 /**
- * Sniff each opened document's leading whitespace and configure CodeMirror's
- * `indentUnit` / `tabSize` to match. JupyterLab only exposes a single global
- * indent setting, which means TypeScript files written with 4-space indent and
- * Python files written with 2-space indent both look wrong in the same editor;
- * detecting from the file's own content sidesteps that without forcing every
- * project to share the same convention.
- *
- * Detection runs at editor-construction time and again on the first content
- * change — that second pass exists because JupyterLab's collaborative document
- * loader can settle the file body into the shared model after the editor view
- * already exists, in which case the factory would otherwise have only seen an
- * empty string.
+ * Sniff each document's indentation and configure CodeMirror's `indentUnit` /
+ * `tabSize` to match, since JupyterLab only has one global indent setting.
+ * Detection reruns on the first content change: the collaborative loader can
+ * settle the file body after the editor view exists, so the factory may see ''.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,

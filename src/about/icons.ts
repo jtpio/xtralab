@@ -3,9 +3,8 @@ import { LabIcon } from '@jupyterlab/ui-components';
 import logoSvgstr from '../../logo.svg';
 
 /**
- * The project logo mark — `logo.svg` at the repository root, the same file
- * the README and the docs site use. The labextension build inlines it as a
- * raw string, so the dialog always shows the current artwork.
+ * The project logo mark — the repo-root `logo.svg` the README and docs also
+ * use, inlined by the labextension build.
  */
 export const aboutLogoIcon = new LabIcon({
   name: 'xtralab:about-logo',

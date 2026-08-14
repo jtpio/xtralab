@@ -1,13 +1,7 @@
 /*
- * Adaptive (VS Code-style) document tab widths. Tabs size to their filename
- * instead of being pinned to --jp-private-horizontal-tab-width (216px), and
- * the horizontal tab strip becomes scrollable when tabs overflow.
- *
- * Mostly mirrors jupyterlab/jupyterlab#18796, with one deliberate divergence:
- * .lm-TabBar-content uses `flex: 0 1 auto` (not `1 1 auto`) so the +/add
- * button sits next to the last tab instead of being pushed to the right
- * edge of the bar. Overflow scrolling still works because `flex-shrink: 1`
- * plus `min-width: 0` lets content shrink when tabs exceed the bar width.
+ * Adaptive (VS Code-style) document tab widths, mostly mirroring
+ * jupyterlab/jupyterlab#18796. One divergence: .lm-TabBar-content uses
+ * `flex: 0 1 auto` so the add button hugs the last tab instead of the far edge.
  */
 
 .lm-DockPanel-tabBar .lm-TabBar-tab,
@@ -26,10 +20,8 @@
   width: auto;
 }
 
-/* Breathing room between the label and the close icon. Fit-content tabs put
-   the icon flush against the label's last glyph (stock's fixed-width tabs
-   hide this with slack space), and the icon-hover chip in chrome.css extends
-   2px beyond the icon box into this gap. */
+/* Fit-content tabs put the close icon flush against the label; the icon-hover
+   chip in chrome.css extends 2px into this gap. */
 .lm-DockPanel-tabBar .lm-TabBar-tab .lm-TabBar-tabCloseIcon,
 .lm-TabPanel-tabBar .lm-TabBar-tab .lm-TabBar-tabCloseIcon {
   margin-left: 4px;

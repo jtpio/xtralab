@@ -3,10 +3,8 @@ import { LabIcon, terminalIcon } from '@jupyterlab/ui-components';
 import { BUILTIN_AGENT_ICONS } from './icons';
 
 /**
- * The shape of an agent card on the launcher. The `command` is the literal
- * text typed into the new terminal session — interactive shells expand
- * aliases, so users can point at `claude`, `cl`, or whatever runs their
- * preferred wrapper.
+ * An agent card on the launcher. `command` is the literal text typed into the
+ * new terminal, so interactive-shell aliases resolve.
  */
 export interface IAgent {
   id: string;
@@ -16,35 +14,21 @@ export interface IAgent {
   icon: LabIcon;
   rank: number;
   /**
-   * When false, the launcher skips the `which`-based availability check for
-   * this entry — useful for aliases or shell functions that aren't on PATH
-   * but still resolve when typed in a real terminal. Defaults to true.
+   * When false, skip the `which`-based availability check — for aliases or
+   * shell functions not on PATH. Defaults to true.
    */
   requireAvailable: boolean;
   /**
-   * Argv tokens spliced between `command` and a shell-quoted prompt when
-   * the user types one into the launcher's prompt box. The semantics:
-   *
-   *   - `[]` → prompt is appended as a positional argument:
-   *     `<command> 'PROMPT'`. (Used by claude, codex, vibe, pi.)
-   *   - `['-i']` / `['--prompt']` → the prompt is preceded by a flag:
-   *     `<command> -i 'PROMPT'`. (Used by copilot, opencode.)
-   *   - `undefined` → the agent does not accept an initial prompt. The
-   *     launcher dims the agent's button while the prompt textarea is
-   *     non-empty, so the user gets a clear signal rather than a silently
-   *     dropped prompt.
-   *
-   * The prompt itself is always single-quoted with embedded single quotes
-   * escaped, so multi-line prompts and shell metacharacters are safe.
+   * Argv tokens spliced between `command` and the shell-quoted prompt:
+   * `[]` appends the prompt positionally, `['-i']` prefixes a flag, and
+   * `undefined` means no prompt support (the launcher dims the button).
    */
   promptArgs?: string[];
 }
 
 /**
- * The settings-side shape: every field except `id` is optional, so a user
- * can override a single field on a default agent (e.g. swap the command for
- * an alias) without restating the whole entry. New ids define brand-new
- * agent cards.
+ * The settings-side shape: every field except `id` is optional so a user can
+ * override a single field on a default agent; new ids define new agent cards.
  */
 export interface IAgentSettings {
   id: string;
@@ -52,43 +36,30 @@ export interface IAgentSettings {
   caption?: string;
   command?: string;
   /**
-   * Inline SVG for a custom agent's icon. Required for new ids whose icon
-   * isn't shipped with xtralab; ignored for default ids unless explicitly
-   * set (in which case it overrides the built-in).
+   * Inline SVG icon. Required for new ids; overrides the built-in when set on
+   * a default id.
    */
   iconSvg?: string;
   rank?: number;
-  /**
-   * When false, the agent is hidden from the launcher and the command
-   * palette. Defaults to true.
-   */
+  /** When false, hides the agent from the launcher and the command palette. */
   enabled?: boolean;
   /**
-   * See `IAgent.requireAvailable`. Defaults to true for a built-in agent that
-   * still uses its shipped command, and to false once you override the
-   * `command` (a user-chosen command — often a shell alias — is trusted and
-   * always shown). Set it explicitly to force the check on or off.
+   * See `IAgent.requireAvailable`. Defaults to true, but flips to false once
+   * `command` is overridden (a user-chosen alias is trusted).
    */
   requireAvailable?: boolean;
   /**
-   * See `IAgent.promptArgs`. Pass an empty array to mark the agent as
-   * accepting a positional prompt; pass an array like `["-p"]` to use a
-   * flag. Pass `null` to explicitly turn off prompt support for an agent
-   * that has it on by default.
+   * See `IAgent.promptArgs`. `null` explicitly turns off an agent's default
+   * prompt support.
    */
   promptArgs?: string[] | null;
 }
 
 /**
- * Default agent cards shipped with xtralab. Seven of these (Claude, Codex,
- * Copilot, Goose, OpenCode, Kiro, Mistral Vibe) mirror first-class personas
- * in `jupyter-ai-contrib/jupyter-ai-acp-client` (which is also where their
- * icons come from), but use the bare CLI names a user would type in a
- * terminal rather than the ACP wrapper binaries that project spawns.
- * Antigravity (Google's agent-first IDE/CLI, `agy`) is the Google agent.
- * Pi (https://pi.dev, `earendil-works/pi`) is a minimal extensible coding
- * agent; its mark comes straight from its site. Anything not on the user's
- * `$PATH` is filtered out at activation time, so the wider list is harmless.
+ * Default agent cards. Most mirror `jupyter-ai-contrib/jupyter-ai-acp-client`
+ * personas but use the bare CLI names a user would type, not the ACP wrappers.
+ * Anything not on `$PATH` is filtered out at activation, so the wide list is
+ * harmless.
  */
 const DEFAULTS: IAgent[] = [
   {
@@ -119,13 +90,8 @@ const DEFAULTS: IAgent[] = [
     icon: BUILTIN_AGENT_ICONS.antigravity,
     rank: 2,
     requireAvailable: true
-    // `agy` is the Antigravity launcher binary — a VS Code-derived editor
-    // CLI that opens the Agent Manager / workspace, not a terminal REPL.
-    // Its positional args are file/folder paths, so there is no inline
-    // natural-language prompt form; like goose/kiro we omit promptArgs so a
-    // typed prompt dims the button instead of being mangled into a path.
-    // The command stays the bare binary (no `agy .`) so the server-side
-    // `shutil.which` availability check still resolves it.
+    // `agy` opens the Antigravity editor; its positional args are paths, not
+    // prompts, and the bare binary keeps the server-side `which` check working.
   },
   {
     id: 'copilot',
@@ -135,8 +101,7 @@ const DEFAULTS: IAgent[] = [
     icon: BUILTIN_AGENT_ICONS.copilot,
     rank: 3,
     requireAvailable: true,
-    // `-i "PROMPT"` is the documented way to start interactive mode and
-    // auto-execute the prompt; `-p` exits after responding (non-interactive).
+    // `-i` starts interactive mode with the prompt; `-p` exits after responding.
     promptArgs: ['-i']
   },
   {
@@ -147,8 +112,7 @@ const DEFAULTS: IAgent[] = [
     icon: BUILTIN_AGENT_ICONS.goose,
     rank: 4,
     requireAvailable: true
-    // `goose` does not accept an inline interactive prompt; users would
-    // need to type the prompt after `goose session` starts.
+    // `goose` takes no inline prompt; it must be typed after `goose session`.
   },
   {
     id: 'opencode',
@@ -168,8 +132,7 @@ const DEFAULTS: IAgent[] = [
     icon: BUILTIN_AGENT_ICONS.kiro,
     rank: 6,
     requireAvailable: true
-    // The Kiro chat session only takes initial prompts via the in-session
-    // `/chat new <prompt>` slash command, not a CLI argument.
+    // Kiro only takes initial prompts via the in-session `/chat new` command.
   },
   {
     id: 'mistral-vibe',
@@ -189,17 +152,13 @@ const DEFAULTS: IAgent[] = [
     icon: BUILTIN_AGENT_ICONS.pi,
     rank: 8,
     requireAvailable: true,
-    // `pi [messages...]` starts the interactive TUI and sends the messages
-    // as the first user prompt, so the positional form applies.
     promptArgs: []
   }
 ];
 
 /**
- * The built-in agents projected into the JSON settings shape
- * ({@link IAgentSettings}), dropping the runtime-only {@link LabIcon}.
- * {@link registerLauncherSchemaDefaults} injects this as the `agents` setting's
- * schema default so the Settings Editor shows the shipped list.
+ * The built-in agents projected into the settings shape (no runtime LabIcon),
+ * injected as the `agents` schema default so the Settings Editor shows them.
  */
 export function defaultAgentSettings(): IAgentSettings[] {
   return DEFAULTS.map(agent => {
@@ -211,8 +170,6 @@ export function defaultAgentSettings(): IAgentSettings[] {
       rank: agent.rank,
       requireAvailable: agent.requireAvailable
     };
-    // Omit `promptArgs` for agents that don't take an inline prompt, so the
-    // default doesn't show a prompt form they lack.
     if (agent.promptArgs !== undefined) {
       entry.promptArgs = agent.promptArgs;
     }
@@ -228,15 +185,10 @@ function resolveIcon(id: string, iconSvg: string | undefined): LabIcon {
 }
 
 /**
- * Merge xtralab's defaults with the user's settings. Default entries keep
- * their built-in fields unless explicitly overridden; user-only entries are
- * appended. `enabled: false` filters an entry out of the result entirely
- * (so callers don't need to check the flag again).
- *
- * Overriding a built-in agent's `command` also turns its `requireAvailable`
- * off, so the card survives the launcher's `which`-based availability filter
- * even when the new command is a shell alias the server can't resolve. See the
- * built-in branch below for the rationale.
+ * Merge xtralab's defaults with the user's settings: defaults keep their
+ * fields unless overridden, user-only ids are appended, and `enabled: false`
+ * removes an entry entirely. Overriding a built-in's `command` also turns
+ * `requireAvailable` off so an aliased command survives the `which` filter.
  */
 export function mergeAgents(overrides: IAgentSettings[]): IAgent[] {
   const overrideById = new Map(overrides.map(entry => [entry.id, entry]));
@@ -262,24 +214,13 @@ export function mergeAgents(overrides: IAgentSettings[]): IAgent[] {
         ? resolveIcon(base.id, override.iconSvg)
         : base.icon,
       rank: override.rank ?? base.rank,
-      // The availability filter exists to prune xtralab's *built-in* command
-      // from the launcher when it isn't installed. Once the user points the
-      // agent at their own command — e.g. the `ccm` alias wrapping `claude
-      // --effort=max …` — the server's `shutil.which` probe can't see it
-      // (aliases and shell functions only exist inside an interactive shell),
-      // so keeping the check on would wrongly hide the card. We therefore only
-      // require availability while the command is still xtralab's default; a
-      // user-chosen command is trusted and always shown. An explicit
-      // `requireAvailable` still applies to the unchanged default command, so a
-      // user can alias `claude` itself and set `requireAvailable: false` (or
-      // force the check back on).
+      // A user-chosen command is often a shell alias `shutil.which` can't see,
+      // so the availability check applies only while the command is the default.
       requireAvailable:
         command === base.command
           ? (override.requireAvailable ?? base.requireAvailable)
           : false,
-      // `null` is the explicit way to opt out of an agent's default prompt
-      // support; an absent key keeps the default. `undefined` from `??` is
-      // pruned below.
+      // `null` explicitly opts out of the agent's default prompt support.
       promptArgs:
         override.promptArgs === null
           ? undefined
@@ -287,10 +228,8 @@ export function mergeAgents(overrides: IAgentSettings[]): IAgent[] {
     });
   }
 
-  // What remains in `overrideById` are entries with ids that don't match a
-  // default — treat them as new agents the user is adding. Skip silently
-  // when a required field is missing rather than throwing; the settings
-  // schema validates the shape, so this is just a defensive fallback.
+  // Remaining override ids are new agents; the settings schema validates the
+  // shape, so missing fields just fall back.
   let nextRank =
     merged.reduce((max, agent) => Math.max(max, agent.rank), -1) + 1;
   for (const entry of overrideById.values()) {

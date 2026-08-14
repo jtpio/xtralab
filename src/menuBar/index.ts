@@ -18,25 +18,15 @@ const OPEN_COMMAND = 'xtralab:open-main-menu';
 const TOGGLE_COMMAND = 'xtralab:toggle-menu-bar';
 
 /**
- * How long after the popup closes a button press still counts as "close
- * only". An open Lumino menu closes itself on any outside press from a
- * document `pointerdown` listener in the capture phase, which runs before
- * the button's own mousedown handler — so without this window, pressing the
- * button while the popup is open would close it and instantly reopen it.
+ * Guard after the popup closes: Lumino menus close on a capture-phase document
+ * pointerdown, before the button's mousedown, which would instantly reopen.
  */
 const REOPEN_GUARD_MS = 250;
 
 /**
- * Collapse the main menu bar into a compact menu button.
- *
- * The menu bar is hidden and a hamburger button in the top bar opens the same
- * menus as a vertical popup. The popup reuses the live `RankedMenu` instances
- * owned by the `MainMenu`, so menus added or removed at runtime are reflected
- * without duplication.
- *
- * Hiding covers the `jp-menu-panel` container too, which has its own
- * `min-height` and would otherwise leave an empty strip. The "Show Menu Bar"
- * toggle restores the classic bar.
+ * Collapse the main menu bar into a hamburger button whose popup reuses the
+ * live `RankedMenu` instances owned by `MainMenu`. Hiding covers the
+ * `jp-menu-panel` container too — its `min-height` would leave an empty strip.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
@@ -84,9 +74,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     const openMenu = (): void => {
       if (visible) {
-        // The classic bar is on screen; behave like keyboard menu
-        // activation instead of opening a redundant popup that would
-        // compete with the bar for the same Menu instances.
+        // With the classic bar on screen, act like keyboard menu activation —
+        // a popup would compete with the bar for the same Menu instances.
         mainMenu.activeIndex = 0;
         mainMenu.openActiveMenu();
         return;
@@ -95,13 +84,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
         return;
       }
 
-      // One popup instance, rebuilt from the bar's current menus on every
-      // open so runtime menu changes stay reflected. It is a plain Lumino
-      // Menu rather than a MenuSvg: MenuSvg.insertItem re-wraps each
-      // submenu's renderer and insertItem on every call, which would pile
-      // wrappers onto the shared menus across reopens. The svg renderer and
-      // themed-container class are applied directly instead, matching how
-      // the real menus are constructed in MainMenu.
+      // A plain Menu rebuilt on every open; MenuSvg.insertItem would re-wrap
+      // each submenu's renderer per reopen, piling wrappers onto the shared menus.
       if (popup === null) {
         popup = new Menu({ commands, renderer: MenuSvg.defaultRenderer });
         popup.addClass('jp-ThemedContainer');
@@ -183,9 +167,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
         loaded.changed.connect(update);
       })
       .catch(reason => {
-        // Without settings the collapsed state cannot be managed (and the
-        // button was never added) — reveal the stock bar rather than leave
-        // the app with no reachable menus.
+        // Without settings the collapsed state cannot be managed and the button
+        // was never added; reveal the stock bar so menus stay reachable.
         applyVisibility(true);
         console.error(`Failed to load settings for ${PLUGIN_ID}`, reason);
       });

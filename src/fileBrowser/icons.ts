@@ -6,16 +6,10 @@ import {
 import type { FileTreeIconConfig } from '@pierre/trees';
 
 /**
- * The glyph used as the xtralab file browser's sidebar tab icon. Defined as a
- * `LabIcon` (rather than the default `folderIcon` from
- * `@jupyterlab/ui-components`) so the xtralab browser is visually distinguishable
- * from JupyterLab's built-in file browser, which also lives in the left
- * sidebar.
- *
- * Source: `file-tree` from SVG Repo (https://www.svgrepo.com/svg/371275/file-tree).
- * The original `fill="#444"` is replaced with `fill="currentColor"` and the
- * root element is given the `jp-icon3` class so the icon picks up JupyterLab's
- * theme color and the sidebar's inverse-color painting automatically.
+ * Sidebar tab icon, distinct from the core `folderIcon` so the xtralab
+ * browser is distinguishable from the built-in one. `file-tree` from SVG Repo
+ * (https://www.svgrepo.com/svg/371275/file-tree), refit with
+ * `fill="currentColor"` and `jp-icon3` so it follows the theme.
  */
 export const xtralabFileBrowserIcon = new LabIcon({
   name: 'xtralab:file-browser',
@@ -25,18 +19,10 @@ export const xtralabFileBrowserIcon = new LabIcon({
 });
 
 /**
- * Sprite sheet injected into the `@pierre/trees` shadow DOM. Contains a single
- * `<symbol>` for the Jupyter notebook icon, drawn from the JupyterLab core
- * notebook icon (`@jupyterlab/ui-components/style/icons/filetype/notebook.svg`).
- *
- * `@pierre/trees` does not ship a Jupyter token, so `.ipynb` files would
- * otherwise fall through to the generic file icon. The symbol id below is
- * referenced from `byFileExtension` in {@link FILE_BROWSER_ICONS}.
- *
- * The orange `#EF6C00` fill is set as a presentation attribute on the inner
- * `<g>` so it survives the `fill: currentColor` rule the tree applies on the
- * icon container — the inherited color does not override a presentation
- * attribute set directly on a child.
+ * Sprite sheet injected into the tree's shadow DOM: the JupyterLab notebook
+ * glyph, since `@pierre/trees` ships no Jupyter token. The `#EF6C00` fill is
+ * a presentation attribute on the inner `<g>` so it survives the tree's
+ * `fill: currentColor` rule on the icon container.
  */
 const JUPYTER_NOTEBOOK_SPRITE_SHEET = `<svg data-icon-sprite aria-hidden="true" width="0" height="0">
   <symbol id="jupyter-notebook" viewBox="0 0 22 22">
@@ -48,13 +34,9 @@ const JUPYTER_NOTEBOOK_SPRITE_SHEET = `<svg data-icon-sprite aria-hidden="true" 
 </svg>`;
 
 /**
- * Icon configuration for the xtralab file browser. Keeps the default `complete`
- * built-in icon set (the colored language icons) and layers a Jupyter notebook
- * symbol on top so `.ipynb` files render with the JupyterLab notebook glyph.
- *
- * `set` must be set explicitly: when a config object includes any custom
- * overrides without `set`, `@pierre/trees` defaults `set` to `'none'`, which
- * disables the built-in icons entirely.
+ * Icon config: the built-in `complete` set plus the Jupyter notebook symbol
+ * for `.ipynb`. `set` must be explicit — with any custom overrides present,
+ * `@pierre/trees` defaults it to `'none'`, disabling the built-in icons.
  */
 export const FILE_BROWSER_ICONS: FileTreeIconConfig = {
   set: 'complete',
@@ -66,42 +48,31 @@ export const FILE_BROWSER_ICONS: FileTreeIconConfig = {
 };
 
 /**
- * Concatenated sprite-sheet text. Combines the built-in sheet for the active
- * icon set with our custom Jupyter notebook sheet so {@link extractSymbol}
- * can find the body of any symbol the tree itself can render.
+ * Built-in sheet plus the notebook sheet, so {@link extractSymbol} can find
+ * any symbol the tree itself can render.
  */
 const COMBINED_SPRITE_SHEETS = [
   getBuiltInSpriteSheet(FILE_BROWSER_ICONS.set ?? 'complete'),
   JUPYTER_NOTEBOOK_SPRITE_SHEET
 ].join('\n');
 
-/**
- * Resolver instance reused across calls to {@link getTreeIcon}. The resolver
- * is pure relative to the icon config, so building it once at module load
- * avoids re-walking the icon rules on every diff that opens.
- */
+/** Shared resolver; pure relative to the icon config, so built once. */
 const treeIconResolver = createFileTreeIconResolver(FILE_BROWSER_ICONS);
 
 /**
- * Cache of LabIcons keyed by the resolved sprite symbol id (e.g.
- * `file-tree-builtin-python`). All Python files share the same icon, so
- * caching by symbol id prevents repeated LabIcon registration warnings and
- * keeps the JupyterLab icon registry small.
+ * LabIcons keyed by resolved symbol id — re-registering a LabIcon under the
+ * same name logs warnings.
  */
 const TREE_ICON_CACHE = new Map<string, LabIcon>();
 
 /**
- * Extract the inner SVG markup and viewBox of the `<symbol>` with the given
- * id from {@link COMBINED_SPRITE_SHEETS}. Returns `null` if no matching
- * symbol exists, in which case the caller falls back to JupyterLab's default
- * file icon.
+ * Inner SVG markup and viewBox of the `<symbol>` with the given id in
+ * {@link COMBINED_SPRITE_SHEETS}, or `null` when absent.
  */
 function extractSymbol(
   symbolId: string
 ): { viewBox: string; inner: string } | null {
-  // Match a `<symbol>` whose `id` attribute equals `symbolId` (allowing other
-  // attributes in any order). The `[\s\S]*?` body is non-greedy so we stop
-  // at the first matching `</symbol>` even when multiple symbols sit
+  // Non-greedy body: stop at the first `</symbol>` when symbols sit
   // back-to-back in the sheet.
   const escaped = symbolId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const symbolRegex = new RegExp(
@@ -120,14 +91,10 @@ function extractSymbol(
 }
 
 /**
- * Fallback colors for the built-in file icons, keyed by the icon token
- * `@pierre/trees` resolves for a path (e.g. `python`, `typescript`).
- *
- * The tree only exposes these as `--trees-file-icon-color-<token>` CSS
- * variables scoped to its shadow host, so they resolve to nothing for the
- * standalone {@link LabIcon}s {@link getTreeIcon} builds for main-area tabs.
- * Mirroring them here lets {@link getBuiltInFileIconColor} bottom out in a
- * real color. Each is a `light-dark(…)` pair for dark themes.
+ * Fallback colors keyed by the tree's icon token. The tree exposes its colors
+ * only as `--trees-file-icon-color-*` vars scoped to its shadow host, so the
+ * standalone LabIcons built for main-area tabs need these literals;
+ * `light-dark(…)` covers dark themes.
  */
 const BUILT_IN_FILE_ICON_COLOR_FALLBACKS: Record<string, string> = {
   astro: 'light-dark(#a631be, #d568ea)',
@@ -183,11 +150,8 @@ const BUILT_IN_FILE_ICON_COLOR_FALLBACKS: Record<string, string> = {
 };
 
 /**
- * Color the file tree would paint for the built-in icon `token`, as a
- * self-contained CSS value usable outside the tree's shadow DOM: the tree's
- * `--trees-file-icon-color-*` properties when in scope, else the literal from
- * {@link BUILT_IN_FILE_ICON_COLOR_FALLBACKS}. Returns `undefined` for unknown
- * tokens.
+ * The tree's color for `token` as a self-contained CSS value: its CSS vars
+ * when in scope, else the mirrored literal. `undefined` for unknown tokens.
  */
 function getBuiltInFileIconColor(token: string): string | undefined {
   const fallback = BUILT_IN_FILE_ICON_COLOR_FALLBACKS[token];
@@ -219,23 +183,16 @@ function resolveTreeIcon(filePath: string): {
   if (symbol === null) {
     return { icon: null, specific };
   }
-  // Built-in language icons paint with `fill="currentColor"` so the colored
-  // tier of the tree can recolor them by setting `color` on the host
-  // element. Reproduce that here by setting the same color value as an
-  // inline `style="color: …"` on the outer `<svg>`. `getBuiltInFileIconColor`
-  // returns a `var(--trees-…)` chain that bottoms out in `light-dark(…)`,
-  // which respects the page's `color-scheme` declaration so dark themes pick
-  // up the brighter variants automatically.
+  // Built-in glyphs paint with `fill="currentColor"`; an inline `color`
+  // style reproduces the tree's colored tier outside its shadow DOM.
   const colored = FILE_BROWSER_ICONS.colored === true;
   const color =
     colored && resolved.token !== undefined
       ? getBuiltInFileIconColor(resolved.token)
       : undefined;
   const styleAttr = color !== undefined ? ` style="color: ${color};"` : '';
-  // Prefer a viewBox the resolver supplies (custom sprite overrides may set
-  // one), then fall back to the symbol's own viewBox so 22x22 sprites like
-  // the Jupyter notebook glyph render at the right scale rather than being
-  // cropped to a 16x16 box.
+  // Prefer the resolver's viewBox, then the symbol's own, so 22x22 sprites
+  // like the notebook glyph aren't cropped to a 16x16 box.
   const viewBox = resolved.viewBox ?? symbol.viewBox;
   const svgstr = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}"${styleAttr}>${symbol.inner}</svg>`;
   const icon = new LabIcon({

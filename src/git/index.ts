@@ -23,10 +23,9 @@ const GIT_DIFF_COMMAND_PLUGIN_ID = 'xtralab:git-diff-command';
 const GIT_DIFF_TRACKER_NAMESPACE = 'xtralab-git-diff';
 
 /**
- * The launcher's git diff command plugin.
- *
- * The upstream git panel stays enabled; this plugin only gives the launcher
- * its own `xtralab:git:open-diff` command and preview/pinned-tab tracking.
+ * The launcher's git diff command plugin. The upstream git panel stays
+ * enabled; this only adds `xtralab:git:open-diff` and preview/pinned-tab
+ * tracking.
  */
 const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
   id: GIT_DIFF_COMMAND_PLUGIN_ID,
@@ -86,9 +85,6 @@ const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
   }
 };
 
-/**
- * Plugins contributed by xtralab's git integration.
- */
 const plugins: JupyterFrontEndPlugin<unknown>[] = [
   diffCommandPlugin,
   diffProviderPlugin

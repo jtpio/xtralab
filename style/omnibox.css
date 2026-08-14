@@ -1,10 +1,7 @@
 /* Omnibox overlay (xtralab:omnibox): a centered search box over the shell. */
 
-/*
- * The widget node is attached to `document.body` (outside the shell) and only
- * carries theme variables via `jp-ThemedContainer`; the React tree renders the
- * fixed full-screen overlay below it.
- */
+/* The widget node attaches to `document.body` and carries `jp-ThemedContainer`
+   for theme variables; the React tree renders the fixed overlay below. */
 .jp-xtralab-Omnibox {
   position: absolute;
 }
@@ -52,8 +49,7 @@
 }
 
 /* Side gutters float the active-row highlight inside the panel edge,
-   matching the menu/palette treatment; section headers and items shift
-   together so their left alignment is preserved. */
+   matching the menu/palette treatment. */
 .jp-xtralab-Omnibox-results {
   padding: 5px 6px;
   overflow-y: auto;

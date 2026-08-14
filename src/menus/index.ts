@@ -10,15 +10,9 @@ import type { Menu, MenuBar, Widget } from '@lumino/widgets';
 const PLUGIN_ID = 'xtralab:menus';
 
 /**
- * Hide the "Run" and "Kernel" top-level menus while no kernel-using widget
- * is open in the main area. The agent-first launcher does not use kernels,
- * so showing those menus on a fresh workspace surfaces commands the user
- * cannot meaningfully invoke; remove them until a notebook or console is
- * opened, then restore them at their original ranks.
- *
- * Detection is duck-typed on `sessionContext`: NotebookPanel and ConsolePanel
- * both expose it, which avoids pulling in `@jupyterlab/notebook` and
- * `@jupyterlab/console` just to identify their widgets.
+ * Hide the Run and Kernel menus while no kernel-using widget is open in the
+ * main area, then restore them at their original ranks — the agent-first
+ * launcher does not use kernels, so a fresh workspace should not surface them.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
@@ -31,17 +25,14 @@ const plugin: JupyterFrontEndPlugin<void> = {
     mainMenu: IMainMenu,
     labShell: ILabShell
   ): void => {
-    // The interface types (IRunMenu, IKernelMenu) extend IRankedMenu, but
-    // the concrete instances are RankedMenu/Menu — cast so we can hand them
-    // to MenuBar.removeMenu and IMainMenu.addMenu, which expect a `Menu`.
+    // The interface types extend IRankedMenu but the concrete instances are
+    // RankedMenu/Menu; cast for the MenuBar methods, which expect a `Menu`.
     const menuBar = mainMenu as unknown as MenuBar;
     const runMenu = mainMenu.runMenu as unknown as Menu;
     const kernelMenu = mainMenu.kernelMenu as unknown as Menu;
 
-    // Capture the schema-assigned ranks so the menus reappear in their
-    // original slots between View (rank 3) and Tabs (rank 500). Falling
-    // back to the hard-coded defaults from `MainMenu` keeps things sane
-    // if the schema ever omits the rank.
+    // Schema-assigned ranks so the menus reappear in their original slots;
+    // fall back to MainMenu's hard-coded defaults if the schema omits them.
     const runRank = mainMenu.runMenu.rank ?? 4;
     const kernelRank = mainMenu.kernelMenu.rank ?? 5;
 
@@ -51,11 +42,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const update = (): void => {
       const show = hasKernelWidget(labShell);
       if (show) {
-        // Don't go through `mainMenu.addMenu`: it picks the insertion index
-        // from a private `_items` array that `removeMenu` doesn't update,
-        // so re-adding lands the menu at the wrong position. Insert
-        // directly on the MenuBar by walking current menus and finding
-        // the first sibling with a higher rank.
+        // Not `mainMenu.addMenu`: its insertion index comes from a private
+        // `_items` array that `removeMenu` doesn't update, misplacing re-adds.
         if (!isPresent(runMenu)) {
           insertByRank(menuBar, runMenu, runRank);
         }
@@ -80,11 +68,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
 };
 
 /**
- * True iff any widget in the main area exposes a `sessionContext` — the
- * shared marker for NotebookPanel, ConsolePanel, and kernel-attached file
- * editors. We don't import their concrete types because that would drag
- * `@jupyterlab/notebook` and `@jupyterlab/console` into xtralab's bundle
- * just to do an `instanceof` check.
+ * True iff any main-area widget exposes a `sessionContext` (NotebookPanel,
+ * ConsolePanel, kernel-attached editors) — duck-typed to keep
+ * `@jupyterlab/notebook` and `@jupyterlab/console` out of the bundle.
  */
 function hasKernelWidget(labShell: ILabShell): boolean {
   for (const widget of labShell.widgets('main')) {
@@ -103,10 +89,8 @@ function hasSessionContext(widget: Widget): boolean {
 }
 
 /**
- * Insert `menu` into `menuBar` at the position dictated by `rank`, using
- * the existing menus' ranks to find the slot. Menus without a numeric
- * rank are treated as +Infinity so they sink to the end (matching the
- * convention in `MenuFactory.createMenus`).
+ * Insert `menu` at the slot dictated by `rank`; rank-less menus count as
+ * +Infinity and sink to the end, matching `MenuFactory.createMenus`.
  */
 function insertByRank(menuBar: MenuBar, menu: Menu, rank: number): void {
   const menus = menuBar.menus;

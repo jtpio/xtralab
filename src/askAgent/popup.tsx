@@ -9,21 +9,13 @@ import type { IAgent } from '../launcher/agents';
 import { AgentChoices, ISessionTarget, TargetChips } from './targetPicker';
 import type { AskAgentTarget, IAskAgentContext } from './tokens';
 
-/**
- * Gap between the popup and its anchor rectangle, in pixels.
- */
 const ANCHOR_GAP = 6;
 
-/**
- * Minimum distance kept between the popup and the viewport edges.
- */
 const VIEWPORT_MARGIN = 8;
 
 /**
- * Short human-readable descriptor of the prompted range, shown in the popup
- * header and the queue panel: file name, notebook cell (when applicable),
- * line range and, for ranges that are not current file content (such as the
- * old side of a diff), a clarifying tag.
+ * Short descriptor of the prompted range for the popup header and the queue
+ * panel: file name, notebook cell, line range and any clarifying tag.
  */
 export function contextSummary(
   context: IAskAgentContext,
@@ -77,9 +69,8 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
   const popupRef = React.useRef<HTMLDivElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
-  // Place the popup once its size is known: below the anchor, flipped above
-  // when there is no room, clamped into the viewport. Hidden until placed so
-  // the measurement never flashes at the wrong position.
+  // Place the popup once its size is known; hidden until placed so the
+  // measurement never flashes at the wrong position.
   React.useLayoutEffect(() => {
     const node = popupRef.current;
     if (node === null) {
@@ -111,10 +102,8 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
     setPosition({ left, top });
   }, [anchor]);
 
-  // Focus the input only once the popup is placed: while it is still
-  // unpositioned it sits `visibility: hidden`, and hidden elements silently
-  // refuse focus. The empty state renders no textarea; focus the dialog
-  // root itself so it is announced and Escape works without a pointer.
+  // Unpositioned means `visibility: hidden`, and hidden elements refuse focus.
+  // With no textarea (empty state) the dialog root takes focus for Escape.
   React.useEffect(() => {
     if (position !== null) {
       (textareaRef.current ?? popupRef.current)?.focus();
@@ -123,17 +112,15 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
 
   const dismiss = React.useCallback(
     (restoreFocus: boolean) => {
-      // Defer so unmounting this React root never happens synchronously
-      // inside the event handler that triggered it (same pattern as the
-      // omnibox).
+      // Defer so this React root never unmounts synchronously inside its
+      // own event handler (same pattern as the omnibox).
       window.setTimeout(() => onCancel(restoreFocus), 0);
     },
     [onCancel]
   );
 
-  // Close when the user clicks anywhere outside the popup. Capture phase so
-  // a click into widgets that swallow events still dismisses it. The click
-  // places focus itself, so none is restored.
+  // Capture phase so a click into event-swallowing widgets still dismisses;
+  // the click places focus itself, so none is restored.
   React.useEffect(() => {
     const onPointerDown = (event: PointerEvent): void => {
       const node = popupRef.current;
@@ -157,8 +144,6 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
     instruction.trim().length > 0 &&
     (selectedSession !== undefined || selectedAgent !== undefined);
 
-  // The destination both actions use: send delivers to it now, queue stamps
-  // it on the queued prompt (still editable in the panel later).
   const resolveTarget = React.useCallback((): AskAgentTarget | null => {
     const session = targets.find(entry => entry.name === targetName);
     if (session !== undefined) {
@@ -177,8 +162,7 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
     if (trimmed.length === 0 || target === null) {
       return;
     }
-    // Defer so unmounting this React root never happens synchronously
-    // inside the event handler that triggered it.
+    // Same deferred pattern as dismiss.
     window.setTimeout(() => {
       onSubmit(target, trimmed);
     }, 0);
@@ -200,8 +184,7 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
-      // A keyboard dismissal places no focus of its own; ask the plugin to
-      // hand it back to the widget the ask came from.
+      // A keyboard dismissal places no focus of its own; restore it.
       dismiss(true);
     }
   };
@@ -234,9 +217,8 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
       className="jp-xtralab-AskAgent-popup"
       role="dialog"
       aria-label={trans.__('Ask an agent about %1', summary)}
-      // Focusable so clicks on non-interactive popup content keep focus
-      // inside the dialog (Escape keeps working) and so the empty state
-      // can be focused at all.
+      // Focusable so clicks on non-interactive content keep Escape working
+      // and the empty state can take focus at all.
       tabIndex={-1}
       style={{
         left: position?.left ?? 0,
@@ -324,10 +306,8 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
 }
 
 /**
- * The floating ask-agent prompt box. Hosts {@link AskAgentPopupComponent} in
- * a React root attached to `document.body`; `jp-ThemedContainer` makes
- * JupyterLab's theme variables resolve outside the shell (the omnibox uses
- * the same arrangement).
+ * The floating ask-agent prompt box, attached to `document.body`;
+ * `jp-ThemedContainer` makes theme variables resolve outside the shell.
  */
 export class AskAgentPopup extends ReactWidget {
   constructor(options: AskAgentPopup.IOptions) {
@@ -379,28 +359,22 @@ export namespace AskAgentPopup {
      */
     initialTargetName: string | null;
     /**
-     * Number of prompts already queued, shown on the queue button. Only
-     * meaningful together with {@link onQueue}.
+     * Number of prompts already queued, shown on the queue button.
      */
     queueCount?: number;
-    /**
-     * Translation bundle for the popup's own labels.
-     */
     trans: TranslationBundle;
     /**
      * Send the instruction to the chosen target (the plugin closes the popup).
      */
     onSubmit: (target: AskAgentTarget, instruction: string) => void;
     /**
-     * Add the instruction to the prompt queue instead of sending it, keyed
-     * to the same chosen target (the plugin closes the popup). The queue
-     * button is hidden when omitted.
+     * Queue the instruction for the chosen target instead of sending it.
+     * The queue button is hidden when omitted.
      */
     onQueue?: (target: AskAgentTarget, instruction: string) => void;
     /**
-     * Dismiss the popup (the plugin disposes the widget). `restoreFocus` is
-     * true when the dismissal placed no focus of its own (Escape), asking
-     * the plugin to hand focus back to the widget the ask came from.
+     * Dismiss the popup. `restoreFocus` is true when the dismissal placed
+     * no focus of its own (Escape).
      */
     onCancel: (restoreFocus: boolean) => void;
   }

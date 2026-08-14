@@ -1,7 +1,6 @@
 /*
- * The read-only walkthrough panel (`xtralab:walkthrough`) in the side area. A
- * scrollable column of step cards, each holding rendered Markdown, an optional
- * embedded visual, and an optional "jump to code" button.
+ * Read-only walkthrough panel (`xtralab:walkthrough`) in the side area: a
+ * scrollable column of step cards.
  */
 
 .jp-xtralab-Walkthrough {
@@ -32,8 +31,6 @@
   margin-top: 8px;
 }
 
-/* A subtle native-feeling button: UI font and neutral colors, like the rest of
-   the JupyterLab chrome, with a leading file icon and a hover background. */
 .jp-xtralab-Walkthrough-jump {
   display: inline-flex;
   align-items: center;

@@ -1,31 +1,8 @@
 /*
- * The chrome layer: a token-driven modernization pass over stock JupyterLab
- * and Lumino chrome, so the app reads as a quiet native window rather than a
- * paneled web app.
- *
- * The language, in one place:
- *   - one surface, separated by hairlines (--jp-border-color2), not the stock
- *     grid of grey-400 borders;
- *   - a radius scale: controls ~5-6px, popovers 8-10px, dialogs 12px;
- *   - soft large-blur shadows rebuilt from each theme's own shadow pieces;
- *   - state washes mixed from the theme's foreground (color-mix over
- *     --jp-ui-font-color1) instead of opaque layout-color blocks;
- *   - 100-150ms ease on hover state changes;
- *   - frosted translucency on transient overlays (menus, palette, omnibox).
- *
- * Two ground rules keep this safe:
- *   1. Every color derives from the active theme's --jp-* tokens (or a
- *      color-mix over them), so the layer composes with JupyterLab
- *      Light/Dark and both Pierre themes. Theme-conditional rules key off
- *      body[data-jp-theme-light].
- *   2. Lumino positions panels, tab bars, and menus with pixel math, so
- *      rules stick to paint-only properties (color, background,
- *      border-color, border-radius, box-shadow, opacity, transition).
- *      Where a stock border exists, only its color changes — widths stay.
- *
- * Token overrides live on `body`, not :root: themes define their tokens on
- * :root in stylesheets loaded after this one, and inheritance from body
- * beats :root regardless of load order.
+ * Token-driven restyle of stock JupyterLab/Lumino chrome into a quiet
+ * native window. Colors derive from the theme's --jp-* tokens; rules stay
+ * paint-only (Lumino positions chrome with pixel math). Token overrides
+ * sit on `body`: body inheritance beats the themes' later-loaded :root.
  */
 
 /* stylelint-disable no-descending-specificity */
@@ -35,14 +12,12 @@
 |---------------------------------------------------------------------------- */
 
 body {
-  /* Controls-tier corner radius. Every styled button/input/select and the
-     FAST toolkit (which forwards this token to its shadow-DOM controls via
-     applyJupyterTheme -> controlCornerRadius) follows. */
+  /* Controls-tier radius; FAST forwards it to its shadow-DOM controls via
+     applyJupyterTheme -> controlCornerRadius. */
   --jp-border-radius: 6px;
 
-  /* Elevation ramp: fewer layers, larger blur, negative spread. Built from
-     the theme's own shadow color pieces, so each theme keeps its shadow
-     character (including Pierre light's deliberately faint shadows). */
+  /* Elevation ramp rebuilt from each theme's own shadow-color pieces, so
+     every theme keeps its shadow character. */
   --jp-elevation-z1: 0 1px 2px var(--jp-shadow-ambient-color);
   --jp-elevation-z2:
     0 1px 3px var(--jp-shadow-penumbra-color),
@@ -68,17 +43,11 @@ body {
   --jp-elevation-z24:
     0 28px 56px -14px var(--jp-shadow-umbra-color),
     0 8px 20px -8px var(--jp-shadow-ambient-color);
-
-  /* Toolbars separate with their existing border-bottom alone; the stock
-     omnidirectional 2px smudge shadow under every toolbar goes. */
   --jp-toolbar-box-shadow: none;
   --jp-toolbar-border-color: var(--jp-border-color2);
 
-  /* Inputs: rest on the theme's border ramp instead of the heavy
-     --jp-inverse-border-color (#757575 in both stock JupyterLab themes),
-     and focus with a soft outer ring instead of the inset blue glow. The
-     border-color swap to --jp-input-active-border-color that ships with
-     every stock :focus rule stays, giving the border + halo combo. */
+  /* Inputs: softer resting border + outer focus ring. Stock :focus rules
+     still swap to --jp-input-active-border-color, giving border + halo. */
   --jp-input-border-color: var(--jp-border-color1);
   --jp-input-box-shadow: 0 0 0 3px
     color-mix(
@@ -87,8 +56,7 @@ body {
       transparent
     );
 
-  /* Focused notebook/console cell: same outer-halo language, derived from
-     the theme's active cell border color (brand in all shipped themes). */
+  /* Focused cell: same outer-halo language as the inputs. */
   --jp-cell-editor-box-shadow: 0 0 0 3px
     color-mix(
       in srgb,
@@ -96,17 +64,13 @@ body {
       transparent
     );
 
-  /* The stock JupyterLab themes color the ON state of switches ORANGE
-     (md-orange-900/700) — point it at the brand color instead (a no-op for
-     the Pierre themes). accent-color inherits into every native
-     checkbox/radio (dialogs, Settings editor, search filters). */
+  /* Stock themes color the switch ON state orange; point it at brand.
+     accent-color inherits into every native checkbox/radio. */
   --jp-switch-true-position-color: var(--jp-brand-color1);
 
   accent-color: var(--jp-brand-color1);
 
-  /* One selection language: brand-derived focused selection (JupyterLab
-     Light still ships a 2010-era solid lavender), neutral grey-out when
-     unfocused, light brand wash for multi-selected cells. Alpha values
+  /* One selection language: brand focused, neutral unfocused; the alphas
      layer correctly over the active-line highlight. */
   --jp-editor-selected-focused-background: color-mix(
     in srgb,
@@ -124,92 +88,71 @@ body {
     transparent
   );
 
-  /* Dataframe row hover: brand wash instead of per-theme ad-hoc blues
-     (solid baby-blue in JupyterLab Light). */
+  /* Dataframe row hover: brand wash instead of per-theme ad-hoc blues. */
   --jp-rendermime-table-row-hover-background: color-mix(
     in srgb,
     var(--jp-brand-color1) 10%,
     transparent
   );
 
-  /* System monospace (SF Mono on macOS via ui-monospace), falling back to
-     the exact stock stack elsewhere. The prompt font follows so In[n]/Out[n]
-     match the editor. The terminal font is a JS setting, not CSS. */
+  /* System monospace first, stock stack as fallback. The terminal font is
+     a JS setting, not CSS. */
   --jp-code-font-family:
     ui-monospace, 'SF Mono', sfmono-regular, menlo, consolas,
     'DejaVu Sans Mono', monospace;
   --jp-cell-prompt-font-family: var(--jp-code-font-family);
 }
 
-/*
- * Light themes draw the chrome skeleton in a heavy mid-grey
- * (--jp-border-color1 is #bdbdbd in JupyterLab Light). Step it down to the
- * theme's own next ramp value for the hairline look. Dark themes keep their
- * stronger line: shadows carry less depth information there, so color1
- * stays for edge definition.
- */
+/* Light themes: step the heavy --jp-border-color1 down to hairlines. Dark
+   themes keep color1 — shadows carry less depth information there. */
 body[data-jp-theme-light='true'] {
   --jp-border-color1: var(--jp-border-color2);
 }
 
-/* The Pierre themes define neither focus-outline token, so stock
-   :focus-visible rules collapse to browser-default outlines there. Backfill
-   with the values JupyterLab Light uses. Scoped to the Pierre themes only:
-   JupyterLab Dark defines its own deliberately lighter #38a0f5 focus color,
-   which an unscoped body-level token would silently override. */
+/* The Pierre themes define no focus-outline tokens, so stock :focus-visible
+   falls to browser defaults; backfill. Scoped so JupyterLab Dark's own
+   lighter focus color is not overridden. */
 body[data-jp-theme-name='Pierre Light'],
 body[data-jp-theme-name='Pierre Dark'] {
   --jp-focus-outline-color: var(--jp-brand-color1);
   --jp-focus-outline-width: 2px;
 }
 
-/*
- * Slim quiet scrollbars everywhere. scrollbar-color inherits (crossing
- * shadow-DOM boundaries), so the body rule recolors every scroll surface;
- * scrollbar-width does NOT inherit, hence the separate descendant rule.
- * In Chromium a non-auto value for either property disables
- * ::-webkit-scrollbar styling on that element, which is also why the
- * carve-outs below reset both to `auto`. body[data-jp-theme-light] matches
- * every theme (the attribute is always present) and out-specifies core's
- * optional [data-jp-theme-scrollbars='true'] rule. Elements that set their
- * own scrollbar-color (e.g. core's .jp-scrollbar-tiny) keep it — a direct
- * declaration always beats an inherited value.
- */
+/* Slim quiet scrollbars. scrollbar-color inherits across shadow-DOM
+   boundaries, scrollbar-width does not — hence the descendant rule. In
+   Chromium a non-auto value for either disables ::-webkit-scrollbar styling,
+   so the carve-outs below reset both to `auto`. body[data-jp-theme-light]
+   matches every theme and out-specifies [data-jp-theme-scrollbars]. */
 body[data-jp-theme-light] {
   scrollbar-color: color-mix(in srgb, var(--jp-ui-font-color1) 28%, transparent)
     transparent;
 }
 
 /* The universal selector does not pierce shadow DOM, so @pierre internals
-   are untouched by the width rule. */
+   are untouched. */
 body[data-jp-theme-light],
 body[data-jp-theme-light] * {
   scrollbar-width: thin;
 }
 
 /* Carve-out: the dock tab strip keeps its hand-built 2px webkit scrollbar
-   (style/tabs.css); element-level `auto` re-enables those rules. */
+   (style/tabs.css). */
 .lm-DockPanel-tabBar .lm-TabBar-content {
   scrollbar-width: auto;
   scrollbar-color: auto;
 }
 
-/* Carve-out: @pierre/trees (file browser) and @pierre/diffs (git diffs)
-   build their own hover-revealed webkit scrollbars inside shadow roots —
-   including a scrollbar-measuring element that feeds the trees gutter
-   width. Resetting the hosts to `auto` makes their shadow trees inherit
-   `auto` again, re-enabling both. The body[...] prefix out-specifies the
-   universal width rule above. */
+/* Carve-out: @pierre/trees and @pierre/diffs build their own webkit
+   scrollbars inside shadow roots (one measures scrollbar width for the
+   trees gutter); `auto` on the hosts lets the shadow trees inherit it. */
 body[data-jp-theme-light] file-tree-container,
 body[data-jp-theme-light] diffs-container {
   scrollbar-width: auto;
   scrollbar-color: auto;
 }
 
-/* Carve-out: Lumino's drag cursor backdrop (the invisible scroll box that
-   follows the pointer while a splitter handle is held) hides its scrollbars
-   with scrollbar-width: none; the universal thin rule above out-specifies
-   that and would paint its thumbs as gray pills floating near the cursor. */
+/* Carve-out: Lumino's drag cursor backdrop hides its scrollbars; the thin
+   rule above would paint gray pills that follow the cursor. */
 body[data-jp-theme-light] .lm-cursor-backdrop {
   scrollbar-width: none;
 }
@@ -236,17 +179,11 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
 }
 
 /*
- * Re-assert the sidebar width floor over inline styles. Stock intends
- * --jp-sidebar-min-width as the floor for sidebar stack children, but a
- * widget moved into a sidebar (Move Widget To, or a drag) keeps the tiny
- * inline min-width Lumino wrote while it lived in the dock — and inline
- * beats the stylesheet, so the floor never engages for it. Combined with
- * the shell saving the raw split sizes while a sidebar is collapsed
- * (collapsed = ~0, unguarded upstream, unlike the down area's
- * _lastDownAreaSize), a restored workspace then expands that sidebar to a
- * 1px sliver. !important is the one thing that outranks an inline style;
- * with the floor restored, even a zero saved size expands to a usable
- * panel.
+ * Re-assert the sidebar width floor over inline styles: a widget moved into
+ * a sidebar keeps the tiny inline min-width Lumino wrote while it lived in
+ * the dock, and the shell saves ~0 split sizes for collapsed sidebars, so a
+ * restored workspace can expand one to a 1px sliver. !important is the one
+ * thing that outranks an inline style.
  */
 #jp-left-stack > .lm-Widget,
 #jp-right-stack > .lm-Widget {
@@ -263,20 +200,13 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
   border-color: var(--jp-border-color2);
 }
 
-/* The 5px gutters between tiled editors show whatever paints behind the
-   dock panel — stock falls through to the body's layout-color3 (#bdbdbd in
-   JupyterLab Light). A quiet surface makes split views separate with a
-   soft seam instead of a dark bar. */
+/* The 5px gutters between tiled editors show this surface. */
 #jp-main-dock-panel {
   background: var(--jp-layout-color2);
 }
 
-/*
- * Menu bar: stock hover is an opaque grey block, and the OPEN item paints
- * an opaque fill + 1px side borders + z6 shadow to fake a "tab connected
- * to the menu". Rounded translucent highlights instead; the transparent
- * 1px borders Lumino reserves keep their widths, so nothing shifts.
- */
+/* Menu bar: rounded translucent highlights; the 1px borders Lumino
+   reserves go transparent, so nothing shifts. */
 .lm-MenuBar-item {
   border-radius: 5px;
   transition: background-color 120ms ease;
@@ -301,13 +231,9 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
 }
 
 /*
- * Activity strips (left/right sidebar tab bars, in either orientation) and
- * the down-area tab bar: stock draws them as bordered layout-color2 bands
- * with separators between tabs and an opaque current tab — a classic
- * tab-widget look. Flatten onto the window surface: hairline seams, muted
- * icons that wake on hover, translucent washes, and a 2px brand accent on
- * the current tab's outer edge. All separator overrides change border
- * COLOR only, so the 1px widths Lumino measured stay.
+ * Activity strips (sidebar tab bars) and the down-area tab bar, flattened
+ * onto the window surface. All separator overrides change border COLOR
+ * only, so the 1px widths Lumino measured stay.
  */
 .jp-SideBar.lm-TabBar,
 #jp-down-stack .lm-TabBar {
@@ -367,9 +293,8 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
   border-right-color: transparent;
 }
 
-/* The current tab's "internal border override" pseudo-element paints an
-   opaque frame over the strip's edge hairline; keep the hairline running
-   continuously instead. */
+/* The current tab's ::after paints an opaque frame over the strip's edge
+   hairline; keep the hairline running continuously. */
 .jp-SideBar .lm-TabBar-tab.lm-mod-current::after {
   border-color: transparent;
 }
@@ -434,20 +359,17 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
   border-color: var(--jp-border-color2);
 }
 
-/* Stock gives the first-child current tab its own higher-specificity
-   border-right rule; recolor it at matching specificity or the seam stays
-   on the stronger border-color1 in dark themes. */
+/* Stock's first-child current tab has a higher-specificity border-right
+   rule; recolor at matching specificity or the seam stays darker. */
 #jp-down-stack > .lm-TabBar .lm-TabBar-tab.lm-mod-current:first-child {
   border-right-color: var(--jp-border-color2);
 }
 
 /*
- * Status bar: stock is a layout-color2 band with full-strength text, a
- * hover that jumps to solid layout-color3, and a solid brand-blue block
- * for the popup-open state. Window surface + hairline, muted text that
- * wakes on hover, translucent fills. The hairline is an inset shadow, not
- * a border: the bar is a border-box .lm-Widget and a border would eat into
- * the 24px height its items fill.
+ * Status bar: window surface + hairline, muted text that wakes on hover,
+ * translucent fills. The hairline is an inset shadow, not a border — the
+ * bar is a border-box .lm-Widget and a border would eat into its 24px
+ * height.
  */
 #jp-main-statusbar.jp-StatusBar-Widget {
   background: var(--jp-layout-color1);
@@ -462,8 +384,7 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
     color 120ms ease;
 }
 
-/* Stock .jp-StatusBar-TextItem hardcodes font-color1; inherit the muted
-   item color so hover brightens both together. */
+/* Stock TextItem hardcodes font-color1; inherit so hover brightens both. */
 .jp-StatusBar-Widget .jp-StatusBar-Item .jp-StatusBar-TextItem {
   color: inherit;
 }
@@ -491,9 +412,8 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
 }
 
 /* The log-console chip marks its open state with jp-mod-selected (a solid
-   brand block with white text in stock, no Popup involved). The muting
-   rules above would leave grey text on that solid brand background; give
-   the state the same translucent-brand treatment as jp-mod-clicked. */
+   brand block in stock); the muting rules above would leave grey text on
+   it, so give it the same treatment as jp-mod-clicked. */
 .jp-StatusBar-Widget .jp-StatusBar-Item.jp-mod-selected {
   color: var(--jp-ui-font-color1);
   background-color: color-mix(in srgb, var(--jp-brand-color1) 22%, transparent);
@@ -503,19 +423,13 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
   color: var(--jp-ui-font-color1);
 }
 
-/* Status bar hover popups hardcode a Material shadow; fold them into the
-   themed ramp so they soften with everything else. */
+/* Stock hardcodes a Material shadow; fold into the themed ramp. */
 .jp-StatusBar-HoverItem {
   box-shadow: var(--jp-elevation-z6);
 }
 
-/*
- * Resize handle affordance: the shell's split handles are 1px wide with an
- * invisible 8px hit area; dock handles between tiled editors are 5px.
- * Stock gives no hover feedback at all. Paint the accent on hover, delayed
- * 150ms so it never flashes while the pointer crosses a boundary (the VS
- * Code sash pattern). Background paint only.
- */
+/* Resize handle hover accent, delayed 150ms so it never flashes while the
+   pointer crosses a boundary (the VS Code sash pattern). Paint only. */
 #jp-main-split-panel > .lm-SplitPanel-handle,
 #jp-main-vsplit-panel > .lm-SplitPanel-handle {
   background-color: transparent;
@@ -528,8 +442,8 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
   transition-delay: 150ms;
 }
 
-/* Dock handles are 5px thick; a solid fill reads fat. Paint a 2px center
-   line on the existing ::after hit-area overlay and fade it in. */
+/* Dock handles are 5px thick; paint a 2px center line on the existing
+   ::after hit-area overlay instead of a fat solid fill. */
 #jp-main-dock-panel .lm-DockPanel-handle::after {
   opacity: 0;
   transition: opacity 120ms ease;
@@ -565,28 +479,23 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
 |---------------------------------------------------------------------------- */
 
 /*
- * Flat modern tab strip: slightly recessed surface, transparent inactive
- * tabs with muted labels, inset hairline separators, and a current tab
- * that merges with the toolbar below plus a rounded accent indicator.
- * Composes with the adaptive tab widths in style/tabs.css (no width/flex/
- * padding here). Doubled classes lift specificity over the stock rules in
- * @jupyterlab/application/style/tabs.css without depending on load order.
+ * Flat tab strip. Composes with the adaptive tab widths in style/tabs.css
+ * (no width/flex/padding here). Doubled classes lift specificity over the
+ * stock rules without depending on load order.
  */
 
-/* The strip: recessed surface with a hairline baseline drawn as an INSET
-   SHADOW (not a border, so the Lumino-measured bar height is unchanged).
-   The opaque current tab paints over it, producing the "active tab merges
-   with the toolbar below" seam for free. Dock tab bars only: the app's one
-   .lm-TabPanel-tabBar is the down-area bar, which draws real top/bottom
-   borders of its own — the inset baseline would double its bottom seam. */
+/* The strip baseline is an INSET SHADOW, not a border, so the bar height
+   Lumino measured is unchanged; the opaque current tab paints over it,
+   merging with the toolbar below. Dock tab bars only: the down-area
+   .lm-TabPanel-tabBar draws real borders and would double its seam. */
 .lm-DockPanel-tabBar[data-orientation='horizontal'] {
   background: var(--jp-layout-color2);
   box-shadow: inset 0 calc(-1 * var(--jp-border-width)) 0
     var(--jp-border-color2);
 }
 
-/* Companion recolor for the thin tab-strip scrollbar (style/tabs.css):
-   let the strip surface show through instead of a layout-color1 track. */
+/* Let the strip surface show through the thin tab-strip scrollbar
+   (style/tabs.css). */
 .lm-DockPanel-tabBar .lm-TabBar-content::-webkit-scrollbar,
 .lm-DockPanel-tabBar .lm-TabBar-content::-webkit-scrollbar-track {
   background: transparent;
@@ -604,10 +513,9 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
     color 120ms ease;
 }
 
-/* The stock per-tab bottom hairline is superseded by the strip's inset
-   baseline. Single class on purpose: this ties the stock base rule (same
-   specificity, we load later) while staying BELOW the stock :focus-visible
-   recolor, so the keyboard-focus underline still renders. */
+/* The strip's inset baseline supersedes the stock per-tab hairline. Single
+   class on purpose: ties the stock rule (we load later) while staying below
+   its :focus-visible recolor, so the keyboard underline still renders. */
 .lm-DockPanel-tabBar .lm-TabBar-tab:not(.lm-mod-current)::after,
 .lm-DockPanel-tabBar .lm-TabBar-addButton::after {
   border-bottom-color: transparent;
@@ -632,12 +540,12 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
   border-color: var(--jp-border-color2);
 }
 
-/* The stock edge-to-edge 2px brand bar on the app-level active tab is kept
-   as-is: it doubles as the tab's separator edge in the flat strip. */
+/* The stock 2px brand bar on the app-level active tab stays: it doubles as
+   the tab's separator edge in the flat strip. */
 
-/* Inset hairline separators between inactive tabs. Absolutely positioned
-   ::before, so no layout impact. Current tabs are excluded because their
-   ::before is the accent indicator. */
+/* Inset separators between inactive tabs (absolutely positioned ::before,
+   no layout impact). Current tabs excluded: their ::before is the accent
+   indicator. */
 .lm-DockPanel-tabBar
   .lm-TabBar-tab
   + .lm-TabBar-tab:not(.lm-mod-current, .jp-mod-current)::before {
@@ -650,20 +558,19 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
   background: var(--jp-border-color2);
 }
 
-/* No separator immediately right of the current tab — its contrast edge is
-   the separator. Must come after the rule above. */
+/* No separator right of the current tab — its contrast edge is the
+   separator. Must come after the rule above. */
 .lm-DockPanel-tabBar
   .lm-TabBar-tab.lm-mod-current
   + .lm-TabBar-tab.lm-TabBar-tab::before {
   content: none;
 }
 
-/* A dragged dock tab is always lm-mod-current (Lumino selects the pressed
-   tab on pointerdown, and dock tab bars disallow deselect), so the opaque
-   current-tab surface above already keeps its label legible during drags. */
+/* A dragged dock tab is always lm-mod-current (Lumino selects on
+   pointerdown; dock bars disallow deselect), so the opaque current surface
+   keeps its label legible during drags. */
 
-/* The + button sits on the strip: drop its own layout-color2 box and give
-   it a rounded hover chip consistent with toolbar buttons. */
+/* The + button: rounded hover chip consistent with toolbar buttons. */
 .lm-DockPanel-tabBar .lm-TabBar-addButton.lm-TabBar-addButton,
 .lm-TabPanel-tabBar .lm-TabBar-addButton.lm-TabBar-addButton {
   background-color: transparent;
@@ -681,12 +588,10 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
 }
 
 /*
- * Tab close button: dimmed until the tab is hovered (45%, not 0, so the
- * target stays discoverable), with a soft rounded chip when the icon
- * itself is hovered. The chip is background + a 2px spread shadow of the
- * same color, so the icon's box never changes and the adaptive tab widths
- * stay stable. Dirty tabs render the unsaved dot inside the close-icon
- * slot and stay at full opacity.
+ * Close icon at 45% (not 0 — stays discoverable) until the tab is hovered.
+ * The hover chip is background + a 2px spread shadow of the same color, so
+ * the icon's box never changes and the adaptive tab widths stay stable.
+ * Dirty tabs render the unsaved dot in this slot at full opacity.
  */
 .lm-DockPanel-tabBar .lm-TabBar-tab.lm-mod-closable > .lm-TabBar-tabCloseIcon {
   opacity: 0.45;
@@ -723,11 +628,9 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
 |---------------------------------------------------------------------------- */
 
 /*
- * Toolbar buttons are <jp-button appearance="stealth"> elements; the inner
- * control is an exported shadow part, and document-level ::part() rules win
- * over the component's internal FAST-palette fills — so hover chrome
- * becomes theme-derived and consistent across every toolbar. The blue
- * new-launcher CTA keeps its own accept-color hover (style/base.css).
+ * Toolbar buttons are <jp-button appearance="stealth"> elements; document
+ * ::part(control) rules win over the component's internal FAST-palette
+ * fills. The blue new-launcher CTA keeps its own hover (style/base.css).
  */
 .jp-Toolbar .jp-ToolbarButtonComponent::part(control) {
   border-radius: 5px;
@@ -742,7 +645,7 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
 }
 
 /* Deprecated plain-button path still used by some extensions: same
-   treatment, mixed over its opaque resting fill. */
+   treatment over its opaque resting fill. */
 .jp-Toolbar button.jp-ToolbarButtonComponent {
   border-radius: 5px;
   transition: background-color 120ms ease;
@@ -760,9 +663,7 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
 | Controls
 |---------------------------------------------------------------------------- */
 
-/* Dialog/action buttons ship letter-spacing 0.8px — a Material convention
-   that instantly dates the UI. Near-normal tracking, medium weight, and
-   the hover ease stock buttons lack. */
+/* Stock dialog buttons ship Material 0.8px letter-spacing. */
 button.jp-mod-styled {
   letter-spacing: 0.2px;
   font-weight: 500;
@@ -812,15 +713,10 @@ select.jp-mod-styled,
 |---------------------------------------------------------------------------- */
 
 /*
- * Dropdown, context, and submenus: stock is square, hard-bordered
- * (border-color1), with a Material z6 shadow, full-bleed highlights, and a
- * mix-blend-mode separator that goes near-black on dark themes. Every
- * JupyterLab menu carries .jp-ThemedContainer (MenuSvg adds it), giving a
- * deterministic specificity bump over the stock .lm-Menu rules.
- *
- * The 5px side padding insets the item highlight macOS-style. Lumino
- * measures the menu node after attach and before positioning, so the
- * wider box is fully accounted for in its placement math.
+ * Every JupyterLab menu carries .jp-ThemedContainer (MenuSvg adds it) — a
+ * deterministic specificity bump over the stock .lm-Menu rules. Lumino
+ * measures the menu node after attach and before positioning, so the 5px
+ * side padding is fully accounted for in its placement math.
  */
 .lm-Menu.jp-ThemedContainer {
   padding: 4px 5px;
@@ -828,33 +724,25 @@ select.jp-mod-styled,
   border-color: color-mix(in srgb, var(--jp-border-color1) 55%, transparent);
 }
 
-/* Detach menubar dropdowns: stock pulls them up 2px to fuse with the bar.
-   Lumino positions the menu with an inline transform; this CSS `top`
-   offsets it. Lumino's max-height math does not know about the offset, so
-   a dropdown tall enough to hit the viewport bottom extends 3px past it —
-   only its bottom rounding is lost, and only on overfull menus. */
+/* Detach dropdowns (stock pulls them up 2px to fuse with the bar). Lumino's
+   max-height math doesn't know about this offset, so an overfull menu runs
+   3px past the viewport bottom — only its bottom rounding is lost. */
 .lm-Menu.lm-MenuBar-menu.jp-ThemedContainer {
   top: 3px;
 }
 
-/* The active-row highlight is painted on the row itself: table-row
-   backgrounds paint uniformly across the row, whereas per-cell painting
-   breaks — MenuSvg swaps the icon and submenu-caret cells for inline-block
-   elements whose boxes do not span the row (the icon cell is 0px tall).
-   The menu's 5px side padding keeps the highlight inset from the panel
-   edge; rounding is forfeited because border-radius does not render on
-   table rows. */
+/* Painted on the row: per-cell painting breaks because MenuSvg swaps the
+   icon and caret cells for inline-block boxes that do not span the row.
+   border-radius does not render on table rows, so rounding is forfeited. */
 .lm-Menu.jp-ThemedContainer .lm-Menu-item.lm-mod-active {
   background: color-mix(in srgb, var(--jp-ui-font-color1) 8%, transparent);
 }
 
-/* Muted shortcut hints, like every modern menu. */
 .lm-Menu.jp-ThemedContainer .lm-Menu-itemShortcut {
   color: var(--jp-ui-font-color3);
 }
 
-/* Stock separators multiply a light grey (mix-blend-mode), which goes
-   muddy on dark themes. Plain theme hairline instead. */
+/* Stock separators multiply (mix-blend-mode) and go muddy on dark themes. */
 .lm-Menu.jp-ThemedContainer .lm-Menu-item[data-type='separator'] > div::after {
   border-top-color: var(--jp-border-color2);
   mix-blend-mode: normal;
@@ -864,8 +752,8 @@ select.jp-mod-styled,
 | Command palette
 |---------------------------------------------------------------------------- */
 
-/* The modal palette as a floating panel. The hairline edge is a shadow
-   ring, not a border, so the CSS-positioned panel's size is unchanged. */
+/* The modal palette as a floating panel; the edge is a shadow ring, not a
+   border, so the CSS-positioned panel's size is unchanged. */
 .jp-ModalCommandPalette.jp-ThemedContainer {
   border-radius: 10px;
   overflow: hidden;
@@ -875,14 +763,13 @@ select.jp-mod-styled,
     0 16px 48px -12px var(--jp-shadow-umbra-color);
 }
 
-/* Rounded search field (keeps stock's inset border + focus treatment). */
+/* Rounded search field. */
 .jp-ModalCommandPalette .lm-CommandPalette-wrapper {
   border-radius: 6px;
 }
 
-/* Result rows: stock already insets them 4px in the modal variant.
-   (Section headers need no treatment: stock hides them entirely in the
-   modal palette.) */
+/* Stock already insets rows 4px and hides section headers in the modal
+   palette. */
 .jp-ModalCommandPalette .lm-CommandPalette .lm-CommandPalette-item {
   border-radius: 6px;
   transition: background-color 120ms ease-out;
@@ -892,9 +779,8 @@ select.jp-mod-styled,
 | Dialogs
 |---------------------------------------------------------------------------- */
 
-/* Dialog card: top of the radius scale, hairline ring for edge definition
-   on dark themes, soft themed elevation. The content node already clips
-   children with overflow: hidden. */
+/* Hairline ring for edge definition on dark themes; the content node
+   already clips its children. */
 .jp-Dialog.jp-ThemedContainer .jp-Dialog-content {
   border-radius: 12px;
   box-shadow:
@@ -902,14 +788,14 @@ select.jp-mod-styled,
     var(--jp-elevation-z20);
 }
 
-/* Smaller + semibold beats big-and-thin (stock is size3 / weight 400). */
+/* Smaller + semibold beats stock's big-and-thin (size3 / weight 400). */
 .jp-Dialog.jp-ThemedContainer .jp-Dialog-header {
   font-size: var(--jp-ui-font-size2);
   font-weight: 600;
 }
 
-/* Frost the scrim slightly so the dialog pops without a darker tint.
-   Progressive enhancement over the theme's --jp-dialog-background. */
+/* Frost the scrim; progressive enhancement over the theme's
+   --jp-dialog-background. */
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   .jp-Dialog.jp-ThemedContainer {
     -webkit-backdrop-filter: blur(3px);
@@ -922,9 +808,8 @@ select.jp-mod-styled,
 |---------------------------------------------------------------------------- */
 
 /* Same popover recipe as menus, but NOT frosted: translucency over code
-   hurts scan-reading of completions. The completer's JS sizing sets inline
-   width/max-height; radius and border-color change nothing it measures,
-   and overflow: hidden only clips paint (both children scroll internally). */
+   hurts scanning. The completer's JS sizing (inline width/max-height) is
+   unaffected; overflow: hidden only clips paint. */
 .jp-Completer.jp-ThemedContainer {
   border-radius: 8px;
   overflow: hidden;
@@ -940,10 +825,8 @@ select.jp-mod-styled,
 | Document search overlay
 |---------------------------------------------------------------------------- */
 
-/* The find/replace overlay drops in as a hard-cornered flap with a
-   full-strength bordered input. Round its one exposed corner, float it on
-   the themed elevation ramp, and give the fields the app-wide soft-border
-   + focus-ring treatment. */
+/* Round the overlay's one exposed corner and float it on the themed
+   elevation ramp. */
 .jp-DocumentSearch-overlay {
   border-bottom-left-radius: 8px;
   border-color: var(--jp-border-color2);
@@ -978,9 +861,8 @@ select.jp-mod-styled,
 |---------------------------------------------------------------------------- */
 
 /* Drop-zone overlay: stock hardcodes a Material-blue tint that ignores the
-   active theme, with a dashed marquee border. Soft brand wash, solid
-   hairline, rounded. The overlay is an absolutely positioned
-   pointer-events:none node whose geometry Lumino sets inline. */
+   theme. The overlay is a pointer-events: none node whose geometry Lumino
+   sets inline. */
 .lm-DockPanel-overlay {
   background: color-mix(in srgb, var(--jp-brand-color1) 10%, transparent);
   border: var(--jp-border-width) solid
@@ -997,9 +879,8 @@ select.jp-mod-styled,
   border-width: var(--jp-border-width);
 }
 
-/* Drag ghosts (cursor-following overlay nodes attached to body): one
-   rounded-card language instead of the stock brand top-border on tab
-   ghosts and hardcoded black shadows on cell ghosts. */
+/* Drag ghosts (cursor-following nodes attached to body): one rounded-card
+   language. */
 .lm-TabBar-tab.lm-mod-drag-image.lm-mod-drag-image {
   border-color: var(--jp-border-color2);
   border-radius: 6px;
@@ -1027,10 +908,8 @@ select.jp-mod-styled,
 | Notebook cells and content
 |---------------------------------------------------------------------------- */
 
-/* Rounded code-cell editor. Stock forces border-radius: 0; the element
-   already has overflow: hidden, so the radius clips the CodeMirror
-   background and active-line highlight cleanly. Console prompt cells share
-   the class. */
+/* Stock forces border-radius: 0; the element's own overflow: hidden clips
+   the CodeMirror background cleanly. Console prompt cells share the class. */
 .jp-InputArea-editor {
   border-radius: 6px;
 }
@@ -1045,13 +924,12 @@ select.jp-mod-styled,
   border-radius: 6px;
 }
 
-/* Command-mode focus ring joins the radius scale. */
 .jp-Notebook.jp-mod-commandMode .jp-Cell.jp-mod-active:focus-visible {
   border-radius: 6px;
 }
 
-/* The 8px active-cell indicator bar becomes a full pill (radius = half the
-   --jp-cell-collapser-width) and animates quietly. Width/flex untouched. */
+/* The 8px collapser becomes a full pill (radius = half
+   --jp-cell-collapser-width). */
 .jp-Collapser {
   border-radius: 4px;
   transition:
@@ -1059,8 +937,7 @@ select.jp-mod-styled,
     opacity 120ms ease;
 }
 
-/* Calmer collapser hover: translucent brand instead of Material elevation
-   + opacity flicker. */
+/* Calmer hover: translucent brand instead of Material elevation. */
 .jp-Notebook .jp-Cell .jp-Collapser:hover {
   opacity: 1;
   background: color-mix(in srgb, var(--jp-brand-color1) 55%, transparent);
@@ -1071,11 +948,9 @@ select.jp-mod-styled,
   background: var(--jp-brand-color1);
 }
 
-/* In[n]/Out[n] two steps smaller with tabular figures (no [9]->[10]
-   jitter). The line box is pinned to the height of one code line so the
-   smaller text stays optically aligned with the first code line; the
-   prompt column width is untouched. Markdown cells keep their own
-   higher-specificity font-size from stock. */
+/* Prompts two steps smaller with tabular figures (no [9]->[10] jitter);
+   the line box is pinned to one code line so the smaller text stays
+   aligned with the first code line. */
 .jp-InputPrompt,
 .jp-OutputPrompt {
   font-size: calc(var(--jp-code-font-size) - 2px);
@@ -1083,8 +958,7 @@ select.jp-mod-styled,
   font-variant-numeric: tabular-nums;
 }
 
-/* Output-collapse hover overlay: drop the harsh inset inverse hairline,
-   join the radius scale. */
+/* Output-collapse hover overlay: drop the stock inset inverse hairline. */
 .jp-OutputArea-promptOverlay {
   border-radius: 6px;
 }
@@ -1094,8 +968,7 @@ select.jp-mod-styled,
   box-shadow: none;
 }
 
-/* Markdown blockquote: hairline accent instead of the heavy 5px grey slab,
-   quoted text stepped down to the secondary content color. */
+/* Hairline accent instead of the stock 5px grey slab. */
 .jp-RenderedHTMLCommon blockquote {
   color: var(--jp-content-font-color2);
   border-left: 3px solid var(--jp-border-color1);
@@ -1105,11 +978,9 @@ select.jp-mod-styled,
 | Terminal
 |---------------------------------------------------------------------------- */
 
-/* The terminal widget paints no background of its own, so the 8px body
-   padding shows the dock panel surface as a mismatched frame. Match the
-   xterm theme: 'inherit' reads --jp-layout-color0 in JS, and the forced
-   modes mirror the #fff/#000 the xterm theme hardcodes (they key off the
-   terminal's own theme setting, not the app theme). */
+/* The terminal paints no background of its own, so the 8px body padding
+   shows the dock surface. 'inherit' reads --jp-layout-color0 in JS; the
+   forced modes mirror the #fff/#000 the xterm theme hardcodes. */
 .jp-Terminal[data-term-theme='inherit'] {
   background: var(--jp-layout-color0);
 }
@@ -1127,17 +998,15 @@ select.jp-mod-styled,
 |---------------------------------------------------------------------------- */
 
 /*
- * The signature: transient surfaces frost over the workspace, the way
- * native macOS menus do. Translucent theme-derived background + backdrop
- * blur, as progressive enhancement — without backdrop-filter support the
- * stock opaque backgrounds remain. Chromium clips backdrop-filter to
- * border-radius automatically. Deliberately excludes the completer
- * (readability over code) and dialogs (content surfaces stay solid).
+ * The signature: transient surfaces frost over the workspace. Progressive
+ * enhancement — without backdrop-filter the stock opaque backgrounds
+ * remain. Chromium clips backdrop-filter to border-radius automatically.
+ * Deliberately excludes the completer (readability over code) and dialogs
+ * (content surfaces stay solid).
  */
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  /* Context menus + menubar dropdowns. The `background` shorthand also
-     clears the menubar dropdown's scroll-hint gradients, which only appear
-     on menus taller than the viewport — acceptable loss. */
+  /* The `background` shorthand also clears the dropdown scroll-hint
+     gradients (menus taller than the viewport) — acceptable loss. */
   .lm-Menu.jp-ThemedContainer,
   .lm-MenuBar-menu.jp-ThemedContainer {
     background: color-mix(in srgb, var(--jp-layout-color0) 72%, transparent);

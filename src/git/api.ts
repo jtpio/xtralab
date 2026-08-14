@@ -10,19 +10,14 @@ import {
 } from './tokens';
 
 /**
- * Root URL segment used by the `jupyterlab_git` server extension. Every
- * endpoint hangs off this prefix; the `<repoPath>` between it and the
- * endpoint suffix is the JupyterLab server-relative path of the git
- * repository (URL-encoded). For an empty `repoPath` the URL collapses to
- * `/git/<endpoint>` — a shape git's URL routing also accepts.
+ * URL prefix of the `jupyterlab_git` server extension: `/git/<repoPath>/<endpoint>`,
+ * collapsing to `/git/<endpoint>` for an empty repoPath (also accepted).
  */
 const GIT_NAMESPACE = 'git';
 
 /**
- * Issue a `POST` against a `jupyterlab_git` endpoint that takes a `<path>`
- * prefix (e.g. `/git/<path>/status`). The response body is decoded as JSON;
- * non-2xx responses are surfaced via the JupyterLab `ServerConnection`
- * machinery so callers can show their `message` field as-is.
+ * `POST` a `jupyterlab_git` endpoint (`/git/<path>/<endpoint>`); non-2xx
+ * surfaces as a `ResponseError` carrying the body's `message`.
  */
 async function postWithPath<T>(
   endpoint: string,
@@ -30,8 +25,7 @@ async function postWithPath<T>(
   body: unknown
 ): Promise<T> {
   const settings = ServerConnection.makeSettings();
-  // `URLExt.encodeParts` encodes each path segment but preserves slashes
-  // between them — the server expects the path to look like a posix path.
+  // encodeParts keeps the slashes the server's posix-path routing expects.
   const encodedPath = repoPath.length > 0 ? URLExt.encodeParts(repoPath) : '';
   const url = URLExt.join(
     settings.baseUrl,
@@ -50,7 +44,7 @@ async function postWithPath<T>(
     try {
       data = JSON.parse(text) as T;
     } catch {
-      // Fall through into the error handling below.
+      // Non-JSON bodies still surface via the ResponseError below.
     }
   }
   if (!response.ok) {
@@ -62,18 +56,16 @@ async function postWithPath<T>(
 }
 
 /**
- * Fetch `git status --porcelain` for the repository the server resolves at
- * `repoPath`. When `repoPath` is the empty string, git resolves the repo
- * from the JupyterLab server's root directory.
+ * Fetch `git status --porcelain` for the repo at `repoPath` (empty string
+ * resolves from the server's root directory).
  */
 export async function status(repoPath: string): Promise<IGitStatusResult> {
   return postWithPath<IGitStatusResult>('status', repoPath, {});
 }
 
 /**
- * Fetch a file's contents at a particular git reference. `filename` is the
- * file's path relative to the git repository root (matching the `to` field
- * of {@link status}'s response).
+ * Fetch a file's contents at a git reference; `filename` is relative to the
+ * git repository root.
  */
 export async function content(
   repoPath: string,
@@ -88,13 +80,7 @@ export async function content(
 
 /**
  * Expand the porcelain `files` array into one entry per logical change.
- * A single porcelain row may map to two `IFileChange` rows (a file that's
- * both staged and modified again in the worktree); callers that just want
- * a flat list of all changes — without any staged-vs-unstaged grouping —
- * can use this helper.
- *
- * Provided as a manual concat rather than `Array.prototype.flatMap` so we
- * don't pin our `tsconfig.lib` to ES2019.
+ * Manual concat rather than `flatMap` so `tsconfig.lib` need not be ES2019.
  */
 export function expandStatusFiles(files: IGitStatusFile[]): IFileChange[] {
   const result: IFileChange[] = [];
@@ -107,12 +93,9 @@ export function expandStatusFiles(files: IGitStatusFile[]): IFileChange[] {
 }
 
 /**
- * Translate one entry in the porcelain `files` array into the panel's
- * preferred shape. A single porcelain entry may represent up to two changes
- * (one in the index, one in the worktree); we emit one {@link IFileChange}
- * per non-empty side, so a "modified-staged-and-then-modified-again" file
- * shows up twice in the panel — once under "Staged Changes" and once under
- * "Changes" — matching the layout the user sees in VS Code.
+ * Map one porcelain entry to up to two {@link IFileChange} rows — one per
+ * non-empty index/worktree side — so a staged-then-modified-again file
+ * appears under both groups, as in VS Code.
  */
 function porcelainToFileChanges(file: IGitStatusFile): IFileChange[] {
   const result: IFileChange[] = [];

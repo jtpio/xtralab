@@ -158,12 +158,8 @@ class JupyterLabSupervisor:
         self.token = secrets.token_hex(19)
         self.base_url = f"http://127.0.0.1:{self.port}"
         self.mcp_url = f"http://127.0.0.1:{self.mcp_port}/mcp"
-        # Load each folder into its own named workspace so its open tabs and
-        # panel layout persist to a dedicated ``<name>.jupyterlab-workspace``
-        # file. Plain ``/lab`` uses the implicit ``default`` workspace shared by
-        # every window, which makes opening one folder restore the tabs left by
-        # another. ``quote`` keeps the URL well-formed; jupyterlab_server only
-        # routes ``[A-Za-z0-9_-]`` workspace names.
+        # Plain ``/lab`` shares the ``default`` workspace, so one folder would
+        # restore another's tabs; jupyterlab_server routes only ``[A-Za-z0-9_-]``.
         app_path = "/lab"
         if workspace:
             app_path = f"/lab/workspaces/{urllib.parse.quote(workspace, safe='')}"
@@ -203,12 +199,8 @@ class JupyterLabSupervisor:
         if self.process is not None:
             raise RuntimeError("JupyterLab supervisor has already been started")
 
-        # Hand the MCP server's URL to every child process — the terminals
-        # Jupyter spawns and the coding agents launched inside them — so the
-        # ``jupyter-server-mcp-proxy`` an agent starts connects straight to
-        # this server's port instead of falling back to runtime-file
-        # discovery. ``self.env is None`` means "inherit our environment", so
-        # seed from ``os.environ`` in that case before adding the variable.
+        # Terminals and their agents inherit this, so jupyter-server-mcp-proxy
+        # connects to this server's port instead of runtime-file discovery.
         child_env = dict(os.environ if self.env is None else self.env)
         child_env["JUPYTER_SERVER_MCP_URL"] = self.mcp_url
 
@@ -217,12 +209,8 @@ class JupyterLabSupervisor:
                 self.command,
                 cwd=self.cwd,
                 env=child_env,
-                # Detach the server — and the ``rg`` process that
-                # jupyterlab-search-replace spawns — from our stdin. Given no path
-                # arguments and a readable pipe on stdin (which the desktop shell
-                # hands us), ripgrep searches stdin instead of the working directory
-                # and blocks forever. /dev/null is a character device, which ripgrep
-                # ignores, so it searches the files on disk.
+                # rg (jupyterlab-search-replace) blocks searching the readable
+                # stdin pipe the desktop shell hands us; rg ignores character devices.
                 stdin=subprocess.DEVNULL,
                 stdout=stdout,
                 stderr=stderr,

@@ -16,18 +16,9 @@ import {
 
 import { resolveDiffTheme } from './diffTheme';
 
-/**
- * The CSS class added to the root of the notebook diff. Selectors that
- * style cell sections, headers, and the per-cell diff blocks hang off this
- * class.
- */
 const NOTEBOOK_DIFF_CSS_CLASS = 'jp-xtralab-NotebookDiff';
 
-/**
- * Minimal slice of nbformat 4.x that the diff inspects. Fields we don't
- * read (attachments, e.g.) are intentionally not narrowed — we still pass
- * them around as part of the cell, but we never project them into the diff.
- */
+/** Minimal slice of nbformat 4.x that the diff inspects. */
 interface INotebookCell {
   cell_type: string;
   id?: string;
@@ -58,11 +49,8 @@ interface INotebook {
 }
 
 /**
- * One entry in the per-cell diff. `unchanged` cells are rendered as a
- * collapsed summary; the other variants render their source / outputs /
- * metadata via {@link FileDiff}. The `modified` and `unchanged` branches
- * carry the same payload but live on separate union members so `Extract`
- * narrowing works on `kind` literals downstream.
+ * One entry in the per-cell diff. `modified` and `unchanged` carry the same
+ * payload on separate union members so `Extract` narrowing on `kind` works.
  */
 type NotebookCellDiff =
   | {
@@ -90,32 +78,20 @@ type NotebookCellDiff =
       oldIndex: number;
     };
 
-/**
- * Notebook-level diff result returned by {@link buildNotebookDiff}. Returns
- * `null` from the builder when either side fails to parse — the caller then
- * falls back to a raw JSON file diff.
- */
+/** Notebook-level diff result returned by {@link buildNotebookDiff}. */
 export interface INotebookDiffResult {
   oldNotebook: INotebook;
   newNotebook: INotebook;
   cells: NotebookCellDiff[];
-  /**
-   * Kernel language pulled from `metadata.language_info.name`, used to pick
-   * a syntax-highlighting filename for code cells.
-   */
+  /** Kernel language from `metadata.language_info.name`; picks the highlighting filename. */
   language: string | undefined;
-  /**
-   * Pre-computed diff for notebook-level metadata (kernelspec, language_info,
-   * nbformat) when it differs between revisions; `null` otherwise so the
-   * section can be hidden without further checks.
-   */
+  /** Diff of notebook-level metadata when it differs between revisions; `null` otherwise. */
   notebookMetadataDiff: FileDiffMetadata | null;
 }
 
 /**
- * Parse notebook JSON. Returns `null` if the text doesn't parse or doesn't
- * look like a notebook (missing `cells` array). The caller falls back to a
- * raw text diff so a malformed file is still inspectable.
+ * Parse notebook JSON. Returns `null` when the text is not a notebook so
+ * the caller can fall back to a raw text diff.
  */
 function parseNotebook(text: string): INotebook | null {
   if (text.length === 0) {
@@ -150,12 +126,7 @@ function emptyNotebook(): INotebook {
   };
 }
 
-/**
- * nbformat allows multiline string fields (`source`, stream `text`,
- * `text/plain` outputs, …) to be either a single string or an array of
- * strings. Normalize to one string so equality checks and diffs see the
- * same shape regardless of how the writer chose to serialize it.
- */
+/** nbformat multiline fields may be a string or a string array; normalize to one string. */
 function joinMultiline(value: string | string[] | undefined): string {
   if (value === undefined) {
     return '';
@@ -168,11 +139,9 @@ function cellSource(cell: INotebookCell): string {
 }
 
 /**
- * Canonical text representation of a cell's outputs, used both for equality
- * checks and for the per-cell output diff. Stream and `text/plain` data
- * round-trip verbatim; richer mime types (image/png, text/html, …) collapse
- * to a `<mime-type>` placeholder so diffing image bytes doesn't drown the
- * panel in base64 noise.
+ * Canonical text form of a cell's outputs, used for equality checks and
+ * diffs. Rich mime types collapse to a `<mime-type>` placeholder so base64
+ * payloads don't drown the diff.
  */
 function canonicalOutputs(cell: INotebookCell): string {
   const outputs = cell.outputs ?? [];
@@ -213,10 +182,7 @@ function formatOutput(output: INotebookOutput): string {
     case 'error': {
       const ename = output.ename ?? 'Error';
       const evalue = output.evalue ?? '';
-      // Tracebacks contain ANSI escape codes by default. Strip them so the
-      // diff stays readable — coloring information has no analog in a plain
-      // text diff, and the escapes themselves would inflate every traceback
-      // line into a fake change.
+      // Strip ANSI escapes so tracebacks don't diff on coloring noise.
       const traceback = (output.traceback ?? []).map(stripAnsi).join('\n');
       return `[error]\n${ename}: ${evalue}\n${traceback}`;
     }
@@ -225,10 +191,7 @@ function formatOutput(output: INotebookOutput): string {
   }
 }
 
-// Matching ANSI escape codes inherently requires a control character in
-// the pattern, which is what no-control-regex flags. Disable the rule on
-// this single literal — silently emitting un-stripped escapes would just
-// reintroduce the very noise stripAnsi exists to remove.
+// Matching ANSI escapes requires a control character in the pattern.
 // eslint-disable-next-line no-control-regex
 const ANSI_ESCAPE_RE = /\x1B\[[0-9;]*[A-Za-z]/g;
 
@@ -237,10 +200,8 @@ function stripAnsi(value: string): string {
 }
 
 /**
- * Stable JSON of the cell's `metadata` object. Keys are sorted recursively
- * so a writer that re-orders the metadata object doesn't surface as a diff.
- * An empty metadata object returns the empty string so freshly-added cells
- * that carry the default `{}` don't produce a `+{}` placeholder section.
+ * Stable sorted JSON of the cell's `metadata`; empty metadata returns ''
+ * so cells carrying the default `{}` don't produce a `+{}` diff section.
  */
 function canonicalMetadata(cell: INotebookCell): string {
   const md = cell.metadata ?? {};
@@ -250,11 +211,7 @@ function canonicalMetadata(cell: INotebookCell): string {
   return stableStringify(md);
 }
 
-/**
- * Stable JSON of the notebook-level metadata bundle (kernelspec, language
- * info, nbformat). We diff the bundle as a single block so the user sees
- * all environment-level changes in one place.
- */
+/** Stable JSON of the notebook-level metadata bundle, diffed as a single block. */
 function canonicalNotebookMetadata(notebook: INotebook): string {
   return stableStringify({
     metadata: notebook.metadata,
@@ -279,11 +236,8 @@ function sortKeysReplacer(key: string, value: unknown): unknown {
 }
 
 /**
- * Equality check used to classify matched cells as `unchanged` vs
- * `modified`. Compares the three things we actually render — type, source,
- * outputs, metadata — using the same canonical representations the diff
- * itself sees, so an "equal" verdict here implies all per-cell diff blocks
- * would be empty.
+ * Classify matched cells as `unchanged` vs `modified` using the same
+ * canonical forms the diff renders, so "equal" implies empty per-cell diffs.
  */
 function cellsAreEqual(a: INotebookCell, b: INotebookCell): boolean {
   return (
@@ -295,16 +249,9 @@ function cellsAreEqual(a: INotebookCell, b: INotebookCell): boolean {
 }
 
 /**
- * Align cells between two notebook revisions. Cells that carry a stable id
- * (nbformat ≥ 4.5) match on their id; remaining cells fall back to
- * positional matching against the next un-consumed unidentified old cell so
- * older notebooks still produce a sensible diff.
- *
- * Output ordering: entries follow new-file order, with cells that exist
- * only in the old revision appended at the end as `removed`. We don't try
- * to interleave removals at their original position — for typical notebook
- * edits this is more readable than guessing alignment between unrelated
- * insertions and deletions.
+ * Align cells between two revisions: stable ids (nbformat ≥ 4.5) match by
+ * id, the rest positionally. Entries follow new-file order with old-only
+ * cells appended as `removed`.
  */
 function alignNotebookCells(
   oldCells: INotebookCell[],
@@ -320,8 +267,7 @@ function alignNotebookCells(
   const consumed = new Set<number>();
   const entries: NotebookCellDiff[] = [];
 
-  // Cursor used for positional matching of unidentified cells. Only advances
-  // forward so we don't double-match a single old cell.
+  // Only advances forward so one old cell is never matched twice.
   let positionalCursor = 0;
 
   for (let newIndex = 0; newIndex < newCells.length; newIndex++) {
@@ -380,13 +326,10 @@ interface IBuildNotebookDiffOptions {
 }
 
 /**
- * Build a complete notebook diff from the textual contents of two
- * revisions. Returns `null` if either side fails to parse as a notebook;
- * the caller is expected to fall back to a raw text diff in that case.
- *
- * An empty string on either side is treated as an empty notebook (no
- * cells, default metadata) so a freshly-added or deleted notebook still
- * produces a sensible cell-by-cell diff.
+ * Build a notebook diff from the text of two revisions. Returns `null` when
+ * either side fails to parse (caller falls back to a raw text diff); an
+ * empty string counts as an empty notebook so added/deleted notebooks still
+ * diff cell by cell.
  */
 export function buildNotebookDiff(
   options: IBuildNotebookDiffOptions
@@ -425,10 +368,8 @@ function detectLanguage(notebook: INotebook): string | undefined {
 }
 
 /**
- * Pick a filename whose extension drives `@pierre/diffs`'s syntax
- * highlighter. The library never reads the file from disk — `name` only
- * influences token-level rendering, so any plausible extension that maps
- * to the right language is fine.
+ * Pick a filename whose extension drives the `@pierre/diffs` highlighter;
+ * the library never reads the file, only the extension matters.
  */
 function cellFilename(
   cell: INotebookCell,
@@ -462,11 +403,7 @@ function cellFilename(
   }
 }
 
-/**
- * Build the FileContents pair the diff library wants. `kind` controls the
- * filename so each per-cell sub-diff (source, metadata) gets the right
- * extension and therefore the right highlighter.
- */
+/** Build the FileContents pair; `kind` picks the filename and thus the highlighter. */
 function pierreFiles(
   kind: 'source' | 'metadata',
   oldText: string,
@@ -479,8 +416,7 @@ function pierreFiles(
   if (kind === 'metadata') {
     name = 'cell-metadata.json';
   } else {
-    // Use the new cell's type/language when available; fall back to the old
-    // side so a deleted cell still gets the right highlighter.
+    // Fall back to the old side so a deleted cell still gets the right highlighter.
     const reference = newCell ?? oldCell;
     name = reference !== null ? cellFilename(reference, language) : 'cell.txt';
   }
@@ -496,16 +432,9 @@ interface ICellSubDiff {
 }
 
 /**
- * Compute the source / metadata sub-diffs for a single cell entry.
- * Returns the empty list for `unchanged` entries so the caller can collapse
- * them; for `added` / `removed` entries the populated side is paired with
- * an empty counterpart so the library treats every line as an addition or
- * deletion respectively.
- *
- * Outputs are deliberately *not* included here — they're rendered through
- * rendermime side-by-side in {@link OutputsSection} so images render as
- * images, HTML as HTML, etc. The canonical text form survives for equality
- * (it drives the `unchanged` classification) but not for display.
+ * Source / metadata sub-diffs for one cell entry; empty for `unchanged`.
+ * Outputs are excluded on purpose — they render through rendermime in
+ * {@link OutputsSection}; their canonical text form only drives equality.
  */
 function buildCellSubDiffs(
   entry: NotebookCellDiff,
@@ -553,11 +482,8 @@ function buildCellSubDiffs(
 }
 
 /**
- * Common diff library options shared across every per-cell sub-diff and
- * the notebook-level metadata diff. Split mode matches the file-diff path
- * and gives the user the same left=old / right=new mental model inside
- * each cell — cells stack vertically but each cell internally reads
- * side-by-side, which matches how nbdime renders.
+ * Diff library options shared by every sub-diff. Split mode gives each cell
+ * the same left=old / right=new reading as the file-diff path.
  */
 function diffLibraryOptions(theme: DiffsThemeNames, dark: boolean) {
   return {
@@ -569,11 +495,8 @@ function diffLibraryOptions(theme: DiffsThemeNames, dark: boolean) {
 }
 
 /**
- * Mount a Lumino {@link Widget} inside a React tree. The widget is the
- * source of truth for its DOM — React just owns the host element and
- * Lumino owns the content the widget paints into it. Detach + dispose
- * happens on unmount or when a new widget arrives, so the parent doesn't
- * need to manage the widget's lifecycle separately.
+ * Mount a Lumino {@link Widget} inside a React tree; detach + dispose
+ * happens on unmount or when a new widget arrives.
  */
 function LuminoWidget(props: {
   widget: Widget;
@@ -589,31 +512,14 @@ function LuminoWidget(props: {
     try {
       Widget.attach(widget, host);
     } catch (err) {
-      // Lumino refuses to attach a widget whose host isn't connected to
-      // the document, or that's already attached elsewhere. Either way
-      // there's nothing useful to do here — log and bail so the parent
-      // tree still mounts.
+      // Lumino refuses to attach when the host is not in the document or
+      // the widget is attached elsewhere; log and let the tree mount.
       console.warn('xtralab: Widget.attach failed', err);
       return;
     }
     return () => {
-      // Lumino's `Widget.detach` throws "Widget is not attached" when
-      // either the `IsAttached` flag is false *or* the node is no longer
-      // connected to the document. During a parent React unmount the
-      // host element gets removed from the DOM before this cleanup
-      // runs, so `node.isConnected` is already `false` while the
-      // `IsAttached` flag is still set from our earlier `Widget.attach`
-      // call. Calling `Widget.detach` in that state would throw, and —
-      // worse — `widget.dispose()` re-enters the same detach branch
-      // internally (its `else if (this.isAttached)` guard does not
-      // check the DOM connection), so leaving the flag stale produces
-      // the noisy "Widget is not attached" warning out of `dispose`.
-      //
-      // Resolve the race by driving Lumino's detach lifecycle by hand
-      // when the host has already been torn down: send `BeforeDetach`
-      // and `AfterDetach` so the layout cleanup hooks run and the flag
-      // clears, then dispose. When the host is still connected the
-      // ordinary `Widget.detach` path handles both steps for us.
+      // On parent unmount React removes the host first; detach (and dispose,
+      // which re-enters it) throws on a disconnected node, so message by hand.
       if (widget.isAttached) {
         if (widget.node.isConnected) {
           try {
@@ -643,14 +549,8 @@ function LuminoWidget(props: {
 }
 
 /**
- * Render a sequence of nbformat outputs through JupyterLab's rendermime,
- * exactly the way a live notebook would. Wrapped here so the side-by-side
- * cell layout can drop a fully-rendered output column on either side
- * without re-implementing rich mime rendering.
- *
- * The output area is created `trusted` because the source git ref is on
- * the user's machine (working tree / index / HEAD). A diff viewer that
- * sandboxed its own user's outputs would just be inconvenient.
+ * Render nbformat outputs through rendermime like a live notebook would.
+ * Trusted: the source git ref already lives on the user's machine.
  */
 function OutputsPreview(props: {
   outputs: INotebookOutput[];
@@ -669,11 +569,8 @@ function OutputsPreview(props: {
 }
 
 /**
- * Render markdown source through rendermime so the cell preview matches
- * what JupyterLab would render in a live notebook (LaTeX, syntax-highlighted
- * code fences, sanitized HTML, …). Used for both the rendered preview that
- * sits next to a markdown cell's source diff, and for unchanged markdown
- * cells when the user expands them.
+ * Render markdown source through rendermime so the preview matches a live
+ * notebook (LaTeX, code fences, sanitized HTML).
  */
 function MarkdownPreview(props: {
   source: string;
@@ -698,11 +595,8 @@ function MarkdownPreview(props: {
 }
 
 /**
- * Two-column "old | new" layout used by both {@link OutputsSection} and
- * {@link MarkdownPreviewSection}. The visible side(s) depend on the cell
- * kind: modified shows both, added shows only new, removed shows only old,
- * unchanged collapses to a single full-width pane (since both sides
- * render the same content).
+ * Two-column "old | new" layout; collapses to a single full-width pane
+ * when only one side has content.
  */
 function SideBySidePanes(props: {
   label: string;
@@ -745,11 +639,8 @@ function SideBySidePanes(props: {
 }
 
 /**
- * Rendered outputs section for a cell. Renders old / new outputs through
- * rendermime in two columns; for added or removed cells only the populated
- * side is shown. Returns `null` (so the section is hidden entirely) when
- * neither side has any outputs, or when the same set of outputs appears
- * on both sides and the host doesn't want the duplicate render.
+ * Rendered outputs for a cell, old / new through rendermime; `null` when
+ * neither side has outputs.
  */
 function OutputsSection(props: {
   entry: NotebookCellDiff;
@@ -767,11 +658,6 @@ function OutputsSection(props: {
   if (!hasOld && !hasNew) {
     return null;
   }
-  // For added / removed cells the parent already lives in a single outer
-  // column — rendering the populated side full width within that column
-  // is the right move. SideBySidePanes itself collapses to a single grid
-  // column when only one side has content, so we can use it for both
-  // cases by feeding it only the side(s) we want.
   const showOld = placement !== 'right' && hasOld;
   const showNew = placement !== 'left' && hasNew;
   if (rendermime === null) {
@@ -804,11 +690,7 @@ function OutputsSection(props: {
   );
 }
 
-/**
- * Rendered markdown preview section. Sits next to (and below) the markdown
- * source diff so the user sees both the source-level changes and how the
- * rendered cell looks. Skipped for non-markdown cells.
- */
+/** Rendered markdown preview beside the source diff; skipped for non-markdown cells. */
 function MarkdownPreviewSection(props: {
   entry: NotebookCellDiff;
   rendermime: IRenderMimeRegistry | null;
@@ -841,27 +723,16 @@ function MarkdownPreviewSection(props: {
 interface INotebookDiffViewProps {
   diff: INotebookDiffResult;
   dark: boolean;
-  /**
-   * Whether a Pierre JupyterLab theme is active; selects Pierre's rich
-   * highlighting vs the CSS-variable theme (see {@link resolveDiffTheme}).
-   */
+  /** Whether a Pierre JupyterLab theme is active; selects Pierre highlighting vs the CSS-variable theme. */
   pierreTheme: boolean;
   rendermime: IRenderMimeRegistry | null;
-  /**
-   * Translation bundle for user-facing strings.
-   */
   trans: TranslationBundle;
 }
 
 /**
- * The notebook-level diff view. Lays out cells in a 2-column grid where
- * the left column tracks the *old* notebook and the right column tracks
- * the *new* one — modified and unchanged cells span both columns (their
- * internal split-mode FileDiff aligns with the outer columns), added
- * cells live in the right column with an empty placeholder on the left,
- * and removed cells live in the left column with an empty placeholder on
- * the right. The diff library's red/green tint within each cell makes
- * the orientation clear without a separate column header.
+ * Notebook-level diff view: a 2-column grid where the left column tracks
+ * the old notebook and the right the new one — modified/unchanged cells
+ * span both, added cells sit right, removed cells sit left.
  */
 export function NotebookDiffView(
   props: INotebookDiffViewProps
@@ -898,12 +769,8 @@ export function NotebookDiffView(
 }
 
 /**
- * Place a single cell entry into the outer 2-column grid. Modified /
- * unchanged entries span the full row; added entries take the right
- * column with an empty placeholder on the left; removed entries take the
- * left column with an empty placeholder on the right. The placeholders
- * are visible (subtle dashed outline) so the user can see *where* a
- * cell was inserted or removed relative to the other side.
+ * Place one cell entry into the 2-column grid, with a visible placeholder
+ * marking where a cell was inserted or removed on the other side.
  */
 function CellEntryRow(props: ICellDiffBlockProps): React.ReactElement {
   const { entry, trans } = props;
@@ -1033,16 +900,9 @@ interface ICellDiffBlockProps {
 }
 
 /**
- * How the cell card should sit inside the outer 2-column grid:
- *   - `full`  → spans both columns (modified / unchanged cells)
- *   - `left`  → left column only (removed cells)
- *   - `right` → right column only (added cells)
- *
- * Drives both grid placement and the inner layout choices: a single-column
- * placement uses unified-mode FileDiff for the source (since one side is
- * empty) and renders only the populated side of outputs / markdown
- * previews, while a `full` placement keeps split mode and side-by-side
- * panes.
+ * Cell card position in the outer grid: `full` spans both columns,
+ * `left`/`right` take one. Single-column placement switches the source
+ * diff to unified mode and renders only the populated side.
  */
 type CellPlacement = 'full' | 'left' | 'right';
 
@@ -1052,9 +912,6 @@ interface IPlacedCellDiffBlockProps extends ICellDiffBlockProps {
 
 function CellDiffBlock(props: IPlacedCellDiffBlockProps): React.ReactElement {
   const { entry, language, theme, dark, rendermime, placement, trans } = props;
-  // Unchanged cells start collapsed — the user opted out of seeing those
-  // sections by virtue of them being unchanged. A toggle lets them peek if
-  // they want.
   const [collapsed, setCollapsed] = React.useState<boolean>(
     entry.kind === 'unchanged'
   );
@@ -1067,8 +924,7 @@ function CellDiffBlock(props: IPlacedCellDiffBlockProps): React.ReactElement {
   const cellType = referenceCellType(entry);
   const indexLabel = cellIndexLabel(entry);
   const isCodeCell = cellType === 'code';
-  // Output rendering is only meaningful for code cells. Markdown / raw cells
-  // never carry outputs in nbformat.
+  // Only code cells carry outputs in nbformat.
   const showOutputs = isCodeCell && entry.kind !== 'unchanged';
 
   return (
@@ -1171,11 +1027,8 @@ function CellSubDiff(props: {
   trans: TranslationBundle;
 }): React.ReactElement {
   const { kind, metadata, theme, dark, placement, trans } = props;
-  // For modified / unchanged cells the diff spans both outer columns, and
-  // split mode lets it visually align with the outer old | new lanes. For
-  // added / removed cells the diff sits inside a single outer column, so
-  // unified mode keeps the content readable instead of leaving half the
-  // column empty.
+  // Full-width cells align split mode with the outer old|new lanes;
+  // single-column cells read better unified.
   const diffStyle: 'split' | 'unified' =
     placement === 'full' ? 'split' : 'unified';
   return (
@@ -1185,10 +1038,8 @@ function CellSubDiff(props: {
       </div>
       <FileDiff
         fileDiff={metadata}
-        // See diffWidget.tsx — the worker bootstrap can't resolve through
-        // JupyterLab's federation pipeline, so every diff in this extension
-        // runs on the main thread. Cell diffs are small enough that this is
-        // not a performance concern.
+        // The worker bootstrap can't resolve through JupyterLab's federation
+        // pipeline (see diffWidget.tsx); run on the main thread.
         disableWorkerPool={true}
         options={{ ...diffLibraryOptions(theme, dark), diffStyle }}
       />
@@ -1239,12 +1090,8 @@ function NotebookMetadataBlock(props: {
 }
 
 /**
- * Body for an unchanged cell when the user has expanded it. The cell's
- * content matches on both sides, so we render once full-width: markdown
- * cells go through rendermime (if available) so they look like the live
- * notebook would render them, code cells fall through to a verbatim
- * pre-formatted block, and any code outputs render through rendermime
- * below the source.
+ * Expanded body of an unchanged cell, rendered once full-width: markdown
+ * through rendermime, code verbatim with outputs below.
  */
 function UnchangedCellBody(props: {
   entry: Extract<NotebookCellDiff, { kind: 'unchanged' }>;

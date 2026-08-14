@@ -33,60 +33,36 @@ import type { IEditor } from './editors';
 import { agentCommandId } from './tokens';
 
 /**
- * Public construction options for the launcher dashboard widget. The
- * plugin supplies an `onAgentLaunch` callback that performs the same
- * shell placement the stock JupyterLab launcher does (swap the launcher
- * tab for the freshly created terminal). Keeping it as an opaque
- * callback means the widget itself does not import `app.shell`.
+ * Construction options for the launcher dashboard. `onAgentLaunch` is an
+ * opaque callback so the widget itself never imports `app.shell`.
  */
 interface ILauncherDashboardOptions {
   commands: CommandRegistry;
-  /**
-   * The agent list to render. Already filtered by availability + sorted by
-   * rank; the widget renders them as-is.
-   */
+  /** Agent list to render, already filtered by availability and sorted by rank. */
   agents: IAgent[];
-  /**
-   * The terminal editor to offer in the "Open" section (Neovim preferred over
-   * Vim), or `null` when neither is installed. Resolved by the plugin from the
-   * same availability probe that filters the agents.
-   */
+  /** Terminal editor for the "Open" section, or `null` when none is installed. */
   editor: IEditor | null;
   /**
-   * Shared launch-tag registry. When the editor tile launches, it records the
-   * session here so the terminals panel badges it with the editor's logo right
-   * away, the same as agent launches do. `null` when the provider plugin is
-   * unavailable.
+   * Launch-tag registry so the terminals panel badges editor launches right
+   * away; `null` when the provider plugin is unavailable.
    */
   agentSessions: IAgentSessions | null;
-  /**
-   * Called after an agent command has returned its top-level widget. The
-   * plugin uses this to swap the new terminal into the launcher's tab.
-   */
+  /** Called with the launched widget; the plugin swaps it into the launcher's tab. */
   onAgentLaunch: (item: Widget) => void;
   /**
-   * The git server-relative repo path used by the changes section. Empty
-   * string means "use the JupyterLab server's root and let git resolve the
-   * enclosing repo" — same convention as the git panel.
+   * Repo path for the changes section. Empty string lets git resolve the
+   * enclosing repo from the server root — same convention as the git panel.
    */
   repoPath: string;
   /**
-   * The cwd forwarded to `terminal:create-new` when an agent is launched.
-   * Empty string lets the terminal extension default to the server root.
+   * Cwd forwarded to `terminal:create-new`. Empty string defaults to the
+   * server root.
    */
   cwd: string;
-  /**
-   * The translation bundle used to localize the dashboard's user-facing
-   * strings.
-   */
   trans: TranslationBundle;
 }
 
-/**
- * Lumino host for the React-based launcher dashboard. Mirrors the
- * `ReactWidget` pattern used by the git panel so the rest of the plugin
- * (layout placement, signals, lifecycle) stays consistent.
- */
+/** Lumino host for the React-based launcher dashboard. */
 export class LauncherDashboard extends ReactWidget {
   constructor(options: ILauncherDashboardOptions) {
     super();
@@ -108,17 +84,12 @@ interface IGitState {
 }
 
 /**
- * Refresh interval for the changes list. A bit slower than the git panel
- * (which sits in the sidebar and is always visible) — the launcher tab is
- * only opened intentionally, and the grid does not need to be live.
+ * Changes-list refresh interval; slower than the git panel since the launcher
+ * tab is only opened intentionally.
  */
 const CHANGES_POLL_INTERVAL_MS = 8000;
 
-/**
- * Upper bound on the exponential backoff when the status request fails
- * repeatedly. Matches the rest of the plugin's polls so behavior is
- * consistent across the dashboard, the git panel, and the file tree.
- */
+/** Backoff cap on failures, matching the plugin's other polls. */
 const CHANGES_POLL_MAX_MS = 300_000;
 
 function LauncherDashboardComponent(
@@ -154,9 +125,8 @@ function LauncherDashboardComponent(
     }
   }, [repoPath]);
 
-  // Driven by a Lumino `Poll` so the dashboard stops hitting the git
-  // endpoint while the JupyterLab tab is hidden, and so repeated
-  // failures back off exponentially instead of pegging the 8s cadence.
+  // A Lumino Poll stops polling while the tab is hidden and backs off on
+  // repeated failures.
   React.useEffect(() => {
     const poll = new Poll({
       name: '@xtralab/launcher:gitChanges',
@@ -201,12 +171,8 @@ function LauncherDashboardComponent(
   }, [commands, cwd, onAgentLaunch]);
 
   const launchNotebook = React.useCallback(async () => {
-    // Open a fresh notebook with no kernel attached — equivalent to clicking
-    // "No Kernel" in the Select Kernel dialog. `notebook:create-new` always
-    // routes through that dialog when no kernelName is given, so drive the
-    // underlying docmanager steps directly and pass `shouldStart: false` to
-    // suppress kernel selection. The user picks a kernel from the notebook
-    // toolbar when they're ready.
+    // `notebook:create-new` always opens the Select Kernel dialog when no
+    // kernelName is given, so drive docmanager directly with `shouldStart: false`.
     const file = (await commands.execute('docmanager:new-untitled', {
       path: cwd,
       type: 'notebook'
@@ -220,8 +186,7 @@ function LauncherDashboardComponent(
       kernelPreference: { shouldStart: false, canStart: true }
     })) as IDocumentWidget | undefined;
     if (result) {
-      // Match `notebook:create-new`'s post-open marker so the first manual
-      // save offers a rename instead of overwriting the auto-generated name.
+      // Match `notebook:create-new`'s marker so the first save offers a rename.
       result.isUntitled = true;
       onAgentLaunch(result);
     }
@@ -240,10 +205,8 @@ function LauncherDashboardComponent(
     if (!editor) {
       return;
     }
-    // An editor is "open a terminal and type its command" — the agent launch
-    // minus the prompt — so it shares `launchInTerminal` rather than the native
-    // `terminal:create-new` call the tiles above use, and tags the session the
-    // same way so the terminals panel badges it with the editor's logo.
+    // An editor launch is an agent launch minus the prompt, so it shares
+    // `launchInTerminal` and tags the session the same way.
     const result = await launchInTerminal(commands, {
       cwd,
       invocation: editor.command,
@@ -301,10 +264,6 @@ function ChangesSection(props: {
   const { git, onOpen, onRefresh, trans } = props;
   const files = git.result ? expandStatusFiles(git.result.files) : [];
 
-  // Native `<details>` rather than a hand-rolled toggle: we get the
-  // disclosure triangle, keyboard handling, and aria-expanded semantics
-  // for free, and the user's open/closed choice is tab-local state that
-  // we don't need to persist.
   return (
     <details
       className="jp-xtralab-Launcher-section jp-xtralab-Launcher-changes-section"
@@ -330,8 +289,7 @@ function ChangesSection(props: {
           type="button"
           className="jp-xtralab-Launcher-section-action"
           aria-label={trans.__('Refresh changes')}
-          // Stop the click from toggling the surrounding `<details>` —
-          // refreshing while the section is open shouldn't collapse it.
+          // Keep the click from toggling the surrounding `<details>`.
           onClick={event => {
             event.preventDefault();
             event.stopPropagation();
@@ -417,9 +375,8 @@ function AgentSection(props: {
   const { agents, prompt, onPromptChange, onLaunch, trans } = props;
   const trimmed = prompt.trim();
   const promptActive = trimmed.length > 0;
-  // The first prompt-capable agent is what Cmd/Ctrl+Enter fires; the hint
-  // text below the textarea names it so the keyboard shortcut target
-  // isn't a mystery.
+  // The first prompt-capable agent is the Cmd/Ctrl+Enter target; the hint
+  // below the textarea names it.
   const primaryAgent = agents.find(agent => agent.promptArgs !== undefined);
   const hintId = 'jp-xtralab-Launcher-agent-hint';
 
@@ -501,24 +458,18 @@ function AgentSection(props: {
 }
 
 /**
- * Launcher agents whose CLI has a clean, non-interactive `mcp add` that takes
- * `<name> -- <command>`. The other agents (Goose, OpenCode, Kiro, Mistral
- * Vibe, Antigravity) register MCP through their own config files or UI, so
- * there is no one-line command to surface for them.
+ * Agents whose CLI has a non-interactive `mcp add <name> -- <command>`; the
+ * other agents register MCP through their own config, so no one-liner exists.
  */
 const MCP_ADD_AGENT_IDS = new Set(['claude', 'codex', 'copilot']);
 
-/**
- * The stdio proxy console script that bridges an agent to the MCP server.
- */
+/** The stdio proxy console script that bridges an agent to the MCP server. */
 const MCP_PROXY_COMMAND = 'jupyter-server-mcp-proxy';
 
 /**
- * Copy `text` to the clipboard via a hidden, selected `<textarea>` and the
- * legacy `execCommand('copy')`. Deprecated, but still the most reliable path
- * under a user gesture when the async Clipboard API is unavailable or blocked
- * (the desktop app's Electron window can deny clipboard writes by policy).
- * Returns whether the copy succeeded.
+ * Copy via a hidden `<textarea>` and the legacy `execCommand('copy')`:
+ * deprecated, but the reliable fallback when the async Clipboard API is
+ * missing or blocked (Electron can deny it by policy). Returns success.
  */
 function legacyCopy(text: string): boolean {
   try {
@@ -539,13 +490,10 @@ function legacyCopy(text: string): boolean {
 }
 
 /**
- * A collapsed-by-default hint listing the one-line command that registers
- * xtralab's running Jupyter MCP server with each installed agent that
- * supports `mcp add`. Copy-only: the user runs it in their own terminal,
- * where the server is reachable with no port to configure — the desktop
- * supervisor exports `JUPYTER_SERVER_MCP_URL`, and `pip` installs let the
- * proxy discover the server from its runtime file. Renders nothing when none
- * of those agents are on `$PATH`.
+ * Collapsed-by-default hint listing the `mcp add` one-liner per installed
+ * agent. Copy-only: run in the user's own terminal, where the proxy finds the
+ * server with no port (desktop exports `JUPYTER_SERVER_MCP_URL`; pip installs
+ * discover it from the runtime file). Renders nothing when no agent qualifies.
  */
 function McpSection(props: {
   agents: IAgent[];
@@ -569,9 +517,7 @@ function McpSection(props: {
   };
 
   const copy = (command: string, id: string): void => {
-    // Prefer the async Clipboard API; fall back to `legacyCopy` when it's
-    // missing or rejects (Electron can block it by policy). Flag "Copied" only
-    // once a copy actually succeeds.
+    // Flag "Copied" only once a copy actually succeeds.
     const clipboard = navigator.clipboard;
     if (clipboard) {
       void clipboard.writeText(command).then(
@@ -638,16 +584,8 @@ function McpSection(props: {
 }
 
 /**
- * The non-agent launch tiles — a plain terminal, a new notebook, and a
- * new console. They sit in a separate section below the agent grid so
- * they don't compete with the AI agents visually, and they're always
- * available regardless of the agent prompt textarea (which doesn't
- * apply to them).
- *
- * A terminal editor (Neovim, else Vim) joins the row when one is installed —
- * it opens in a terminal like the agents do, so it lives here rather than in
- * the agent grid. When neither is on `$PATH`, `editor` is `null` and no tile
- * renders.
+ * The non-agent launch tiles: terminal, notebook, and console, plus the
+ * terminal editor tile when one is installed (`editor` is `null` otherwise).
  */
 function OpenSection(props: {
   editor: IEditor | null;

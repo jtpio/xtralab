@@ -9,10 +9,8 @@ import type { IXtralabDiffModel } from './diffWidget';
 type DiffSide = 'deletions' | 'additions';
 
 /**
- * Agent-facing name of a diff content source: the special refs get plain
- * words, a git ref string is used verbatim, anything else falls back to the
- * side name. English on purpose — this ends up in the agent prompt, not in
- * the UI.
+ * Agent-facing name of a diff content source. English on purpose — this
+ * ends up in the agent prompt, not in the UI.
  */
 function describeSource(source: unknown, fallback: string): string {
   if (source === Git.Diff.SpecialRef.WORKING) {
@@ -46,14 +44,10 @@ function sliceLines(text: string, startLine: number, endLine: number): string {
 
 /**
  * Build the ask-agent request for a line range selected in a git diff.
- *
- * The range's `side` decides which file version the line numbers (and the
- * embedded snippet) refer to: `deletions` reads from the reference text,
- * anything else — including the sideless context rows of a unified diff,
- * whose gutter shows new-side numbers — reads from the challenger text. A
- * gutter drag that crosses the two split columns has endpoints in different
- * line-number spaces, so it is described textually instead of as a numeric
- * range.
+ * `deletions` ranges index the reference text; other ranges — including
+ * sideless unified context rows, whose gutter shows new-side numbers —
+ * index the challenger. A drag across the two split columns mixes
+ * line-number spaces, so it is described textually instead of numerically.
  */
 export function buildDiffAskRequest(options: {
   model: IXtralabDiffModel;
@@ -97,15 +91,12 @@ export function buildDiffAskRequest(options: {
       ...base,
       startLine,
       endLine,
-      // Only new-side lines of a working-tree diff index the file on disk;
-      // old-side and historical line numbers must not be used to highlight
-      // the working file.
+      // Only new-side lines of a working-tree diff index the file on disk.
       linesInWorkingFile:
         !isOld && model.challenger.source === Git.Diff.SpecialRef.WORKING,
       text: sliceLines(isOld ? oldText : newText, startLine, endLine),
       location: `the ${sideName(startSide)} (${ref}) of the current git diff`,
-      // New-side lines read as the file's current content, so only old-side
-      // ranges need a clarifying tag in the popup header.
+      // New-side lines read as current content; only old-side needs a tag.
       ...(isOld ? { note: trans.__('old version') } : {})
     },
     anchor

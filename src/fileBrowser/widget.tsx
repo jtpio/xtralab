@@ -56,83 +56,51 @@ interface IXtralabFileBrowserOptions {
  */
 export interface IXtralabFileBrowser {
   /**
-   * The contents manager backing the tree. Exposed so command handlers can
-   * issue contents operations (rename, delete, copy, …) against the same
-   * drive the tree was loaded from.
+   * The contents manager backing the tree; command handlers issue rename,
+   * delete, copy, … against the same drive.
    */
   readonly contentsManager: Contents.IManager;
 
-  /**
-   * The toolbar shown above the tree. Plugin code populates it with command
-   * buttons after the widget is constructed.
-   */
+  /** The toolbar above the tree, populated by plugin code after construction. */
   readonly toolbar: Toolbar;
 
-  /**
-   * Canonical paths of the items currently selected in the tree. Folder
-   * paths carry a trailing slash; file paths do not.
-   */
+  /** Canonical selected paths; folder paths carry a trailing slash. */
   readonly selectedPaths: readonly string[];
 
-  /**
-   * Emits when the tree's selection changes. Commands that have an
-   * `isVisible` / `isEnabled` predicate should listen so they re-evaluate.
-   */
+  /** Emits when the tree's selection changes. */
   readonly selectionChanged: ISignal<IXtralabFileBrowser, readonly string[]>;
 
-  /**
-   * Emits when {@link refresh} is called. The React component listens and
-   * re-fetches the directories that were previously loaded so the tree
-   * matches the contents on disk again.
-   */
+  /** Emits when {@link refresh} is called. */
   readonly refreshRequested: ISignal<IXtralabFileBrowser, void>;
 
   /**
-   * Emits when the widget is asked to surface a newly-created path
-   * (for example, after the toolbar's "new folder" command). The React
-   * component listens and inserts the path into the model so the user
-   * sees the new item without a full refresh.
+   * Emits a newly-created canonical path so the tree inserts it without a
+   * full refresh.
    */
   readonly pathAdded: ISignal<IXtralabFileBrowser, string>;
 
   /**
-   * Emits when an external caller asks the tree to scroll to and select
-   * the given canonical path. The React component listens, lazily loads
-   * any unloaded ancestor directories, expands them, and selects the
-   * target. Used by the editor breadcrumbs to jump back to a file or
-   * folder shown in the breadcrumb trail.
+   * Emits a canonical path to load, expand, select, and scroll to. Used by
+   * the editor breadcrumbs.
    */
   readonly revealRequested: ISignal<IXtralabFileBrowser, string>;
 
   /**
-   * Emits when an external caller asks the tree to return to the
-   * workspace root: clear any current selection and scroll back to the
-   * first row. Distinct from {@link revealRequested} because the
-   * workspace root has no tree row of its own — it cannot be reached
-   * by passing a path.
+   * Emits when the tree should return to the workspace root — the root has
+   * no tree row of its own, so it cannot be revealed by path.
    */
   readonly rootRequested: ISignal<IXtralabFileBrowser, void>;
 
-  /**
-   * Emits when an external caller asks the tree to collapse every
-   * expanded folder. The React component listens and walks the loaded
-   * directories, calling `.collapse()` on each expanded one.
-   */
+  /** Emits when every expanded folder should collapse. */
   readonly collapseAllRequested: ISignal<IXtralabFileBrowser, void>;
 
   /**
-   * Whether the filter box above the tree is shown. Mirrors the default
-   * file browser's `showFileFilter`: hidden on startup and flipped by the
-   * toolbar toggle. Also forced to `true` when the tree opens a search
-   * session on its own — typing a letter while the tree has focus.
+   * Whether the filter box above the tree is shown; also forced `true` when
+   * the tree opens a search session itself (typing while it has focus).
    */
   readonly fileFilterVisible: boolean;
 
-  /**
-   * Emits when {@link fileFilterVisible} changes. The React component
-   * listens to show or hide the filter box; the toggle command listens
-   * to refresh its toggled state.
-   */
+  /** Emits when {@link fileFilterVisible} changes. */
   readonly fileFilterVisibleChanged: ISignal<IXtralabFileBrowser, boolean>;
 
   /**
@@ -141,25 +109,18 @@ export interface IXtralabFileBrowser {
   refresh(): void;
 
   /**
-   * Notify the React component that a new path was created and should
-   * appear in the tree. `canonicalPath` follows the `@pierre/trees`
-   * convention: directories carry a trailing slash, files do not.
+   * Notify the React component that a new canonical path was created and
+   * should appear in the tree.
    */
   notifyPathAdded(canonicalPath: string): void;
 
   /**
-   * Ask the tree to reveal {@link canonicalPath}: load and expand any
-   * unloaded ancestor directories, then select and scroll the target
-   * into view. `canonicalPath` follows the `@pierre/trees` convention
-   * (directories carry a trailing slash, files do not). Must be a
-   * non-empty path — use {@link scrollToRoot} for the root gesture.
+   * Reveal a non-empty canonical path: load and expand ancestors, then
+   * select and scroll to it. Use {@link scrollToRoot} for the root gesture.
    */
   reveal(canonicalPath: string): void;
 
-  /**
-   * Ask the tree to return to the workspace root: clear any current
-   * selection and scroll back to the top of the tree.
-   */
+  /** Return to the workspace root: clear the selection and scroll to the top. */
   scrollToRoot(): void;
 
   /**
@@ -272,10 +233,7 @@ export class XtralabFileBrowser
     return this._fileFilterVisibleChanged;
   }
 
-  /**
-   * Update the cached selection. Called from the React tree when the
-   * underlying `@pierre/trees` model emits a selection change.
-   */
+  /** Update the cached selection from the React tree. */
   updateSelection(paths: readonly string[]): void {
     this._selectedPaths = paths;
     this._selectionChanged.emit(paths);
@@ -483,10 +441,7 @@ interface IFileTreeContentOptions {
   browser: XtralabFileBrowser;
 }
 
-/**
- * The React-rendered region of the file browser. Lives inside the host
- * widget below the toolbar and renders the actual tree.
- */
+/** The React-rendered region below the toolbar that hosts the actual tree. */
 class XtralabFileTreeContent extends ReactWidget {
   constructor(options: IFileTreeContentOptions) {
     super();

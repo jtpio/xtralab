@@ -41,26 +41,16 @@ def _serve_main(args: argparse.Namespace) -> int:
 
     extra_args: list[str] = []
     if args.no_collab_persistence:
-        # Keep real-time collaboration, drop its stored update history. See
-        # xtralab.ystore for why persisting it corrupts documents that change
-        # on disk between sessions. Passed as traitlets config rather than a
-        # jupyter_server_config.d drop-in because those files never reach an
-        # ExtensionApp such as YDocExtension.
+        # xtralab.ystore explains why persisted history corrupts docs edited on
+        # disk; jupyter_server_config.d never reaches an ExtensionApp, hence CLI.
         extra_args.append("--YDocExtension.ystore_class=xtralab.ystore.NoYStore")
-        # Recorded session ids let a client that outlives a server restart
-        # reconnect and merge its state instead of reloading — only sound
-        # when the update history survives the restart too. Without a ystore
-        # the rebuilt room and the stale client hold divergent histories and
-        # silently show different content, so keep the store empty: every
-        # cross-restart reconnect then fails closed with the client's
-        # "Session expired, reload" prompt.
+        # Without a ystore a cross-restart reconnect silently diverges; an empty
+        # session store makes it fail closed with the "Session expired" prompt.
         extra_args.append(f"--YDocExtension.session_store_path={os.devnull}")
     elif args.collab_ystore_db is not None:
         db_path = Path(args.collab_ystore_db).expanduser().resolve()
         db_path.parent.mkdir(parents=True, exist_ok=True)
-        # SQLiteYStore is a configurable traitlet shipped by
-        # jupyter-server-ydoc; this flag redirects the Y-updates SQLite
-        # database away from the default ``.jupyter_ystore.db`` in cwd.
+        # SQLiteYStore ships with jupyter-server-ydoc.
         extra_args.append(f"--SQLiteYStore.db_path={db_path}")
 
     try:

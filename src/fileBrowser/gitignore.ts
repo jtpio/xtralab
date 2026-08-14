@@ -6,9 +6,8 @@ import { Contents } from '@jupyterlab/services';
 import type { GitStatusEntry } from '@pierre/trees';
 
 /**
- * The path of the workspace `.gitignore` file. Loaded relative to the
- * Jupyter contents root, which matches the directory the gitignore patterns
- * are evaluated against — patterns and tested paths share the same base.
+ * Workspace `.gitignore`, relative to the contents root — the same base the
+ * patterns are evaluated against.
  */
 const GITIGNORE_PATH = '.gitignore';
 
@@ -28,9 +27,6 @@ export async function loadGitignoreMatcher(
       type: 'file'
     });
   } catch {
-    // The most common failure here is `.gitignore` simply not existing.
-    // Other transient errors (permission denied, server unreachable) are
-    // also treated as "no matcher" so the file browser still works.
     return null;
   }
   if (model.type !== 'file' || typeof model.content !== 'string') {
@@ -43,23 +39,10 @@ export async function loadGitignoreMatcher(
 }
 
 /**
- * Build `GitStatusEntry`s for the canonical paths that match the given
- * gitignore matcher.
- *
- * `@pierre/trees` propagates the `ignored` style from a directory entry
- * down to every descendant via its internal `ignoredDirectoryPaths` set, so
- * we only emit one entry per ignored subtree root: emitting descendants
- * would also pollute the library's `directoriesWithChanges` set, causing
- * parent directories of nested ignored items to render a "contains git
- * status items" dot.
- *
- * Paths are sorted lexicographically so a directory always precedes its
- * descendants, allowing a simple ancestor-suppression check via
- * `path.startsWith(dir)`. The trailing slash on canonical directory paths
- * (required by `@pierre/trees`, also recognized by `ignore` as the
- * "directory" indicator) keeps the prefix check from accidentally matching
- * sibling paths that happen to share a name prefix (e.g. `node_modules_old`
- * vs `node_modules/`).
+ * One `GitStatusEntry` per ignored subtree root: descendant entries would
+ * pollute the tree's `directoriesWithChanges` set (bogus dots on parents),
+ * and `ignored` already propagates downward. The trailing slash on directory
+ * paths keeps the sorted `startsWith` ancestor check off name-prefix siblings.
  */
 export function buildIgnoredEntries(
   matcher: Ignore,

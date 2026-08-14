@@ -104,10 +104,8 @@ interface IRootDropZoneOptions {
 
 /**
  * Accept drops on the empty space below the last row as moves to the
- * workspace root — the tree resolves a drop target only while the
- * cursor is over a row and silently discards such drops. dragstart
- * records the dragged paths; a drop whose composed path contains no
- * row hands them over as a root move.
+ * workspace root — the tree resolves a drop target only while the cursor
+ * is over a row and silently discards such drops.
  */
 export function useRootDropZone(options: IRootDropZoneOptions): void {
   const { model, handlerRef, wrapperRef } = options;

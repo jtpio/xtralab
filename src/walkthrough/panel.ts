@@ -6,22 +6,16 @@ import type { ReadonlyPartialJSONValue } from '@lumino/coreutils';
 import type { Message } from '@lumino/messaging';
 import { Panel, Widget } from '@lumino/widgets';
 
-/**
- * Command the jump links dispatch; keeps the panel decoupled from the plugin.
- */
+/** Command the jump links dispatch; keeps the panel decoupled from the plugin. */
 const HIGHLIGHT_LINES_COMMAND = 'xtralab:highlight-lines';
 
-/**
- * A rich visual embedded in a step (rendered through the rendermime registry).
- */
+/** A rich visual embedded in a step (rendered through the rendermime registry). */
 export interface IWalkthroughMedia {
   mimeType: string;
   data: ReadonlyPartialJSONValue;
 }
 
-/**
- * One step of a walkthrough. Every field is optional, but a step needs at least one.
- */
+/** One step of a walkthrough. Every field is optional, but a step needs at least one. */
 export interface IWalkthroughStep {
   title?: string;
   body?: string;
@@ -41,12 +35,8 @@ export namespace WalkthroughPanel {
 
 /**
  * A read-only, scrollable column of walkthrough steps for the side area.
- *
- * The agent appends steps as it narrates, so the explanation lives beside the
- * code the user is looking at and persists for them to read at their own pace,
- * rather than scrolling away in the chat. Each step renders Markdown (with code
- * snippets, Mermaid, math), can embed a rich visual, and can offer a button
- * that opens the referenced file and highlights its lines.
+ * The agent appends steps as it narrates, so the explanation persists beside
+ * the code instead of scrolling away in the chat.
  */
 export class WalkthroughPanel extends Panel {
   constructor(options: WalkthroughPanel.IOptions) {
@@ -57,9 +47,7 @@ export class WalkthroughPanel extends Panel {
     this.addClass('jp-xtralab-Walkthrough');
   }
 
-  /**
-   * Remove every step, leaving an empty panel.
-   */
+  /** Remove every step, leaving an empty panel. */
   clear(): void {
     while (this.widgets.length > 0) {
       this.widgets[0].dispose();
@@ -67,18 +55,15 @@ export class WalkthroughPanel extends Panel {
   }
 
   /**
-   * Dispose on close (e.g. the close button when the panel has been dragged to
-   * the main area) rather than leaving a detached, reusable widget behind. The
-   * next `xtralab:walkthrough` call recreates the panel in the side area.
+   * Dispose on close (e.g. after a drag to the main area) instead of leaving a
+   * detached widget; the next `xtralab:walkthrough` call recreates the panel.
    */
   protected onCloseRequest(msg: Message): void {
     super.onCloseRequest(msg);
     this.dispose();
   }
 
-  /**
-   * Append a step and scroll it into view.
-   */
+  /** Append a step and scroll it into view. */
   async addStep(step: IWalkthroughStep): Promise<void> {
     const card = new Panel();
     card.addClass('jp-xtralab-Walkthrough-step');
@@ -103,7 +88,6 @@ export class WalkthroughPanel extends Panel {
       card.addWidget(this._jumpButton(step.path, step.line, step.endLine));
     }
 
-    // Bring the newest step into view.
     this.node.scrollTop = this.node.scrollHeight;
   }
 

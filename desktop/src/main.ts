@@ -107,10 +107,9 @@ interface SessionWindowBounds {
   height: number;
 }
 
-// One lab window as persisted in session-state.json. groupId ties together
-// the windows that belong to the same native macOS tab group so the next
-// launch can reassemble it; focusSequence orders windows by their most recent
-// focus so the restore can reselect the active tab and window.
+// One lab window as persisted in session-state.json. groupId ties windows of
+// the same native macOS tab group for reassembly; focusSequence orders
+// windows by most recent focus so the restore can reselect the active one.
 interface SessionWindowState {
   folderPath: string;
   groupId: string;
@@ -136,9 +135,7 @@ interface RestoreFailure {
 
 type RestoreProjectStatus = 'starting' | 'ready' | 'opened' | 'failed';
 
-// One project of the startup restore as rendered by the launcher's restore
-// view: its server is starting, the server is ready and the window is about
-// to appear, or it finished either way.
+// One project of the startup restore, rendered by the launcher's restore view.
 interface RestoreProjectState {
   folderPath: string;
   status: RestoreProjectStatus;
@@ -157,11 +154,10 @@ type RestoreProgressUpdater = (
   error?: string | null
 ) => void;
 
-// How createLabWindow takes part in a session restore: the window keeps the
-// saved state, waits for the previous tab of its group before it appears, and
-// joins the group through the window the driver last brought up. onAborted
-// reports a window that died before it appeared so the driver can record the
-// project as a restore failure.
+// How createLabWindow takes part in a session restore: keep the saved state,
+// wait for the group's previous tab before appearing, join the group through
+// the last-shown window. onAborted reports a window that died before it
+// appeared.
 interface SessionRestoreRequest {
   state: SessionWindowState;
   waitForPredecessor: Promise<void>;
@@ -183,16 +179,13 @@ const launcherMinContentWidth = 560;
 const launcherMinContentHeight = 480;
 const labSessions = new Map<number, LabSession>();
 const pendingSupervisors = new Set<SupervisorHandle>();
-// Lab windows share this identifier so macOS follows the user's "Prefer tabs
-// when opening documents" setting when grouping them, and so the Window menu
-// and tab bar can merge or split them on demand.
+// Shared by lab windows so macOS groups them per the user's "Prefer tabs"
+// setting and the Window menu can merge or split them.
 const labWindowTabbingIdentifier = 'xtralab-project';
 
 let launcherWindow: BrowserWindow | null = null;
-// The session group of the lab window whose native macOS tab group the
-// launcher currently lives in (opened from the tab bar "+" or File > New
-// Tab). While set, a project picked in the launcher joins that group as a tab
-// in the launcher tab's place instead of opening as a separate window.
+// Session group of the lab window whose native tab group hosts the launcher.
+// While set, a picked project joins that group in the launcher tab's place.
 let launcherTabGroupId: string | null = null;
 let logStream: WriteStream | null = null;
 let recentFolders: string[] = [];
@@ -201,13 +194,11 @@ let folderEnvironmentPreferences: Record<string, FolderEnvironmentPreference> =
 let quitInProgress = false;
 let ipcRegistered = false;
 
-// Live view of the open lab windows, persisted to session-state.json so the
-// next launch reopens them. Array order is window creation order, which is
-// also the tab order used when a group is reassembled.
+// Open lab windows, persisted to session-state.json; array order is creation
+// order and the tab order when a group is reassembled.
 const sessionWindows: TrackedSessionWindow[] = [];
-// Windows from the previous session that restorePreviousSession has not
-// reopened yet. Included in every save so quitting or crashing mid-restore
-// keeps them for the next launch.
+// Previous-session windows not yet reopened; included in every save so
+// quitting or crashing mid-restore keeps them for the next launch.
 let pendingRestoreWindows: SessionWindowState[] = [];
 // Set once the quit-time snapshot is written; stops the window closes that
 // follow during teardown from shrinking the saved session.
@@ -216,9 +207,8 @@ let sessionStateSaveTimer: NodeJS.Timeout | null = null;
 // Monotonic stamp handed out on every window focus, persisted per window so
 // the restore can order windows by how recently they were active.
 let focusSequenceCounter = 0;
-// Per-project progress of the startup restore, rendered by the launcher's
-// restore view. A clean restore clears it as the launcher is swapped away; a
-// restore with failures keeps it until the launcher dismisses the summary.
+// Startup-restore progress for the launcher's restore view; kept after a
+// failed restore until the launcher dismisses the summary.
 let restoreProjects: RestoreProjectState[] | null = null;
 let restoreInProgress = false;
 
@@ -288,18 +278,14 @@ function startApplication(): void {
   showLauncherWindow();
 }
 
-// Keep the app current from GitHub releases via update.electronjs.org. A
-// lightweight HTTP poll (runUpdateCheck) discovers new releases without
-// downloading anything; the Squirrel.Mac download only starts in
-// downloadUpdate() once the user has asked for it. Only a signed, packaged
-// macOS build can self-update: Squirrel verifies the downloaded app's code
-// signature against the running one, and the service serves the darwin zip
-// attached to each release.
+// Updates come from GitHub releases via update.electronjs.org: runUpdateCheck
+// polls the feed without downloading; downloadUpdate() starts the
+// Squirrel.Mac download once the user asks. Only a signed, packaged macOS
+// build can self-update (Squirrel verifies the code signature).
 const updateRepo = 'jtpio/xtralab';
 const updateIntervalMs = 10 * 60 * 1000;
-// Give the launcher window time to appear before the first background check,
-// so an update available at startup shows up in its footer instead of as a
-// dialog over the fresh window.
+// Let the launcher appear first so a startup update shows in its footer
+// instead of as a dialog.
 const initialUpdateCheckDelayMs = 15 * 1000;
 
 type UpdateStatus =
@@ -319,10 +305,8 @@ interface UpdateState {
   error: string | null;
 }
 
-// Shown in the launcher footer and pushed to it on every transition.
-// 'unsupported' covers builds that cannot self-update (dev, unsigned,
-// non-macOS); setUpAutoUpdates() promotes it to 'idle' when Squirrel is
-// usable.
+// Shown in the launcher footer. 'unsupported' covers builds that cannot
+// self-update; setUpAutoUpdates() promotes it to 'idle' when Squirrel works.
 const updateState: UpdateState = {
   status: 'unsupported',
   currentVersion: app.getVersion(),
@@ -330,8 +314,7 @@ const updateState: UpdateState = {
   error: null
 };
 let updateCheckInFlight = false;
-// Versions already offered through the background dialog, so one release
-// prompts at most once per app run.
+// Versions already offered via dialog, so one release prompts once per run.
 const offeredUpdateVersions = new Set<string>();
 
 function canAutoUpdate(): boolean {
@@ -344,8 +327,7 @@ function getUpdateFeedUrl(): string {
   return `https://update.electronjs.org/${updateRepo}/darwin-${process.arch}/${app.getVersion()}`;
 }
 
-// Release names come through as tag names ("v0.12.4"); strip the leading "v"
-// for display.
+// Release names arrive as tag names ("v0.12.4"); strip the "v" for display.
 function formatVersionName(name: string): string {
   return name.replace(/^v(?=\d)/, '');
 }
@@ -398,11 +380,10 @@ function setUpAutoUpdates(): void {
   setInterval(() => void runUpdateCheck(false), updateIntervalMs);
 }
 
-// Ask the feed whether a newer release exists, without downloading it: it
-// answers 204 when the running version is current and a JSON description of
-// the latest release otherwise. A manual check surfaces its outcome in the
-// launcher footer; background checks stay quiet on failure and only prompt
-// through maybeOfferUpdate.
+// Ask the feed for a newer release without downloading: 204 means current,
+// otherwise JSON describes the latest release. Manual checks surface errors
+// in the launcher footer; background checks stay quiet and prompt through
+// maybeOfferUpdate.
 async function runUpdateCheck(manual: boolean): Promise<void> {
   if (
     updateCheckInFlight ||
@@ -476,11 +457,9 @@ async function runUpdateCheck(manual: boolean): Promise<void> {
   }
 }
 
-// Ask through a system dialog whether to download a release found by a
-// background check. The dialog is skipped while the launcher is focused: its
-// footer already shows the update with a Download button, and not marking the
-// release as offered keeps the dialog available for a later check once the
-// launcher is gone.
+// Offer a background-check result through a system dialog. Skipped while the
+// launcher is focused (its footer already shows a Download button) without
+// marking the release offered, so a later check can still prompt.
 function maybeOfferUpdate(latestVersion: string): void {
   if (offeredUpdateVersions.has(latestVersion)) {
     return;
@@ -511,9 +490,8 @@ function maybeOfferUpdate(latestVersion: string): void {
     });
 }
 
-// Hand the download to Squirrel.Mac: its checkForUpdates() fetches the feed
-// again and downloads the release it reports. update-downloaded then offers
-// the restart.
+// Squirrel.Mac's checkForUpdates() re-fetches the feed and downloads the
+// release; update-downloaded then offers the restart.
 function downloadUpdate(): void {
   if (
     !canAutoUpdate() ||
@@ -935,15 +913,12 @@ function registerIpcHandlers(): void {
   );
 }
 
-// Notifications shown and not yet dismissed. Electron holds the JS wrapper
-// only weakly: garbage collection removes a still-pending notification from
-// Notification Center along with its click handling. Bounded because 'close'
-// is not guaranteed to fire.
+// Pending notifications, held strongly: Electron's weak wrapper lets GC drop
+// a still-pending notification and its click handling. Bounded because
+// 'close' is not guaranteed to fire.
 const liveNotifications = new Set<Notification>();
 const MAX_LIVE_NOTIFICATIONS = 50;
 
-// Recent notification timestamps per lab-window id, consulted by
-// `allowNotification`. Pruned when a lab window closes.
 const notificationTimestamps = new Map<number, number[]>();
 const NOTIFICATION_RATE_WINDOW_MS = 10_000;
 const NOTIFICATION_RATE_MAX = 6;
@@ -964,10 +939,9 @@ function allowNotification(windowId: number): boolean {
   return true;
 }
 
-// Whether the running app bundle carries a real (non-ad-hoc) code signature.
-// macOS only delivers native notifications from a stably-signed bundle, so this
-// decides between the native Notification and the osascript fallback. codesign
-// is a subprocess, so the result is cached.
+// Whether the bundle carries a real (non-ad-hoc) signature: macOS only
+// delivers native notifications from a stably-signed bundle. Cached because
+// codesign is a subprocess.
 let cachedAppSigned: boolean | null = null;
 function isAppProperlySigned(): boolean {
   if (cachedAppSigned !== null) {
@@ -992,20 +966,17 @@ function isAppProperlySigned(): boolean {
   return cachedAppSigned;
 }
 
-// The window to order front before the sender when a clicked notification's
-// tab group may live on another macOS Space. Only the group's selected tab
-// keeps an ordered-in NSWindow with Space affinity: ordering a background
-// tab's ordered-out NSWindow front materializes the group on whichever Space
-// is current instead of switching. Null means the sender itself is that tab
-// (or stands alone) and is safe to order front directly.
+// Window to order front before the sender when its tab group may live on
+// another macOS Space: only the group's selected tab keeps an ordered-in
+// NSWindow with Space affinity, so raising a background tab materializes the
+// group on the current Space instead of switching. Null: raise the sender.
 function notificationSpaceAnchor(sender: BrowserWindow): BrowserWindow | null {
   const groupId = sessionWindowGroupId(sender.id);
   if (groupId === null) {
     return null;
   }
   // Electron cannot observe native tab selection (isVisible() is true for
-  // background tabs too); the group member with the highest focusSequence is
-  // the same selected-tab guess session restore relies on.
+  // background tabs too); highest focusSequence is the selected-tab guess.
   let top: TrackedSessionWindow | null = null;
   for (const entry of sessionWindows) {
     if (entry.groupId !== groupId) {
@@ -1029,14 +1000,10 @@ function notificationSpaceAnchor(sender: BrowserWindow): BrowserWindow | null {
   return anchor;
 }
 
-// Deliver a desktop notification forwarded from a terminal.
-//
-// macOS only delivers a native Notification from a real (non-ad-hoc) signature;
-// an unsigned bundle is silently dropped. So a signed packaged build uses the
-// native Notification (xtralab's icon and click-to-focus), while everything
-// else on macOS (`pnpm dev`, or an unsigned build) falls back to `osascript`,
-// which always delivers but carries no click action. Linux/Windows always use
-// native.
+// Deliver a desktop notification forwarded from a terminal. macOS silently
+// drops native Notifications from unsigned bundles, so only a signed packaged
+// build uses the native path (icon, click-to-focus); other macOS builds fall
+// back to `osascript`, which always delivers but has no click action.
 function deliverDesktopNotification(
   rawTitle: string,
   rawBody: string,
@@ -1049,9 +1016,8 @@ function deliverDesktopNotification(
     process.platform === 'darwin' && !(app.isPackaged && isAppProperlySigned());
 
   if (useOsascript) {
-    // `display notification` needs body text (the title is only the secondary
-    // line), so fold a body-less notification down into the body. This is an
-    // AppleScript requirement, so it stays scoped to the osascript path.
+    // `display notification` needs body text (the title is only the
+    // secondary line), so fold a body-less notification into the body.
     let osaTitle = title;
     let osaBody = body;
     if (osaBody.length === 0) {
@@ -1062,9 +1028,8 @@ function deliverDesktopNotification(
       osaTitle = app.getName();
     }
 
-    // Pass the strings as AppleScript arguments (`on run argv`) instead of
-    // interpolating them into the script source, so a title/body containing
-    // quotes or backslashes can neither break the script nor inject into it.
+    // Pass the strings as AppleScript arguments (`on run argv`) so quotes or
+    // backslashes in the title/body cannot break or inject into the script.
     const child = spawn(
       'osascript',
       [
@@ -1092,8 +1057,6 @@ function deliverDesktopNotification(
   if (!Notification.isSupported()) {
     return;
   }
-  // Native notifications allow an empty body (the title shows alone), so no
-  // folding is needed here.
   const notification = new Notification({
     title: title || app.getName(),
     body
@@ -1119,12 +1082,10 @@ function deliverDesktopNotification(
       if (senderWindow.isDestroyed()) {
         return;
       }
-      // show() rather than focus() alone: right after a banner click the app
-      // can be inactive, where focus() is a no-op; show() activates the app
-      // and orders the window front, which also selects its native macOS tab.
+      // After a banner click the app can be inactive, where focus() is a
+      // no-op; show() activates, orders front, and selects the native tab.
       senderWindow.show();
       senderWindow.focus();
-      // Activate the terminal that fired this notification, not just the window.
       if (session !== null) {
         senderWindow.webContents.send('xtralab:focus-terminal', session);
       }
@@ -1167,9 +1128,8 @@ function deliverDesktopNotification(
 }
 
 function sanitizeNotificationText(value: string): string {
-  // Drop control characters (so a notification can't carry terminal escape
-  // sequences), collapse whitespace, and clamp the length so a runaway message
-  // can't flood Notification Center.
+  // Strip control characters (no terminal escape sequences), collapse
+  // whitespace, and clamp the length.
   let result = '';
   for (const char of value) {
     const code = char.codePointAt(0) ?? 0;
@@ -1189,9 +1149,8 @@ function showLauncherWindow(): void {
   launcherWindow = createLauncherWindow(null);
 }
 
-// Open the launcher as a native tab in hostWindow's tab group, so picking a
-// project there feels like opening a browser tab. Reuses the existing
-// launcher window when there is one, moving it into the group.
+// Open the launcher as a native tab in hostWindow's tab group, reusing the
+// existing launcher window by moving it into the group.
 function openLauncherTab(hostWindow: BrowserWindow): void {
   if (process.platform !== 'darwin') {
     showLauncherWindow();
@@ -1219,9 +1178,8 @@ function openLauncherTabForFocusedWindow(): void {
   showLauncherWindow();
 }
 
-// macOS only: addTabbedWindow throws when the host window cannot take a tab
-// (for example because it was destroyed in the meantime), in which case the
-// window is left to show as a regular window.
+// macOS only: addTabbedWindow throws when the host cannot take a tab (e.g.
+// destroyed meanwhile); the window then shows as a regular window.
 function attachWindowAsTab(
   hostWindow: BrowserWindow,
   window: BrowserWindow
@@ -1357,9 +1315,8 @@ async function openFolder(
     !sourceWindow.isDestroyed()
       ? sourceWindow
       : null;
-  // When the launcher lives as a tab in a lab window's tab group, the new
-  // project joins that group as a tab in the launcher tab's place instead of
-  // opening as a separate window.
+  // When the launcher lives as a tab in a lab window's group, the new
+  // project joins that group in the launcher tab's place.
   const attachGroupId =
     process.platform === 'darwin' && sourceLauncher !== null
       ? launcherTabGroupId
@@ -1776,15 +1733,8 @@ function getManagedEnvironment(): ManagedEnvironment {
 }
 
 function ensureRuntimePyvenvCfg(envDir: string, binDir: string): void {
-  // The bundled runtime is a uv-installed Python (not a venv), but child
-  // processes get VIRTUAL_ENV=<envDir> when the project has no usable
-  // environment of its own. Tools like Astral ty refuse to
-  // start without a pyvenv.cfg, so synthesize a self-referential one. Python's
-  // own startup is unaffected because sys.prefix and sys.base_prefix both
-  // resolve back to envDir.
-  // Upstream tracking: https://github.com/astral-sh/ty/issues/2794 — revisit
-  // and drop this shim once ty accepts a missing/broken pyvenv.cfg or honors
-  // an explicit interpreter override for `ty server`.
+  // The uv runtime is no venv but children get VIRTUAL_ENV=<envDir>, and ty
+  // needs a pyvenv.cfg to start; shim until https://github.com/astral-sh/ty/issues/2794.
   const cfgPath = path.join(envDir, 'pyvenv.cfg');
   const desiredHomeLine = `home = ${binDir}`;
   if (existsSync(cfgPath)) {
@@ -1833,10 +1783,8 @@ function getSupervisorEnvironment(
   clearInheritedPythonEnvironment(environment);
   exportPythonEnvironmentRoot(environment, projectEnvironment);
 
-  // Advertise an iTerm2-class terminal so coding agents (Claude Code, Codex, …)
-  // take their OSC 9 notification path on the default `auto` setting; without a
-  // recognized TERM_PROGRAM they emit nothing. The renderer intercepts the OSC 9
-  // and forwards it to the OS. TERM stays xterm-256color (what real iTerm2 uses).
+  // Advertise an iTerm2-class terminal: coding agents only emit OSC 9
+  // notifications under a recognized TERM_PROGRAM; the renderer forwards them.
   environment.TERM_PROGRAM = 'iTerm.app';
   environment.TERM_PROGRAM_VERSION = '3.5.0';
 
@@ -1863,13 +1811,8 @@ function exportPythonEnvironmentRoot(
   environment: NodeJS.ProcessEnv,
   projectEnvironment: ProjectRuntimeEnvironment | null
 ): void {
-  // ty resolves third-party imports from the environment named by VIRTUAL_ENV
-  // or CONDA_PREFIX (VIRTUAL_ENV wins when both are set), and either variable
-  // takes precedence over ty's own discovery of a `.venv` next to the project,
-  // so the language server must be pointed at the environment the project
-  // kernel runs in. VIRTUAL_ENV is only valid for environments with a
-  // pyvenv.cfg (ty refuses to start otherwise); conda and pixi prefixes are
-  // exported through CONDA_PREFIX instead.
+  // Point ty at the kernel's environment: VIRTUAL_ENV or CONDA_PREFIX beats
+  // ty's own `.venv` discovery, and VIRTUAL_ENV without a pyvenv.cfg breaks ty.
   const environmentRoot = projectEnvironment?.option.environmentRoot ?? null;
   if (environmentRoot !== null) {
     if (existsSync(path.join(environmentRoot, 'pyvenv.cfg'))) {
@@ -2077,9 +2020,7 @@ function createLabWindow(
 
     if (!wasShown && !quitInProgress) {
       if (restore !== undefined) {
-        // The restore driver records the failure; it surfaces in the
-        // launcher's restore view like any other project that could not
-        // come back.
+        // The restore driver records the failure in the launcher's restore view.
         restore.onAborted(reason);
         return;
       }
@@ -2088,9 +2029,8 @@ function createLabWindow(
         `${app.getName()} - ${folderName}`,
         `${reason}\n\nCheck Help → Show Logs for details.`
       );
-      // A failed open leaves the source launcher disabled in its
-      // "Opening..." state (it only closes once the lab window shows), so
-      // reload it back to a usable welcome view.
+      // A failed open leaves the source launcher stuck in its "Opening..."
+      // state, so reload it back to a usable welcome view.
       if (sourceLauncher !== null && !sourceLauncher.isDestroyed()) {
         sourceLauncher.webContents.reload();
       }
@@ -2145,12 +2085,8 @@ function createLabWindow(
 
   window.once('ready-to-show', () => {
     if (restore !== undefined) {
-      // A restored window waits for the previous tab of its group so the
-      // group reassembles in the saved order, and appears without taking
-      // focus; restorePreviousSession focuses the previously active window
-      // once at the end. The window only counts as shown once it actually
-      // appears: a session that dies during the wait must still be treated
-      // as failed-before-shown.
+      // Show inactive (restorePreviousSession focuses the active window last);
+      // a session that dies during the wait still counts as failed-before-shown.
       void restore.waitForPredecessor.then(() => {
         if (window.isDestroyed()) {
           return;
@@ -2167,11 +2103,8 @@ function createLabWindow(
     }
 
     windowEverShown = true;
-    // The launcher stays visible in its "Opening..." state while the server
-    // starts and the page loads, and is only swapped for the lab window once
-    // there is something to show. When the launcher is a tab, the lab window
-    // joins its tab group first so the new tab takes the launcher tab's
-    // place.
+    // The launcher shows "Opening..." until there is something to show; when
+    // it is a tab, join its group first so the new tab takes its place.
     const launcherToClose =
       sourceLauncher !== null &&
       sourceLauncher === launcherWindow &&
@@ -2189,10 +2122,8 @@ function createLabWindow(
     launcherToClose?.close();
   });
 
-  // The native macOS "+" in the tab bar opens the launcher as a tab in this
-  // window's tab group, ready to pick a folder. The button appears because
-  // the window sets a tabbingIdentifier; AppKit expects this handler to open
-  // a window.
+  // The tab bar "+" (shown because of tabbingIdentifier) opens the launcher
+  // as a tab in this group; AppKit expects this handler to open a window.
   window.on('new-window-for-tab', () => {
     openLauncherTab(window);
   });
@@ -2574,9 +2505,8 @@ function trackSessionWindow(
     scheduleSessionStateWrite();
   });
   window.on('close', () => {
-    // On Windows and Linux closing the last window quits the app through
-    // window-all-closed, so this close is the quit: snapshot the session
-    // now so the window stays in it instead of being removed by 'closed'.
+    // On Windows/Linux closing the last window quits via window-all-closed,
+    // so snapshot now, before 'closed' removes this window from the session.
     if (
       process.platform !== 'darwin' &&
       BrowserWindow.getAllWindows().length === 1
@@ -2669,9 +2599,8 @@ function scheduleSessionStateWrite(): void {
   }, 500);
 }
 
-// The quit-time snapshot: refresh every live window's frame (background tabs
-// miss move and resize events) and write the state one final time before the
-// teardown starts closing windows.
+// Quit-time snapshot: refresh every live window's frame (background tabs miss
+// move/resize events) and write once more before teardown closes windows.
 function commitSessionStateForQuit(): void {
   if (sessionStateFrozen) {
     return;
@@ -2750,8 +2679,7 @@ function isSessionWindowBounds(value: unknown): value is SessionWindowBounds {
   );
 }
 
-// Saved bounds are only reused when they still land visibly on a connected
-// display; otherwise the window falls back to the default size and placement.
+// Reuse saved bounds only when they still land visibly on a connected display.
 function boundsOnAvailableDisplay(
   bounds: SessionWindowBounds | null
 ): SessionWindowBounds | null {
@@ -2790,12 +2718,10 @@ function pushRestoreProgress(): void {
   }
 }
 
-// Reopen the lab windows recorded in session-state.json. Windows that shared
-// a native macOS tab group through app-initiated tabbing are reassembled with
-// addTabbedWindow; windows the OS itself grouped (or that were merged by
-// hand) restore as separate windows that macOS regroups under the same
-// "Prefer tabs" setting that grouped them originally, since Electron has no
-// API to observe native tab membership.
+// Reopen the lab windows recorded in session-state.json. App-initiated tab
+// groups are reassembled with addTabbedWindow; windows the OS grouped itself
+// restore as separate windows (Electron cannot observe native tab membership)
+// that macOS regroups under the same "Prefer tabs" setting.
 async function restorePreviousSession(
   states: SessionWindowState[]
 ): Promise<void> {
@@ -2939,9 +2865,8 @@ async function restoreSessionGroup(
     })
   );
 
-  // The windows appear strictly in saved order: each one waits for its
-  // predecessor before joining the group, because addTabbedWindow inserts
-  // next to the host tab and unordered attachment would shuffle the tabs.
+  // Each window waits for its predecessor: addTabbedWindow inserts next to
+  // the host tab, so unordered attachment would shuffle the tabs.
   let predecessorShown: Promise<void> = Promise.resolve();
   let lastShownWindow: BrowserWindow | null = null;
   const groupWindows: RestoredSessionWindow[] = [];
@@ -3076,10 +3001,8 @@ function getManagedEnvironmentExecutablePath(
   return path.join(getManagedEnvironmentBinDir(envDir), platformExecutableName);
 }
 
-// A short, stable identifier for one opened folder, derived from its absolute
-// path. Keys the per-folder state xtralab keeps under app data (kernels,
-// JupyterLab workspace) so two folders never collide and the same folder maps
-// back to its own state on every launch.
+// Short, stable per-folder identifier keying the state xtralab keeps under
+// app data (kernels, JupyterLab workspace).
 function getProjectHash(folderPath: string): string {
   return createHash('sha256').update(folderPath).digest('hex').slice(0, 16);
 }
@@ -3092,13 +3015,10 @@ function getProjectKernelDataPath(folderPath: string): string {
   );
 }
 
-// The JupyterLab workspace name for one folder. JupyterLab persists each
-// window's open tabs and panel layout into a server-side workspace; loading a
-// folder as `/lab/workspaces/<name>` keeps that layout in its own file rather
-// than the `default` workspace every window would otherwise share, where one
-// folder restores another's tabs. The folder hash makes the name unique and
-// stable across launches; the readable slug only aids debugging. The lowercase
-// slug and hex hash satisfy jupyterlab_server's `[A-Za-z0-9_-]` workspace route.
+// Per-folder JupyterLab workspace name, so each folder keeps its own tab
+// layout instead of the shared `default` workspace (where one folder restores
+// another's tabs). The hash keeps it unique and stable; the slug only aids
+// debugging. Both satisfy jupyterlab_server's `[A-Za-z0-9_-]` workspace route.
 function getProjectWorkspaceName(folderPath: string): string {
   const slug = path
     .basename(folderPath)

@@ -50,8 +50,7 @@ export interface IXtralabDiffContext {
   rendermime: IRenderMimeRegistry | null;
   themeManager: IThemeManager | null;
   /**
-   * The ask-agent popup; when available, diff line selections get an
-   * "ask an agent about these lines" gutter button.
+   * When available, diff line selections get an "ask an agent" gutter button.
    */
   askAgent: IAskAgent | null;
   trans: TranslationBundle;
@@ -211,9 +210,8 @@ export class XtralabDiffWidget
   }
 
   dispose(): void {
-    // Release any in-flight refresh awaiter so a host that awaits refresh()
-    // (jupyterlab-git re-shows its diff button only once it resolves) does not
-    // hang when the widget is torn down mid-fetch.
+    // jupyterlab-git awaits refresh() to re-show its diff button; release any
+    // in-flight awaiter so it does not hang on mid-fetch teardown.
     this.settleRefresh();
     super.dispose();
   }
@@ -270,7 +268,6 @@ function ModelDiffView(props: {
     error: null
   });
 
-  // Mirror toolbar-driven notebook view changes into React state.
   const [notebookViewMode, setNotebookViewMode] =
     React.useState<NotebookDiffViewMode>(() => widget.notebookViewMode);
   React.useEffect(() => {
@@ -294,7 +291,6 @@ function ModelDiffView(props: {
     [widget]
   );
 
-  // Mirror toolbar-driven diff-style changes into React state.
   const [diffStyle, setDiffStyle] = React.useState<DiffStyle>(
     () => widget.diffStyle
   );
@@ -359,10 +355,8 @@ function ModelDiffView(props: {
     []
   );
 
-  // Fetch both sides whenever the model or reload nonce changes.
   React.useEffect(() => {
     let cancelled = false;
-    // Non-image binaries do not need content fetches.
     if (isBinary) {
       setState({ loading: false, oldText: '', newText: '', error: null });
       // An in-flight `refresh()` still has to resolve.
@@ -399,7 +393,6 @@ function ModelDiffView(props: {
         });
       } finally {
         if (!cancelled) {
-          // Let `refresh()` settle once content has loaded.
           widget.settleRefresh();
         }
       }
@@ -444,7 +437,6 @@ function ModelDiffView(props: {
         });
       },
       onAfterSave: () => {
-        // Re-pull so the diff reflects the reverted hunk.
         void widget.refresh();
       }
     }),

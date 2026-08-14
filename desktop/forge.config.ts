@@ -30,11 +30,9 @@ const appBundleId = isDev
   ? 'io.github.jtpio.xtralab.dev'
   : 'io.github.jtpio.xtralab';
 
-// macOS release signing, enabled with XTRALAB_MACOS_SIGN=1. The Developer ID
-// Application identity is auto-discovered from the keychain, and osx-sign's
-// defaults (hardened runtime, secure timestamps, Electron's standard
-// entitlements) are the notarization prerequisites. Notarization runs when the
-// Apple credentials are also present, and staples the ticket into the app.
+// macOS signing (XTRALAB_MACOS_SIGN=1): the Developer ID identity is
+// auto-discovered from the keychain; osx-sign's defaults satisfy the
+// notarization prerequisites.
 const signMacOS = process.env.XTRALAB_MACOS_SIGN === '1';
 const appleId = process.env.APPLE_ID;
 const appleIdPassword = process.env.APPLE_APP_SPECIFIC_PASSWORD;
@@ -95,12 +93,8 @@ const config: ForgeConfig = {
     ...(signMacOS
       ? {
           osxSign: {
-            // The signing walk covers every binary-looking file in the bundle.
-            // Notarization needs each Mach-O signed — including the bundled
-            // Python runtime — but the runtime is also full of binary
-            // non-Mach-O files (.pyc caches and friends), and every signature
-            // costs a timestamp-server round-trip, so restrict the runtime to
-            // real Mach-O binaries.
+            // Notarization needs every Mach-O signed, but each signature costs
+            // a timestamp round-trip, so sign only real Mach-Os in the runtime.
             ignore: (file: string) =>
               file.includes('/Contents/Resources/runtime/') && !isMachO(file)
           },
@@ -163,11 +157,9 @@ const config: ForgeConfig = {
     })
   ],
   hooks: {
-    // Electron derives the runtime app name — and with it the userData
-    // directory, the "<name> Safe Storage" keychain item, and the
-    // single-instance lock — from the asar's package.json productName, not
-    // from packagerConfig.name. Stamp the variant's productName in so packaged
-    // dev builds keep their state fully separate from the release app.
+    // Electron takes the runtime app name (userData dir, Safe Storage keychain
+    // item, single-instance lock) from the asar package.json productName, not
+    // packagerConfig.name, so stamp the variant's name in.
     packageAfterCopy: async (forgeConfig, buildPath) => {
       const packageJsonPath = join(buildPath, 'package.json');
       const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
@@ -185,11 +177,9 @@ const config: ForgeConfig = {
         installAppImageLauncher(outputPath);
       }
     },
-    // Forge's osxSign/osxNotarize cover only the .app. Apple's disk-image
-    // guidance is to sign the DMG itself, then notarize and staple it, so the
-    // downloaded installer also passes Gatekeeper, offline included. codesign
-    // resolves the identity by keychain substring match, the same discovery
-    // osx-sign performs for the app.
+    // Forge's osxSign/osxNotarize cover only the .app; Apple's guidance is to
+    // also sign and notarize the DMG so the installer passes Gatekeeper
+    // offline. codesign matches the identity by keychain substring.
     postMake: async (forgeConfig, makeResults) => {
       if (signMacOS) {
         for (const result of makeResults) {

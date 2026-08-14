@@ -4,35 +4,22 @@ import type { ISignal } from '@lumino/signaling';
 import type { IAgent } from './agents';
 
 /**
- * A read-only, observable view of the launcher's available agents.
- *
- * The launcher plugin owns the agent list — xtralab's defaults merged with
- * the user's `xtralab:launcher` settings, then filtered by a server-side
- * `which` check — and registers an `xtralab:start-agent:<id>` command for
- * each entry. This token shares that list, and (via {@link agentCommandId})
- * the command id that launches each agent, so other plugins can surface the
- * same agents without re-deriving the list or duplicating the icons. The
- * terminals panel uses it to build its "new terminal" dropdown.
+ * A read-only, observable view of the launcher's available agents — the
+ * merged, availability-filtered list the launcher renders — shared so other
+ * plugins (e.g. the terminals panel) can surface the same agents and icons.
  */
 export interface IAgentRegistry {
-  /**
-   * The current agents, already filtered by availability and sorted by
-   * rank — the same array the launcher renders.
-   */
+  /** The current agents, filtered by availability and sorted by rank. */
   readonly agents: IAgent[];
 
-  /**
-   * Emitted whenever {@link agents} changes (e.g. the user edits the
-   * launcher settings). Consumers that cache the list should re-read it
-   * here; consumers that read it on demand can ignore the signal.
-   */
+  /** Emitted whenever {@link agents} changes. */
   readonly changed: ISignal<IAgentRegistry, void>;
 }
 
 /**
- * DI token for {@link IAgentRegistry}. Provided by `xtralab:launcher` and
- * consumed — optionally, so the panel still works when the launcher is
- * disabled — by `xtralab:terminals`.
+ * DI token for {@link IAgentRegistry}. Provided by `xtralab:launcher`;
+ * consumers depend on it optionally so they survive the launcher being
+ * disabled.
  */
 export const IAgentRegistry = new Token<IAgentRegistry>(
   'xtralab:IAgentRegistry',
@@ -40,11 +27,8 @@ export const IAgentRegistry = new Token<IAgentRegistry>(
 );
 
 /**
- * The JupyterLab command id that launches a given agent in a new terminal.
- * Defined here — in the shared contract module rather than the launcher's
- * command-registration internals — so the launcher (which registers the
- * commands) and any consumer (which references them, e.g. in a menu) agree
- * on the id.
+ * The command id that launches a given agent in a new terminal, defined in
+ * the shared contract module so the launcher and consumers agree on it.
  */
 export function agentCommandId(agentId: string): string {
   return `xtralab:start-agent:${agentId}`;

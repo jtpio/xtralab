@@ -12,24 +12,12 @@ import { coerceData } from '../mimeData';
 
 const PLUGIN_ID = 'xtralab:show-output';
 
-/**
- * Render arbitrary rich content into a panel, with no notebook and no kernel.
- */
 const SHOW_COMMAND = 'xtralab:show';
 
 /**
- * Contribute `xtralab:show`: render a single MIME bundle into a main-area
- * panel using the application's render-mime registry.
- *
- * This is the kernel-free counterpart to running a notebook. A coding agent
- * generates the content itself (a Vega-Lite spec, a Markdown explainer, an
- * HTML fragment, an SVG, a base64 image) and hands it to this command, which
- * renders it with the same renderers JupyterLab uses for cell output and docks
- * the result beside the code. Nothing is written to disk and no kernel is
- * required, so it works even where the kernel has no plotting libraries.
- *
- * Repeated calls with the same `id` reuse one panel, so a walkthrough can
- * refresh the view in place instead of piling up tabs.
+ * Contributes `xtralab:show`: render a single MIME bundle into a panel with
+ * the same renderers JupyterLab uses for cell output — no kernel, no file on
+ * disk. Repeated calls with the same `id` reuse one panel.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
@@ -120,9 +108,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
         const model = rendermime.createModel({ data: bundle, trusted: true });
         const renderer = rendermime.createRenderer(chosen);
-        // A scrollable Panel, not a MainAreaWidget: MainAreaWidget does not lay
-        // out its content in the side area, and the panel needs to scroll when
-        // the content is taller than it (style/showOutput.css).
+        // Not a MainAreaWidget: it does not lay out its content in the side
+        // area; the panel scrolls via style/showOutput.css.
         const widget = new Panel();
         widget.addClass('jp-xtralab-ShowPanel');
         widget.id = `xtralab-show-${id}`;
@@ -130,7 +117,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
         widget.title.closable = true;
         widget.addWidget(renderer);
 
-        // Replace any existing panel with this id so shows refresh in place.
         const existing = panels.get(id);
         if (existing && !existing.isDisposed) {
           existing.dispose();
@@ -143,8 +129,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         });
 
         // Attach before rendering so renderers that need layout (Vega) size
-        // correctly. Default to the side area so the editor keeps full width;
-        // only split the document area when `area` is "main".
+        // correctly.
         if (area === 'main') {
           labShell.add(widget, 'main', {
             mode,

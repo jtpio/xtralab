@@ -43,99 +43,41 @@ import {
 
 const PLUGIN_ID = 'xtralab:ask-agent';
 
-/**
- * Command id that reveals the queued-prompts panel.
- */
 const QUEUE_PANEL_COMMAND = 'xtralab:ask-agent-queue';
 
-/**
- * Widget id of the queued-prompts side panel.
- */
 const QUEUE_PANEL_ID = 'xtralab-ask-agent-queue';
 
-/**
- * State-database key remembering the last agent picked in the popup.
- */
 const LAST_AGENT_STATE_KEY = 'xtralab:ask-agent:agent';
 
-/**
- * State-database key remembering the last target picked in the popup.
- */
 const LAST_TARGET_STATE_KEY = 'xtralab:ask-agent:target';
 
-/**
- * State-database key holding the queued prompts across page loads.
- */
 const QUEUE_STATE_KEY = 'xtralab:ask-agent:queue';
 
-/**
- * Debounce for mirroring the queue into the state database, so typing in
- * the panel's textareas does not issue a write per keystroke.
- */
 const QUEUE_PERSIST_MS = 500;
 
-/**
- * Stored target value for "start the agent in a new terminal".
- */
 const NEW_TARGET_VALUE = 'new';
 
-/**
- * Stored-target prefix for an existing session; the session name follows.
- */
 const SESSION_TARGET_PREFIX = 'session:';
 
-/**
- * Delay between a selection change and showing the pill, so the affordance
- * appears once the selection settles rather than flickering along a drag.
- */
+/** Delay before showing the pill, so it does not flicker along a drag. */
 const SELECTION_SETTLE_MS = 250;
 
 /**
- * Keystroke that opens the popup in a file editor. `Accel I` would be the
- * familiar "inline chat" chord but CodeMirror's default keymap owns `Mod-i`
- * (selectParentSyntax) inside editors and prevents-default before Lumino
- * sees it; `Accel .` — the "quick fix" chord elsewhere — is free in the
- * editor, the browser and JupyterLab.
+ * `Accel I` would be the familiar "inline chat" chord but CodeMirror's
+ * default keymap owns `Mod-i` and prevents-default before Lumino sees it;
+ * `Accel .` is free in the editor, the browser and JupyterLab.
  */
 const ASK_AGENT_KEYS = 'Accel .';
 
-/**
- * Gap between the pill and the selection anchor, in pixels.
- */
 const PILL_GAP = 6;
 
-/**
- * Minimum distance kept between the pill and the viewport edges.
- */
 const PILL_VIEWPORT_MARGIN = 8;
 
 /**
- * Select code in a file editor (or pick diff lines) and prompt a coding
- * agent about it.
- *
- * The plugin watches the document selection: a non-empty selection inside a
- * CodeMirror file editor or notebook cell grows a small floating "Ask agent"
- * pill next to the selection. Clicking it (or running `xtralab:ask-agent`,
- * bound to Accel+. in editors and notebooks) opens a popup where the user
- * types an instruction, picks one of the launcher's agents and picks where
- * the prompt goes; submitting either starts that agent in a fresh terminal
- * via `xtralab:start-agent:<id>`, or pastes the prompt into an agent already
- * running in one of the open terminal sessions (via `IAgentTerminals`; the
- * agent CLIs queue prompts that arrive while they are busy). Sends to a
- * running agent stay in the background — focus never leaves the editor, and
- * a success toast offers to open the terminal. Either way the prompt embeds
- * the file path, cell index for notebooks, line range and selected snippet.
- *
- * The popup's Queue button (or Accel+Enter) defers the send instead: the
- * comment lands in a persistent queue, stamped with the popup's selected
- * destination — every queued prompt is independent and may aim at a
- * different agent or session. A right-sidebar panel reviews the queue
- * (edit, retarget, remove) and flushes it in one go, combining prompts that
- * share a destination into a single numbered message. The queue survives
- * page reloads.
- *
- * The same popup is provided on the `IAskAgent` token so the git diff
- * viewers can open it for a selected diff line range.
+ * Prompt a coding agent about selected code: a pill/popup over editor,
+ * notebook-cell and git-diff selections sends the instruction to a fresh
+ * agent terminal or into a running one, or defers it into a persistent
+ * queue reviewed in a right-sidebar panel and flushed as one batch.
  */
 const plugin: JupyterFrontEndPlugin<IAskAgent> = {
   id: PLUGIN_ID,
@@ -164,18 +106,15 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
   ): IAskAgent => {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
-    /**
-     * Best-effort write to the state database; a failure only loses the
-     * convenience of restoring this value on the next page load.
-     */
+    /** Best-effort state-database write; a failure only loses a restored default. */
     const saveState = (key: string, value: ReadonlyPartialJSONValue): void => {
       state?.save(key, value).catch(error => {
         console.error('xtralab: failed to persist ask-agent state', error);
       });
     };
 
-    // The last-used picks, restored asynchronously from the state database
-    // and kept in memory so the popup can read them synchronously.
+    // Last-used picks, restored asynchronously but read synchronously by
+    // the popup.
     let lastAgentId: string | null = null;
     let lastTarget: string | null = null;
     if (state !== null) {
@@ -215,12 +154,9 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       );
 
     /**
-     * Running agent terminals offered as prompt targets, each resolved to
-     * its agent's icon the same way the terminals panel badges its rows
-     * (matching either the configured command or the canonical id, falling
-     * back to the plain terminal icon when the agent has since been removed
-     * from the settings). Unlike {@link promptAgents} this does not require
-     * `promptArgs`: pasting into a running TUI needs no command-line recipe.
+     * Running agent terminals offered as prompt targets, badged with the
+     * matching agent's icon like the terminals panel (configured command or
+     * canonical id). Pasting into a running TUI needs no `promptArgs`.
      */
     const sessionTargets = (): ISessionTarget[] =>
       (agentTerminals?.sessions() ?? []).map(session => ({
@@ -252,9 +188,6 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       }
     };
 
-    /**
-     * Open the named terminal's tab (the success toast's call to action).
-     */
     const openTerminal = (name: string): void => {
       app.commands.execute('terminal:open', { name }).catch(reason => {
         console.error('xtralab: failed to open the terminal', reason);
@@ -262,10 +195,9 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
     };
 
     /**
-     * Paste `prompt` into the running agent in session `name`. Delivery is
-     * background — focus stays where it is — so `successMessage` is toasted
-     * with an "Open" action instead. Failures are toasted too; the promise
-     * still rejects so callers can chain their own cleanup to success only.
+     * Paste `prompt` into the running agent in session `name`, in the
+     * background. Failures are toasted but still reject, so callers can
+     * chain their own cleanup to success only.
      */
     const deliverToSession = async (
       name: string,
@@ -273,8 +205,7 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       successMessage: string
     ): Promise<void> => {
       if (agentTerminals === null) {
-        // Session targets are only offered when the terminals plugin is
-        // present; fail loudly rather than resolving as a delivered send.
+        // Session targets are only offered when the terminals plugin is present.
         throw new Error('xtralab: agent terminals are unavailable');
       }
       try {
@@ -303,8 +234,7 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
 
     /**
      * Start `agentId` in a fresh terminal with `prompt` on its command
-     * line. Failures are toasted; the promise still rejects so callers can
-     * chain their own cleanup to success only.
+     * line. Failures are toasted but still reject.
      */
     const startAgentTerminal = async (
       agentId: string,
@@ -327,9 +257,8 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       }
     };
 
-    // The queue feature needs a side area to dock the review panel into, so
-    // everything below stays off (and the popup hides its Queue button)
-    // without the full Lab shell.
+    // The queue needs a side area for its review panel, so it stays off
+    // (and the popup hides its Queue button) without the full Lab shell.
     let queue: PromptQueue | null = null;
     let queuePrompt:
       | ((
@@ -345,8 +274,8 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       let panel: AskAgentQueuePanel | null = null;
       let flushing = false;
 
-      // Mirror every queue change into the state database, debounced so
-      // typing in the panel's textareas does not write on each keystroke.
+      // Debounced so typing in the panel's textareas does not write on
+      // each keystroke.
       const persistQueue = new Debouncer(() => {
         saveState(QUEUE_STATE_KEY, serializeQueuedPrompts(promptQueue.items));
       }, QUEUE_PERSIST_MS);
@@ -355,12 +284,9 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       });
 
       /**
-       * The prompt (and working directory) for a batch sent to a new
-       * terminal. When every item agrees on a repository root the terminal
-       * starts there and the item paths stay relative to it; a mixed batch
-       * starts at the server root instead, with every locator rewritten to
-       * a server-relative path so none of them depends on the terminal's
-       * cwd.
+       * The prompt (and cwd) for a batch sent to a new terminal: a shared
+       * repository root becomes the cwd; a mixed batch starts at the server
+       * root with every locator rewritten server-relative instead.
        */
       const newTerminalBatch = (
         items: readonly IQueuedPrompt[]
@@ -385,13 +311,10 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       };
 
       /**
-       * Flush the queue: prompts are grouped by destination — every prompt
-       * is independent and may target a different agent or session — and
-       * each group goes out as one numbered message. A group's prompts
-       * leave the queue only when its delivery succeeds, so one dead
-       * session never loses the comments aimed elsewhere. One flush runs
-       * at a time — deliveries span server round trips, and a second click
-       * meanwhile would re-send every still-queued group.
+       * Flush the queue: prompts are grouped by destination and each group
+       * goes out as one numbered message, leaving the queue only when its
+       * delivery succeeds. One flush at a time — a second click mid-flight
+       * would re-send every still-queued group.
        */
       const sendQueue = (): void => {
         if (flushing) {
@@ -403,8 +326,8 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
         >();
         for (const item of promptQueue.items) {
           if (item.target === null) {
-            // The panel disables sending while a target is missing; skip
-            // defensively if a send races a target loss.
+            // The panel disables sending without a target; skip if a send
+            // races a target loss.
             continue;
           }
           const key =
@@ -419,9 +342,8 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
         for (const { target, items } of groups.values()) {
           /**
            * Remove the delivered prompts — except any edited or retargeted
-           * while the send was in flight: an edit makes a new object, so
-           * identity is the "unchanged" check, and the edited prompt stays
-           * queued for the next flush instead of being dropped unsent.
+           * in flight: an edit makes a new object, so identity is the
+           * "unchanged" check and the edited prompt stays queued.
            */
           const delivered = (): void => {
             promptQueue.removeMany(
@@ -466,17 +388,14 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
         }
         flushing = true;
         panel?.update();
-        // Every delivery caught its own failure above, so this resolves
-        // once all groups have settled either way.
+        // Every delivery caught its own failure, so this settles either way.
         void Promise.all(deliveries).then(() => {
           flushing = false;
           panel?.update();
         });
       };
 
-      /**
-       * Empty the queue, with an undo toast (typed comments are work).
-       */
+      /** Empty the queue, with an undo toast (typed comments are work). */
       const clearQueue = (): void => {
         const removed = promptQueue.items;
         if (removed.length === 0) {
@@ -494,8 +413,8 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
             actions: [
               {
                 label: trans.__('Undo'),
-                // Prompts queued after the clear are newer; keep them,
-                // after the restored ones.
+                // Prompts queued after the clear are newer; keep them after
+                // the restored ones.
                 callback: () =>
                   promptQueue.reset([...removed, ...promptQueue.items])
               }
@@ -520,12 +439,10 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
           created.title.icon = askAgentIcon;
           created.title.label = trans.__('Prompt Queue');
           created.title.caption = trans.__('Queued ask-agent prompts');
-          // Closable so it gets a close button if the user drags it out of
-          // the side area; closing disposes it, and it is recreated on
-          // demand (same arrangement as the walkthrough panel).
+          // Closable so it gets a close button when dragged out of the side
+          // area; closing disposes it and it is recreated on demand.
           created.title.closable = true;
-          // The panel re-renders on queue changes itself; the chips also
-          // mirror the live agent list and terminal sessions.
+          // The chips mirror the live agent list and terminal sessions.
           agentRegistry?.changed.connect(created.update, created);
           agentTerminals?.changed.connect(created.update, created);
           labShell.add(created, 'right', { rank: 900 });
@@ -555,8 +472,8 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
           rememberTarget(NEW_TARGET_VALUE);
         }
         promptQueue.add(request.context, instruction, target);
-        // Queueing is background like a session send: hand focus straight
-        // back to the widget the ask came from.
+        // Queueing is background: hand focus back to the widget the ask
+        // came from.
         app.shell.currentWidget?.activate();
         const queuePanel = ensurePanel();
         if (queuePanel.isVisible) {
@@ -564,9 +481,8 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
           return;
         }
         if (wasEmpty) {
-          // First prompt of a batch: reveal the panel once, so the user
-          // sees where queued prompts accumulate. Later additions respect
-          // a deliberately closed sidebar and toast instead.
+          // Reveal the panel once for the first prompt; later additions
+          // respect a deliberately closed sidebar and toast instead.
           labShell.activateById(queuePanel.id);
           return;
         }
@@ -592,10 +508,8 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
         execute: revealPanel
       });
 
-      // Restore the queue persisted by a previous page load. Anything
-      // queued before the fetch resolves is newer and stays, after the
-      // restored prompts. A restored queue should be discoverable without
-      // queueing anything new, so its sidebar tab is recreated (collapsed).
+      // Prompts queued before the fetch resolves are newer and stay, after
+      // the restored ones; the tab is recreated so the restore is discoverable.
       if (state !== null) {
         void state
           .fetch(QUEUE_STATE_KEY)
@@ -617,11 +531,8 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       closePopup();
       const agents = promptAgents();
       const targets = sessionTargets();
-      // Preselect where the prompt goes. Queueing into a running agent is
-      // the common follow-up loop, so a live session wins by default — the
-      // last-used one when it is still running, otherwise the first — unless
-      // the user explicitly chose a new terminal last time (and one can
-      // still be started).
+      // Preselect: a live session wins (last-used if still running, else the
+      // first) unless a new terminal was last chosen and can still start.
       const storedTarget = lastTarget;
       let initialTargetName: string | null =
         targets.length > 0 ? targets[0].name : null;
@@ -664,9 +575,8 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
           const prompt = buildPrompt(request.context, instruction);
           if (target.kind === 'session') {
             rememberTarget(SESSION_TARGET_PREFIX + target.name);
-            // The send is background, so hand focus straight back to the
-            // widget the ask came from (the editor or diff under the popup);
-            // disposing the popup alone would drop it on `document.body`.
+            // The send is background: hand focus back to the widget the ask
+            // came from — disposing the popup alone drops it on `document.body`.
             app.shell.currentWidget?.activate();
             const label =
               targets.find(entry => entry.name === target.name)?.label ??
@@ -738,9 +648,8 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       const button = ensurePill();
       pillRequest = request;
       button.style.display = 'flex';
-      // Measure after display so the rect is real, then sit the pill just
-      // above the selection head (below it when that would leave the
-      // viewport).
+      // Measure after display so the rect is real; the pill sits above the
+      // selection head, below it when that would leave the viewport.
       const rect = button.getBoundingClientRect();
       let left = anchor.left;
       let top = anchor.top - rect.height - PILL_GAP;
@@ -773,9 +682,8 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
         hidePill();
         return;
       }
-      // The popup can send somewhere as long as an agent takes a prompt on
-      // its command line (new terminal) or one is already running (existing
-      // session) — only with neither is there nothing to offer.
+      // Only with no prompt-capable agent and no running session is there
+      // nothing to offer.
       if (
         promptAgents().length === 0 &&
         (agentTerminals?.sessions() ?? []).length === 0
@@ -791,9 +699,8 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       showPill(request);
     };
 
-    // Each invocation resets the timer, so evaluation runs once the
-    // selection has settled. Mid-drag the selection is still moving; the
-    // pointerup listener invokes it again once the drag ends.
+    // Mid-drag the selection is still moving; the pointerup listener
+    // re-invokes once the drag ends.
     const settled = new Debouncer(() => {
       if (!pointerIsDown) {
         evaluateSelection();
@@ -802,8 +709,8 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
 
     document.addEventListener('selectionchange', () => {
       if (popup !== null) {
-        // Typing in the popup's textarea moves the document selection; the
-        // pill must not resurface underneath the open popup.
+        // Typing in the popup moves the document selection; the pill must
+        // not resurface underneath it.
         return;
       }
       hidePill();
@@ -845,9 +752,8 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
         return;
       }
       if (popup !== null) {
-        // Focus is outside the popup — its own key handler consumes Escape
-        // when focus is inside — so close it here and hand focus back to
-        // the widget the ask came from.
+        // The popup's own handler consumes Escape while focus is inside it;
+        // here focus is elsewhere, so close and restore focus.
         closePopup();
         app.shell.currentWidget?.activate();
         return;
@@ -875,7 +781,6 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       }
     });
 
-    // One binding per editing surface: file editors and notebooks.
     for (const selector of ['.jp-FileEditor', '.jp-Notebook']) {
       app.commands.addKeyBinding({
         command: ASK_AGENT_COMMAND,

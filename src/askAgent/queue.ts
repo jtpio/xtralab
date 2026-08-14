@@ -5,8 +5,8 @@ import type { AskAgentTarget, IAskAgentContext } from './tokens';
 
 /**
  * One queued prompt: a code selection, the user's instruction about it, and
- * where it should go. Every prompt is independent — a queue can mix targets
- * (different agents, new terminals, different running sessions) freely.
+ * where it should go. Every prompt is independent — a queue mixes targets
+ * freely.
  */
 export interface IQueuedPrompt {
   /**
@@ -14,20 +14,13 @@ export interface IQueuedPrompt {
    */
   id: string;
 
-  /**
-   * The code selection the instruction is about.
-   */
   context: IAskAgentContext;
 
-  /**
-   * The user's typed comment.
-   */
   instruction: string;
 
   /**
-   * The destination picked for this prompt (captured from the popup when it
-   * was queued, editable in the panel). `null` when a persisted target no
-   * longer parses — the panel then asks for a new pick before sending.
+   * The destination picked in the popup, editable in the panel. `null` when
+   * a persisted target no longer parses — the panel then asks for a new pick.
    */
   target: AskAgentTarget | null;
 }
@@ -39,15 +32,9 @@ function nextId(): string {
 }
 
 /**
- * The accumulated ask-agent prompts awaiting a batch send.
- *
- * Queueing decouples writing review comments from deciding where they go:
- * the popup appends entries here instead of sending, the side panel lists
- * and edits them, and one batch send flushes the lot, delivering each
- * destination's prompts as one numbered message. The queue itself is a
- * plain in-memory model; the plugin mirrors it into the JupyterLab state
- * database (via {@link serializeQueuedPrompts}) so a page reload does not
- * silently drop typed comments.
+ * The accumulated ask-agent prompts awaiting a batch send. A plain
+ * in-memory model; the plugin mirrors it into the state database so a page
+ * reload does not silently drop typed comments.
  */
 export class PromptQueue {
   constructor(items: IQueuedPrompt[] = []) {
@@ -125,8 +112,7 @@ export class PromptQueue {
   }
 
   /**
-   * Remove several queued prompts at once (one signal emission) — used when
-   * a batch send succeeds for one target while other targets' prompts stay.
+   * Remove several queued prompts at once (one signal emission).
    */
   removeMany(ids: readonly string[]): void {
     const drop = new Set(ids);
@@ -160,9 +146,8 @@ export class PromptQueue {
 }
 
 /**
- * Validate one persisted context. Only fields that still match the
- * `IAskAgentContext` contract are kept, so schema drift (or manual
- * state-database edits) degrades an entry instead of poisoning the queue.
+ * Validate one persisted context; schema drift degrades an entry instead
+ * of poisoning the queue.
  */
 function sanitizeContext(value: unknown): IAskAgentContext | null {
   if (value === null || typeof value !== 'object') {
@@ -225,9 +210,8 @@ function sanitizeTarget(value: unknown): AskAgentTarget | null {
 }
 
 /**
- * Rebuild queued prompts from a value read back from the state database.
- * Entries that no longer parse are dropped silently — the queue is a
- * convenience buffer, not a document.
+ * Rebuild queued prompts from the state database; entries that no longer
+ * parse are dropped silently.
  */
 export function deserializeQueuedPrompts(value: unknown): IQueuedPrompt[] {
   if (!Array.isArray(value)) {
@@ -255,8 +239,7 @@ export function deserializeQueuedPrompts(value: unknown): IQueuedPrompt[] {
 
 /**
  * The queue as a JSON value for the state database. Ids are session-scoped
- * handles, so they are not persisted; {@link deserializeQueuedPrompts}
- * assigns fresh ones on load.
+ * and not persisted; fresh ones are assigned on load.
  */
 export function serializeQueuedPrompts(
   items: readonly IQueuedPrompt[]

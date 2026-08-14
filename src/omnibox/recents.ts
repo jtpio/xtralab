@@ -16,41 +16,33 @@ interface IRecentEntry {
    */
   id: string;
   /**
-   * Arguments the command ran with, for palette-style entries whose label
-   * and behavior depend on them (e.g. one "Use Theme: …" per theme).
+   * Arguments the command ran with, for palette-style entries whose label and
+   * behavior depend on them.
    */
   args?: ReadonlyPartialJSONObject;
 }
 
 /**
- * Identity of an entry: two uses only match when kind, id and args all do,
- * so runs of one command with different args stay distinct entries.
+ * Identity of an entry: two uses only match when kind, id and args all do, so
+ * runs of one command with different args stay distinct.
  */
 function entryKey(entry: IRecentEntry): string {
   return `${entry.kind}\0${entry.id}\0${JSON.stringify(entry.args ?? null)}`;
 }
 
-/**
- * State database key the recents list is persisted under.
- */
 const STATE_KEY = 'xtralab:omnibox:recents';
 
 /**
- * A most-recently-used list of omnibox results, generic over the result kind
- * so commands and files (and future kinds) share one store. Entries are kept
- * most-recent-first, capped at `maxItems` per kind, and persisted through the
- * state database so they survive reloads. Without a state database the list
- * still works for the lifetime of the page.
+ * A most-recently-used list of omnibox results, most-recent-first, capped at
+ * `maxItems` per kind and persisted through the state database. Without a
+ * state database it still works for the lifetime of the page.
  */
 export class OmniboxRecents {
   constructor(options: OmniboxRecents.IOptions = {}) {
     this._state = options.state ?? null;
   }
 
-  /**
-   * Maximum number of entries remembered per kind. Lowering it trims the list
-   * immediately; `0` disables recents entirely.
-   */
+  /** Maximum entries kept per kind; lowering trims immediately, `0` disables recents. */
   get maxItems(): number {
     return this._maxItems;
   }
@@ -67,20 +59,14 @@ export class OmniboxRecents {
     }
   }
 
-  /**
-   * The recorded entries, most recent first — all of them, or only those of
-   * one kind.
-   */
+  /** The recorded entries, most recent first, optionally filtered to one kind. */
   entries(kind?: RecentKind): IRecentEntry[] {
     return kind
       ? this._entries.filter(entry => entry.kind === kind)
       : [...this._entries];
   }
 
-  /**
-   * Record a use of `id` (with the args it ran with, if any), moving it to
-   * the front of its kind's list.
-   */
+  /** Record a use, moving the entry to the front of its kind's list. */
   touch(kind: RecentKind, id: string, args?: ReadonlyPartialJSONObject): void {
     const entry: IRecentEntry =
       args === undefined ? { kind, id } : { kind, id, args };
@@ -92,7 +78,7 @@ export class OmniboxRecents {
 
   /**
    * Load the persisted list. Entries recorded before the load completes stay
-   * at the front, ahead of the restored history.
+   * ahead of the restored history.
    */
   async restore(): Promise<void> {
     if (!this._state) {
@@ -139,9 +125,7 @@ export class OmniboxRecents {
     this._entries = this._trim(merged);
   }
 
-  /**
-   * Keep at most `maxItems` entries of each kind, preserving order.
-   */
+  /** Keep at most `maxItems` entries of each kind, preserving order. */
   private _trim(entries: IRecentEntry[]): IRecentEntry[] {
     const counts = new Map<RecentKind, number>();
     return entries.filter(entry => {
@@ -175,9 +159,6 @@ export namespace OmniboxRecents {
    * Construction options for {@link OmniboxRecents}.
    */
   export interface IOptions {
-    /**
-     * The state database to persist through, if available.
-     */
     state?: IStateDB | null;
   }
 }

@@ -1,10 +1,7 @@
 /*
- * Left-sidebar panel listing running terminal sessions, as a single movable
- * "Terminals" section. Each row shows the session's real (program-published)
- * title, a smaller line below it with the latest output from a running coding
- * agent, and an inline shutdown button that fades in on hover. Colors and
- * spacing pull from `--jp-*` custom properties so the panel tracks the active
- * JupyterLab theme.
+ * Sidebar panel listing running terminal sessions as a movable "Terminals"
+ * section: per-row program-published title, latest agent-output line, and a
+ * shutdown button that fades in on hover.
  */
 
 .jp-xtralab-Terminals {
@@ -57,13 +54,8 @@
   background-color: var(--jp-layout-color2);
 }
 
-/*
- * The main click target: terminal icon + the title/activity text block,
- * filling the row so the whole strip activates the session. The close button
- * sits to its right and intercepts its own clicks via the React handler.
- * Top-aligned so the icon sits on the title line when an activity line wraps
- * the row to a second line.
- */
+/* Main click target filling the row. Top-aligned so the icon stays on the
+ * title line when the activity line wraps to a second line. */
 .jp-xtralab-Terminals-item-activate {
   display: flex;
   flex: 1 1 auto;
@@ -84,13 +76,11 @@
   outline-offset: -2px;
 }
 
-/* Nudge the 16px icon down a touch so it lines up with the title's cap
- * height rather than the very top of the text block. */
+/* Nudge the icon down so it lines up with the title's cap height. */
 .jp-xtralab-Terminals-item-icon {
   margin-top: 1px;
 }
 
-/* The title + activity column, between the icon and the close button. */
 .jp-xtralab-Terminals-item-text {
   display: flex;
   flex: 1 1 auto;
@@ -105,11 +95,7 @@
   white-space: nowrap;
 }
 
-/*
- * The latest line of agent output, shown under the title. Smaller and dimmer
- * than the title so it reads as secondary, and clamped to two lines with an
- * ellipsis so a long line can't stretch the row indefinitely.
- */
+/* Latest line of agent output, shown under the title. */
 .jp-xtralab-Terminals-item-detail {
   display: -webkit-box;
   overflow: hidden;
@@ -122,10 +108,6 @@
   -webkit-box-orient: vertical;
 }
 
-/*
- * Close button. Hidden by default so the row reads as plain text; fades
- * in when the row is hovered or the button itself takes focus.
- */
 .jp-xtralab-Terminals-item-close {
   display: flex;
   flex: 0 0 auto;
@@ -151,51 +133,36 @@
   outline-offset: -2px;
 }
 
-/* Higher specificity than the bare-button rules above, so it comes
- * last to keep stylelint's no-descending-specificity rule happy. */
+/* Placed last to keep stylelint's no-descending-specificity rule happy. */
 .jp-xtralab-Terminals-item:hover .jp-xtralab-Terminals-item-close {
   opacity: 1;
 }
 
-/* Keep the row icons at the standard 16px sidebar size. */
 .jp-xtralab-Terminals-item svg {
   width: 16px;
   height: 16px;
 }
 
-/*
- * The terminal that is currently the active widget in the main area — the
- * running-session counterpart of the file browser highlighting the open
- * document. It reuses the file listing's brand-color treatment so "this is
- * the focused terminal" reads at a glance, and the panel highlights nothing
- * while a notebook (or any non-terminal widget) holds the focus instead.
- * Driven from `widget.tsx` via the terminal tracker + the shell's current
- * widget.
- */
+/* The terminal that is the shell's current widget, in the file listing's
+ * brand-color treatment; driven from `widget.tsx` via the terminal tracker. */
 .jp-xtralab-Terminals-item.jp-mod-current {
   color: var(--jp-ui-inverse-font-color1);
   background-color: var(--jp-brand-color1);
 }
 
-/* Hovering the current row keeps the highlight rather than falling back to
- * the neutral hover background. */
+/* Hovering the current row keeps the highlight. */
 .jp-xtralab-Terminals-item.jp-mod-current:hover {
   background-color: var(--jp-brand-color1);
 }
 
-/* Keep the activity line legible on the brand background: swap the dim
- * neutral for the inverse font color, held a touch lighter than the title so
- * it still reads as secondary. */
+/* Keep the activity line legible on the brand background. */
 .jp-xtralab-Terminals-item.jp-mod-current .jp-xtralab-Terminals-item-detail {
   color: var(--jp-ui-inverse-font-color1);
   opacity: 0.85;
 }
 
-/*
- * Invert the monochrome terminal glyph against the brand background, exactly
- * as the file listing does for its selected rows. Colored agent logos carry
- * no selectable classes, so they keep their own colors.
- */
+/* Invert the monochrome terminal glyph as the file listing does; colored
+ * agent logos carry no selectable classes and keep their own colors. */
 .jp-xtralab-Terminals-item.jp-mod-current .jp-icon-selectable[fill] {
   fill: #fff;
 }
@@ -204,8 +171,7 @@
   fill: var(--jp-brand-color1);
 }
 
-/* Keep the inline shutdown button legible on the brand background, including
- * while it is itself hovered. */
+/* Keep the shutdown button legible on the brand background, hover included. */
 .jp-xtralab-Terminals-item.jp-mod-current .jp-xtralab-Terminals-item-close,
 .jp-xtralab-Terminals-item.jp-mod-current
   .jp-xtralab-Terminals-item-close:hover {
