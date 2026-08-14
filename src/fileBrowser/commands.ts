@@ -512,11 +512,24 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
   // point of view. An empty path is the "workspace root" gesture —
   // there is no tree row for the root itself, so the browser is asked
   // to scroll back to the top and clear its selection instead.
+  // The tree is movable, so surface whichever sidebar widget holds it.
+  const activateTreeHost = (): void => {
+    for (const area of ['left', 'right']) {
+      for (const widget of app.shell.widgets(area)) {
+        if (widget.node.contains(browser.sectionNode)) {
+          app.shell.activateById(widget.id);
+          return;
+        }
+      }
+    }
+    app.shell.activateById(FILE_BROWSER_ID);
+  };
+
   commands.addCommand(CommandIDs.revealPath, {
     label: trans.__('Reveal in File Browser'),
     execute: (args: ReadonlyPartialJSONObject) => {
       const path = (args.path as string | undefined) ?? '';
-      app.shell.activateById(FILE_BROWSER_ID);
+      activateTreeHost();
       if (path.length === 0) {
         browser.scrollToRoot();
       } else {

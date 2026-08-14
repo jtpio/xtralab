@@ -4,10 +4,22 @@
     https://jupyterlab.readthedocs.io/en/stable/developer/css.html
 */
 
-.jp-xtralab-FileBrowser {
+/*
+ * Rules live on the section class below, so they travel when the tree moves.
+ */
+.jp-xtralab-FileBrowserPanel {
   display: flex;
   flex-direction: column;
   min-width: 200px;
+  overflow: hidden;
+}
+
+.jp-xtralab-FileBrowser {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 200px;
+  min-height: 0;
   overflow: hidden;
   background-color: var(--jp-layout-color1);
 
@@ -127,6 +139,21 @@
   flex: 1 1 auto;
   display: flex;
   min-height: 0;
+}
+
+.jp-xtralab-FileBrowser-accordion {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/*
+ * In an accordion the toolbar shares the title row, so it must be able to
+ * shrink.
+ */
+.jp-AccordionPanel-title > .jp-xtralab-FileBrowser-toolbar {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .jp-xtralab-FileBrowser file-tree-container {

@@ -1,21 +1,29 @@
 /*
- * Left-sidebar panel listing running terminal sessions. Each row shows
- * the session's real (program-published) title, a smaller line below it
- * with the latest output from a running coding agent, and an inline
- * shutdown button that fades in on hover; the header carries the panel
- * title and a "new terminal" button. Colors and spacing pull from
- * `--jp-*` custom properties so the panel tracks the active JupyterLab
- * theme.
+ * Left-sidebar panel listing running terminal sessions, as a single movable
+ * "Terminals" section. Each row shows the session's real (program-published)
+ * title, a smaller line below it with the latest output from a running coding
+ * agent, and an inline shutdown button that fades in on hover. Colors and
+ * spacing pull from `--jp-*` custom properties so the panel tracks the active
+ * JupyterLab theme.
  */
 
 .jp-xtralab-Terminals {
-  display: flex;
-  flex-direction: column;
   min-width: 200px;
   overflow: hidden;
-  background-color: var(--jp-layout-color1);
-  color: var(--jp-ui-font-color1);
-  font-size: var(--jp-ui-font-size1);
+}
+
+/* On the section, not the panel, so the rules travel when the section moves. */
+.jp-xtralab-Terminals-section {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.jp-xtralab-Terminals-listing {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .jp-xtralab-Terminals-body {
@@ -23,71 +31,6 @@
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
-}
-
-.jp-xtralab-Terminals-header {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-bottom: var(--jp-border-width) solid var(--jp-border-color2);
-}
-
-.jp-xtralab-Terminals-title {
-  margin: 0;
-  font-size: var(--jp-ui-font-size0);
-  font-weight: 600;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--jp-ui-font-color1);
-}
-
-.jp-xtralab-Terminals-actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 2px;
-}
-
-.jp-xtralab-Terminals-action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-radius: 2px;
-  color: var(--jp-ui-font-color2);
-  cursor: pointer;
-}
-
-.jp-xtralab-Terminals-action:hover {
-  background-color: var(--jp-layout-color2);
-  color: var(--jp-ui-font-color1);
-}
-
-.jp-xtralab-Terminals-action:focus-visible {
-  outline: var(--jp-border-width) solid var(--jp-brand-color1);
-  outline-offset: -1px;
-}
-
-/*
- * "Shut down all" is disabled when there are no running terminals. Dim the
- * whole control with opacity rather than `color`: the stop glyph is an SVG
- * whose fill comes from its own `jp-icon3` class (not `currentColor`), so a
- * `color` change alone leaves the icon looking fully active — which is why the
- * button did not read as disabled.
- */
-.jp-xtralab-Terminals-action:disabled {
-  cursor: default;
-  opacity: 0.4;
-}
-
-.jp-xtralab-Terminals-action:disabled:hover {
-  background: transparent;
 }
 
 .jp-xtralab-Terminals-empty {
@@ -214,9 +157,8 @@
   opacity: 1;
 }
 
-/* Keep the row/header icons at the standard 16px sidebar size. */
-.jp-xtralab-Terminals-item svg,
-.jp-xtralab-Terminals-action svg {
+/* Keep the row icons at the standard 16px sidebar size. */
+.jp-xtralab-Terminals-item svg {
   width: 16px;
   height: 16px;
 }
