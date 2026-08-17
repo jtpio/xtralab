@@ -32,11 +32,9 @@ export interface ISessionTarget {
 }
 
 /**
- * Keyboard support shared by the two radiogroups below, following the ARIA
- * radio-group pattern: the group is one tab stop (only the checked radio is
- * tabbable) and the arrow keys move the selection to the neighbouring
- * radio, wrapping around. Selection follows focus, so the handler clicks
- * the neighbour and the re-render moves the roving tabindex along.
+ * Keyboard support for the radiogroups, per the ARIA radio pattern: one tab
+ * stop, arrow keys move and select — the handler clicks the neighbour and
+ * the re-render moves the roving tabindex along.
  */
 function onRadioGroupKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
   let delta: number;
@@ -67,18 +65,11 @@ function onRadioGroupKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
 
 /**
  * The chip row picking where a prompt goes: "New terminal" plus one chip
- * per running agent session. Renders nothing while no agent session is
- * running (a new terminal is then the only possibility and the row would
- * be noise).
+ * per running agent session. Renders nothing while no session is running
+ * (a new terminal is then the only possibility).
  */
 export function TargetChips(props: {
-  /**
-   * Agents that could start in a new terminal; gates the "New terminal" chip.
-   */
   agents: IAgent[];
-  /**
-   * The running agent sessions.
-   */
   targets: ISessionTarget[];
   /**
    * The selected session name, or `null` for a new terminal.
@@ -194,7 +185,6 @@ export function AgentChoices(props: {
             'jp-xtralab-AskAgent-agentButton' +
             (agent.id === agentId ? ' jp-mod-selected' : '')
           }
-          // Keep focus where the user is typing while picking an agent.
           onMouseDown={event => event.preventDefault()}
           onClick={() => onSelect(agent.id)}
         >

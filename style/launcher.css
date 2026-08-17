@@ -1,14 +1,3 @@
-/*
- * Styling for the launcher dashboard widget. The widget replaces
- * JupyterLab's stock `jp-Launcher`, so we don't piggy-back on the
- * `jp-Launcher-*` classes — every selector is scoped under
- * `jp-xtralab-Launcher` to keep the rules from leaking elsewhere.
- *
- * Colors and spacing pull from the active JupyterLab theme via the
- * standard `--jp-*` custom properties so the launcher tracks dark/light
- * mode automatically.
- */
-
 .jp-xtralab-Launcher {
   display: flex;
   flex-direction: column;
@@ -32,12 +21,6 @@
   box-sizing: border-box;
 }
 
-/*
- * Sections — grouped content blocks. The agent picker uses a regular
- * `<section>`; the changes panel uses a `<details>` so the user can
- * collapse it. Both share the same gap + alignment so the page reads
- * uniformly regardless of which element type is underneath.
- */
 .jp-xtralab-Launcher-section {
   display: flex;
   flex-direction: column;
@@ -53,15 +36,10 @@
   text-transform: uppercase;
 }
 
-/*
- * Collapsible changes section. The native `<summary>` is a flex row
- * that hosts the title, count badge, and refresh action; the disclosure
- * triangle is the browser default — it rotates when the section opens.
- */
 .jp-xtralab-Launcher-changes-section,
 .jp-xtralab-Launcher-mcp-section {
   /* Reset the default `<details>` block so its contents inherit the
-     section's gap-aligned column layout instead of stacking flush. */
+     section's gap-aligned column layout. */
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -87,11 +65,8 @@
   outline-offset: 1px;
 }
 
-/*
- * Disclosure caret. `display: flex` on the `<summary>` drops the browser's
- * native triangle, so draw one (a CSS border triangle in `currentColor`) and
- * rotate it from pointing right to pointing down when the section is open.
- */
+/* `display: flex` on the `<summary>` drops the browser's native disclosure
+ * triangle, so draw a border triangle and rotate it when the section opens. */
 .jp-xtralab-Launcher-section-summary::-webkit-details-marker {
   display: none;
 }
@@ -164,11 +139,6 @@
   font-size: var(--jp-ui-font-size1);
 }
 
-/*
- * Changed files list. Each row is a button so click + keyboard activate
- * both work; the letter on the left is the file's single-letter git status,
- * colored to match the @pierre/trees file tree's decorations.
- */
 .jp-xtralab-Launcher-changes {
   list-style: none;
   margin: 0;
@@ -179,13 +149,8 @@
   border-radius: 4px;
   overflow: hidden;
 
-  /*
-   * Git status letter palette, mirroring the @pierre/trees `--trees-status-*`
-   * defaults. The file tree resolves those through `light-dark()` under
-   * `color-scheme: light dark` — i.e. by OS appearance — so the
-   * `prefers-color-scheme` override below reproduces that exact resolution
-   * and keeps these letters in lockstep with the tree's.
-   */
+  /* Mirrors the @pierre/trees `--trees-status-*` defaults, which resolve via
+     `light-dark()` by OS appearance — hence the `prefers-color-scheme` override below. */
   --xtralab-git-status-added: #16a994;
   --xtralab-git-status-modified: #1ca1c7;
   --xtralab-git-status-renamed: #d5a910;
@@ -228,11 +193,6 @@
   outline-offset: -1px;
 }
 
-/*
- * Bare colored letter, not a filled badge — the same treatment the
- * @pierre/trees file tree gives its git status decorations. The fixed width
- * keeps the letters in a tidy gutter so the paths stay column-aligned.
- */
 .jp-xtralab-Launcher-change-badge {
   display: inline-flex;
   align-items: center;
@@ -283,10 +243,6 @@
   letter-spacing: 0.04em;
 }
 
-/*
- * Prompt textarea + agent grid. The textarea is full-width and resizable
- * vertically; the grid renders agent buttons as compact, icon-led tiles.
- */
 .jp-xtralab-Launcher-prompt {
   width: 100%;
   min-height: 72px;
@@ -373,20 +329,6 @@
   text-align: center;
 }
 
-/*
- * MCP registration hint. A collapsed-by-default `<details>` listing the
- * one-line `mcp add` command for each installed agent that supports one,
- * each paired with a Copy button. The command sits in a read-only `<code>`
- * box — the user copies it and runs it in their own terminal — so the row
- * is not itself a button.
- */
-
-/*
- * The MCP hint is an optional helper, not a primary section, so its summary
- * is rendered lighter and in sentence case rather than reusing the bold,
- * uppercase treatment of the `START AN AGENT` / `OPEN` headers — otherwise a
- * collapsed disclosure reads as a misplaced top-level section.
- */
 .jp-xtralab-Launcher-mcp-section .jp-xtralab-Launcher-section-title {
   font-weight: 500;
   text-transform: none;
@@ -421,11 +363,7 @@
   overflow-x: auto;
 }
 
-/*
- * Copy buttons are sized to the longest label ("Copied!") and centered, so
- * swapping "Copy" ↔ "Copied!" never resizes the button or ragged-aligns the
- * column.
- */
+/* Sized to the longest label ("Copied!") so the swap never resizes the button. */
 .jp-xtralab-Launcher-mcp-copy {
   flex: 0 0 auto;
   min-width: 4.5rem;
@@ -451,8 +389,6 @@
   outline-offset: 1px;
 }
 
-/* Confirmation state after a successful copy — a clear color shift, paired
-   with the button's "Copied!" label, so the action is unmistakable. */
 .jp-xtralab-Launcher-mcp-copy.jp-mod-copied {
   color: var(--jp-success-color1, var(--jp-ui-font-color1));
   border-color: var(--jp-success-color1, var(--jp-border-color1));

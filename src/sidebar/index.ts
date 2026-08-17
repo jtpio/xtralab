@@ -15,8 +15,17 @@ const PLUGIN_ID = 'xtralab:sidebar';
  * per-widget options over the ones passed in.
  */
 interface ITarget {
+  /**
+   * The shell widget id of the sidebar tab.
+   */
   id: string;
+  /**
+   * The sidebar rank used when re-adding the hidden tab.
+   */
   rank: number;
+  /**
+   * The boolean plugin setting controlling the tab's visibility.
+   */
   settingKey:
     | 'showTerminals'
     | 'showFileBrowser'
@@ -24,7 +33,13 @@ interface ITarget {
     | 'showDefaultFileBrowser'
     | 'showRunningSessions'
     | 'showSearchReplace';
+  /**
+   * The id of the toggle command registered for the tab.
+   */
   command: string;
+  /**
+   * The localized label of the toggle command.
+   */
   label: (trans: ReturnType<ITranslator['load']>) => string;
 }
 
@@ -74,13 +89,10 @@ const TARGETS: ITarget[] = [
 ];
 
 /**
- * Toggles individual sidebar tabs from View > Appearance > Sidebars,
- * whichever side a tab currently lives on. Hiding detaches the widget
- * (`widget.parent = null`) while keeping the instance for a later
- * re-add; the preference persists in this plugin's settings. Which side
- * a hidden tab came from is only tracked in-memory, so after a reload a
- * re-shown tab lands on the left. The menu placement is contributed
- * declaratively in `schema/sidebar.json`.
+ * Toggles individual sidebar tabs from View > Appearance > Sidebars. Hiding
+ * detaches the widget while keeping the instance for a later re-add; which
+ * side it came from is only tracked in-memory, so after a reload a re-shown
+ * tab lands on the left. Menu placement is declared in schema/sidebar.json.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
@@ -102,8 +114,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
     // instances here so hidden tabs can be re-added.
     const widgetCache = new Map<string, Widget>();
 
-    // Side each hidden widget was removed from, so re-showing restores it
-    // there.
     const hiddenFrom = new Map<string, 'left' | 'right'>();
 
     const findInSidebars = (
@@ -147,7 +157,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const apply = (target: ITarget): void => {
       const widget = captureWidget(target.id);
       if (!widget) {
-        // Not seen yet (extension disabled or not added) — nothing to do.
         return;
       }
       const area = locate(target.id);
@@ -202,8 +211,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
               );
             }
           }
-          // No settings registry (or the write failed): apply in-memory
-          // for the current session only.
+          // No settings (or the write failed): apply in-memory for this session.
           apply(target);
           commands.notifyCommandChanged(target.command);
         }

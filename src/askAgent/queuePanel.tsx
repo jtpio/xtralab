@@ -19,25 +19,16 @@ import type { IQueuedPrompt, PromptQueue } from './queue';
 import type { ISessionTarget } from './targetPicker';
 import type { AskAgentTarget } from './tokens';
 
-/**
- * Command the context buttons dispatch; keeps the panel decoupled from the plugin.
- */
 const HIGHLIGHT_LINES_COMMAND = 'xtralab:highlight-lines';
 
 /**
- * Textarea height that fits `text` without scrolling, within sane bounds:
- * tall enough to look editable, short enough that one long comment cannot
- * crowd out the rest of the queue.
+ * Textarea height that fits `text` without scrolling, bounded so one long
+ * comment cannot crowd out the rest of the queue.
  */
 function rowsFor(text: string): number {
   return Math.min(8, Math.max(2, text.split('\n').length));
 }
 
-/**
- * A target as a `<select>` option value: `session:<name>` for a running
- * agent terminal, `new:<agentId>` for a fresh terminal, `''` for a missing
- * target (the placeholder option).
- */
 function encodeTarget(target: AskAgentTarget | null): string {
   if (target === null) {
     return '';
@@ -57,10 +48,6 @@ function decodeTarget(value: string): AskAgentTarget | null {
   return null;
 }
 
-/**
- * Whether `target` can be sent to right now: its session is still running,
- * or its agent still accepts a command-line prompt.
- */
 function targetIsLive(
   target: AskAgentTarget | null,
   agents: readonly IAgent[],
@@ -86,8 +73,8 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
     onClear
   } = props;
 
-  // Snapshots for this render; the widget re-renders on every queue, agent
-  // registry and terminal change, so these stay current.
+  // The widget re-renders on every queue, agent registry and terminal
+  // change, so these snapshots stay current.
   const items = queue.items;
   const agents = readAgents();
   const targets = readTargets();
@@ -102,10 +89,8 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
   const jumpTo = (item: IQueuedPrompt): void => {
     const { context } = item;
     const path = serverPath(context);
-    // The highlighter needs line numbers that index the working file:
-    // notebook lines are cell-relative (or raw-JSON offsets), and diff
-    // selections may come from another revision — just open the document
-    // in those cases.
+    // The highlighter needs working-file line numbers: notebook lines are
+    // cell-relative and diff lines may index another revision — just open.
     const jump =
       context.cell === undefined &&
       context.startLine !== undefined &&
@@ -145,9 +130,6 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
           const missing = item.instruction.trim().length === 0;
           const target = item.target;
           const live = targetIsLive(target, agents, targets);
-          // Say what sending will do for this prompt — paste into a running
-          // terminal, or start a fresh one — and badge it with the agent's
-          // icon, so a mixed queue can be scanned without opening dropdowns.
           let icon: LabIcon | null = null;
           let targetTitle = trans.__(
             'The destination picked for this prompt is gone — choose another'
@@ -202,10 +184,8 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
                   {item.context.text}
                 </pre>
               )}
-              {/* Uncontrolled on purpose: the queue re-renders through a
-                  posted Lumino update, and a controlled value fed back that
-                  late reverts keystrokes and jumps the caret. The `key` on
-                  the surrounding <li> still remounts it per queue entry. */}
+              {/* Uncontrolled on purpose: re-renders arrive as posted Lumino
+                  updates, late enough to revert keystrokes if controlled. */}
               <textarea
                 className="jp-xtralab-AskAgentQueue-instruction"
                 rows={rowsFor(item.instruction)}
@@ -324,15 +304,10 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
 }
 
 /**
- * The right-sidebar review panel for queued ask-agent prompts.
- *
- * Lists every queued comment — jump-to-code context line, snippet preview,
- * editable instruction, its own destination picker, remove button — plus a
- * send button that flushes the whole queue in one go: prompts sharing a
- * destination are combined into one numbered message, and each destination
- * gets its own delivery. The widget re-renders on queue changes itself; the
- * plugin additionally ties it to the agent registry and terminal signals so
- * the destination choices stay current.
+ * The right-sidebar review panel for queued ask-agent prompts: an editable
+ * list with per-prompt destinations, plus a send button that flushes the
+ * whole queue, combining prompts that share a destination into one
+ * numbered message.
  */
 export class AskAgentQueuePanel extends ReactWidget {
   constructor(options: AskAgentQueuePanel.IOptions) {
@@ -342,15 +317,16 @@ export class AskAgentQueuePanel extends ReactWidget {
     options.queue.changed.connect(this._onQueueChanged, this);
   }
 
+  /**
+   * Render the panel content.
+   */
   render(): JSX.Element {
     return <QueuePanelComponent {...this._options} />;
   }
 
   /**
-   * Dispose on close (e.g. the close button when the panel has been dragged
-   * to the main area) rather than leaving a detached, reusable widget
-   * behind. The plugin recreates the panel in the side area on demand; the
-   * queue itself lives on in the model.
+   * Dispose on close rather than leaving a detached widget behind; the
+   * plugin recreates the panel on demand and the queue lives on in the model.
    */
   protected onCloseRequest(msg: Message): void {
     super.onCloseRequest(msg);
@@ -393,9 +369,8 @@ export namespace AskAgentQueuePanel {
     targets: () => ISessionTarget[];
 
     /**
-     * Live reader of whether a batch send is in flight (called on every
-     * render). While true the send and clear buttons are disabled, so one
-     * flush cannot be double-delivered.
+     * Live reader of whether a batch send is in flight; while true the send
+     * and clear buttons are disabled.
      */
     sending: () => boolean;
 
@@ -405,8 +380,8 @@ export namespace AskAgentQueuePanel {
     trans: TranslationBundle;
 
     /**
-     * Send every queued prompt to its own destination (the panel only calls
-     * this while all instructions and destinations are valid).
+     * Send every queued prompt to its own destination (called only while
+     * all instructions and destinations are valid).
      */
     onSend: () => void;
 

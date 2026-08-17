@@ -14,18 +14,12 @@ import { IWalkthroughMedia, IWalkthroughStep, WalkthroughPanel } from './panel';
 
 const PLUGIN_ID = 'xtralab:walkthrough';
 
-/**
- * Append a step to the read-only walkthrough panel.
- */
 const WALKTHROUGH_COMMAND = 'xtralab:walkthrough';
 
 const HIGHLIGHT_LINES_COMMAND = 'xtralab:highlight-lines';
 
 const PANEL_ID = 'xtralab-walkthrough';
 
-/**
- * Pull a `{ mimeType, data }` media object out of a JSON command argument.
- */
 function readMedia(value: unknown): IWalkthroughMedia | undefined {
   if (
     value &&
@@ -54,15 +48,10 @@ function toLine(value: unknown): number | undefined {
 }
 
 /**
- * Contribute `xtralab:walkthrough`: build a persistent, read-only walkthrough
- * in the right side area instead of narrating only in the agent's chat.
- *
- * Each call appends a step (Markdown prose, an optional embedded visual, and an
- * optional code reference). When a step names a file, the editor follows along
- * (opening it full-width in the main area, no split) and its lines are
- * highlighted; the step also keeps a button so the user can jump back to it
- * later. The panel accumulates the whole tour beside the code, so the user can
- * read at their own pace rather than chasing the chat.
+ * Contributes `xtralab:walkthrough`: each call appends a step (Markdown prose,
+ * optional visual, optional code reference) to a persistent read-only panel in
+ * the right side area, so the tour accumulates beside the code instead of
+ * scrolling away in the agent's chat.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
@@ -89,9 +78,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
         panel.title.icon = tocIcon;
         panel.title.label = trans.__('Walkthrough');
         panel.title.caption = trans.__('Walkthrough');
-        // Closable so it gets a close button if the user drags it out of the
-        // side area into the main document area. Closing disposes it; the next
-        // xtralab:walkthrough call recreates it back in the side area.
+        // Closable so a drag into the main area gets a close button; closing
+        // disposes, and the next call recreates the panel in the side area.
         panel.title.closable = true;
         labShell.add(panel, 'right', { rank: 1000, type: 'Walkthrough' });
         const created = panel;
@@ -188,11 +176,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
           );
         }
 
-        // Reveal the panel, then render the step into it.
         labShell.activateById(current.id);
         await current.addStep(step);
 
-        // Let the editor follow the newest step.
         if (path && args['reveal'] !== false) {
           await commands.execute(HIGHLIGHT_LINES_COMMAND, {
             path,

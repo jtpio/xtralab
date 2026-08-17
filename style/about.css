@@ -1,10 +1,5 @@
-/*
- * About dialog (xtralab:about). The header block is the dialog title, so it
- * inherits the jp-Dialog-header type (size2/600 under chrome.css) — the
- * wordmark scales up from there and the version line drops back to body
- * size, weight and a muted color.
- */
-
+/* The header block is the dialog title, so it inherits the jp-Dialog-header
+ * type (size2/600 under chrome.css). */
 .jp-xtralab-About-header {
   display: flex;
   align-items: center;

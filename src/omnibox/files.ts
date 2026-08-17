@@ -2,23 +2,21 @@ import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
 
 /**
- * Shape of the `jupyterlab-quickopen` `api/files` response: a map from each
- * directory (relative to the server root, `""` for the root itself) to the
- * bare filenames it contains.
+ * Shape of the `jupyterlab-quickopen` `api/files` response: directory
+ * (relative to the server root, `""` for the root) to bare filenames.
  */
 interface IQuickOpenContents {
+  /**
+   * Filenames grouped by their containing directory.
+   */
   contents: { [dir: string]: string[] };
 }
 
 /**
  * Fetch and flatten the workspace file list from `jupyterlab-quickopen`'s
- * server endpoint (`GET {base}/jupyterlab-quickopen/api/files`).
- *
- * We reuse quickopen's endpoint rather than walking the contents API so the
- * listing honors the same server-side `.gitignore` filtering quickopen does
- * (xtralab ships `respectGitignore: true`) in a single request. The endpoint
- * only exists when quickopen's server extension is installed and the server
- * reads a local filesystem; callers treat a rejection as "no file results".
+ * server endpoint, which applies server-side `.gitignore` filtering in one
+ * request. Rejects when the server extension is absent; callers treat that as
+ * "no file results".
  */
 async function fetchWorkspaceFiles(respectGitignore = true): Promise<string[]> {
   const settings = ServerConnection.makeSettings();
@@ -54,10 +52,8 @@ const CACHE_TTL_MS = 15_000;
 let cache: { at: number; files: Promise<string[]> } | null = null;
 
 /**
- * The workspace file list, cached briefly so reopening the omnibox in quick
- * succession reuses one scan. A failed fetch (e.g. quickopen's server
- * extension is absent) resolves to an empty list so file search degrades to
- * "no results" instead of surfacing an error.
+ * The workspace file list, cached briefly so reopening the omnibox reuses one
+ * scan. A failed fetch resolves to an empty list.
  */
 export function loadWorkspaceFiles(): Promise<string[]> {
   const now = Date.now();

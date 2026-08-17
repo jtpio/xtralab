@@ -11,11 +11,6 @@ import { aboutLogoIcon } from './icons';
 
 const PLUGIN_ID = 'xtralab:about';
 
-/**
- * Upstream command id. Reusing it keeps the Help menu entry (contributed by
- * `schema/about.json` at the same rank as upstream), the command palette
- * muscle memory, and any external caller of `help:about` working.
- */
 const CommandIDs = {
   about: 'help:about'
 };
@@ -23,14 +18,10 @@ const CommandIDs = {
 const REPO_URL = 'https://github.com/jtpio/xtralab';
 
 /**
- * An "About xtralab" dialog replacing the stock "About JupyterLab" one.
- *
- * The upstream `@jupyterlab/help-extension:about` plugin is disabled via
- * `jupyterlab.disabledExtensions` (package.json), which removes both its
- * `help:about` command and its Help menu contribution; this plugin registers
- * the same command id and restores the menu entry through its own schema.
- * The dialog leads with the xtralab version and keeps the underlying
- * JupyterLab version visible underneath.
+ * An "About xtralab" dialog replacing the stock "About JupyterLab" one. The
+ * upstream plugin is disabled via `jupyterlab.disabledExtensions`, which also
+ * removes its Help menu entry; this plugin re-registers `help:about` and
+ * restores the menu entry through its own schema.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
@@ -56,10 +47,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
         }
       },
       execute: async () => {
-        // The settings payload carries the version of the installed
-        // labextension (read server-side from its package.json), which is
-        // the release actually running — the page config only knows the
-        // JupyterLab version. 'N/A' is jupyterlab_server's not-found value.
+        // The settings payload carries the installed labextension's version
+        // (page config only knows JupyterLab's); 'N/A' is jupyterlab_server's not-found value.
         const version = await settingRegistry
           .load(PLUGIN_ID)
           .then(settings =>

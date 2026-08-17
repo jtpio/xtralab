@@ -51,10 +51,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
       },
       translator: translator ?? undefined
     });
-    // Ranks just under the Terminals panel in the left sidebar. The shipped
-    // `layout` setting assigns the default ranks (rank only, no area pin),
-    // so this browser stays movable via the "Move Widget" context menu; the
-    // `rank` here is the in-code fallback for when that setting is absent.
+    // Rank-only fallback for when the shipped `layout` setting is absent;
+    // no area pin, so the browser stays movable via "Move Widget".
     app.shell.add(browser, 'left', { rank: 2 });
     if (restorer) {
       restorer.add(browser, browser.id);

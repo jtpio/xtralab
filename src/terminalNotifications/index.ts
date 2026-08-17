@@ -22,16 +22,28 @@ const OSC_RXVT_NOTIFY = 777;
 
 const MAX_TEXT_LENGTH = 256;
 
-// The bits of an xterm.js `Terminal` we reach into. JupyterLab's terminal
-// widget keeps its xterm in a private `_term` field and does not expose these
-// hooks, so a structural type uses them without depending on `@xterm/xterm`. If
-// the field is ever renamed, `_term` is `undefined` and notifications stop, with
-// a console warning per terminal.
+// JupyterLab's terminal keeps its xterm in a private `_term` field; structural
+// types use its hooks without `@xterm/xterm`, going inert (warning) if renamed.
+/**
+ * A handle returned by an xterm listener registration.
+ */
 interface IXtermDisposable {
+  /**
+   * Unregister the listener.
+   */
   dispose(): void;
 }
+/**
+ * The subset of the xterm.js API used to observe bells and OSC sequences.
+ */
 interface IXtermTerminal {
+  /**
+   * Register a handler invoked when the terminal bell rings.
+   */
   onBell(handler: () => void): IXtermDisposable;
+  /**
+   * The escape-sequence parser used to register OSC handlers.
+   */
   parser: {
     registerOscHandler(
       ident: number,
@@ -39,8 +51,17 @@ interface IXtermTerminal {
     ): IXtermDisposable;
   };
 }
+/**
+ * A JupyterLab terminal widget content with its private xterm exposed.
+ */
 interface ITerminalContentInternals extends ITerminal.ITerminal {
+  /**
+   * A promise resolving once the underlying xterm exists.
+   */
   ready: Promise<void>;
+  /**
+   * The private xterm instance; `undefined` if upstream renames the field.
+   */
   _term?: IXtermTerminal;
 }
 
@@ -48,26 +69,30 @@ type TerminalWidget = MainAreaWidget<ITerminal.ITerminal>;
 
 // The renderer→main bridge the desktop shell injects on the lab window. Absent
 // for pip-install users in a browser, who fall back to web Notifications.
+/**
+ * The desktop notification API exposed on `window.xtralab`.
+ */
 interface IDesktopBridge {
+  /**
+   * Show a native notification, tagged with the emitting terminal session.
+   */
   notify?: (
     title: string,
     body: string,
     session?: string
   ) => Promise<void> | void;
+  /**
+   * Register a callback invoked with the tagged terminal session name when
+   * the user clicks a notification.
+   */
   onFocusTerminal?: (callback: (session: string) => void) => void;
 }
 
 /**
- * Turns the notifications coding agents already emit (OSC 9, OSC 777, the bell)
- * into desktop notifications. JupyterLab's xterm renders these sequences but
- * never forwards them to the OS, so this plugin hooks each terminal and bridges
- * them through `window.xtralab.notify` (desktop) or the web Notifications API.
- *
- * A notification is suppressed while its terminal is the focused, active tab,
- * and throttled per terminal. The desktop shell advertises
- * `TERM_PROGRAM=iTerm.app` so agents emit OSC 9 in the first place, and the
- * session name is forwarded so clicking a notification focuses the terminal
- * that fired it.
+ * Turns the OSC 9 / OSC 777 / bell sequences agents emit into desktop
+ * notifications via `window.xtralab.notify` (desktop) or the web Notifications
+ * API — JupyterLab's xterm renders them but never forwards them to the OS.
+ * The desktop shell advertises `TERM_PROGRAM=iTerm.app` so agents emit OSC 9.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
@@ -87,13 +112,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
     let enabled = true;
     let notifyOnBell = true;
 
-    // Per-widget throttle timestamps and xterm hooks. WeakMaps let disposed
-    // widgets be collected; hooks are torn down when a tab closes.
     const lastNotified = new WeakMap<TerminalWidget, number>();
     const hooks = new WeakMap<TerminalWidget, IXtermDisposable[]>();
 
-    // True when the user is already looking at this terminal, so a banner would
-    // just be noise.
     const isActivelyViewing = (widget: TerminalWidget): boolean =>
       document.hasFocus() && app.shell.currentWidget === widget;
 
@@ -107,7 +128,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
         );
         return;
       }
-      // Plain-browser fallback (pip install): the Web Notifications API.
       if (typeof Notification === 'undefined') {
         return;
       }
@@ -146,9 +166,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
       widget.title.label || trans.__('Terminal');
 
     const onOsc9 = (widget: TerminalWidget, data: string): boolean => {
-      // OSC 9 is overloaded: ConEmu/Windows Terminal use `9 ; <n> ; …`
-      // subcommands (e.g. `9 ; 4` progress), so skip a numeric-subcommand
-      // payload and leave it unconsumed rather than treat it as a notification.
+      // OSC 9 is overloaded: ConEmu/Windows Terminal use numeric subcommands
+      // (e.g. `9 ; 4` progress); leave those unconsumed.
       if (/^\d+(;|$)/.test(data)) {
         return false;
       }
@@ -197,8 +216,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
             );
             return;
           }
-          // Handlers are wrapped so a parse slip cannot break xterm's parser; an
-          // OSC handler returns whether it consumed the sequence.
           const disposables: IXtermDisposable[] = [
             term.onBell(() => guard(() => onBell(widget))),
             term.parser.registerOscHandler(OSC_ITERM2_GROWL, data =>

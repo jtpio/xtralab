@@ -3,11 +3,10 @@ import { LabIcon, textEditorIcon } from '@jupyterlab/ui-components';
 import { BUILTIN_EDITOR_ICONS } from './icons';
 
 /**
- * A terminal text editor surfaced on the launcher's "Open" section. An editor
- * takes no initial prompt and is launched by typing its command into a fresh
- * terminal (e.g. `nvim`). The launcher shows a single editor tile (the first
- * available candidate; see {@link resolveEditor}); the full list is shared with
- * the terminals panel to badge running editors.
+ * A terminal text editor on the launcher's "Open" section, launched by typing
+ * its command into a fresh terminal. The launcher shows one tile
+ * ({@link resolveEditor}); the full list badges running editors in the
+ * terminals panel.
  */
 export interface IEditor {
   /**
@@ -31,57 +30,59 @@ export interface IEditor {
    */
   icon: LabIcon;
   /**
-   * Preference order for the single launcher tile: the first candidate, by
-   * ascending rank, that qualifies wins (Neovim before Vim by default).
+   * Preference order: the first qualifying candidate by rank wins the tile.
    */
   rank: number;
   /**
-   * When false, the launcher skips the `which`-based availability check for
-   * this entry — useful for a shell alias or function that isn't on PATH but
-   * still resolves when typed in a real terminal. Defaults to true.
+   * When false, skip the `which`-based availability check — for aliases or
+   * shell functions not on PATH. Defaults to true.
    */
   requireAvailable: boolean;
 }
 
 /**
- * The settings-side shape: every field except `id` is optional, so a user can
- * override a single field on a built-in editor (e.g. swap `vim`'s command for
- * a wrapper) without restating the whole entry. New ids define brand-new
- * editors. Mirrors `IAgentSettings` minus `promptArgs`.
+ * The settings-side shape: every field except `id` is optional so a user can
+ * override a single field on a built-in editor; new ids define new editors.
+ * Mirrors `IAgentSettings` minus `promptArgs`.
  */
 export interface IEditorSettings {
+  /**
+   * Id of the editor to override; a new id defines a new editor.
+   */
   id: string;
+  /**
+   * See {@link IEditor.label}.
+   */
   label?: string;
+  /**
+   * See {@link IEditor.caption}.
+   */
   caption?: string;
+  /**
+   * See {@link IEditor.command}.
+   */
   command?: string;
   /**
-   * Inline SVG for a custom editor's icon. Required for new ids whose icon
-   * isn't shipped with xtralab; ignored for built-in ids unless explicitly
-   * set (in which case it overrides the built-in).
+   * Inline SVG icon. Required for new ids; overrides the built-in when set on
+   * a built-in id.
    */
   iconSvg?: string;
+  /**
+   * See {@link IEditor.rank}.
+   */
   rank?: number;
   /**
-   * When false, the editor is hidden from the launcher's Open section (and no
-   * longer recognised by the terminals panel). Disable both built-ins to drop
-   * the editor tile entirely. Defaults to true.
+   * When false, hides the editor. Disable both built-ins to drop the editor
+   * tile entirely.
    */
   enabled?: boolean;
   /**
-   * See {@link IEditor.requireAvailable}. Defaults to true for a built-in
-   * editor that still uses its shipped command, and to false once you override
-   * the `command` (a user-chosen command — often a shell alias — is trusted and
-   * always shown). Set it explicitly to force the check on or off.
+   * See {@link IEditor.requireAvailable}. Defaults to true, but flips to false
+   * once `command` is overridden (a user-chosen alias is trusted).
    */
   requireAvailable?: boolean;
 }
 
-/**
- * Built-in editor candidates in preference order. The launcher shows the first
- * one whose command resolves on the server's `$PATH`, so Neovim wins over Vim
- * when both are installed. Users override, disable, or extend this list
- * through the `editors` setting; see {@link mergeEditors}.
- */
 const DEFAULTS: IEditor[] = [
   {
     id: 'nvim',
@@ -104,11 +105,8 @@ const DEFAULTS: IEditor[] = [
 ];
 
 /**
- * The built-in editors projected into the JSON settings shape
- * ({@link IEditorSettings}), dropping the runtime-only {@link LabIcon}. Mirrors
- * {@link defaultAgentSettings}: {@link registerLauncherSchemaDefaults} injects
- * this as the `editors` setting's schema default so the Settings Editor shows
- * the shipped list.
+ * The built-in editors projected into the settings shape (no runtime LabIcon),
+ * injected as the `editors` schema default so the Settings Editor shows them.
  */
 export function defaultEditorSettings(): IEditorSettings[] {
   return DEFAULTS.map(editor => ({
@@ -132,13 +130,9 @@ function resolveEditorIcon(id: string, iconSvg: string | undefined): LabIcon {
 }
 
 /**
- * Merge xtralab's built-in editors with the user's `editors` settings. Built-in
- * entries keep their fields unless explicitly overridden; user-only entries are
- * appended. `enabled: false` filters an entry out of the result entirely (so
- * callers don't need to re-check the flag). The result is sorted by rank, which
- * is also the launcher's tile-preference order. Mirrors `mergeAgents`, including
- * turning `requireAvailable` off when the user overrides a built-in's `command`
- * so an aliased editor still shows.
+ * Merge the built-in editors with the user's `editors` settings; the result is
+ * sorted by rank, the tile-preference order. Mirrors `mergeAgents`, including
+ * turning `requireAvailable` off when a built-in's `command` is overridden.
  */
 export function mergeEditors(overrides: IEditorSettings[]): IEditor[] {
   const overrideById = new Map(overrides.map(entry => [entry.id, entry]));
@@ -164,10 +158,6 @@ export function mergeEditors(overrides: IEditorSettings[]): IEditor[] {
         ? resolveEditorIcon(base.id, override.iconSvg)
         : base.icon,
       rank: override.rank ?? base.rank,
-      // See `mergeAgents`: once the user points a built-in editor at their own
-      // command (e.g. a shell alias `which` can't resolve), stop requiring
-      // availability so the tile still shows. The check stays on only while the
-      // command is xtralab's default.
       requireAvailable:
         command === base.command
           ? (override.requireAvailable ?? base.requireAvailable)
@@ -175,9 +165,6 @@ export function mergeEditors(overrides: IEditorSettings[]): IEditor[] {
     });
   }
 
-  // What remains in `overrideById` are ids that don't match a built-in — treat
-  // them as new editors the user is adding. Skip disabled ones; the settings
-  // schema validates the shape, so missing fields just fall back here.
   let nextRank =
     merged.reduce((max, editor) => Math.max(max, editor.rank), -1) + 1;
   for (const entry of overrideById.values()) {
@@ -202,15 +189,9 @@ export function mergeEditors(overrides: IEditorSettings[]): IEditor[] {
 }
 
 /**
- * Pick the single editor tile to show, given the merged editor list and the
- * set of commands known to be on `$PATH` (from the launcher's availability
- * probe). Returns the first candidate, by rank, that is either available or
- * opts out of the check (`requireAvailable: false`) — Neovim before Vim by
- * default — or `null` when none qualifies.
- *
- * When `available` is `null` (the endpoint couldn't be reached), a
- * `requireAvailable` editor is not shown; an entry with
- * `requireAvailable: false` is shown regardless.
+ * Pick the single tile: the first editor, by rank, that is available or opts
+ * out of the check, else `null`. When `available` is `null` (probe failed),
+ * only `requireAvailable: false` entries qualify.
  */
 export function resolveEditor(
   editors: IEditor[],

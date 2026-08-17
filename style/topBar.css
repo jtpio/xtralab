@@ -1,34 +1,14 @@
-/* Sidebar toggle buttons in the top bar (xtralab:top-bar). */
-
 .jp-xtralab-TopBarButton {
   display: flex;
   align-items: center;
 }
 
-/*
- * The right-area button is added to the flex container `#jp-top-panel` after
- * the main menu (a high rank). `margin-left: auto` consumes the free space to
- * its left so it floats to the far right, mirroring the left button at the
- * leading edge.
- */
 .jp-xtralab-TopBarButton-right {
   margin-left: auto;
 }
 
-/*
- * The buttons are FAST `<jp-button appearance="stealth">` elements. The design
- * system paints state chrome directly on the button host that reads as an
- * unwanted box/border in the top bar (see
- * `@jupyter/web-components/.../styles/patterns/button.js`):
- *   - `:host([aria-pressed='true'])` (the matching sidebar is open) adds an
- *     inset `box-shadow`;
- *   - `:host([disabled])` (e.g. the right area is empty) fills the host with
- *     `neutralFillRest`.
- * Neutralize both so the control stays a flat icon like the menu.
- * The hover/active stealth fills are left untouched as a normal affordance.
- * `!important` is needed to override the (non-important) `:host(...)` rules
- * defined inside the component's shadow DOM.
- */
+/* FAST `<jp-button>` shadow-DOM `:host` rules add chrome — [aria-pressed] inset
+ * box-shadow, [disabled] neutralFillRest fill; `!important` beats them. */
 .jp-xtralab-TopBarButton .jp-ToolbarButtonComponent {
   box-shadow: none !important;
 }

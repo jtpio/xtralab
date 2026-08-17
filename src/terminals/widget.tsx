@@ -25,15 +25,10 @@ import * as React from 'react';
 
 import { SessionRegistry } from './model';
 
-/**
- * Id of the panel widget. Used for layout restoration and as the handle
- * the sidebar visibility toggle would target.
- */
 const RUNNING_TERMINALS_ID = 'xtralab-running-terminals';
 
 /**
- * Id of the accordion section holding the terminals list. Persisted by the
- * movable-sections plugin, so it must stay stable across releases.
+ * Persisted by the movable-sections plugin — must stay stable across releases.
  */
 const TERMINALS_SECTION_ID = 'xtralab-terminals-section';
 
@@ -75,8 +70,6 @@ export class RunningTerminals
     const newTerminal = new ToolbarButton({
       icon: addIcon,
       onClick: () => {
-        // Anchor whatever the plugin shows (usually an agent menu) to the
-        // button's bottom-left, in the viewport coordinates `Menu.open` wants.
         const rect = newTerminal.node.getBoundingClientRect();
         options.onCreate({ x: rect.left, y: rect.bottom });
       },
@@ -97,23 +90,39 @@ export class RunningTerminals
     this.addWidget(section);
   }
 
+  /**
+   * The accordion panel hosting the sections; read by the move plugin.
+   */
   get accordionPanel(): AccordionPanel {
     return this.content as AccordionPanel;
   }
 
+  /**
+   * A signal emitted when a section is announced to the move plugin.
+   */
   get sectionAdded(): ISignal<this, ISectionEntry> {
     return this._sectionAdded;
   }
 
+  /**
+   * The hosted section widgets, excluding the panel's own Terminals section.
+   */
   get sections(): ReadonlyArray<Widget> {
     return this.accordionPanel.widgets.filter(w => w !== this._section);
   }
 
+  /**
+   * Get the movable sections: just the Terminals section, while attached here.
+   */
   getSections(): ReadonlyArray<ISectionEntry> {
     const entry = this._sectionEntry();
     return entry ? [entry] : [];
   }
 
+  /**
+   * Detach the Terminals section for the move plugin and return it; `null`
+   * for an unknown id or when the section is already hosted elsewhere.
+   */
   removeSectionById(sectionId: string): Widget | null {
     if (
       sectionId !== TERMINALS_SECTION_ID ||
@@ -125,14 +134,23 @@ export class RunningTerminals
     return this._section;
   }
 
+  /**
+   * Re-attach the Terminals section after it moves back to this panel.
+   */
   reinsertSection(widget: Widget): void {
     this.addWidget(widget);
   }
 
+  /**
+   * Host a section moved in from another sidebar panel.
+   */
   addSection(widget: Widget): void {
     this.addWidget(widget);
   }
 
+  /**
+   * Detach a hosted section when it moves back to its own panel.
+   */
   removeSectionWidget(widget: Widget): void {
     if (widget.parent === this.content) {
       widget.parent = null;
@@ -162,12 +180,14 @@ export class RunningTerminals
     }
   }
 
+  /**
+   * Dispose of the panel and the registry it owns.
+   */
   dispose(): void {
     if (this.isDisposed) {
       return;
     }
-    // The panel owns the registry, so tear down its upstream
-    // subscriptions before the React tree goes away.
+    // The panel owns the registry; tear down its subscriptions first.
     this._registry.dispose();
     super.dispose();
   }
@@ -192,19 +212,25 @@ export class RunningTerminals
 }
 
 export namespace RunningTerminals {
+  /**
+   * The instantiation options for a {@link RunningTerminals} panel.
+   */
   export interface IOptions {
+    /**
+     * The session registry the panel renders and takes ownership of.
+     */
     registry: SessionRegistry;
+    /**
+     * The translation bundle for the panel's labels; untranslated if omitted.
+     */
     trans?: TranslationBundle;
     /**
-     * Resolve the running-agent command for a row (from
-     * `registry.agentCommandFor`) to the icon to show before its label —
-     * the agent's logo, or the plain terminal icon. Supplied by the plugin
-     * so the widget never imports the agent list.
+     * Resolve a row's running-agent command to its icon; supplied by the
+     * plugin so the widget never imports the agent list.
      */
     iconForCommand: (command: string | null) => LabIcon;
     /**
-     * Activate the named session's open tab, or reopen it in a fresh
-     * terminal widget if no tab is currently attached.
+     * Activate the named session's open tab, or reopen it in a fresh widget.
      */
     onActivate: (sessionName: string) => void;
     /**
@@ -212,16 +238,12 @@ export namespace RunningTerminals {
      */
     onShutdown: (sessionName: string) => void;
     /**
-     * Shut down every running terminal at once. The plugin is expected to
-     * confirm with the user first, since it tears down all live sessions.
+     * Shut down every running terminal; the plugin confirms with the user first.
      */
     onShutdownAll: () => void;
     /**
-     * Activate the "+" button, anchored at the given viewport coordinates
-     * (the bottom-left of the button). The plugin decides what to show
-     * there — a menu of agents plus a plain terminal, or just a new
-     * terminal when no agents are available — so the panel only reports
-     * where the button is and never imports the command/menu machinery.
+     * Handle the "+" button, anchored at its bottom-left in viewport
+     * coordinates; the plugin decides what to show there.
      */
     onCreate: (anchor: { x: number; y: number }) => void;
   }
@@ -243,6 +265,9 @@ class TerminalsListing extends ReactWidget {
     this.addClass('jp-xtralab-Terminals-listing');
   }
 
+  /**
+   * Render the listing, re-rendering on every registry state change.
+   */
   protected render(): React.ReactElement {
     return (
       <UseSignal signal={this._options.registry.stateChanged}>
@@ -277,9 +302,6 @@ function RunningTerminalsComponent(props: {
 }): React.ReactElement {
   const { registry, trans, iconForCommand, onActivate, onShutdown } = props;
   const names = registry.sessionNames();
-  // The session whose terminal is the current widget in the main area, so its
-  // row can be highlighted. `null` when the current tab is a notebook or any
-  // other non-terminal widget.
   const currentName = registry.currentSessionName();
 
   return (
@@ -296,15 +318,10 @@ function RunningTerminalsComponent(props: {
             const tooltip = hasWidget
               ? trans.__('Activate %1', label)
               : trans.__('Reopen %1', label);
-            // The running agent's logo (e.g. Claude), or the plain terminal
-            // icon when nothing recognised is running in the session.
             const RowIcon = iconForCommand(
               registry.agentCommandFor(name)
             ).react;
             const isCurrent = name === currentName;
-            // The latest line of output from the session's agent, shown as a
-            // smaller line under the title; `null` for rows with nothing to
-            // surface (no agent running, or no open tab to read a live buffer).
             const activity = registry.activityFor(name);
             return (
               <li

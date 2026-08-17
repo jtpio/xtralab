@@ -221,10 +221,8 @@ function syncRestoreRows(projects) {
   });
 }
 
-// While the app restores the previous session at startup, the launcher swaps
-// its regular views for a restore view listing each project with its
-// progress. A clean restore ends with the main process closing the launcher;
-// one with failures keeps the summary up until Continue is clicked.
+// A clean restore ends with the main process closing the launcher; one with
+// failures keeps the summary up until Continue is clicked.
 function renderRestoreState(state) {
   const projects = state.projects || [];
   if (projects.length === 0) {

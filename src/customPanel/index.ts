@@ -31,23 +31,38 @@ class CustomPanel extends SidePanel implements IMovableSectionDestination {
     this.addClass('jp-xtralab-CustomPanel');
   }
 
+  /**
+   * The accordion panel hosting the sections.
+   */
   get accordionPanel(): AccordionPanel {
     return this.content as AccordionPanel;
   }
 
+  /**
+   * The section widgets currently hosted by the panel.
+   */
   get sections(): ReadonlyArray<Widget> {
     return this.content.widgets;
   }
 
+  /**
+   * A signal emitted with the new count when the number of sections changes.
+   */
   get sectionCountChanged(): ISignal<this, number> {
     return this._sectionCountChanged;
   }
 
+  /**
+   * Add a section widget to the panel.
+   */
   addSection(widget: Widget): void {
     this.addWidget(widget);
     this._sectionCountChanged.emit(this.content.widgets.length);
   }
 
+  /**
+   * Remove a section widget from the panel, if it is hosted here.
+   */
   removeSectionWidget(widget: Widget): void {
     if (widget.parent !== this.content) {
       return;

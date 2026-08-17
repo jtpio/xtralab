@@ -1,20 +1,8 @@
-"""A no-op checkpoints manager for xtralab.
+"""A no-op checkpoints manager, so saves never write ``.ipynb_checkpoints``.
 
-By default Jupyter's ``AsyncFileCheckpoints`` writes a ``.ipynb_checkpoints``
-directory next to every document the moment it is opened or saved, cluttering
-the working tree and the file browser. xtralab does not surface checkpoints in
-its UI, so ``NullCheckpoints`` replaces that manager and keeps the filesystem
-clean.
-
-The contents REST API still exposes the checkpoint endpoints (and the JupyterLab
-frontend calls ``create_checkpoint`` after every save), so the methods stay live
-but do nothing: creating a checkpoint returns a placeholder model, listing
-returns an empty list, and restore/rename/delete are no-ops. It is wired in via
-the ``ContentsManager.checkpoints_class`` setting shipped in
-``jupyter-config/jupyter_server_config.d/xtralab-checkpoints.json``.
-
-``AsyncCheckpoints`` is the async base the default ``AsyncLargeFileManager``
-expects, so its checkpoint calls are awaited.
+The frontend calls the checkpoint endpoints after every save, so the methods
+stay live but do nothing (``AsyncCheckpoints`` because the contents manager
+awaits them). Swapped in at extension load by :mod:`xtralab.server`.
 """
 
 from __future__ import annotations

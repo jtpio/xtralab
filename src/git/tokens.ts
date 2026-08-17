@@ -1,21 +1,33 @@
 /**
- * Types shared by the git plugin. Mirror the response shapes returned by the
- * `jupyterlab_git` server extension's REST API so the frontend can stay
- * tightly coupled to a single version of those endpoints.
+ * Types shared by the git plugin, mirroring the response shapes of the
+ * `jupyterlab_git` server extension's REST API.
  */
 
 /**
- * A single entry in the `files` array returned by `POST /git/<path>/status`.
- * `x` and `y` are the porcelain-format index/worktree status codes (see
- * `git status --porcelain`); `to` is the file's current path relative to the
- * git repository root, `from` is the source path for renames (and equal to
- * `to` for any other status).
+ * One entry of the `files` array from `POST /git/<path>/status`. `x`/`y` are
+ * the porcelain index/worktree codes; `to` is the current repo-relative path
+ * and `from` the rename source (equal to `to` for any other status).
  */
 export interface IGitStatusFile {
+  /**
+   * The porcelain status code for the index side.
+   */
   x: string;
+  /**
+   * The porcelain status code for the worktree side.
+   */
   y: string;
+  /**
+   * The current repo-relative path of the file.
+   */
   to: string;
+  /**
+   * The rename source path; equal to `to` for any other status.
+   */
   from: string;
+  /**
+   * Whether the file content is binary; `null` when undetermined.
+   */
   is_binary: boolean | null;
 }
 
@@ -23,52 +35,68 @@ export interface IGitStatusFile {
  * Response shape of `POST /git/<path>/status`.
  */
 export interface IGitStatusResult {
+  /**
+   * The return code of the git command.
+   */
   code: number;
+  /**
+   * The current branch name; `null` when it is not available.
+   */
   branch: string | null;
+  /**
+   * The upstream remote branch; `null` when none is set.
+   */
   remote: string | null;
+  /**
+   * The number of commits ahead of the upstream branch.
+   */
   ahead: number;
+  /**
+   * The number of commits behind the upstream branch.
+   */
   behind: number;
+  /**
+   * The changed files reported by `git status`.
+   */
   files: IGitStatusFile[];
+  /**
+   * The in-progress repository state (merge, rebase, ...), when reported.
+   */
   state?: number;
+  /**
+   * An error message, present when the command fails.
+   */
   message?: string;
 }
 
 /**
- * Reference accepted by `POST /git/<path>/content` to identify which version
- * of a file to fetch. `WORKING` is the on-disk copy, `INDEX` is the staged
- * copy, and a `git` value is any commit-ish (`HEAD`, a SHA, …).
+ * Reference accepted by `POST /git/<path>/content`: `WORKING` is the on-disk
+ * copy, `INDEX` the staged copy, `git` any commit-ish.
  */
 export type GitReference =
   | { special: 'WORKING' | 'INDEX' | 'BASE' }
   | { git: string };
 
 /**
- * Response shape of `POST /git/<path>/content`. The server only returns text
- * content here; binary files are reported as binary in the status response,
- * and we surface them in the UI without attempting to render their diff.
+ * Response shape of `POST /git/<path>/content`.
  */
 export interface IGitContentResult {
+  /**
+   * The return code of the git command.
+   */
   code: number;
+  /**
+   * The file content at the requested reference.
+   */
   content: string;
+  /**
+   * An error message, present when the command fails.
+   */
   message?: string;
 }
 
-/**
- * Where a file's change lives relative to the index.
- *
- *   - `staged`   → present in the index, may differ from HEAD
- *   - `unstaged` → present in the worktree, differs from the index
- *
- * A single file can appear in both groups when the worktree has further
- * changes on top of an already-staged version. The panel models that as two
- * separate entries, one per group.
- */
 type FileChangeGroup = 'staged' | 'unstaged';
 
-/**
- * The user-facing status of a file change. Drives the single-letter badge
- * (M/A/D/R/U/?) shown next to each entry in the panel.
- */
 export type FileChangeStatus =
   | 'modified'
   | 'added'
@@ -80,14 +108,28 @@ export type FileChangeStatus =
   | 'unknown';
 
 /**
- * One row in the changes panel. `path` is the file's path relative to the
- * git repository root. `from` is non-`undefined` only for renames, in which
- * case it carries the original path.
+ * One row in the changes panel. `path` is repo-relative; `from` is set only
+ * for renames and carries the original path.
  */
 export interface IFileChange {
+  /**
+   * The repo-relative path of the file.
+   */
   path: string;
+  /**
+   * The rename source path, set only for renames.
+   */
   from?: string;
+  /**
+   * Whether the change is staged or unstaged.
+   */
   group: FileChangeGroup;
+  /**
+   * The change status derived from the porcelain codes.
+   */
   status: FileChangeStatus;
+  /**
+   * Whether the file content is binary; `null` when undetermined.
+   */
   isBinary: boolean | null;
 }

@@ -1,12 +1,4 @@
-/*
-    See the JupyterLab Developer Guide for useful CSS Patterns:
-
-    https://jupyterlab.readthedocs.io/en/stable/developer/css.html
-*/
-
-/*
- * Rules live on the section class below, so they travel when the tree moves.
- */
+/* Rules live on the section class below, so they travel when the tree moves. */
 .jp-xtralab-FileBrowserPanel {
   display: flex;
   flex-direction: column;
@@ -23,12 +15,8 @@
   overflow: hidden;
   background-color: var(--jp-layout-color1);
 
-  /*
-   * Map @pierre/trees CSS variables to the active JupyterLab theme. The
-   * `*-override` variants take precedence over the library's defaults, so
-   * these values track the JupyterLab theme automatically — no JS needed
-   * when the theme switches.
-   */
+  /* Map @pierre/trees variables to the JupyterLab theme; the `*-override`
+     variants beat the library defaults, so theme switches need no JS. */
   --trees-bg-override: var(--jp-layout-color1);
   --trees-bg-muted-override: var(--jp-layout-color2);
   --trees-fg-override: var(--jp-ui-font-color1);
@@ -47,32 +35,16 @@
   --trees-font-family-override: var(--jp-ui-font-family);
   --trees-font-size-override: var(--jp-ui-font-size1);
 
-  /*
-   * Push the search box, the scroll wrapper, and every row inside the
-   * tree away from the sidebar edge. `--trees-padding-inline` is the
-   * outer gutter the @pierre/trees host uses for the search box and the
-   * scroll container, and the row strip sits inside that gutter — so
-   * matching the 12px the JupyterLab toolbar uses on its sides keeps
-   * the toolbar buttons, the search bar, and the row hover/selection
-   * highlights vertically aligned. Row content padding stays at the
-   * default 4px so the icon → text rhythm doesn't change.
-   */
+  /* 12px matches the JupyterLab toolbar's side padding, so the search box,
+     row highlights and toolbar buttons align; row content keeps the 4px default. */
   --trees-padding-inline-override: 12px;
   --trees-item-padding-x-override: 4px;
 
-  /* Must carry a length unit. The library subtracts this from
-     `--trees-padding-inline` inside a `calc()`; a unitless `0` makes the
-     subtraction type-invalid, the whole padding-inline rule drops out,
-     and the rows snap back to the sidebar edge. */
+  /* Must carry a unit: the library subtracts this inside a `calc()`, and a
+     unitless `0` makes the whole padding-inline rule drop out. */
   --trees-item-margin-x-override: 0px;
 }
 
-/*
- * Match the spacing the default file browser uses around its top toolbar
- * (8px above, 12px on each side, flush with the content below). Without
- * this, the toolbar inherits jp-Toolbar's default border + padding which
- * looks heavier than the rest of the JupyterLab sidebar.
- */
 .jp-xtralab-FileBrowser-toolbar.jp-Toolbar {
   flex: 0 0 auto;
   height: auto;
@@ -97,12 +69,8 @@
   width: 28px;
 }
 
-/*
- * Promote the "new launcher" button to the same blue, wider call-to-action
- * the default file browser uses for `launcher:create`. The selectors mirror
- * the rules in `@jupyterlab/launcher-extension/style/base.css`, but target
- * our own command id and toolbar wrapper class.
- */
+/* Same blue call-to-action the default file browser gives `launcher:create`;
+ * selectors mirror `@jupyterlab/launcher-extension/style/base.css`. */
 .jp-xtralab-FileBrowser-toolbar
   > .jp-Toolbar-item
   .jp-ToolbarButtonComponent[data-command='xtralab:new-launcher'] {
@@ -146,10 +114,6 @@
   min-height: 0;
 }
 
-/*
- * In an accordion the toolbar shares the title row, so it must be able to
- * shrink.
- */
 .jp-AccordionPanel-title > .jp-xtralab-FileBrowser-toolbar {
   flex: 0 1 auto;
   min-width: 0;

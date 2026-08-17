@@ -12,16 +12,13 @@ export interface IAgentTerminalSession {
   name: string;
 
   /**
-   * The agent identifier server-side detection reported for the session:
-   * the configured `command`, or the canonical agent `id` when the command
-   * is an alias (e.g. `ccm` spawning `claude`). Matches an `IAgent` by
-   * either field.
+   * The agent identifier detection reported: the configured `command`, or the
+   * canonical `id` when the command is an alias (e.g. `ccm` spawning `claude`).
    */
   command: string;
 
   /**
-   * Display label — the session's real title (the launcher's agent name, or
-   * whatever the running program published via an xterm escape sequence).
+   * Display label — the session's real (program-published) title.
    */
   label: string;
 
@@ -35,12 +32,9 @@ export interface IAgentTerminalSession {
 /**
  * Running agent terminals, and a way to send a prompt into one.
  *
- * `sessions` only lists sessions where server-side process detection has
- * *confirmed* a running coding agent (editors and plain shells are excluded,
- * as are optimistic just-launched tags): every listed session is one whose
- * TUI can meaningfully receive pasted prompt text. `sendPrompt` re-validates
- * against the server before writing, since pasting prose into a shell prompt
- * would execute it.
+ * Only sessions with a detection-*confirmed* running agent are listed — never
+ * optimistic launch tags: pasted prompt text must land in an agent's TUI, not
+ * a shell prompt where it would be executed.
  */
 export interface IAgentTerminals {
   /**
@@ -54,22 +48,17 @@ export interface IAgentTerminals {
   readonly changed: ISignal<IAgentTerminals, void>;
 
   /**
-   * Paste `prompt` into the named session's terminal and press Enter.
-   *
-   * Delivery is deliberately background: the text is written straight to
-   * the session's websocket, bracketed-paste-wrapped so a multi-line prompt
-   * arrives as one block in the agent's input box, without revealing or
-   * focusing the terminal's tab — the user keeps working where they are,
-   * and the agent CLIs queue the prompt themselves when they are busy.
-   * Rejects when the session is gone or no agent is running in it anymore.
+   * Paste `prompt` (bracketed-paste-wrapped) into the named session and press
+   * Enter, writing straight to its websocket without revealing or focusing
+   * its tab. Rejects when the session is gone or no agent runs in it anymore.
    */
   sendPrompt(name: string, prompt: string): Promise<void>;
 }
 
 /**
  * DI token for {@link IAgentTerminals}. Provided by `xtralab:terminals`;
- * consumed — optionally, so each side works without the other — by
- * `xtralab:ask-agent` to offer running agent terminals as prompt targets.
+ * consumed optionally by `xtralab:ask-agent`, so each side works without
+ * the other.
  */
 export const IAgentTerminals = new Token<IAgentTerminals>(
   'xtralab:IAgentTerminals',

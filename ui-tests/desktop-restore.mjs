@@ -1,7 +1,6 @@
-// Captures the desktop launcher's session-restore view for the docs:
-// seeds a three-project session into an isolated profile, boots the real
-// Electron app through a generated shim entry, and screenshots the
-// launcher mid-restore (one window open, two still starting).
+// Captures the desktop launcher's session-restore view for the docs: seeds a
+// three-project session into an isolated profile, boots the real Electron app
+// through a shim entry, and screenshots the launcher mid-restore.
 import { execFileSync } from 'node:child_process';
 import {
   cpSync,
@@ -52,8 +51,6 @@ execFileSync(
   { stdio: 'inherit' }
 );
 
-// The same seeded workspace the web captures use, plus two sibling projects
-// so the restore lists three windows from one native tab group.
 execFileSync(process.execPath, [join(here, 'seed-workspace.mjs')], {
   stdio: 'inherit'
 });
@@ -68,9 +65,8 @@ const userDataDir = join(workspaceRoot, 'desktop-userdata');
 rmSync(userDataDir, { recursive: true, force: true });
 mkdirSync(userDataDir, { recursive: true });
 
-// One shared groupId restores the three windows as native tabs of a single
-// window; identical bounds mirror how tabbed windows persist their shared
-// frame. demo-project carries the highest focusSequence so it ends selected.
+// One groupId + identical bounds restore the three windows as native tabs of
+// a single window; demo-project's highest focusSequence leaves it selected.
 const groupId = '5d0aa1de-6d05-4bb2-9f6c-1f1f6f8f2a10';
 const bounds = { x: 80, y: 80, width: 1280, height: 860 };
 const sessionState = {
@@ -93,9 +89,8 @@ writeFileSync(
   'utf8'
 );
 
-// A generated shim app relocates the profile under the seeded directory
-// before the real main module runs, so the capture never touches a real
-// xtralab profile or a running instance's single-instance lock.
+// A generated shim app relocates the profile before the real main module
+// runs, so the capture never touches a real profile or its single-instance lock.
 const desktopVersion = JSON.parse(
   readFileSync(join(desktopDir, 'package.json'), 'utf8')
 ).version;
@@ -135,10 +130,8 @@ const electronApp = await _electron.launch({
 });
 
 try {
-  // The three lab pages load in parallel, so every row would flip from
-  // spinner to check mark within milliseconds. Holding the two non-leader
-  // page loads keeps their rows genuinely mid-restore while the first
-  // window opens; the held requests are released after the capture.
+  // All three lab pages load within milliseconds of each other; holding the
+  // two non-leader page loads keeps their rows mid-restore until the capture.
   const heldRoutes = [];
   await electronApp.context().route(/\/lab\/workspaces\//, route => {
     if (route.request().url().includes('demo-project')) {
@@ -170,9 +163,8 @@ try {
     timeout: 30_000
   });
 
-  // Wait for the first row to show its check mark while the held rows still
-  // spin. A clean restore closes the launcher, so finishing early or a
-  // failed row both abort the capture.
+  // A clean restore closes the launcher, so finishing early or a failed row
+  // both abort the capture.
   const captureDeadline = Date.now() + 120_000;
   for (;;) {
     let statuses;

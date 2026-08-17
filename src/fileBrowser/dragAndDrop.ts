@@ -14,7 +14,13 @@ import { ROOT_LOAD_KEY, canonicalBasename, parentOf } from './contents';
  * One tree-model move a drop performs, as canonical paths.
  */
 export interface IDropMove {
+  /**
+   * The canonical path of the dragged item.
+   */
   from: string;
+  /**
+   * The canonical destination path: its basename under the target directory.
+   */
   to: string;
 }
 
@@ -55,9 +61,6 @@ export function computeDropMoves(context: FileTreeDropContext): IDropMove[] {
     .map(path => ({ from: path, to: `${dir}${canonicalBasename(path)}` }));
 }
 
-/**
- * The drop target the tree reports for a move to the workspace root.
- */
 const ROOT_DROP_TARGET: FileTreeDropTarget = {
   directoryPath: null,
   flattenedSegmentPath: null,
@@ -92,8 +95,17 @@ export function createTreeDragAndDropConfig(
   };
 }
 
+/**
+ * Options for {@link useRootDropZone}.
+ */
 interface IRootDropZoneOptions {
+  /**
+   * The tree model, queried for the selection at drag start.
+   */
   model: FileTree;
+  /**
+   * The drop handler ref, filled by the contents-sync effect.
+   */
   handlerRef: React.RefObject<ITreeDropHandler | null>;
   /**
    * The light-DOM wrapper around the tree host; composed drag events
@@ -104,10 +116,8 @@ interface IRootDropZoneOptions {
 
 /**
  * Accept drops on the empty space below the last row as moves to the
- * workspace root — the tree resolves a drop target only while the
- * cursor is over a row and silently discards such drops. dragstart
- * records the dragged paths; a drop whose composed path contains no
- * row hands them over as a root move.
+ * workspace root — the tree resolves a drop target only while the cursor
+ * is over a row and silently discards such drops.
  */
 export function useRootDropZone(options: IRootDropZoneOptions): void {
   const { model, handlerRef, wrapperRef } = options;
