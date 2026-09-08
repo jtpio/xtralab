@@ -10,7 +10,6 @@ import { FileDiff } from '@pierre/diffs/react';
 import {
   parseDiffFromFile,
   type DiffsThemeNames,
-  type FileContents,
   type FileDiffMetadata
 } from '@pierre/diffs';
 
@@ -491,28 +490,6 @@ function cellFilename(
   }
 }
 
-function pierreFiles(
-  kind: 'source' | 'metadata',
-  oldText: string,
-  newText: string,
-  oldCell: INotebookCell | null,
-  newCell: INotebookCell | null,
-  language: string | undefined
-): { oldFile: FileContents; newFile: FileContents } {
-  let name: string;
-  if (kind === 'metadata') {
-    name = 'cell-metadata.json';
-  } else {
-    // Fall back to the old side so a deleted cell still gets the right highlighter.
-    const reference = newCell ?? oldCell;
-    name = reference !== null ? cellFilename(reference, language) : 'cell.txt';
-  }
-  return {
-    oldFile: { name, contents: oldText },
-    newFile: { name, contents: newText }
-  };
-}
-
 /**
  * One rendered sub-diff (source or metadata) of a cell entry.
  */
@@ -541,6 +518,10 @@ function buildCellSubDiffs(
   }
   const oldCell = entry.kind === 'added' ? null : entry.oldCell;
   const newCell = entry.kind === 'removed' ? null : entry.newCell;
+  const sourceName = cellFilename(
+    entry.kind === 'removed' ? entry.oldCell : entry.newCell,
+    language
+  );
 
   const oldSource = oldCell !== null ? cellSource(oldCell) : '';
   const newSource = newCell !== null ? cellSource(newCell) : '';
@@ -560,17 +541,14 @@ function buildCellSubDiffs(
     if (section.oldText === section.newText) {
       continue;
     }
-    const { oldFile, newFile } = pierreFiles(
-      section.kind,
-      section.oldText,
-      section.newText,
-      oldCell,
-      newCell,
-      language
-    );
+    const name =
+      section.kind === 'metadata' ? 'cell-metadata.json' : sourceName;
     subdiffs.push({
       kind: section.kind,
-      metadata: parseDiffFromFile(oldFile, newFile)
+      metadata: parseDiffFromFile(
+        oldCell === null ? null : { name, contents: section.oldText },
+        newCell === null ? null : { name, contents: section.newText }
+      )
     });
   }
 
