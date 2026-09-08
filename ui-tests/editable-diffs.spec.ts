@@ -1,11 +1,15 @@
 // Exercises working-tree diff editing against the suite's disposable Git fixture.
 import { test as baseTest, expect } from '@jupyterlab/galata';
 import type { IJupyterLabPageFixture } from '@jupyterlab/galata';
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import * as assert from 'node:assert/strict';
 
+import workspaceRoot from './workspace-root';
+
 const METRICS = 'src/acme/metrics.py';
+const project = path.join(workspaceRoot, 'demo-project');
 const fixture = (kind: string, file: string) =>
   readFileSync(path.join(__dirname, 'fixtures', kind, file), 'utf8');
 const base = fixture('demo-project', METRICS);
@@ -28,83 +32,53 @@ const editor = (page: IJupyterLabPageFixture) =>
       '.jp-xtralab-DiffWidget-editRegion [contenteditable="true"]:visible'
     )
     .first();
-function contentsURL(page: IJupyterLabPageFixture, file: string): string {
-  return new URL(`/api/contents/${file}`, page.url()).toString();
+
+// Disk and index changes go straight to the seeded workspace, the way an
+// agent or a terminal changes files behind the app's back.
+function read(file = METRICS): string {
+  return readFileSync(path.join(project, file), 'utf8');
 }
-async function read(
-  page: IJupyterLabPageFixture,
-  file = METRICS
-): Promise<string> {
-  const response = await page.request.get(contentsURL(page, file), {
-    params: { content: 1, type: 'file', format: 'text' }
+function write(text: string, file = METRICS): void {
+  writeFileSync(path.join(project, file), text);
+}
+function git(...args: string[]): void {
+  execFileSync('git', args, {
+    cwd: project,
+    env: {
+      ...process.env,
+      GIT_CONFIG_GLOBAL: '/dev/null',
+      GIT_CONFIG_SYSTEM: '/dev/null'
+    },
+    stdio: 'pipe'
   });
-  expect(response.ok()).toBe(true);
-  return (await response.json()).content;
 }
-async function write(
-  page: IJupyterLabPageFixture,
-  text: string,
-  file = METRICS
-): Promise<void> {
-  const xsrf = (await page.context().cookies()).find(
-    cookie => cookie.name === '_xsrf'
-  )?.value;
-  const response = await page.request.put(contentsURL(page, file), {
-    headers: xsrf ? { 'X-XSRFToken': xsrf } : {},
-    data: { type: 'file', format: 'text', content: text }
-  });
-  expect(response.ok()).toBe(true);
+function indexedFixture(reference: string, working: string): void {
+  write(reference);
+  git('add', '--', METRICS);
+  write(working);
 }
-async function git(
-  page: IJupyterLabPageFixture,
-  action: 'add' | 'reset'
-): Promise<void> {
-  const xsrf = (await page.context().cookies()).find(
-    cookie => cookie.name === '_xsrf'
-  )?.value;
-  const response = await page.request.post(
-    new URL(`/git/${action}`, page.url()).toString(),
-    {
-      headers: xsrf ? { 'X-XSRFToken': xsrf } : {},
-      data: { filename: METRICS, add_all: false, reset_all: false }
-    }
-  );
-  expect(response.ok()).toBe(true);
+function restoreFixture(): void {
+  git('reset', '--', METRICS);
+  write(base);
+  write(readme, 'README.md');
 }
-async function indexedFixture(
-  page: IJupyterLabPageFixture,
-  reference: string,
-  working: string
-): Promise<void> {
-  await write(page, reference);
-  await git(page, 'add');
-  await write(page, working);
+async function diskEquals(text: string, file = METRICS): Promise<void> {
+  await expect.poll(() => read(file), { timeout: 12000 }).toBe(text);
 }
-async function diskEquals(
-  page: IJupyterLabPageFixture,
-  text: string,
-  file = METRICS
-): Promise<void> {
-  await expect.poll(() => read(page, file), { timeout: 12000 }).toBe(text);
-}
+/**
+ * Open the working-tree diff from the launcher's changes list. A file that
+ * is also staged has a second, staged row; skip it.
+ */
 async function open(
   page: IJupyterLabPageFixture,
-  file = METRICS,
-  pin = false
+  file = METRICS
 ): Promise<void> {
-  await page.evaluate(
-    async ({ file, pin }) => {
-      await (window as any).jupyterapp.commands.execute(
-        'xtralab:git:open-diff',
-        {
-          repoPath: '',
-          change: { path: file, group: 'unstaged', status: 'modified' },
-          pin
-        }
-      );
-    },
-    { file, pin }
-  );
+  await page.activity.activateTab('Launcher');
+  await page
+    .locator('.jp-xtralab-Launcher-changes')
+    .getByRole('button', { name: file, exact: true })
+    .filter({ hasNot: page.getByText('staged', { exact: true }) })
+    .click();
   await expect(editor(page)).toBeVisible({ timeout: 20000 });
 }
 async function append(
@@ -127,49 +101,37 @@ async function replace(
   await page.keyboard.insertText(text);
 }
 async function closeCurrent(page: IJupyterLabPageFixture): Promise<void> {
-  await page.evaluate(() =>
-    (window as any).jupyterapp.shell.currentWidget.close()
-  );
+  await page.activity
+    .getTabLocator()
+    .locator('.lm-TabBar-tabCloseIcon')
+    .click();
 }
 async function theme(
   page: IJupyterLabPageFixture,
   name: string
 ): Promise<void> {
-  await page.evaluate(async name => {
-    await (window as any).jupyterapp.commands.execute('apputils:change-theme', {
-      theme: name
-    });
-  }, name);
-  await expect(page.locator('body')).toHaveAttribute(
-    'data-jp-theme-name',
-    name
-  );
-  await expect(page.locator('.jp-Spinner:visible')).toHaveCount(0, {
-    timeout: 15000
-  });
+  await page.theme.setTheme(name);
   await expect(editor(page)).toBeVisible();
 }
-test.beforeEach(async ({ page }) => {
-  await page.goto();
-  await page.waitForFunction(() =>
-    (window as any).jupyterapp?.commands?.hasCommand('xtralab:git:open-diff')
+/**
+ * Reload the open diff in place, as jupyterlab-git's `model.changed` does for
+ * diffs opened from its panel. The launcher preview has no user-facing
+ * trigger, so this deliberately reaches into the widget.
+ */
+async function refreshDiff(page: IJupyterLabPageFixture): Promise<void> {
+  await page.evaluate(() =>
+    (window as any).jupyterapp.shell.currentWidget.content.refresh()
   );
-  await page.evaluate(() => (window as any).jupyterapp.restored);
-  await git(page, 'reset');
-  await write(page, base);
-  await write(page, readme, 'README.md');
+}
+test.beforeEach(async ({ page }) => {
+  restoreFixture();
+  await page.goto();
 });
 test.afterEach(async ({ page }) => {
-  await page.evaluate(() => {
-    for (const widget of (window as any).jupyterapp.shell.widgets('main')) {
-      if (widget.content?.model?.filename) widget.close();
-    }
-  });
   // All successful cases settle saves before teardown. Restore fixture edits
   // so screenshot tests start with the same tracked project contents.
-  await git(page, 'reset');
-  await write(page, base);
-  await write(page, readme, 'README.md');
+  await page.activity.closeAll();
+  restoreFixture();
 });
 // Automatically release intercepted network requests before a test can time
 // out, including failures that happen before its explicit cleanup runs.
@@ -195,7 +157,7 @@ const scenarios: Array<
     async page => {
       await open(page);
       await append(page, '\n# undo before overwrite\n');
-      await write(page, base + '\n# conflicting external\n');
+      write(base + '\n# conflicting external\n');
       await expect(
         page.getByRole('button', { name: 'Overwrite', exact: true })
       ).toBeVisible();
@@ -204,7 +166,7 @@ const scenarios: Array<
       await page
         .getByRole('button', { name: 'Overwrite', exact: true })
         .click();
-      await diskEquals(page, base);
+      await diskEquals(base);
     }
   ],
   [
@@ -213,10 +175,8 @@ const scenarios: Array<
       await open(page);
       await append(page, '\n# undo refreshed draft\n');
       const external = base + '\n# authoritative external\n';
-      await write(page, external);
-      await page.evaluate(() =>
-        (window as any).jupyterapp.shell.currentWidget.content.refresh()
-      );
+      write(external);
+      await refreshDiff(page);
       await expect(
         page.getByRole('button', { name: 'Discard my edits', exact: true })
       ).toBeVisible();
@@ -226,9 +186,9 @@ const scenarios: Array<
       await expect(
         page.getByRole('button', { name: 'Discard my edits', exact: true })
       ).toHaveCount(0);
-      await diskEquals(page, external);
+      await diskEquals(external);
       await append(page, '\n# editing after reconciliation\n');
-      await diskEquals(page, external + '\n# editing after reconciliation\n');
+      await diskEquals(external + '\n# editing after reconciliation\n');
     }
   ],
   [
@@ -237,17 +197,17 @@ const scenarios: Array<
       const reference = 'alpha\nbravo\ncharlie\n';
       const working = 'ALPHA\nBRAVO\ncharlie\n';
       const partial = 'alpha\nBRAVO\ncharlie\n';
-      await indexedFixture(page, reference, working);
+      indexedFixture(reference, working);
       await open(page);
       await replace(page, partial);
       await page
         .getByRole('button', { name: 'Discard change', exact: true })
         .first()
         .click();
-      await diskEquals(page, reference);
+      await diskEquals(reference);
       await editor(page).focus();
       await page.keyboard.press('ControlOrMeta+z');
-      await diskEquals(page, partial);
+      await diskEquals(partial);
     }
   ],
   [
@@ -293,10 +253,10 @@ const scenarios: Array<
       } finally {
         release();
       }
-      await diskEquals(page, base + marker);
+      await diskEquals(base + marker);
       await editor(page).focus();
       await page.keyboard.press('ControlOrMeta+z');
-      await diskEquals(page, base);
+      await diskEquals(base);
     }
   ],
   [
@@ -325,7 +285,7 @@ const scenarios: Array<
       } finally {
         release();
       }
-      await diskEquals(page, base + first + second);
+      await diskEquals(base + first + second);
       await expect(editor(page)).toContainText('newer typing retained');
       assert.equal(
         writes.length,
@@ -342,10 +302,8 @@ const scenarios: Array<
       await open(page);
       await append(page, '\n# refresh-preserved local draft\n');
       const external = base + '\n# refreshed external contents\n';
-      await write(page, external);
-      await page.evaluate(() =>
-        (window as any).jupyterapp.shell.currentWidget.content.refresh()
-      );
+      write(external);
+      await refreshDiff(page);
       await expect(editor(page)).toContainText('refresh-preserved local draft');
       await expect(editor(page)).not.toContainText(
         'refreshed external contents'
@@ -353,7 +311,7 @@ const scenarios: Array<
       await expect(
         page.getByRole('button', { name: 'Discard my edits', exact: true })
       ).toBeVisible({ timeout: 10000 });
-      assert.equal(await read(page), external);
+      assert.equal(read(), external);
       await page
         .getByRole('button', { name: 'Discard my edits', exact: true })
         .click();
@@ -361,12 +319,9 @@ const scenarios: Array<
       await expect(editor(page)).not.toContainText(
         'refresh-preserved local draft'
       );
-      assert.equal(await read(page), external);
+      assert.equal(read(), external);
       await append(page, '\n# editing after refreshed conflict\n');
-      await diskEquals(
-        page,
-        external + '\n# editing after refreshed conflict\n'
-      );
+      await diskEquals(external + '\n# editing after refreshed conflict\n');
     }
   ],
   [
@@ -392,11 +347,11 @@ const scenarios: Array<
       await expect(
         page.locator('.jp-xtralab-DiffWidget-saveStatus')
       ).toHaveAttribute('data-state', 'error');
-      assert.equal(await read(page), base);
+      assert.equal(read(), base);
       await expect(editor(page)).toContainText('failure then retry');
       await editor(page).focus();
       await page.keyboard.press('ControlOrMeta+s');
-      await diskEquals(page, base + marker);
+      await diskEquals(base + marker);
     }
   ],
   [
@@ -418,20 +373,18 @@ const scenarios: Array<
         Date.now() - start < 500,
         'first discard click must precede autosave'
       );
-      await expect
-        .poll(() => read(page))
-        .not.toContain('def average_order_value');
+      await expect.poll(() => read()).not.toContain('def average_order_value');
       assert.ok(
-        (await read(page)).startsWith(prefix),
+        read().startsWith(prefix),
         'discard should retain inserted lines preceding the original block'
       );
       assert.ok(
-        (await read(page)).includes('or None if empty'),
+        read().includes('or None if empty'),
         'discard should preserve the neighboring changed block'
       );
       await editor(page).focus();
       await page.keyboard.press('ControlOrMeta+z');
-      await diskEquals(page, prefix + base);
+      await diskEquals(prefix + base);
     }
   ],
   [
@@ -440,12 +393,12 @@ const scenarios: Array<
       await open(page);
       const marker = '\n# autosave regression\n';
       await append(page, marker);
-      await diskEquals(page, base + marker);
+      await diskEquals(base + marker);
       await editor(page).focus();
       await page.keyboard.press('ControlOrMeta+z');
-      await diskEquals(page, base);
+      await diskEquals(base);
       await page.keyboard.press('ControlOrMeta+Shift+z');
-      await diskEquals(page, base + marker);
+      await diskEquals(base + marker);
     }
   ],
   [
@@ -466,7 +419,7 @@ const scenarios: Array<
         Date.now() - start < 500,
         'Cmd+S should bypass the 500ms autosave delay'
       );
-      await diskEquals(page, base + marker);
+      await diskEquals(base + marker);
     }
   ],
   [
@@ -477,10 +430,10 @@ const scenarios: Array<
         .getByRole('button', { name: 'Discard change', exact: true })
         .first()
         .click();
-      await expect.poll(() => read(page)).not.toBe(base);
+      await expect.poll(() => read()).not.toBe(base);
       await editor(page).focus();
       await page.keyboard.press('ControlOrMeta+z');
-      await diskEquals(page, base);
+      await diskEquals(base);
     }
   ],
   [
@@ -489,12 +442,12 @@ const scenarios: Array<
       await open(page);
       await append(page, '\n# local unsaved\n');
       const external = base + '\n# external retained\n';
-      await write(page, external);
+      write(external);
       await expect(
         page.getByRole('button', { name: 'Discard my edits', exact: true })
       ).toBeVisible({ timeout: 10000 });
       assert.equal(
-        await read(page),
+        read(),
         external,
         'autosave must preserve conflicting disk text'
       );
@@ -502,9 +455,9 @@ const scenarios: Array<
         .getByRole('button', { name: 'Discard my edits', exact: true })
         .click();
       await expect(editor(page)).toContainText('external retained');
-      assert.equal(await read(page), external);
+      assert.equal(read(), external);
       await append(page, '\n# after conflict\n');
-      await diskEquals(page, external + '\n# after conflict\n');
+      await diskEquals(external + '\n# after conflict\n');
     }
   ],
   [
@@ -513,14 +466,14 @@ const scenarios: Array<
       await open(page);
       const marker = '\n# local overwrite\n';
       await append(page, marker);
-      await write(page, base + '\n# external overwritten\n');
+      write(base + '\n# external overwritten\n');
       await expect(
         page.getByRole('button', { name: 'Overwrite', exact: true })
       ).toBeVisible({ timeout: 10000 });
       await page
         .getByRole('button', { name: 'Overwrite', exact: true })
         .click();
-      await diskEquals(page, base + marker);
+      await diskEquals(base + marker);
     }
   ],
   [
@@ -530,7 +483,7 @@ const scenarios: Array<
       const marker = '\n# close before debounce\n';
       await append(page, marker);
       await closeCurrent(page);
-      await diskEquals(page, base + marker);
+      await diskEquals(base + marker);
     }
   ],
   [
@@ -540,8 +493,8 @@ const scenarios: Array<
       const marker = '\n# switch before debounce\n';
       await append(page, marker);
       await open(page, 'README.md');
-      await diskEquals(page, base + marker);
-      assert.equal(await read(page, 'README.md'), readme);
+      await diskEquals(base + marker);
+      assert.equal(read('README.md'), readme);
       await open(page);
       await expect(editor(page)).toContainText('switch before debounce');
     }
@@ -551,10 +504,10 @@ const scenarios: Array<
     async page => {
       await open(page);
       await replace(page, baseline);
-      await diskEquals(page, baseline);
+      await diskEquals(baseline);
       await expect(editor(page)).toBeVisible();
       await append(page, '\n# editing restored\n');
-      await diskEquals(page, baseline + '\n# editing restored\n');
+      await diskEquals(baseline + '\n# editing restored\n');
     }
   ],
   [
@@ -565,7 +518,7 @@ const scenarios: Array<
         await theme(page, name);
         await append(page, `\n# ${name} regression\n`);
         await page.keyboard.press('ControlOrMeta+s');
-        await expect.poll(() => read(page)).toContain(name + ' regression');
+        await expect.poll(() => read()).toContain(name + ' regression');
         const comment = editor(page)
           .locator('[data-line] span')
           .filter({ hasText: `# ${name} regression` })
@@ -629,15 +582,15 @@ for (const [name, reference, working] of [
   ['cr-only', 'a\rc\r', 'a\rb\r']
 ]) {
   test(`discard-and-undo-${name}`, async ({ page }) => {
-    await indexedFixture(page, reference, working);
+    indexedFixture(reference, working);
     await open(page);
     await page
       .getByRole('button', { name: 'Discard change', exact: true })
       .first()
       .click();
-    await diskEquals(page, reference);
+    await diskEquals(reference);
     await editor(page).focus();
     await page.keyboard.press('ControlOrMeta+z');
-    await diskEquals(page, working);
+    await diskEquals(working);
   });
 }
