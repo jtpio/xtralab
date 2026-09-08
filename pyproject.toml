@@ -79,6 +79,8 @@ include = [
     "/jupyter-config",
     "/package.json",
     "/tsconfig.json",
+    "/webpack.config.js",
+    "/patches",
     "/install.json",
     "/LICENSE",
     "/pyproject.toml",
