@@ -4,21 +4,15 @@ import type { TranslationBundle } from '@jupyterlab/translation';
 
 /**
  * xtralab's image diff, registered in place of `@jupyterlab/git:image-diff`.
- *
- * The git server base64-encodes binary content, so both diff hosts receive
- * the two sides as base64 strings through the same `content()` getters used
- * for text. This module turns those strings into `<img>` elements and
- * offers the 2-up / swipe / onion-skin comparison modes; no diffing library
- * is involved (`@pierre/diffs` is text-only).
+ * Both sides arrive base64-encoded through the same `content()` getters used
+ * for text; the 2-up/swipe/onion views are hand-rolled (`@pierre/diffs` is
+ * text-only).
  */
 
 /**
- * Raster image extensions xtralab renders as an image diff, mapped to the
- * MIME subtype used in the `data:image/<subtype>;base64,…` URL.
- *
- * `.svg` is intentionally absent: it is XML text, so the `@pierre/diffs`
- * text diff (the fallback provider) is more useful for it than an image
- * comparison.
+ * Raster extensions mapped to the `data:image/<subtype>` MIME subtype.
+ * `.svg` is intentionally absent: it is XML text, so the fallback text diff
+ * is more useful than an image comparison.
  */
 const IMAGE_DATA_TYPES: Record<string, string> = {
   '.png': 'png',
@@ -30,9 +24,6 @@ const IMAGE_DATA_TYPES: Record<string, string> = {
   '.ico': 'x-icon'
 };
 
-/**
- * The file extensions registered as the xtralab image diff provider.
- */
 export const IMAGE_DIFF_EXTENSIONS = Object.keys(IMAGE_DATA_TYPES);
 
 /**
@@ -48,9 +39,6 @@ export function imageDataType(path: string): string | null {
   return IMAGE_DATA_TYPES[lower.slice(dot)] ?? null;
 }
 
-/**
- * Comparison layouts, matching jupyterlab-git's image diff modes.
- */
 type ImageDiffViewMode = '2-up' | 'swipe' | 'onion';
 
 const IMAGE_DIFF_VIEW_MODE_STORAGE_KEY = 'xtralab:image-diff-view-mode';
@@ -62,8 +50,7 @@ function readStoredImageViewMode(): ImageDiffViewMode {
       return raw;
     }
   } catch {
-    // localStorage can throw in privacy/sandboxed contexts — 2-up is the
-    // sensible default anyway.
+    // localStorage can throw in privacy/sandboxed contexts.
   }
   return '2-up';
 }
@@ -77,18 +64,14 @@ function writeStoredImageViewMode(mode: ImageDiffViewMode): void {
 }
 
 /**
- * Strip whitespace from a base64 payload. Python's `base64.encodebytes`
- * (used by the git server) inserts a newline every 76 characters; most
- * browsers tolerate that inside a `data:` URL but some are stricter, and
- * the cleaned length also lets us size the file accurately.
+ * Strip whitespace from a base64 payload: the server's `base64.encodebytes`
+ * inserts newlines some browsers reject in `data:` URLs, and the cleaned
+ * length sizes the file accurately.
  */
 function cleanBase64(value: string): string {
   return value.replace(/\s+/g, '');
 }
 
-/**
- * Decoded byte length of a (whitespace-free) base64 string.
- */
 function base64ByteLength(clean: string): number {
   if (clean.length === 0) {
     return 0;
@@ -111,13 +94,25 @@ function formatBytes(bytes: number): string {
   return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unit]}`;
 }
 
+/**
+ * One side of the image comparison, decoded from its base64 payload.
+ */
 interface IImageSide {
   /**
    * Cleaned base64 payload; empty string means the side does not exist.
    */
   data: string;
+  /**
+   * Whether this side exists; added and deleted files lack one side.
+   */
   present: boolean;
+  /**
+   * The `data:` URI for the image, or `null` when the side is absent.
+   */
   uri: string | null;
+  /**
+   * Decoded size of the payload in bytes.
+   */
   bytes: number;
 }
 
@@ -132,6 +127,9 @@ function toSide(raw: string, fileType: string): IImageSide {
   };
 }
 
+/**
+ * Props for {@link ImageDiffView}.
+ */
 interface IImageDiffViewProps {
   /**
    * Base64 of the reference (old) revision; empty when added.
@@ -152,9 +150,8 @@ interface IImageDiffViewProps {
 }
 
 /**
- * The image comparison surface: a segmented mode selector (reusing the
- * diff segmented-control styling so it matches the Notebook/JSON toggle)
- * plus the selected 2-up / swipe / onion-skin view.
+ * The image comparison surface: a mode selector (reusing the diff widget's
+ * segmented-control styling) plus the selected 2-up / swipe / onion view.
  */
 export function ImageDiffView(props: IImageDiffViewProps): React.ReactElement {
   const { reference, challenger, fileType, trans } = props;
@@ -217,9 +214,21 @@ export function ImageDiffView(props: IImageDiffViewProps): React.ReactElement {
   );
 }
 
+/**
+ * Props shared by the 2-up, swipe, and onion-skin views.
+ */
 interface ISideViewProps {
+  /**
+   * The reference (old) side.
+   */
   reference: IImageSide;
+  /**
+   * The challenger (new) side.
+   */
   challenger: IImageSide;
+  /**
+   * Translation bundle for user-facing strings.
+   */
   trans: TranslationBundle;
 }
 
@@ -303,11 +312,6 @@ function TwoUp({
   );
 }
 
-/**
- * Range slider shared by the swipe and onion-skin views. A native
- * `<input type="range">` (styled via CSS) keeps the bundle free of a UI
- * component dependency.
- */
 function RangeSlider(props: {
   value: number;
   onChange: (value: number) => void;
@@ -329,11 +333,9 @@ function RangeSlider(props: {
 }
 
 /**
- * Fit a `naturalWidth × naturalHeight` image inside an `areaWidth ×
- * areaHeight` box without upscaling past its intrinsic size — the same
- * "contain, never enlarge" rule the 2-up and onion views get for free from
- * `max-width/height: 100%; width/height: auto`. Returns the displayed pixel
- * box, or `null` until both the image and the area have been measured.
+ * Fit an image inside an area without upscaling past its intrinsic size —
+ * the "contain, never enlarge" rule the other views get from CSS. Returns
+ * the displayed pixel box, or `null` until both sizes are measured.
  */
 function containBox(
   naturalWidth: number,
@@ -357,9 +359,6 @@ function containBox(
   return { width: naturalWidth * scale, height: naturalHeight * scale };
 }
 
-/**
- * Track an element's content-box size, kept current across layout changes.
- */
 function useElementSize(): readonly [
   React.RefObject<HTMLDivElement>,
   { width: number; height: number }
@@ -396,13 +395,9 @@ function Swipe({
   const [areaRef, area] = useElementSize();
   const frameRef = React.useRef<HTMLDivElement>(null);
 
-  // Display both revisions in a single box — the union of their intrinsic
-  // sizes, scaled down to fit but never enlarged — and size the frame to
-  // exactly that box. The divider's `left: N%`, the pointer-to-percent
-  // mapping (below) and each image's `clip-path` inset then all resolve
-  // against the same width, so the white line sits precisely on the seam
-  // between the two revisions at every position. A full-width frame instead
-  // let the line drift off the seam by as much as half the letterbox.
+  // Size the frame to the union box of both revisions so the divider %, the
+  // pointer mapping and the clip-paths all resolve against the same width;
+  // a full-width frame lets the line drift off the seam.
   const naturalWidth = Math.max(refSize?.[0] ?? 0, challSize?.[0] ?? 0);
   const naturalHeight = Math.max(refSize?.[1] ?? 0, challSize?.[1] ?? 0);
   const box = containBox(naturalWidth, naturalHeight, area.width, area.height);
@@ -422,7 +417,6 @@ function Swipe({
 
   const onPointerDown = React.useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      // Only react to the primary pointer (left click / touch / pen tip).
       if (event.button !== 0) {
         return;
       }

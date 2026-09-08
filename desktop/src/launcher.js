@@ -221,10 +221,8 @@ function syncRestoreRows(projects) {
   });
 }
 
-// While the app restores the previous session at startup, the launcher swaps
-// its regular views for a restore view listing each project with its
-// progress. A clean restore ends with the main process closing the launcher;
-// one with failures keeps the summary up until Continue is clicked.
+// A clean restore ends with the main process closing the launcher; one with
+// failures keeps the summary up until Continue is clicked.
 function renderRestoreState(state) {
   const projects = state.projects || [];
   if (projects.length === 0) {
@@ -546,6 +544,13 @@ launchFolderButton.addEventListener('click', async () => {
 });
 
 (async () => {
+  // Resolved before anything renders: restore rows bake the home-relative
+  // detail path in when they are created and never recompute it.
+  try {
+    homeDir = await window.xtralab.getHomeDir();
+  } catch {
+    homeDir = '';
+  }
   window.xtralab.onUpdateState(renderUpdateState);
   window.xtralab.onRestoreState(renderRestoreState);
   try {
@@ -557,11 +562,6 @@ launchFolderButton.addEventListener('click', async () => {
     renderRestoreState(await window.xtralab.getRestoreState());
   } catch {
     // The launcher stays usable when the restore state is unavailable.
-  }
-  try {
-    homeDir = await window.xtralab.getHomeDir();
-  } catch {
-    homeDir = '';
   }
   updateActionAvailability();
   await renderRecentFolders();

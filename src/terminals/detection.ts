@@ -2,14 +2,10 @@ import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
 
 /**
- * Ask the xtralab server which of `commands` is currently running inside each
- * open terminal session. Resolves to a map from session name to the matched
- * agent command, or `null` for a session sitting at its prompt.
- *
- * On any failure (endpoint missing on an older server, network error,
- * malformed response) the whole result is `null` — callers should treat that
- * as "detection unavailable" and fall back to the optimistic launch tags
- * rather than clearing any badges.
+ * Ask the xtralab server which of `commands` runs in each open terminal
+ * session: a map from session name to matched command (`null` = idle). Any
+ * failure resolves the whole result to `null` — "detection unavailable",
+ * not "no agents"; callers must not clear badges on it.
  */
 export async function fetchRunningAgents(
   commands: string[]

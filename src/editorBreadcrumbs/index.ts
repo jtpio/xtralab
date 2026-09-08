@@ -21,6 +21,10 @@ const PLUGIN_ID = 'xtralab:editor-breadcrumbs';
 const EDITOR_FACTORY = 'Editor';
 const TOOLBAR_ITEM_NAME = 'xtralab-editor-breadcrumbs';
 
+/**
+ * A widget extension that adds an `EditorBreadcrumbs` item to the toolbar of
+ * each new editor widget.
+ */
 class EditorBreadcrumbsExtension implements DocumentRegistry.IWidgetExtension<
   IDocumentWidget<Widget, DocumentRegistry.IModel>,
   DocumentRegistry.IModel
@@ -30,6 +34,9 @@ class EditorBreadcrumbsExtension implements DocumentRegistry.IWidgetExtension<
     this._trans = trans;
   }
 
+  /**
+   * Create the breadcrumbs toolbar item for a new editor widget.
+   */
   createNew(
     widget: IDocumentWidget<Widget, DocumentRegistry.IModel>,
     context: DocumentRegistry.IContext<DocumentRegistry.IModel>
@@ -56,12 +63,9 @@ class EditorBreadcrumbsExtension implements DocumentRegistry.IWidgetExtension<
 }
 
 /**
- * Adds a VS Code-style path breadcrumb to text editor toolbars. Each
- * segment is clickable: clicking dispatches `xtralab:reveal-path` so
- * any plugin that listens (today, the file browser) can surface the
- * underlying folder or file. The breadcrumbs plugin therefore does not
- * import the file browser at all — the JupyterLab command registry is
- * the only seam between them.
+ * Adds a clickable path breadcrumb to text editor toolbars. Clicks dispatch
+ * `xtralab:reveal-path`; the command registry is the only seam with the file
+ * browser.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,

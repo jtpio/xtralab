@@ -1,13 +1,7 @@
 /*
- * The side activity bar is shipped horizontally (activityBarPosition: "top",
- * see jupyter-config/labconfig). In that mode the TabBar content node spans
- * the full width (@jupyterlab/application/style/sidepanel.css) with no
- * justify-content, so the icons sit at the leading edge. Center them under
- * the menu bar instead.
- *
- * `safe center` keeps the row start-aligned should the icons ever exceed the
- * bar width, so none are pushed past the leading edge out of reach of the
- * content node's horizontal overflow scroll.
+ * The activity bar ships horizontal (labconfig activityBarPosition: "top");
+ * upstream leaves the icons start-aligned, so center them. `safe` keeps
+ * overflowing icons reachable instead of pushed past the leading edge.
  */
 .jp-SideBar[data-orientation='horizontal'] .lm-TabBar-content {
   justify-content: safe center;

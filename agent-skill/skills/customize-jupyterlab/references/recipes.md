@@ -95,11 +95,13 @@ Menu IDs come from the contributing extension's schema. Inspect with `Settings �
 
 ### Hide the default file browser tab
 
+xtralab already hides this tab by default (shipped `xtralab:sidebar` override). To bring it back:
+
 **Surface (xtralab):** user setting
 **File:** `lab/user-settings/xtralab/sidebar.jupyterlab-settings`
 
 ```json5
-{ showDefaultFileBrowser: false }
+{ showDefaultFileBrowser: true }
 ```
 
 **Surface (vanilla JupyterLab):** page config
@@ -111,14 +113,25 @@ Menu IDs come from the contributing extension's schema. Inspect with `Settings �
 
 ### Hide Running Terminals and Kernels
 
+xtralab already hides this tab by default; set `showRunningSessions: true` in the same user-settings file to bring it back.
+
+**Surface (vanilla):** page config — disable `@jupyterlab/running-extension:plugin`.
+
+### Hide other sidebar tabs (terminals, xtralab file browser, git, search and replace)
+
 **Surface (xtralab):** user setting
 **File:** `lab/user-settings/xtralab/sidebar.jupyterlab-settings`
 
 ```json5
-{ showRunningSessions: false }
+{
+  showTerminals: false,
+  showFileBrowser: false,
+  showGitPanel: false,
+  showSearchReplace: false
+}
 ```
 
-**Surface (vanilla):** page config — disable `@jupyterlab/running-extension:plugin`.
+These four keys default to `true` (`showDefaultFileBrowser` and `showRunningSessions` ship as `false`); set only the ones to change. A tab is hidden from whichever sidebar it currently lives in, and hidden tabs stay recoverable from `View → Appearance → Sidebars`.
 
 ### Show hidden files in the file browser by default
 

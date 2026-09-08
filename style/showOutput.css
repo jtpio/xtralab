@@ -1,9 +1,3 @@
-/*
- * The panel `xtralab:show` renders into. It holds a single rendered output and
- * scrolls when that output is taller (or wider) than the panel, which matters
- * most in the narrow side area.
- */
-
 .jp-xtralab-ShowPanel {
   overflow: auto;
   padding: 8px;

@@ -13,22 +13,13 @@ import type { Widget } from '@lumino/widgets';
 
 const PLUGIN_ID = 'xtralab:highlight';
 
-/**
- * Highlight a contiguous range of lines, or clear every highlight. These are
- * the only two commands the plugin contributes; both are designed to be driven
- * by a coding agent over the MCP command bridge to walk a user through code.
- */
 const HIGHLIGHT_LINES_COMMAND = 'xtralab:highlight-lines';
 const CLEAR_HIGHLIGHTS_COMMAND = 'xtralab:clear-highlights';
 
-/**
- * CodeMirror line-decoration class; styled in style/highlight.css.
- */
 const HIGHLIGHT_LINE_CLASS = 'jp-xtralab-highlightLine';
 
 /**
- * A CodeMirror effect carrying the 1-indexed, inclusive line range to
- * highlight, or `null` to clear the editor's highlights.
+ * Carries the 1-indexed inclusive line range to highlight, or `null` to clear.
  */
 const setHighlight = StateEffect.define<{
   start: number;
@@ -36,9 +27,8 @@ const setHighlight = StateEffect.define<{
 } | null>();
 
 /**
- * Holds the highlight decorations for one editor. It is injected lazily (the
- * first time an editor is highlighted) via `StateEffect.appendConfig`, so
- * editors that are never highlighted pay nothing.
+ * Highlight decorations for one editor; injected lazily via
+ * `StateEffect.appendConfig` so editors never highlighted pay nothing.
  */
 const highlightField = StateField.define<DecorationSet>({
   create: () => Decoration.none,
@@ -68,11 +58,6 @@ const highlightField = StateField.define<DecorationSet>({
   provide: field => EditorView.decorations.from(field)
 });
 
-/**
- * Return the CodeMirror view backing a widget's file editor, or `null` when
- * the widget is not a CodeMirror-based text editor (a notebook, a terminal,
- * the settings editor, …).
- */
 function viewForWidget(widget: Widget | null): EditorView | null {
   const content = (widget as { content?: unknown } | null)?.content;
   return content instanceof FileEditor &&
@@ -81,26 +66,16 @@ function viewForWidget(widget: Widget | null): EditorView | null {
     : null;
 }
 
-/**
- * Coerce a JSON command argument to a positive integer line number, falling
- * back to `fallback` when it is missing or not a finite number.
- */
 function toLine(value: unknown, fallback: number): number {
   const n = Math.trunc(Number(value));
   return Number.isFinite(n) && n >= 1 ? n : fallback;
 }
 
 /**
- * Contribute `xtralab:highlight-lines` and `xtralab:clear-highlights`.
- *
- * The built-in command surface can open a file (`docmanager:open`) and move
- * the cursor to a line (`fileeditor:go-to-line`), but it cannot persistently
- * highlight a span of lines — `documentsearch:start` only marks text matches
- * and hijacks the find box. This plugin fills that gap with a CodeMirror line
- * decoration, so an agent can point at "lines 31–43 of src/index.ts" while it
- * narrates a walkthrough. `xtralab:highlight-lines` opens the file when needed,
- * scrolls the range into view, and replaces any previous highlight in that
- * editor; `xtralab:clear-highlights` removes every highlight.
+ * Contributes `xtralab:highlight-lines` and `xtralab:clear-highlights`,
+ * filling the persistent span-highlight gap in the core command surface
+ * (`documentsearch:start` only marks text matches and hijacks the find box)
+ * so an agent can point at lines while narrating a walkthrough.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
@@ -117,8 +92,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const { commands, shell } = app;
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
-    // Editors that currently carry a highlight, so a single clear can reach
-    // them all. Disposed editors are dropped on the next clear.
     const highlighted = new Set<EditorView>();
 
     const ensureField = (view: EditorView): void => {
@@ -130,8 +103,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     commands.addCommand(HIGHLIGHT_LINES_COMMAND, {
       label: trans.__('Highlight Lines'),
       caption: trans.__('Highlight a range of lines in a text editor'),
-      // Advertise the argument shape so agents listing commands over the MCP
-      // bridge can see how to call it, the same way core commands do.
+      // Advertise the argument shape to agents listing commands over the MCP bridge.
       describedBy: {
         args: {
           type: 'object',
@@ -165,9 +137,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
           typeof args['path'] === 'string' ? args['path'] : undefined;
         const reveal = args['reveal'] !== false;
 
-        // With a path, bind strictly to that document: never fall back to the
-        // active widget, or an explicit path could silently highlight an
-        // unrelated editor that happens to be focused.
+        // With a path, bind strictly to that document — falling back to the
+        // active widget could silently highlight an unrelated editor.
         let widget: Widget | null;
         if (path) {
           // Fail fast on a missing path instead of opening a phantom widget
@@ -181,7 +152,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
           if (!opened) {
             throw new Error(`xtralab: could not open "${path}"`);
           }
-          // Wait for the model and the editor view to be ready.
           await opened.context.ready;
           await opened.revealed;
           widget = opened;
@@ -213,7 +183,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
           effects.push(EditorView.scrollIntoView(anchor, { y: 'center' }));
         }
         view.dispatch({ effects });
-        // Forget editors that have since been closed before tracking this one.
         for (const tracked of highlighted) {
           if (!tracked.dom.isConnected) {
             highlighted.delete(tracked);

@@ -1,30 +1,11 @@
 import { LabIcon } from '@jupyterlab/ui-components';
 
 /**
- * Brand icons for the agent launcher cards. Most marks are taken verbatim
- * from `jupyter-ai-contrib/jupyter-ai-acp-client`
- * (`jupyter_ai_acp_client/static/*.svg`, BSD-3-Clause); Antigravity post-dates
- * that set, so its mark is the official glyph from `@lobehub/icons-static-svg`
- * (MIT) — we ship the brand-colored `antigravity-color` variant so Antigravity
- * reads as a multi-color Google mark. Small adjustments are applied
- * to play nicely with JupyterLab themes:
- *   - Monochrome marks (Codex, Copilot, Goose) use `currentColor` so they
- *     inherit the surrounding launcher card's text color rather than
- *     hard-coding black, which disappears on the dark theme.
- *   - The Goose mark upstream is rendered on a white rounded rect; we drop
- *     the rect so the silhouette can sit on the launcher card directly.
- *   - SVG ids that would collide if two copies of the same artwork ended up
- *     on the page (gradient/mask/filter defs) are namespaced under
- *     `xtralab-…`.
- *
- * Brand-colored icons (Antigravity, Claude, Kiro, Mistral Vibe, OpenCode) keep
- * their upstream colors; the dark/light contrast of the launcher card behind
- * them is the same as on `jupyter-ai-acp-client`.
- *
- * The Vim and Neovim marks belong to the launcher's "Open" editor tile rather
- * than the agent grid. They are the brand silhouettes from Simple Icons
- * (https://simpleicons.org, CC0), each filled with its brand green so the mark
- * reads on both the light and dark themes.
+ * Brand icons for the launcher cards: `jupyter-ai-contrib/jupyter-ai-acp-client`
+ * (BSD-3-Clause), except Antigravity (`@lobehub/icons-static-svg`, MIT),
+ * Pi (pi.dev, MIT) and Vim/Neovim (Simple Icons, CC0). Monochrome marks use
+ * `currentColor` to follow the active theme; svg ids are namespaced under
+ * `xtralab-…` so two copies of one mark on a page don't collide.
  */
 
 const antigravityIcon = new LabIcon({
@@ -179,6 +160,14 @@ const opencodeIcon = new LabIcon({
 </svg>`
 });
 
+const piIcon = new LabIcon({
+  name: 'xtralab:agent-pi',
+  svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" fill="currentColor">
+  <path fill-rule="evenodd" d="M165.29 165.29H517.36V400H400V517.36H282.65V634.72H165.29ZM282.65 282.65V400H400V282.65Z"/>
+  <path d="M517.36 400H634.72V634.72H517.36Z"/>
+</svg>`
+});
+
 const neovimIcon = new LabIcon({
   name: 'xtralab:editor-neovim',
   svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#57A143">
@@ -193,12 +182,6 @@ const vimIcon = new LabIcon({
 </svg>`
 });
 
-/**
- * Built-in icons keyed by the agent's id, used to resolve the icon for an
- * agent declared without an inline `iconSvg` override (i.e. one of xtralab's
- * defaults). Custom agents added via settings can either supply their own
- * `iconSvg` or fall back to the generic terminal icon.
- */
 export const BUILTIN_AGENT_ICONS: Record<string, LabIcon> = {
   antigravity: antigravityIcon,
   claude: claudeIcon,
@@ -207,15 +190,10 @@ export const BUILTIN_AGENT_ICONS: Record<string, LabIcon> = {
   goose: gooseIcon,
   kiro: kiroIcon,
   'mistral-vibe': mistralVibeIcon,
-  opencode: opencodeIcon
+  opencode: opencodeIcon,
+  pi: piIcon
 };
 
-/**
- * Built-in icons keyed by the editor's id, used to resolve the icon for a
- * built-in editor (Neovim, Vim) declared without an inline `iconSvg`. Custom
- * editors added via settings can supply their own `iconSvg` or fall back to
- * the generic text-editor icon.
- */
 export const BUILTIN_EDITOR_ICONS: Record<string, LabIcon> = {
   nvim: neovimIcon,
   vim: vimIcon

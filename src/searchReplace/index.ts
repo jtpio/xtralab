@@ -11,34 +11,16 @@ const PLUGIN_ID = 'xtralab:search-replace';
 const COMMAND_ID = 'xtralab:activate-search-replace';
 
 /**
- * Widget id of the panel contributed by `jupyterlab-search-replace`. The
- * extension adds it to the left sidebar but registers no command of its own,
- * so there is nothing to bind a shortcut to out of the box — this plugin adds
- * the missing command.
+ * Widget id of the `jupyterlab-search-replace` left-sidebar panel; the
+ * extension registers no command of its own to bind a shortcut to.
  */
 const SEARCH_REPLACE_WIDGET_ID = 'jp-search-replace';
 
 /**
- * Bind Accel+Shift+F (Cmd+Shift+F on macOS, Ctrl+Shift+F elsewhere) to the
- * project-wide Search and Replace panel, matching the equivalent shortcut in
- * editors like VS Code.
- *
- * Two pieces are needed because that chord is already taken: JupyterLab core
- * binds Accel+Shift+F to `filebrowser:toggle-main`.
- *
- * 1. The chord is freed declaratively. `SettingRegistry.reconcileShortcuts`
- *    keys collisions and disables on (keys, selector) — not on command — so the
- *    `@jupyterlab/shortcuts-extension:shortcuts` override in
- *    `default_setting_overrides.d/00-xtralab.json` disables the file-browser
- *    binding. The file browser stays reachable from its sidebar tab and the
- *    View menu; only the keyboard shortcut moves.
- *
- * 2. The new binding is added imperatively below rather than as another shipped
- *    default. A `disabled` default and a re-binding default land on the same
- *    (keys, selector) slot, and the disable suppresses every default on that
- *    slot — including the re-binding. `commands.addKeyBinding` runs outside the
- *    reconcile pass, so it is unaffected and wins cleanly once the file-browser
- *    binding is gone.
+ * Bind Accel+Shift+F to the Search and Replace panel (VS Code parity). Core
+ * binds the chord to `filebrowser:toggle-main`; a `default_setting_overrides.d`
+ * override disables it. The re-binding is imperative: `reconcileShortcuts` keys
+ * on (keys, selector), so the disable would suppress a shipped default too.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
@@ -60,9 +42,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       label: trans.__('Search and Replace'),
       caption: trans.__('Show the Search and Replace panel'),
       execute: () => {
-        // `activateById` expands the left sidebar when collapsed, selects the
-        // tab, and the widget focuses its search input from `onAfterShow`, so
-        // the user can start typing a query immediately. It no-ops if
+        // The widget focuses its search input from `onAfterShow`; no-ops if
         // `jupyterlab-search-replace` is unavailable.
         labShell.activateById(SEARCH_REPLACE_WIDGET_ID);
       }

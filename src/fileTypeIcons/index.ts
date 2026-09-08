@@ -25,13 +25,9 @@ function representativePath(
   if (extension === undefined || extension === '') {
     return null;
   }
-  // Extensions are stored with a leading dot (e.g. `.py`, `.tar.gz`).
   return `file${extension.startsWith('.') ? extension : `.${extension}`}`;
 }
 
-/**
- * Point a file type's icon at the tree glyph for its extension.
- */
 function applyTreeIcon(fileType: DocumentRegistry.IFileType): void {
   const path = representativePath(fileType);
   if (path === null) {
@@ -79,9 +75,6 @@ const EXTRA_FILE_TYPE_EXTENSIONS = [
   '.wasm'
 ];
 
-/**
- * Register icon-only file types for unclaimed source extensions.
- */
 function registerExtraFileTypes(docRegistry: DocumentRegistry): void {
   for (const extension of EXTRA_FILE_TYPE_EXTENSIONS) {
     const icon = getSpecificTreeIcon(`file${extension}`);
@@ -125,7 +118,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
       applyTreeIcon(fileType);
     }
     registerExtraFileTypes(docRegistry);
-    // Pick up file types registered after this plugin activates.
     docRegistry.changed.connect((_, args) => {
       if (
         args.type === 'fileType' &&
@@ -148,8 +140,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
           }
         };
         setIcon();
-        // Keep the tab icon right after a rename, and release the listener
-        // when the document closes.
         widget.context.pathChanged.connect(setIcon);
         widget.disposed.connect(() => {
           widget.context.pathChanged.disconnect(setIcon);

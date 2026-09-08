@@ -2,15 +2,9 @@ import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
 
 /**
- * Hit the xtralab server extension's `which`-proxy endpoint and turn the
- * response into a Set of commands that resolved to a real binary on the
- * server's `$PATH`. The frontend uses this set to filter the launcher's
- * agent cards.
- *
- * On any failure (server extension not loaded, network error, malformed
- * response) the returned Set is `null` — callers should treat that as
- * "availability unknown" and either fall back to showing all agents or
- * surface the error, depending on context.
+ * Ask the server extension's `which`-proxy endpoint which commands resolve on
+ * its `$PATH`. Returns `null` on any failure — callers should treat that as
+ * "availability unknown", not as "nothing available".
  */
 export async function fetchAvailableCommands(
   commands: string[]

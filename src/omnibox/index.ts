@@ -17,20 +17,10 @@ import { OmniboxWidget } from './widget';
 const PLUGIN_ID = 'xtralab:omnibox';
 
 /**
- * The omnibox: a single launcher overlay that fuzzy-searches workspace files
- * (via jupyterlab-quickopen's gitignore-aware endpoint) and JupyterLab
- * commands (the command palette's entries plus registry commands the palette
- * doesn't list), and routes a typed prompt to one of the configured agents
- * (running it in a fresh terminal through the launcher's
- * `xtralab:start-agent:<id>` commands). It is opened by the top-bar command
- * bar.
- *
- * Commands run and files opened through the overlay are remembered (persisted
- * in the state database) and offered again at the top while the query is
- * empty; the `maxNumberRecents` setting caps how many of each are kept.
- *
- * The agent rows come from the launcher's `IAgentRegistry`; when the launcher
- * is disabled the omnibox still searches files and commands.
+ * The omnibox: a launcher overlay that fuzzy-searches workspace files and
+ * commands and routes a typed prompt to a configured agent in a fresh
+ * terminal. Recently used commands and files persist in the state database;
+ * without the launcher it still searches files and commands.
  */
 const plugin: JupyterFrontEndPlugin<IOmnibox> = {
   id: PLUGIN_ID,
@@ -57,12 +47,8 @@ const plugin: JupyterFrontEndPlugin<IOmnibox> = {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
     const placeholder = trans.__('Search files and commands, or ask an agent…');
 
-    // The palette's items carry per-item args (e.g. one "Use Theme: …" per
-    // theme) that a raw command-registry scan can't see, but `ICommandPalette`
-    // exposes no item list and the widget itself is unreachable through the
-    // shell (`LabShell.add` defers it until layout restore, after which the
-    // modal setting re-parents it out of the left area). The wrapper's
-    // `_palette` field is private in TypeScript only, so read it guarded.
+    // `ICommandPalette` exposes no item list and the palette widget is
+    // unreachable through the shell; duck-read the wrapper's TS-only-private `_palette`.
     const paletteItems = (): ReadonlyArray<CommandPalette.IItem> => {
       const widget = (palette as unknown as { _palette?: unknown } | null)
         ?._palette;
@@ -71,10 +57,8 @@ const plugin: JupyterFrontEndPlugin<IOmnibox> = {
 
     const recents = new OmniboxRecents({ state });
 
-    // Restore the persisted recents only after the configured cap is known:
-    // `restore` trims to `maxItems`, so restoring at the constructor default
-    // would permanently drop entries beyond it whenever the user configured a
-    // larger cap and the state fetch won the race against the settings load.
+    // Restore only after the configured cap is known: `restore` trims to
+    // `maxItems`, so restoring at the default could permanently drop entries.
     if (settingRegistry) {
       void settingRegistry
         .load(PLUGIN_ID)
@@ -110,7 +94,7 @@ const plugin: JupyterFrontEndPlugin<IOmnibox> = {
 
     const open = (query?: string): void => {
       // Reopen fresh each time so the input resets and the agent snapshot is
-      // current; the file list is cached separately (see files.ts).
+      // current; the file list stays cached (files.ts).
       close();
       const widget = new OmniboxWidget({
         commands,
@@ -136,7 +120,6 @@ const plugin: JupyterFrontEndPlugin<IOmnibox> = {
       label: trans.__('Search…'),
       caption: trans.__('Search files and commands, or ask an agent'),
       execute: args => {
-        // Toggle: a second press (e.g. of the keyboard shortcut) closes it.
         if (current && !current.isDisposed) {
           close();
           return;
@@ -146,7 +129,6 @@ const plugin: JupyterFrontEndPlugin<IOmnibox> = {
       }
     });
 
-    // Open the omnibox with Cmd/Ctrl+K, the common "command center" chord.
     commands.addKeyBinding({
       command: OMNIBOX_OPEN_COMMAND,
       keys: ['Accel K'],

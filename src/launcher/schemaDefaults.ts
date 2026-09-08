@@ -10,21 +10,39 @@ import { defaultEditorSettings } from './editors';
 export const LAUNCHER_PLUGIN_ID = 'xtralab:launcher';
 
 /**
- * Setting registries that already have the transform, so both callers skip
- * re-registering (the registry rejects a duplicate transformer).
+ * Registries that already have the transform (duplicates are rejected).
  */
 const registered = new WeakSet<ISettingRegistry>();
 
 /**
- * Register a `fetch` transform that injects xtralab's built-in agent and
- * editor lists as the schema defaults for the `xtralab:launcher` settings, so
- * the Settings Editor shows the shipped list.
- *
- * The schema declares `jupyter.lab.transform: true`, so the registry defers
- * loading the plugin until a transform is registered: callers must invoke this
- * before their first `settingRegistry.load(LAUNCHER_PLUGIN_ID)`. Idempotent, so
- * the two plugins that load these settings can both call it regardless of
- * activation order.
+ * Merge sparse user entries over the built-in defaults, keyed by `id`.
+ */
+function mergeSettingsById<
+  T extends { id: string; enabled?: boolean; requireAvailable?: boolean }
+>(defaults: T[], user: PartialJSONValue | undefined): T[] {
+  const entries = Array.isArray(user) ? (user as unknown as T[]) : [];
+  const overrideById = new Map(entries.map(entry => [entry.id, entry]));
+  const merged = defaults.map(base => {
+    const override = overrideById.get(base.id);
+    if (!override) {
+      return base;
+    }
+    overrideById.delete(base.id);
+    return { ...base, ...override };
+  });
+  merged.push(...overrideById.values());
+  // Item schema defaults are applied before this transform runs; without the
+  // refill, sparse entries render with unchecked boxes.
+  return merged.map(entry => ({
+    ...entry,
+    enabled: entry.enabled ?? true,
+    requireAvailable: entry.requireAvailable ?? true
+  }));
+}
+
+/**
+ * Must run before the first `load(LAUNCHER_PLUGIN_ID)` (the schema sets
+ * `jupyter.lab.transform: true`); idempotent across callers.
  */
 export function registerLauncherSchemaDefaults(
   settingRegistry: ISettingRegistry
@@ -35,11 +53,23 @@ export function registerLauncherSchemaDefaults(
   registered.add(settingRegistry);
 
   settingRegistry.transform(LAUNCHER_PLUGIN_ID, {
+    compose: plugin => {
+      const { user } = plugin.data;
+      const composite = { ...plugin.data.composite };
+      composite.agents = mergeSettingsById(
+        defaultAgentSettings(),
+        user.agents
+      ) as unknown as PartialJSONValue;
+      composite.editors = mergeSettingsById(
+        defaultEditorSettings(),
+        user.editors
+      ) as unknown as PartialJSONValue;
+      plugin.data = { composite, user };
+      return plugin;
+    },
     fetch: plugin => {
       const properties = plugin.schema.properties;
       if (properties) {
-        // The settings shapes are plain JSON by construction, but their named
-        // interfaces lack an index signature, so cast at this TS→JSON boundary.
         if (properties.agents) {
           properties.agents.default =
             defaultAgentSettings() as unknown as PartialJSONValue;

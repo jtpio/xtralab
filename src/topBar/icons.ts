@@ -1,14 +1,9 @@
 import { LabIcon } from '@jupyterlab/ui-components';
 
 /**
- * Mirror-symmetric "toggle sidebar" marks for the top-bar buttons, in the
- * same visual language as the macOS / VS Code / svgrepo sidebar icons
- * (https://www.svgrepo.com/vectors/sidebar/): a rounded window outline split
- * by a divider, with the controlled side shaded so left vs. right reads at a
- * glance. The artwork is hand-authored from basic geometry (rounded rect +
- * divider + a shaded panel) so there is no third-party licensing to track,
- * and every stroke/fill uses `currentColor` so the icons inherit the top
- * bar's text color across the light and dark themes.
+ * Mirror-symmetric "toggle sidebar" marks in the macOS / VS Code visual
+ * language. Hand-authored from basic geometry (no third-party licensing);
+ * every stroke/fill uses `currentColor` to follow the top bar's text color.
  */
 
 export const leftSidebarIcon = new LabIcon({

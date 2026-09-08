@@ -27,16 +27,25 @@ export namespace CommandIDs {
  * Argument shapes used by {@link CommandIDs.openDiff}.
  */
 export namespace CommandArguments {
+  /**
+   * The arguments for the open-diff command.
+   */
   export interface IOpenDiff {
+    /**
+     * The server-relative path of the repository containing the change.
+     */
     repoPath: string;
+    /**
+     * The file change to show.
+     */
     change: IFileChange;
+    /**
+     * Whether to open the diff as a pinned tab instead of the shared preview.
+     */
     pin?: boolean;
   }
 }
 
-/**
- * Widget id of the single, reused preview diff tab.
- */
 export const PREVIEW_DIFF_WIDGET_ID = 'xtralab:diff:preview';
 
 /**
@@ -69,14 +78,23 @@ export class DiffMainAreaWidget extends MainAreaWidget<XtralabDiffWidget> {
     this._trans = trans;
   }
 
+  /**
+   * The file change currently displayed.
+   */
   get change(): IFileChange {
     return this._change;
   }
 
+  /**
+   * Whether the widget is pinned rather than the shared preview.
+   */
   get pinned(): boolean {
     return this._pinned;
   }
 
+  /**
+   * Pin the widget; a no-op when already pinned.
+   */
   pin(): void {
     if (this._pinned) {
       return;
@@ -85,10 +103,16 @@ export class DiffMainAreaWidget extends MainAreaWidget<XtralabDiffWidget> {
     this._pinnedChanged.emit(true);
   }
 
+  /**
+   * A signal emitted when the widget becomes pinned.
+   */
   get pinnedChanged(): ISignal<this, boolean> {
     return this._pinnedChanged;
   }
 
+  /**
+   * Display a new file change and update the tab title, caption, and icon.
+   */
   setChange(repoPath: string, change: IFileChange): void {
     this._change = change;
     this.content.setModel(fileChangeToDiffModel(repoPath, change));
@@ -103,21 +127,48 @@ export class DiffMainAreaWidget extends MainAreaWidget<XtralabDiffWidget> {
   private _pinnedChanged = new Signal<this, boolean>(this);
 }
 
+/**
+ * The options used to create a diff main area widget.
+ */
 interface ICreateDiffWidgetOptions {
+  /**
+   * The server-relative path of the repository containing the change.
+   */
   repoPath: string;
+  /**
+   * The file change to display.
+   */
   change: IFileChange;
+  /**
+   * Theme manager the diff view follows; may be `null`.
+   */
   themeManager: IThemeManager | null;
+  /**
+   * Contents manager used to write hunk-discard results.
+   */
   contentsManager: Contents.IManager;
+  /**
+   * Rendermime registry used by notebook diffs; may be `null`.
+   */
   rendermime: IRenderMimeRegistry | null;
+  /**
+   * Ask-agent popup for prompting an agent about diff lines; may be `null`.
+   */
   askAgent: IAskAgent | null;
+  /**
+   * Translation bundle for user-facing strings.
+   */
   trans: TranslationBundle;
+  /**
+   * Whether the widget opens pinned instead of as the shared preview.
+   */
   pinned?: boolean;
+  /**
+   * Callback invoked when the widget becomes pinned.
+   */
   onPinned?: (widget: DiffMainAreaWidget) => void;
 }
 
-/**
- * Build the launcher's diff tab around the shared diff widget.
- */
 function createDiffWidget(
   options: ICreateDiffWidgetOptions
 ): DiffMainAreaWidget {
@@ -148,7 +199,6 @@ function createDiffWidget(
 
   addDiffToolbarItems(widget.toolbar, content);
 
-  // Keep chrome visible only while there is a relevant toolbar control.
   const syncToolbarVisibility = (): void => {
     if (widget.isDisposed) {
       return;
@@ -172,7 +222,6 @@ function createDiffWidget(
     }
     widget.title.className = '';
   };
-  // Auto-close once a discard leaves nothing to show.
   const onEmptied = (): void => {
     if (!widget.isDisposed) {
       widget.close();
@@ -192,8 +241,17 @@ function createDiffWidget(
   return widget;
 }
 
+/**
+ * The options for {@link registerGitCommands}.
+ */
 interface IRegisterGitCommandsOptions {
+  /**
+   * The JupyterLab application, providing the commands registry and shell.
+   */
   app: JupyterFrontEnd;
+  /**
+   * Theme manager the diff views follow; may be `null`.
+   */
   themeManager: IThemeManager | null;
   /**
    * Contents manager used to write hunk-discard results.
@@ -219,12 +277,14 @@ interface IRegisterGitCommandsOptions {
    * Look up an already-open diff widget for a file change.
    */
   findDiff(change: IFileChange, pin?: boolean): DiffMainAreaWidget | undefined;
+  /**
+   * Callback invoked when a preview diff widget becomes pinned.
+   */
   onPinned(widget: DiffMainAreaWidget): void;
 }
 
 /**
- * Register the launcher's git diff command on the application command
- * registry.
+ * Register the launcher's git diff command.
  */
 export function registerGitCommands(
   options: IRegisterGitCommandsOptions

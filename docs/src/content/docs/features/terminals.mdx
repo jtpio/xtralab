@@ -14,6 +14,27 @@ agent or editor detected inside it, and shows its latest line of activity, so
 a row of running agents stays readable at a glance. Open terminal tabs in the
 main area carry the same icon.
 
+## Mix in sections from other panels
+
+The panel plugs into JupyterLab's movable sidebar sections. Right-click the
+Kernels section in the built-in Running Terminals and Kernels panel (shown
+via View > Appearance > Left Sidebar) and pick "Move to Terminals" to keep
+kernels next to your terminals. The Terminals section itself moves the same
+way, and so does the file tree, which travels with its toolbar: right-click
+the toolbar above the tree to move it. Moved sections can be dragged to
+reorder, collapsed, and sent back from the same right-click menu, and the
+arrangement is restored on reload.
+
+## Build a panel of your own
+
+Every move menu also offers "Move to Custom Panel", an empty panel you fill
+yourself. It stays out of the sidebar until it holds something, so it costs
+nothing until you use it, and it gives up its tab again once you move the
+last section out. Dropping the file tree and the Kernels section into it
+gives you files and kernels side by side, without the panels you took them
+from. The file browser behaves the same way while its tree is away: with
+nothing left to show, it hides its own tab until a section comes back.
+
 ## Get notified when an agent needs you
 
 Terminals surface notifications: when a program rings the terminal bell or

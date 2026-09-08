@@ -38,8 +38,17 @@ export { DIFF_WIDGET_CSS_CLASS };
  * `Git.Diff.IModel` plus optional xtralab-only metadata.
  */
 export interface IXtralabDiffModel extends Git.Diff.IModel {
+  /**
+   * Whether the file is binary, so no text contents are fetched.
+   */
   isBinary?: boolean;
+  /**
+   * Whether hunks may be discarded; when absent, a working-tree heuristic decides.
+   */
   canDiscard?: boolean;
+  /**
+   * The old-side path when the diff represents a rename.
+   */
   oldFilename?: string;
 }
 
@@ -47,14 +56,27 @@ export interface IXtralabDiffModel extends Git.Diff.IModel {
  * Application-level services the diff model does not carry.
  */
 export interface IXtralabDiffContext {
+  /**
+   * The contents manager used to save hunk-discard results.
+   */
   contentsManager: Contents.IManager;
+  /**
+   * The rendermime registry for rendered notebook diffs, or `null` to
+   * force the textual fallback.
+   */
   rendermime: IRenderMimeRegistry | null;
+  /**
+   * The theme manager used to track theme changes, or `null` to watch
+   * the body attribute instead.
+   */
   themeManager: IThemeManager | null;
   /**
-   * The ask-agent popup; when available, diff line selections get an
-   * "ask an agent about these lines" gutter button.
+   * When available, diff line selections get an "ask an agent" gutter button.
    */
   askAgent: IAskAgent | null;
+  /**
+   * The application translation bundle.
+   */
   trans: TranslationBundle;
 }
 
@@ -76,6 +98,9 @@ export class XtralabDiffWidget
     this.addClass(DIFF_WIDGET_CSS_CLASS);
   }
 
+  /**
+   * The git diff model being rendered.
+   */
   get model(): Git.Diff.IModel {
     return this._model;
   }
@@ -125,10 +150,16 @@ export class XtralabDiffWidget
     await done.promise;
   }
 
+  /**
+   * The current rendered-vs-JSON choice for notebook diffs.
+   */
   get notebookViewMode(): NotebookDiffViewMode {
     return this._notebookViewMode;
   }
 
+  /**
+   * Set the notebook view mode and persist it.
+   */
   setNotebookViewMode(mode: NotebookDiffViewMode): void {
     if (mode === this._notebookViewMode) {
       return;
@@ -138,14 +169,23 @@ export class XtralabDiffWidget
     this._notebookViewModeChanged.emit(mode);
   }
 
+  /**
+   * A signal emitted when the notebook view mode changes.
+   */
   get notebookViewModeChanged(): ISignal<this, NotebookDiffViewMode> {
     return this._notebookViewModeChanged;
   }
 
+  /**
+   * Whether a rendered notebook view is currently available.
+   */
   get hasNotebookView(): boolean {
     return this._hasNotebookView;
   }
 
+  /**
+   * Set whether a rendered notebook view is available.
+   */
   setHasNotebookView(value: boolean): void {
     if (value === this._hasNotebookView) {
       return;
@@ -154,14 +194,23 @@ export class XtralabDiffWidget
     this._hasNotebookViewChanged.emit(value);
   }
 
+  /**
+   * A signal emitted when rendered-notebook availability changes.
+   */
   get hasNotebookViewChanged(): ISignal<this, boolean> {
     return this._hasNotebookViewChanged;
   }
 
+  /**
+   * The current split/unified layout for textual file diffs.
+   */
   get diffStyle(): DiffStyle {
     return this._diffStyle;
   }
 
+  /**
+   * Set the diff style and persist it.
+   */
   setDiffStyle(style: DiffStyle): void {
     if (style === this._diffStyle) {
       return;
@@ -171,6 +220,9 @@ export class XtralabDiffWidget
     this._diffStyleChanged.emit(style);
   }
 
+  /**
+   * A signal emitted when the diff style changes.
+   */
   get diffStyleChanged(): ISignal<this, DiffStyle> {
     return this._diffStyleChanged;
   }
@@ -182,6 +234,9 @@ export class XtralabDiffWidget
     return this._fileDiffActive;
   }
 
+  /**
+   * Set whether the textual file diff is the active view.
+   */
   setFileDiffActive(value: boolean): void {
     if (value === this._fileDiffActive) {
       return;
@@ -190,6 +245,9 @@ export class XtralabDiffWidget
     this._fileDiffActiveChanged.emit(value);
   }
 
+  /**
+   * A signal emitted when {@link fileDiffActive} changes.
+   */
   get fileDiffActiveChanged(): ISignal<this, boolean> {
     return this._fileDiffActiveChanged;
   }
@@ -201,32 +259,49 @@ export class XtralabDiffWidget
     return this._emptied;
   }
 
+  /**
+   * Emit the {@link emptied} signal.
+   */
   notifyEmptied(): void {
     this._emptied.emit();
   }
 
+  /**
+   * Resolve and clear the pending `refresh()` promise, if any.
+   */
   settleRefresh(): void {
     const pending = this._pendingRefresh;
     this._pendingRefresh = null;
     pending?.resolve();
   }
 
+  /**
+   * Dispose of the resources held by the widget.
+   */
   dispose(): void {
-    // Release any in-flight refresh awaiter so a host that awaits refresh()
-    // (jupyterlab-git re-shows its diff button only once it resolves) does not
-    // hang when the widget is torn down mid-fetch.
+    // jupyterlab-git awaits refresh() to re-show its diff button; release any
+    // in-flight awaiter so it does not hang on mid-fetch teardown.
     this.settleRefresh();
     super.dispose();
   }
 
+  /**
+   * A counter incremented on each `refresh()` to trigger a content re-fetch.
+   */
   get reloadNonce(): number {
     return this._reloadNonce;
   }
 
+  /**
+   * The application-level services used by the rendered diff.
+   */
   get context(): IXtralabDiffContext {
     return this._context;
   }
 
+  /**
+   * Render the diff view for the current model.
+   */
   protected render(): React.ReactElement {
     return <ModelDiffView widget={this} />;
   }
@@ -248,10 +323,25 @@ export class XtralabDiffWidget
   private _emptied = new Signal<this, void>(this);
 }
 
+/**
+ * Resolved file-contents state for {@link ModelDiffView}.
+ */
 interface IModelDiffState {
+  /**
+   * Whether the file contents are still being fetched.
+   */
   loading: boolean;
+  /**
+   * The resolved reference-side text.
+   */
   oldText: string;
+  /**
+   * The resolved challenger-side text.
+   */
   newText: string;
+  /**
+   * The fetch error message, or `null` if none.
+   */
   error: string | null;
 }
 
@@ -271,7 +361,6 @@ function ModelDiffView(props: {
     error: null
   });
 
-  // Mirror toolbar-driven notebook view changes into React state.
   const [notebookViewMode, setNotebookViewMode] =
     React.useState<NotebookDiffViewMode>(() => widget.notebookViewMode);
   React.useEffect(() => {
@@ -295,7 +384,6 @@ function ModelDiffView(props: {
     [widget]
   );
 
-  // Mirror toolbar-driven diff-style changes into React state.
   const [diffStyle, setDiffStyle] = React.useState<DiffStyle>(
     () => widget.diffStyle
   );
@@ -344,14 +432,12 @@ function ModelDiffView(props: {
     };
   }, [themeManager]);
 
-  // Image diffs use the server's base64 payloads; other binaries show a placeholder.
   const isImage = React.useMemo(
     () => imageDataType(model.filename) !== null,
     [model.filename]
   );
   const isBinary = model.isBinary === true && !isImage;
 
-  // Used by the launcher to auto-close an emptied diff after discard.
   const [hunkCount, setHunkCount] = React.useState<number | null>(null);
   const handleMetadataChange = React.useCallback(
     (info: { hunkCount: number | null }) => {
@@ -363,12 +449,12 @@ function ModelDiffView(props: {
   // A `refresh()` of the same model reloads in place; a model swap shows the
   // loading placeholder.
   const loadedModelRef = React.useRef<IXtralabDiffModel | null>(null);
+  const saveRevisionRef = React.useRef(0);
 
-  // Fetch both sides whenever the model or reload nonce changes.
   React.useEffect(() => {
     let cancelled = false;
-    // Non-image binaries do not need content fetches.
     if (isBinary) {
+      loadedModelRef.current = model;
       setState({ loading: false, oldText: '', newText: '', error: null });
       // An in-flight `refresh()` still has to resolve.
       widget.settleRefresh();
@@ -379,6 +465,7 @@ function ModelDiffView(props: {
     if (loadedModelRef.current !== model) {
       setState({ loading: true, oldText: '', newText: '', error: null });
     }
+    const saveRevision = saveRevisionRef.current;
     void (async () => {
       try {
         const [oldText, newText] = await Promise.all([
@@ -389,28 +476,29 @@ function ModelDiffView(props: {
           return;
         }
         loadedModelRef.current = model;
-        setState({
+        setState(prev => ({
           loading: false,
           oldText: oldText ?? '',
-          newText: newText ?? '',
+          // A save acknowledged after this fetch began owns the newer text.
+          newText:
+            saveRevision === saveRevisionRef.current
+              ? (newText ?? '')
+              : prev.newText,
           error: null
-        });
+        }));
       } catch (err) {
         if (cancelled) {
           return;
         }
-        // Force the next attempt back through the loading placeholder: with
-        // the content cleared there is nothing sensible to keep on screen.
-        loadedModelRef.current = null;
-        setState({
+        loadedModelRef.current = model;
+        setState(prev => ({
           loading: false,
           oldText: '',
-          newText: '',
+          newText: saveRevision === saveRevisionRef.current ? '' : prev.newText,
           error: err instanceof Error ? err.message : String(err)
-        });
+        }));
       } finally {
         if (!cancelled) {
-          // Let `refresh()` settle once content has loaded.
           widget.settleRefresh();
         }
       }
@@ -426,7 +514,8 @@ function ModelDiffView(props: {
     model.challenger.source === Git.Diff.SpecialRef.WORKING &&
     model.hasConflict !== true &&
     !isImage &&
-    !isBinary;
+    !isBinary &&
+    !model.filename.toLowerCase().endsWith('.ipynb');
 
   // Only close after a reload, not for a file that opens already empty, and
   // never for an editable diff (editing a file down to an empty diff must
@@ -444,7 +533,6 @@ function ModelDiffView(props: {
     }
   }, [state.loading, state.error, isBinary, canEdit, hunkCount, nonce, widget]);
 
-  // The launcher sets `canDiscard`; jupyterlab-git models fall back to source.
   const canDiscardHunk =
     model.canDiscard ??
     (model.challenger.source === Git.Diff.SpecialRef.WORKING &&
@@ -495,13 +583,17 @@ function ModelDiffView(props: {
       enabled: canDiscardHunk,
       save: saveWorkingFile,
       onAfterSave: () => {
-        // Re-pull so the diff reflects the reverted hunk.
         void widget.refresh();
       },
       readDiskText
     }),
     [canDiscardHunk, saveWorkingFile, readDiskText, widget]
   );
+
+  const draftTextRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    draftTextRef.current = null;
+  }, [model]);
 
   const handleLineAsk = React.useMemo(() => {
     if (askAgent === null) {
@@ -512,7 +604,7 @@ function ModelDiffView(props: {
         buildDiffAskRequest({
           model,
           oldText: state.oldText,
-          newText: state.newText,
+          newText: draftTextRef.current ?? state.newText,
           range,
           anchor,
           trans
@@ -524,6 +616,12 @@ function ModelDiffView(props: {
   const edit = React.useMemo<IDiffEdit>(
     () => ({
       canEdit,
+      filePath: serverPath,
+      onDraftChange: text => {
+        if (widget.model === model) {
+          draftTextRef.current = text;
+        }
+      },
       save: async (text: string) => {
         // Persist without re-pulling: the editor owns the live view during a
         // session, and a reload would discard the cursor and in-flight edit.
@@ -543,26 +641,29 @@ function ModelDiffView(props: {
       onSaved: (text: string) => {
         // Adopt confirmed-saved text as the baseline. Ignore a late save from
         // a previous file: the launcher reuses one widget across files.
-        if (widget.model !== model) {
+        if (widget.isDisposed || widget.model !== model) {
           return;
         }
+        saveRevisionRef.current += 1;
         setState(prev =>
           prev.newText === text ? prev : { ...prev, newText: text }
         );
       },
       readDiskText,
-      onConflictDiscard: () => {
-        // The user kept the on-disk version: re-pull so the recycled session
-        // renders the file as it is on disk.
-        void widget.refresh();
+      onConflictDiscard: async () => {
+        // A closed preview must not refresh the next file in the reused tab.
+        if (widget.isDisposed || widget.model !== model) {
+          return;
+        }
+        await widget.refresh();
       }
     }),
-    [canEdit, saveWorkingFile, readDiskText, widget, model]
+    [canEdit, serverPath, saveWorkingFile, readDiskText, widget, model]
   );
 
   return (
     <DiffSurface
-      loading={state.loading}
+      loading={state.loading || loadedModelRef.current !== model}
       error={state.error}
       isBinary={isBinary}
       oldText={state.oldText}
@@ -595,6 +696,9 @@ class NotebookViewModeToolbarItem extends ReactWidget {
     this.addClass('jp-xtralab-DiffWidget-viewModeToolbarItem');
   }
 
+  /**
+   * Render the Notebook/JSON toggle.
+   */
   protected render(): React.ReactElement {
     return <NotebookViewModeToolbarControl widget={this._widget} />;
   }
@@ -653,6 +757,9 @@ class DiffStyleToolbarItem extends ReactWidget {
     this.addClass('jp-xtralab-DiffWidget-diffStyleToolbarItem');
   }
 
+  /**
+   * Render the Split/Unified toggle.
+   */
   protected render(): React.ReactElement {
     return <DiffStyleToolbarControl widget={this._widget} />;
   }
@@ -700,6 +807,9 @@ function DiffStyleToolbarControl(props: {
  * Structural toolbar type shared across host package boundaries.
  */
 interface IDiffToolbar {
+  /**
+   * Add an item to the toolbar under the given name.
+   */
   addItem(name: string, widget: Widget): boolean;
 }
 

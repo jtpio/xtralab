@@ -14,10 +14,8 @@ export function serverPath(context: IAskAgentContext): string {
 }
 
 /**
- * Cap on the snippet embedded in the prompt, in characters. The path and
- * line range are the authoritative pointers — agents open the file
- * themselves — so a very long selection is trimmed instead of being typed
- * into the terminal wholesale.
+ * Cap on the embedded snippet; the path and line range are the
+ * authoritative pointers, so a very long selection is trimmed.
  */
 const MAX_SNIPPET_CHARS = 2000;
 
@@ -33,10 +31,6 @@ function fenceFor(text: string): string {
   return '`'.repeat(Math.max(3, longest + 1));
 }
 
-/**
- * Trim `text` to {@link MAX_SNIPPET_CHARS}, cutting at a line boundary.
- * Returns the (possibly shortened) snippet and whether anything was dropped.
- */
 function clampSnippet(text: string): { snippet: string; truncated: boolean } {
   if (text.length <= MAX_SNIPPET_CHARS) {
     return { snippet: text, truncated: false };
@@ -58,7 +52,7 @@ function locatorFor(context: IAskAgentContext): string {
   const where: string[] = [`\`${context.path}\``];
   if (context.cell !== undefined) {
     // Both orderings so the agent can count cells or index the nbformat
-    // `cells` array, whichever its notebook tooling prefers.
+    // `cells` array.
     where.push(
       `${context.cell.type} cell ${context.cell.index + 1} ` +
         `(0-based index ${context.cell.index})`
@@ -78,11 +72,6 @@ function locatorFor(context: IAskAgentContext): string {
   return where.join(', ');
 }
 
-/**
- * The blocks describing one comment: `headline`, the selected snippet in a
- * code fence (when there is one), then the user's instruction. Blocks are
- * joined with blank lines by the callers.
- */
 function commentParts(
   context: IAskAgentContext,
   instruction: string,
@@ -102,11 +91,9 @@ function commentParts(
 }
 
 /**
- * Compose the prompt handed to the agent CLI: a one-line locator, the
- * selected snippet in a code fence, then the user's instruction.
- *
- * The scaffold is written in English on purpose — it is consumed by the
- * agent, not shown in the UI, and the agent CLIs are English-first.
+ * Compose the prompt handed to the agent CLI: locator, fenced snippet,
+ * instruction. The scaffold is English on purpose — consumed by the agent,
+ * not shown in the UI.
  */
 export function buildPrompt(
   context: IAskAgentContext,

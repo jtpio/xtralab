@@ -15,11 +15,10 @@ notebooks.
 The working-tree side stays editable, so you can fix a line or discard a hunk
 without leaving the diff. Edits are saved straight back to the file.
 
-Saves are safe to combine with running agents: before writing, the diff checks
-that the file has not changed on disk underneath it. If an agent modified the
-file in the meantime, a hunk discard reloads the diff instead of writing, and
-an edit session pauses and asks whether to overwrite the file or keep the
-version on disk.
+Before saving, the diff checks for changes on disk, including edits made by
+running agents. If the file has changed, autosave pauses and asks whether to
+overwrite it or keep the version on disk. Discarding a change inside the editor
+can be undone with the editor's undo shortcut.
 
 ## Notebook diffs
 

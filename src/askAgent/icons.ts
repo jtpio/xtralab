@@ -1,9 +1,8 @@
 import { LabIcon } from '@jupyterlab/ui-components';
 
 /**
- * Four-point sparkle used by the ask-agent affordances (selection pill,
- * command palette entry). Drawn in-repo; the `jp-icon3` class lets the
- * active theme recolor the glyph like other JupyterLab UI icons.
+ * Four-point sparkle used by the ask-agent affordances; the `jp-icon3`
+ * class lets the active theme recolor the glyph.
  */
 export const askAgentIcon = new LabIcon({
   name: 'xtralab:ask-agent',

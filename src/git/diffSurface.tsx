@@ -8,6 +8,9 @@ import { EditProvider, FileDiff } from '@pierre/diffs/react';
 import {
   Editor,
   type EditorOptions,
+  type EditorFactory,
+  type EditorChangeEvent,
+  type FileDiffEditCompleteEvent,
   type Position,
   type TextEdit
 } from '@pierre/diffs/edit';
@@ -30,38 +33,19 @@ import {
 import { resolveDiffTheme } from './diffTheme';
 import { DiffWorkerPoolProvider } from './diffWorkerPool';
 
-/**
- * The CSS class added to the diff main-area widget. The selectors that
- * style the embedded `@pierre/diffs` viewer hang off this class.
- */
 export const DIFF_WIDGET_CSS_CLASS = 'jp-xtralab-DiffWidget';
 
-/**
- * `localStorage` key for the user's last-chosen split ratio, persisted so
- * the preference survives reloads (the library has no built-in way to
- * remember it).
- */
 const SPLIT_RATIO_STORAGE_KEY = 'xtralab:diff-split-ratio';
 
-/**
- * Bounds on the left-pane fraction. Keeping a few percent on either side
- * guarantees both panes remain visible — dragging to 0/100 would hide a
- * column and is almost never what the user wants.
- */
 const MIN_SPLIT_RATIO = 0.1;
 const MAX_SPLIT_RATIO = 0.9;
 const DEFAULT_SPLIT_RATIO = 0.5;
 
 /**
- * CSS injected via the `@pierre/diffs` `unsafeCSS` option. The library
- * places it inside the shadow root under `@layer unsafe`, which beats
- * the library's own `@layer base` rule that hardcodes
- * `grid-template-columns: 1fr 1fr` on the split-mode container.
- *
- * The override reads from `--xtralab-split-cols`, a custom property we set
- * on the host element via the `style` prop. Custom properties inherit
- * through the shadow DOM boundary, so adjusting it on the host instantly
- * resizes the columns without re-rendering the diff.
+ * Injected via the `unsafeCSS` option into the shadow root's `@layer
+ * unsafe`, beating the library's base rule that hardcodes `1fr 1fr`. Reads
+ * `--xtralab-split-cols` set on the host — custom properties cross the
+ * shadow boundary, so resizing needs no re-render.
  */
 const SPLIT_RESIZE_CSS = `pre[data-diff-type="split"][data-overflow="scroll"] {
   grid-template-columns: var(--xtralab-split-cols, 1fr 1fr);
@@ -82,8 +66,7 @@ function readStoredSplitRatio(): number {
       return parsed;
     }
   } catch {
-    // localStorage may throw in privacy mode or sandboxed contexts. Falling
-    // back to the default is fine — the user can resize again on this run.
+    // localStorage can throw in privacy mode or sandboxed contexts.
   }
   return DEFAULT_SPLIT_RATIO;
 }
@@ -96,15 +79,13 @@ function writeStoredSplitRatio(ratio: number): void {
   }
 }
 
-/**
- * Layout for textual/code diffs, forwarded to `@pierre/diffs` as its
- * `diffStyle` option. `split` is the side-by-side old|new view; `unified`
- * is the single-column inline view (what diffs.com calls "stacked").
- */
 export type DiffStyle = 'split' | 'unified';
 
 const DIFF_STYLE_STORAGE_KEY = 'xtralab:diff-style';
 
+/**
+ * Read the persisted diff style, defaulting to `'split'`.
+ */
 export function readStoredDiffStyle(): DiffStyle {
   try {
     const raw = window.localStorage.getItem(DIFF_STYLE_STORAGE_KEY);
@@ -112,11 +93,14 @@ export function readStoredDiffStyle(): DiffStyle {
       return raw;
     }
   } catch {
-    // See readStoredSplitRatio — privacy-mode / sandboxed contexts can throw.
+    // See readStoredSplitRatio.
   }
   return 'split';
 }
 
+/**
+ * Persist the diff style to local storage (best-effort).
+ */
 export function writeStoredDiffStyle(style: DiffStyle): void {
   try {
     window.localStorage.setItem(DIFF_STYLE_STORAGE_KEY, style);
@@ -125,15 +109,13 @@ export function writeStoredDiffStyle(style: DiffStyle): void {
   }
 }
 
-/**
- * View modes available for `.ipynb` diffs. `notebook` is the cell-by-cell
- * rendered view; `json` is the raw nbformat JSON file diff, for inspecting
- * exactly which bytes changed.
- */
 export type NotebookDiffViewMode = 'notebook' | 'json';
 
 const NOTEBOOK_DIFF_VIEW_MODE_STORAGE_KEY = 'xtralab:notebook-diff-view-mode';
 
+/**
+ * Read the persisted notebook view mode, defaulting to `'notebook'`.
+ */
 export function readStoredNotebookViewMode(): NotebookDiffViewMode {
   try {
     const raw = window.localStorage.getItem(
@@ -143,12 +125,14 @@ export function readStoredNotebookViewMode(): NotebookDiffViewMode {
       return raw;
     }
   } catch {
-    // See readStoredSplitRatio — privacy-mode / sandboxed contexts can
-    // throw on access. The notebook view is the better default anyway.
+    // See readStoredSplitRatio.
   }
   return 'notebook';
 }
 
+/**
+ * Persist the notebook view mode to local storage (best-effort).
+ */
 export function writeStoredNotebookViewMode(mode: NotebookDiffViewMode): void {
   try {
     window.localStorage.setItem(NOTEBOOK_DIFF_VIEW_MODE_STORAGE_KEY, mode);
@@ -164,32 +148,27 @@ export function writeStoredNotebookViewMode(mode: NotebookDiffViewMode): void {
  * blocks merged into a single hunk keep their own discard buttons.
  */
 interface IHunkActionAnnotation {
+  /**
+   * The index of the hunk the action targets.
+   */
   hunkIndex: number;
   block?: {
-    additions: number;
-    deletions: number;
-    additionLineIndex: number;
     deletionLineIndex: number;
+    deletions: number;
   };
 }
 
 /**
- * Detect notebook files by extension. We only look at the suffix so the
- * caller doesn't need to plumb a content-type field through; mistaking
- * another `.ipynb`-named file for a notebook is harmless because
- * {@link buildNotebookDiff} validates the JSON shape and we fall back to
- * the file diff if parsing fails.
+ * Extension-only check; a false positive is harmless because
+ * {@link buildNotebookDiff} validates the JSON and the file diff is the fallback.
  */
 function isNotebookPath(path: string): boolean {
   return path.toLowerCase().endsWith('.ipynb');
 }
 
 /**
- * Decide whether the active JupyterLab theme is a dark theme. Prefers the
- * `IThemeManager` token when available, and falls back to sniffing the
- * `data-jp-theme-light` attribute that JupyterLab sets on `<body>` so the
- * component still works in stripped-down hosts where the token isn't
- * provided (lite, certain notebook configurations, …).
+ * Dark-theme check via `IThemeManager`, falling back to the
+ * `data-jp-theme-light` body attribute for hosts without the token.
  */
 export function isDarkTheme(themeManager: IThemeManager | null): boolean {
   if (themeManager !== null && themeManager.theme !== null) {
@@ -207,16 +186,21 @@ export function isPierreTheme(themeManager: IThemeManager | null): boolean {
 }
 
 /**
- * Optional per-hunk discard wiring. When supplied and `enabled`, each hunk
- * in a plain-text/code diff gets an inline "discard" button; clicking it
- * reverts that hunk and hands the rebuilt full-file text back to the host
- * via {@link IHunkDiscard.save}. The host owns the actual write (it knows
- * the on-disk path) and triggers any follow-up refresh in
- * {@link IHunkDiscard.onAfterSave}.
+ * Per-hunk discard wiring: discarding rebuilds the full file text and the
+ * host owns the write via `save`, then refreshes in `onAfterSave`.
  */
 interface IHunkDiscard {
+  /**
+   * Whether hunk discarding is available.
+   */
   enabled: boolean;
+  /**
+   * Persist the full post-discard file text.
+   */
   save: (fullText: string) => Promise<void>;
+  /**
+   * Called after a successful save so the host can refresh the diff.
+   */
   onAfterSave: () => void;
   /**
    * Read the current working-tree text (a missing file reads as `''`).
@@ -236,6 +220,10 @@ export interface IDiffEdit {
    * Whether the new side maps to a savable working-tree text file.
    */
   canEdit: boolean;
+  /** Server-relative identity, including the repository path. */
+  filePath: string;
+  /** Keep selection requests in sync without feeding the draft back. */
+  onDraftChange?: (fullText: string) => void;
   /**
    * Persist the full edited text to disk, without triggering a diff reload.
    */
@@ -255,7 +243,7 @@ export interface IDiffEdit {
    * Called when the user resolves an autosave conflict by keeping the file on
    * disk; the host ends the session and reloads the diff.
    */
-  onConflictDiscard?: () => void;
+  onConflictDiscard?: () => Promise<void>;
 }
 
 /**
@@ -272,15 +260,15 @@ const EDIT_AUTOSAVE_DELAY_MS = 500;
 /**
  * Editor factory handed to `EditProvider` when an edit session starts.
  */
-function createEditor(
-  options: EditorOptions<IHunkActionAnnotation>
-): Editor<IHunkActionAnnotation> {
-  return new Editor<IHunkActionAnnotation>(options);
-}
+const createEditor: EditorFactory<IHunkActionAnnotation, undefined> = (
+  type,
+  options,
+  editStateKey
+) => new Editor(type, options, editStateKey);
 
 /**
- * Smallest single edit turning `before` into `after` (null when equal), as a
- * zero-based line/character range into `before`.
+ * Smallest single edit turning `before` into `after` (null when equal), with
+ * boundaries that preserve surrogate pairs and complete line endings.
  */
 function minimalTextEdit(before: string, after: string): TextEdit | null {
   if (before === after) {
@@ -290,6 +278,22 @@ function minimalTextEdit(before: string, after: string): TextEdit | null {
   const max = Math.min(before.length, after.length);
   while (start < max && before[start] === after[start]) {
     start++;
+  }
+  const splitsPair = (text: string, offset: number): boolean => {
+    const previous = text.charCodeAt(offset - 1);
+    const next = text.charCodeAt(offset);
+    return (
+      (previous === 13 && next === 10) ||
+      (previous >= 0xd800 &&
+        previous <= 0xdbff &&
+        next >= 0xdc00 &&
+        next <= 0xdfff)
+    );
+  };
+  // Pierre normalizes edit ranges to complete code points and excludes line
+  // endings from character offsets. Include both halves in the replacement.
+  while (splitsPair(before, start) || splitsPair(after, start)) {
+    start--;
   }
   let beforeEnd = before.length;
   let afterEnd = after.length;
@@ -301,21 +305,34 @@ function minimalTextEdit(before: string, after: string): TextEdit | null {
     beforeEnd--;
     afterEnd--;
   }
-  const toPosition = (offset: number): Position => {
-    let line = 0;
-    let lineStart = 0;
-    for (let i = 0; i < offset; i++) {
-      if (before.charCodeAt(i) === 10) {
-        line++;
-        lineStart = i + 1;
-      }
-    }
-    return { line, character: offset - lineStart };
-  };
+  while (splitsPair(before, beforeEnd) || splitsPair(after, afterEnd)) {
+    beforeEnd++;
+    afterEnd++;
+  }
   return {
-    range: { start: toPosition(start), end: toPosition(beforeEnd) },
+    range: {
+      start: positionAtOffset(before, start),
+      end: positionAtOffset(before, beforeEnd)
+    },
     newText: after.slice(start, afterEnd)
   };
+}
+
+/** Convert a safe UTF-16 offset, recognizing LF, CRLF and CR line endings. */
+function positionAtOffset(text: string, offset: number): Position {
+  let line = 0;
+  let lineStart = 0;
+  for (let i = 0; i < offset; i++) {
+    const character = text.charCodeAt(i);
+    if (character === 13 || character === 10) {
+      if (character === 13 && text.charCodeAt(i + 1) === 10) {
+        i++;
+      }
+      line++;
+      lineStart = i + 1;
+    }
+  }
+  return { line, character: offset - lineStart };
 }
 
 /**
@@ -347,6 +364,9 @@ function HunkDiscardButton(props: {
   );
 }
 
+/**
+ * The props for the {@link DiffSurface} component.
+ */
 interface IDiffSurfaceProps {
   /**
    * Whether the host is still resolving the file contents.
@@ -369,13 +389,11 @@ interface IDiffSurfaceProps {
    */
   newText: string;
   /**
-   * New-side path. Drives notebook detection and the `@pierre/diffs` file
-   * name on the additions side.
+   * New-side path; drives notebook detection and the highlighting filename.
    */
   newName: string;
   /**
-   * Old-side path. Differs from {@link newName} only for renames; defaults
-   * to {@link newName} when the host does not track a previous path.
+   * Old-side path; differs from {@link newName} only for renames.
    */
   oldName?: string;
   /**
@@ -387,35 +405,28 @@ interface IDiffSurfaceProps {
    */
   pierreTheme: boolean;
   /**
-   * Rendermime registry used by the notebook view to render outputs and
-   * markdown cells. May be `null` in stripped-down hosts; the notebook
-   * diff falls back to a textual representation in that case.
+   * Used by the notebook view; `null` in stripped-down hosts, which forces a textual fallback.
    */
   rendermime: IRenderMimeRegistry | null;
   /**
-   * Current rendered-vs-JSON choice for notebook diffs (host-controlled).
+   * Rendered-vs-JSON choice for notebook diffs (host-controlled).
    */
   notebookViewMode: NotebookDiffViewMode;
   /**
-   * Split vs unified layout for the textual/code file diff (host-controlled).
+   * Split vs unified layout for the textual file diff (host-controlled).
    */
   diffStyle: DiffStyle;
   /**
-   * Called whenever the availability of a rendered notebook view changes,
-   * so the host can show/hide its Notebook/JSON toolbar toggle.
+   * Fires when rendered-notebook availability changes so the host can toggle its Notebook/JSON control.
    */
   onNotebookAvailabilityChange?: (available: boolean) => void;
   /**
-   * Called whenever the textual/code file diff (the only view the split vs
-   * unified choice affects) becomes the active view, so the host can
-   * show/hide its Split/Unified toolbar toggle. False for image, binary,
-   * rendered-notebook, loading and error states.
+   * Fires when the textual file diff becomes (in)active — the only view the split/unified choice affects.
    */
   onFileDiffActiveChange?: (active: boolean) => void;
   /**
-   * Called after each (re)computation of the diff with the number of hunks
-   * (or `null` when no textual diff exists). Hosts use this to implement
-   * post-discard behaviors such as auto-closing an emptied diff.
+   * Fires after each diff computation with the hunk count (`null` when no
+   * textual diff); hosts use it to auto-close emptied diffs.
    */
   onMetadataChange?: (info: { hunkCount: number | null }) => void;
   /**
@@ -423,11 +434,8 @@ interface IDiffSurfaceProps {
    */
   hunkDiscard?: IHunkDiscard;
   /**
-   * When provided, the textual/code file diff gets line selection: clicking
-   * or dragging over the line numbers selects a range, and a gutter "+"
-   * button appears on the hovered/selected lines. Clicking that button
-   * invokes this callback with the selected range and the button's viewport
-   * rectangle (to anchor a popup to), `null` when it cannot be measured.
+   * Enables line selection and the gutter "+" button; called with the
+   * selected range and the button's viewport rect (`null` when unmeasurable).
    */
   onLineAsk?: (range: SelectedLineRange, anchor: DOMRect | null) => void;
   /**
@@ -479,15 +487,11 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
 
   const hasContent = !loading && error === null && !isBinary;
 
-  // Raster images take a dedicated `<img>`-based view instead of a
-  // text/notebook diff; the host passes the two sides as base64 strings in
-  // `oldText`/`newText` (the git server base64-encodes binary content).
+  // For raster images the host passes both sides as base64 in oldText/newText.
   const imageType = React.useMemo(() => imageDataType(newName), [newName]);
 
-  // Pre-compute the line-oriented diff metadata. Owning it here lets us
-  // pass it to {@link FileDiff} *and* thread the same instance through
-  // {@link diffAcceptRejectHunk} when the user discards a hunk — so hunk
-  // indexes line up between what the user clicked and what we mutate.
+  // Owning the metadata here keeps hunk indexes aligned between FileDiff
+  // and diffAcceptRejectHunk on discard.
   const metadata = React.useMemo<FileDiffMetadata | null>(() => {
     if (!hasContent || imageType !== null) {
       return null;
@@ -500,10 +504,6 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
     return parseDiffFromFile(oldFile, newFile);
   }, [hasContent, imageType, oldText, newText, oldName, newName]);
 
-  // Cell-by-cell notebook diff for `.ipynb` files. When non-null the
-  // renderer uses a notebook-aware view instead of the line-oriented file
-  // diff — kept distinct from {@link metadata} so a notebook whose JSON we
-  // cannot parse can fall back to the file diff path.
   const notebookDiff = React.useMemo<INotebookDiffResult | null>(() => {
     if (!hasContent || imageType !== null || !isNotebookPath(newName)) {
       return null;
@@ -511,30 +511,22 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
     return buildNotebookDiff({ oldText, newText });
   }, [hasContent, imageType, oldText, newText, newName]);
 
-  // Tell the host whether a rendered notebook view is currently available
-  // so it can show/hide its Notebook/JSON toggle.
   React.useEffect(() => {
     onNotebookAvailabilityChange?.(notebookDiff !== null);
   }, [onNotebookAvailabilityChange, notebookDiff]);
 
-  // Report the diff shape so hosts can react (e.g. auto-close on empty).
   React.useEffect(() => {
     onMetadataChange?.({
       hunkCount: metadata !== null ? metadata.hunks.length : null
     });
   }, [onMetadataChange, metadata]);
 
-  // Decide which view to render. The notebook view requires a successful
-  // nbformat parse; if that failed, we only show the raw JSON file diff.
-  // Computed before the early returns below so the file-diff-active effect
-  // can depend on it without violating the rules of hooks.
+  // Computed before the early returns so the hooks below can depend on
+  // them without breaking the rules of hooks.
   const hasNotebookView = notebookDiff !== null;
   const showNotebookView = hasNotebookView && notebookViewMode === 'notebook';
   const showFileDiff = !showNotebookView && metadata !== null;
 
-  // The split vs unified choice only affects the textual/code file diff, so
-  // tell the host whether that view is active to drive its Split/Unified
-  // toolbar toggle.
   React.useEffect(() => {
     onFileDiffActiveChange?.(showFileDiff);
   }, [onFileDiffActiveChange, showFileDiff]);
@@ -551,8 +543,7 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
     readStoredSplitRatio()
   );
   const wrapperRef = React.useRef<HTMLDivElement | null>(null);
-  // The drag handler reads the live ratio from a ref so the listeners we
-  // attach on pointer-down don't capture a stale value across renders.
+  // Drag listeners read the live ratio from a ref to avoid stale captures.
   const leftRatioRef = React.useRef(leftRatio);
   React.useEffect(() => {
     leftRatioRef.current = leftRatio;
@@ -568,8 +559,6 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
     }
     return metadata.hunks.map((hunk, hunkIndex) => ({
       side: 'additions',
-      // The first line of each hunk in the new file. We anchor the button
-      // there so it sits at the top of the hunk's body.
       lineNumber: hunk.additionStart,
       metadata: { hunkIndex }
     }));
@@ -600,12 +589,8 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
         return;
       }
       const updated = diffAcceptRejectHunk(metadata, hunkIndex, 'reject');
-      // `additionLines` after a 'reject' contains the full new file with
-      // the hunk reverted back to the old content. The library splits
-      // file contents with `/(?<=\n)/` (a lookbehind that keeps the
-      // trailing `\n` on each line), so the entries already carry their
-      // own line endings — joining with `''` rebuilds the original text
-      // verbatim, while joining with `'\n'` would double every newline.
+      // additionLines holds the full new file with the hunk reverted; lines keep
+      // their trailing `\n` (lookbehind split), so join('') rebuilds it verbatim.
       const text = updated.additionLines.join('');
       try {
         await hunkDiscard.save(text);
@@ -647,9 +632,7 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
       if (onLineAsk === undefined) {
         return;
       }
-      // Anchor to the gutter "+" button that was just clicked. It lives in
-      // the `@pierre/diffs` shadow root (which is open), parked on the
-      // hovered/selected line's number element.
+      // Anchor to the just-clicked gutter "+" button inside the library's open shadow root.
       const slot = wrapperRef.current
         ?.querySelector('diffs-container')
         ?.shadowRoot?.querySelector('[data-gutter-utility-slot]');
@@ -663,8 +646,6 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
 
   const handleResizerPointerDown = React.useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      // Only react to primary-button drags. Right-click / middle-click on
-      // the handle should pass through to the browser default.
       if (event.button !== 0) {
         return;
       }
@@ -697,8 +678,6 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
         handle.removeEventListener('pointermove', onPointerMove);
         handle.removeEventListener('pointerup', onPointerEnd);
         handle.removeEventListener('pointercancel', onPointerEnd);
-        // Only persist on drag-end so a quick drag isn't followed by a
-        // burst of writes for every intermediate position.
         writeStoredSplitRatio(leftRatioRef.current);
       };
       handle.addEventListener('pointermove', onPointerMove);
@@ -757,25 +736,13 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
     [leftPercent]
   );
 
-  // Remount the read-only diff when the compared contents change: the
-  // library's in-place transition between diffs is unreliable, a fresh mount
-  // is not. Value comparison keeps scroll across identical-text refreshes.
-  const contentEpochRef = React.useRef(0);
-  const lastContentRef = React.useRef<[string, string]>([oldText, newText]);
-  const fileDiffKey = React.useMemo(() => {
-    const [prevOld, prevNew] = lastContentRef.current;
-    if (prevOld !== oldText || prevNew !== newText) {
-      lastContentRef.current = [oldText, newText];
-      contentEpochRef.current += 1;
-    }
-    return contentEpochRef.current;
-  }, [oldText, newText]);
-
   // Shared by the read-only and editable renders; a stable identity lets the
   // library skip its option-equality check on unrelated re-renders. Line
   // selection + the ask-agent gutter button ride along when the host wired a
   // handler, in both renders.
-  const fileDiffOptions = React.useMemo<FileDiffOptions<IHunkActionAnnotation>>(
+  const fileDiffOptions = React.useMemo<
+    FileDiffOptions<IHunkActionAnnotation, undefined>
+  >(
     () => ({
       diffStyle,
       // The tab title and panel header already carry the file name.
@@ -816,9 +783,6 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
     );
   }
   if (imageType !== null) {
-    // `oldText`/`newText` carry the two revisions as base64 here. The
-    // image view owns its own layout and mode selector, so it does not
-    // use the split resizer or the notebook/JSON toggle.
     return (
       <div className="jp-xtralab-DiffWidget-content">
         <ImageDiffView
@@ -853,7 +817,7 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
           ) : showFileDiff && metadata !== null ? (
             editActive && edit !== undefined ? (
               <EditableFileDiff
-                key={newName}
+                key={edit.filePath}
                 fileDiff={metadata}
                 options={fileDiffOptions}
                 hostStyle={hostStyle}
@@ -864,7 +828,6 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
               />
             ) : (
               <FileDiff<IHunkActionAnnotation>
-                key={fileDiffKey}
                 fileDiff={metadata}
                 lineAnnotations={lineAnnotations}
                 renderAnnotation={renderAnnotation}
@@ -898,137 +861,144 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
   );
 }
 
-/**
- * One mounted edit session: the diff snapshot the editor is attached to.
- */
-interface IEditSession {
-  epoch: number;
-  fileDiff: FileDiffMetadata;
-  options: FileDiffOptions<IHunkActionAnnotation>;
-  baseText: string;
+function editAnnotations(
+  diff: FileDiffMetadata
+): DiffLineAnnotation<IHunkActionAnnotation>[] {
+  return diff.hunks.flatMap((hunk, hunkIndex) =>
+    hunk.hunkContent.flatMap(content =>
+      content.type === 'change'
+        ? [
+            {
+              // A deletion at EOF has no following additions line to anchor to.
+              side:
+                content.additions === 0
+                  ? ('deletions' as const)
+                  : ('additions' as const),
+              lineNumber:
+                (content.additions === 0
+                  ? content.deletionLineIndex
+                  : content.additionLineIndex) + 1,
+              metadata: {
+                hunkIndex,
+                block: {
+                  deletionLineIndex: content.deletionLineIndex,
+                  deletions: content.deletions
+                }
+              }
+            }
+          ]
+        : []
+    )
+  );
 }
 
 /**
- * The new (additions) side of a textual diff rendered as an in-place editor,
- * autosaving to the working-tree file. The mounted diff is a snapshot of the
- * session's base text: whenever the host hands down a new diff and there are
- * no unsaved edits, the session recycles onto it — hunks and their discard
- * buttons track disk while caret, scroll and undo history carry over (the
- * editor's `persistState` cache reuses the text document, which owns the
- * undo stack, across recycles). Every autosave first checks the on-disk text
- * and pauses as a conflict if an external writer changed the file underneath
- * the session.
+ * Pierre owns the active draft and undo history. Disk saves and authoritative
+ * external replacements are separate from that editing session.
  */
 function EditableFileDiff(props: {
   fileDiff: FileDiffMetadata;
-  options: FileDiffOptions<IHunkActionAnnotation>;
+  options: FileDiffOptions<IHunkActionAnnotation, undefined>;
   hostStyle: React.CSSProperties;
   fileName: string;
   canDiscardHunk: boolean;
   edit: IDiffEdit;
   trans: TranslationBundle;
 }): React.ReactElement {
-  const { options, hostStyle, canDiscardHunk, edit, trans } = props;
-
-  // `persistState` requires a stable non-empty cacheKey on the attached
-  // file; it keys the cached text document reused across recycles.
-  const fileDiff = React.useMemo<FileDiffMetadata>(
-    () => ({ ...props.fileDiff, cacheKey: `xtralab-edit:${props.fileName}` }),
-    [props.fileDiff, props.fileName]
-  );
-
-  // Full text of the incoming diff's additions side (the library splits with
-  // a newline-preserving pattern, so join('') is exact).
-  const incomingBaseText = React.useMemo(
-    () => fileDiff.additionLines.join(''),
-    [fileDiff]
-  );
-
-  const [session, setSession] = React.useState<IEditSession>(() => ({
-    epoch: 0,
-    fileDiff,
-    options,
-    baseText: incomingBaseText
-  }));
-  const sessionRef = React.useRef(session);
-  React.useEffect(() => {
-    sessionRef.current = session;
-  });
-
-  // Editor text and last text confirmed on disk; refs so neither typing nor
-  // save bookkeeping re-renders this widget.
-  const latestTextRef = React.useRef(incomingBaseText);
-  const savedTextRef = React.useRef(incomingBaseText);
-
-  // Guards the single-flight save loop in `persist`.
+  const { fileDiff, options, hostStyle, canDiscardHunk, edit, trans } = props;
+  const [externalDiff, setExternalDiff] = React.useState(fileDiff);
+  const externalDiffRef = React.useRef(externalDiff);
+  const latestTextRef = React.useRef(fileDiff.additionLines.join(''));
+  const savedTextRef = React.useRef(latestTextRef.current);
+  const editorRef = React.useRef<Editor<
+    'file-diff',
+    IHunkActionAnnotation
+  > | null>(null);
   const savingRef = React.useRef(false);
-
-  // The attached editor and its focus state, for hunk discards and for focus
-  // restoration across session recycles (`persistState` restores caret and
-  // scroll, but not DOM focus).
-  const editorRef = React.useRef<Editor<IHunkActionAnnotation> | null>(null);
-  const editorFocusedRef = React.useRef(false);
-  const restoreFocusRef = React.useRef(false);
-
-  // Latest props behind refs so the once-created editor and any callback that
-  // fires after unmount always see the current values.
-  const editPropRef = React.useRef(edit);
-  const transRef = React.useRef(props.trans);
-  const fileNameRef = React.useRef(props.fileName);
-  React.useEffect(() => {
-    editPropRef.current = edit;
-    transRef.current = props.trans;
-    fileNameRef.current = props.fileName;
-  }, [edit, props.trans, props.fileName]);
-
-  const [saveState, setSaveState] = React.useState<EditSaveState>('idle');
-
-  // Set while a conflict notification is showing, so retries don't stack
-  // toasts.
-  const conflictToastRef = React.useRef<string | null>(null);
-  // Lets one save bypass the disk check: set by the notification's
-  // "Overwrite" action.
-  const skipConflictGuardRef = React.useRef(false);
-  // Set when the user discards their edits: nothing may be written anymore,
-  // including the teardown flush.
   const abandonedRef = React.useRef(false);
-  // `persist` and `notifyConflict` reference each other, so `persist` goes
-  // through a ref.
-  const notifyConflictRef = React.useRef<() => void>(() => undefined);
+  const reloadingRef = React.useRef(false);
+  const [reconcileRevision, reconcile] = React.useReducer(
+    value => value + 1,
+    0
+  );
+  const mountedRef = React.useRef(true);
+  const editRef = React.useRef(edit);
+  editRef.current = edit;
+  const [saveState, setSaveState] = React.useState<EditSaveState>('idle');
+  const conflictToastRef = React.useRef<string | null>(null);
+  const overwriteRef = React.useRef(false);
+  const saveTimerRef = React.useRef<number | null>(null);
+  const [lineAnnotations, setLineAnnotations] = React.useState(() =>
+    editAnnotations(fileDiff)
+  );
 
-  // Single-flight save loop: drains to the latest text so writes never
-  // overlap or land out of order. Each write first checks the disk and pauses
-  // as a conflict if an external writer got there first; baselines only
-  // advance on confirmed writes, so a failed save never reads back as saved.
+  const cancelPendingSave = React.useCallback(() => {
+    if (saveTimerRef.current !== null) {
+      window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+  }, []);
+
+  const currentDiff = React.useCallback(() => {
+    const base = externalDiffRef.current;
+    return parseDiffFromFile(
+      {
+        name: base.prevName ?? base.name,
+        contents: base.deletionLines.join('')
+      },
+      { name: base.name, contents: latestTextRef.current }
+    );
+  }, []);
+
+  const refreshActions = React.useCallback(() => {
+    if (mountedRef.current) {
+      // Rebuild action definitions at a save boundary, including newly created
+      // change blocks. Never echo the editor's remapped annotations or draft.
+      setLineAnnotations(editAnnotations(currentDiff()));
+    }
+  }, [currentDiff]);
+
+  const notifyConflictRef = React.useRef<() => void>(() => undefined);
   const persist = React.useCallback(async () => {
-    if (savingRef.current || abandonedRef.current) {
+    if (
+      savingRef.current ||
+      abandonedRef.current ||
+      (conflictToastRef.current !== null && !overwriteRef.current)
+    ) {
       return;
     }
     savingRef.current = true;
     try {
       let didSave = false;
-      while (latestTextRef.current !== savedTextRef.current) {
+      while (
+        !abandonedRef.current &&
+        (overwriteRef.current || latestTextRef.current !== savedTextRef.current)
+      ) {
         const text = latestTextRef.current;
         setSaveState('saving');
-        if (skipConflictGuardRef.current) {
-          skipConflictGuardRef.current = false;
+        if (overwriteRef.current) {
+          overwriteRef.current = false;
         } else {
           let diskText: string;
           try {
-            diskText = await editPropRef.current.readDiskText();
+            diskText = await editRef.current.readDiskText();
           } catch (err) {
-            console.error(
-              'xtralab: failed to read the file before saving',
-              err
-            );
             setSaveState('error');
+            Notification.error(
+              trans.__(
+                'Failed to read %1 before saving: %2',
+                props.fileName,
+                err instanceof Error ? err.message : String(err)
+              )
+            );
+            return;
+          }
+          if (abandonedRef.current) {
             return;
           }
           if (diskText === text) {
-            // The disk already holds the editor text: adopt it without
-            // writing.
             savedTextRef.current = text;
-            editPropRef.current.onSaved?.(text);
+            editRef.current.onSaved?.(text);
             didSave = true;
             continue;
           }
@@ -1039,54 +1009,32 @@ function EditableFileDiff(props: {
           }
         }
         try {
-          await editPropRef.current.save(text);
-        } catch (err) {
-          console.error('xtralab: failed to save edited file', err);
+          await editRef.current.save(text);
+        } catch {
+          // The host also reports failures after the tab has closed.
           setSaveState('error');
           return;
         }
         savedTextRef.current = text;
-        editPropRef.current.onSaved?.(text);
+        editRef.current.onSaved?.(text);
         didSave = true;
       }
-      // An unconsumed bypass must not exempt a later, unrelated save.
-      skipConflictGuardRef.current = false;
-      if (didSave) {
-        if (conflictToastRef.current !== null) {
-          Notification.dismiss(conflictToastRef.current);
-          conflictToastRef.current = null;
-        }
+      if (didSave && !abandonedRef.current) {
+        refreshActions();
         setSaveState('saved');
       }
     } finally {
+      overwriteRef.current = false;
       savingRef.current = false;
     }
-  }, []);
+  }, [props.fileName, refreshActions, trans]);
 
-  // The editor reports every change synchronously (no built-in debounce), so
-  // this component owns the autosave delay.
-  const saveTimerRef = React.useRef<number | null>(null);
-
-  const cancelPendingSave = React.useCallback(() => {
-    if (saveTimerRef.current !== null) {
-      window.clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
-    }
-  }, []);
-
-  // Sticky notification: dismissing it silently would leave the session
-  // paused with no explanation, and its actions must survive a closed tab
-  // (they only touch refs and server state).
-  const notifyConflict = React.useCallback(() => {
+  notifyConflictRef.current = () => {
     if (conflictToastRef.current !== null) {
       return;
     }
-    const trans = transRef.current;
     conflictToastRef.current = Notification.warning(
-      trans.__(
-        '%1 changed on disk while you were editing it.',
-        fileNameRef.current
-      ),
+      trans.__('%1 changed on disk while you were editing it.', props.fileName),
       {
         autoClose: false,
         actions: [
@@ -1096,79 +1044,81 @@ function EditableFileDiff(props: {
             displayType: 'warn',
             callback: () => {
               conflictToastRef.current = null;
-              skipConflictGuardRef.current = true;
+              overwriteRef.current = true;
               void persist();
             }
           },
           {
             label: trans.__('Discard my edits'),
             caption: trans.__('Keep the file on disk and reload the diff'),
-            callback: () => {
+            callback: async () => {
               conflictToastRef.current = null;
               abandonedRef.current = true;
+              reloadingRef.current = true;
               cancelPendingSave();
-              editPropRef.current.onConflictDiscard?.();
+              try {
+                await editRef.current.onConflictDiscard?.();
+              } finally {
+                reloadingRef.current = false;
+                if (mountedRef.current) {
+                  reconcile();
+                }
+              }
             }
           }
         ]
       }
     );
-  }, [cancelPendingSave, persist]);
-  React.useEffect(() => {
-    notifyConflictRef.current = notifyConflict;
-  }, [notifyConflict]);
+  };
 
-  // Recycle the session onto the latest diff/options. Adopting is only safe
-  // when there are no unsaved edits (or the user just discarded theirs) —
-  // the fresh mount's document comes from the incoming diff, so pending
-  // edits would be lost. A skipped recycle retries after the next save.
-  const [recycleTick, setRecycleTick] = React.useState(0);
   React.useEffect(() => {
-    const current = sessionRef.current;
-    if (current.fileDiff === fileDiff && current.options === options) {
+    if (
+      reloadingRef.current ||
+      (!abandonedRef.current &&
+        (savingRef.current || latestTextRef.current !== savedTextRef.current))
+    ) {
       return;
     }
-    const forced = abandonedRef.current;
-    if (!forced && latestTextRef.current !== savedTextRef.current) {
+    const incoming = fileDiff.additionLines.join('');
+    const sameReference =
+      fileDiff.deletionLines.join('') ===
+      externalDiffRef.current.deletionLines.join('');
+    // Autosave echoes must not replace the active draft or its annotations.
+    if (
+      !abandonedRef.current &&
+      sameReference &&
+      incoming === savedTextRef.current
+    ) {
       return;
+    }
+    if (conflictToastRef.current !== null) {
+      // Undoing all local edits lets an already loaded external version win.
+      Notification.dismiss(conflictToastRef.current);
+      conflictToastRef.current = null;
     }
     abandonedRef.current = false;
-    latestTextRef.current = incomingBaseText;
-    savedTextRef.current = incomingBaseText;
-    restoreFocusRef.current = editorFocusedRef.current;
-    if (forced) {
-      setSaveState('idle');
-    }
-    setSession(prev => ({
-      epoch: prev.epoch + 1,
-      fileDiff,
-      options,
-      baseText: incomingBaseText
-    }));
-  }, [fileDiff, options, incomingBaseText, recycleTick]);
+    latestTextRef.current = savedTextRef.current = incoming;
+    externalDiffRef.current = fileDiff;
+    setExternalDiff(fileDiff);
+    setLineAnnotations(editAnnotations(fileDiff));
+    setSaveState('idle');
+    editRef.current.onDraftChange?.(incoming);
+  }, [fileDiff, saveState, reconcileRevision]);
 
-  // Fires on every applied edit. `file.contents` lazily reads the library's
-  // document; the captured text is what teardown flushes.
-  const handleEditorChange = React.useCallback(
-    (file: FileContents) => {
-      let contents: string;
-      try {
-        contents = file.contents;
-      } catch {
-        return;
-      }
-      latestTextRef.current = contents;
-      if (contents === savedTextRef.current) {
-        // Back in sync with disk (an undo to the saved text). A save still
-        // draining settles its own state; a skipped recycle can proceed now.
-        cancelPendingSave();
-        if (!savingRef.current) {
+  const handleEditChange = React.useCallback(
+    (
+      event: EditorChangeEvent<'file-diff', IHunkActionAnnotation, undefined>
+    ) => {
+      latestTextRef.current = event.file.contents;
+      editRef.current.onDraftChange?.(latestTextRef.current);
+      cancelPendingSave();
+      if (latestTextRef.current === savedTextRef.current) {
+        if (!savingRef.current && conflictToastRef.current === null) {
           setSaveState('idle');
         }
-        setRecycleTick(tick => tick + 1);
+        reconcile();
         return;
       }
-      cancelPendingSave();
       saveTimerRef.current = window.setTimeout(() => {
         saveTimerRef.current = null;
         void persist();
@@ -1177,136 +1127,96 @@ function EditableFileDiff(props: {
     [cancelPendingSave, persist]
   );
 
-  // Discard one change block through the live editor so it joins the undo
-  // stack. The rendered blocks describe the session's base text; with
-  // unsaved keystrokes the indexes may not match the document, so save first
-  // and let the recycled session render accurate buttons instead.
-  const discardBlock = React.useCallback(
-    (payload: IHunkActionAnnotation) => {
-      const editor = editorRef.current;
-      const block = payload.block;
-      if (editor === null || block === undefined) {
-        return;
-      }
+  const handleEditComplete = React.useCallback(
+    (event: FileDiffEditCompleteEvent<IHunkActionAnnotation, undefined>) => {
       cancelPendingSave();
-      const current = sessionRef.current;
-      if (editor.getText() !== current.baseText) {
-        void persist();
-        return;
+      if (abandonedRef.current) {
+        return 'reject' as const;
       }
-      // Splice the block's old lines over its new lines. The line arrays
-      // carry their own endings, so join('') is exact.
-      const { additionLines, deletionLines } = current.fileDiff;
-      const nextText =
-        additionLines.slice(0, block.additionLineIndex).join('') +
-        deletionLines
-          .slice(
-            block.deletionLineIndex,
-            block.deletionLineIndex + block.deletions
-          )
-          .join('') +
-        additionLines.slice(block.additionLineIndex + block.additions).join('');
-      const textEdit = minimalTextEdit(current.baseText, nextText);
-      if (textEdit !== null) {
-        editor.applyEdits([textEdit]);
-      }
+      latestTextRef.current = event.newFile?.contents ?? '';
       void persist();
+      // Acceptance settles the component. Server persistence remains async.
+      return 'accept' as const;
     },
     [cancelPendingSave, persist]
   );
 
-  // One button per contiguous change block (not per hunk): the parser merges
-  // nearby blocks into a single hunk, and each block must stay individually
-  // discardable while editing.
-  const lineAnnotations = React.useMemo<
-    DiffLineAnnotation<IHunkActionAnnotation>[]
-  >(() => {
-    if (!canDiscardHunk) {
-      return [];
-    }
-    const annotations: DiffLineAnnotation<IHunkActionAnnotation>[] = [];
-    session.fileDiff.hunks.forEach((hunk, hunkIndex) => {
-      for (const content of hunk.hunkContent) {
-        if (content.type !== 'change') {
+  const discardBlock = React.useCallback(
+    (payload: IHunkActionAnnotation) => {
+      const editor = editorRef.current;
+      if (editor === null || payload.block === undefined) {
+        return;
+      }
+      const diff = currentDiff();
+      const { deletionLineIndex: start, deletions } = payload.block;
+      for (let hunkIndex = 0; hunkIndex < diff.hunks.length; hunkIndex++) {
+        const changeIndex = diff.hunks[hunkIndex].hunkContent.findIndex(
+          content => {
+            if (content.type !== 'change') {
+              return false;
+            }
+            const currentStart = content.deletionLineIndex;
+            // Edits may shrink a block before its annotations are refreshed.
+            // Match surviving old-side lines, or the exact anchor of an insertion.
+            return deletions === 0 || content.deletions === 0
+              ? currentStart === start
+              : currentStart < start + deletions &&
+                  currentStart + content.deletions > start;
+          }
+        );
+        if (changeIndex < 0) {
           continue;
         }
-        annotations.push({
-          side: 'additions',
-          // First line of the block on the new side (for a pure deletion,
-          // the line right after the removal point).
-          lineNumber: content.additionLineIndex + 1,
-          metadata: {
-            hunkIndex,
-            block: {
-              additions: content.additions,
-              deletions: content.deletions,
-              additionLineIndex: content.additionLineIndex,
-              deletionLineIndex: content.deletionLineIndex
-            }
-          }
+        const reverted = diffAcceptRejectHunk(diff, hunkIndex, {
+          type: 'reject',
+          changeIndex
         });
+        const change = minimalTextEdit(
+          editor.getText(),
+          reverted.additionLines.join('')
+        );
+        if (change !== null) {
+          editor.applyEdits([change]);
+        }
+        cancelPendingSave();
+        refreshActions();
+        void persist();
+        return;
       }
-    });
-    return annotations;
-  }, [canDiscardHunk, session.fileDiff]);
-
-  const renderAnnotation = React.useCallback(
-    (
-      annotation: DiffLineAnnotation<IHunkActionAnnotation>
-    ): React.ReactNode => {
-      if (annotation.metadata === undefined) {
-        return null;
-      }
-      return (
-        <HunkDiscardButton
-          payload={annotation.metadata}
-          onDiscard={discardBlock}
-          trans={trans}
-        />
-      );
+      refreshActions();
     },
-    [discardBlock, trans]
+    [cancelPendingSave, currentDiff, persist, refreshActions]
   );
 
-  const editorOptions = React.useMemo<EditorOptions<IHunkActionAnnotation>>(
+  const renderAnnotation = React.useCallback(
+    (annotation: DiffLineAnnotation<IHunkActionAnnotation>) => (
+      <HunkDiscardButton
+        payload={annotation.metadata}
+        onDiscard={discardBlock}
+        trans={trans}
+      />
+    ),
+    [discardBlock, trans]
+  );
+  const editorOptions = React.useMemo<
+    EditorOptions<'file-diff', IHunkActionAnnotation, undefined>
+  >(
     () => ({
-      // Cache the text document per cacheKey so recycles keep the undo
-      // history; the library restores caret and scroll from the same cache.
-      persistState: true,
-      onChange: handleEditorChange,
-      onFocus: () => {
-        editorFocusedRef.current = true;
-      },
-      onBlur: () => {
-        editorFocusedRef.current = false;
-      },
       onAttach: editor => {
         editorRef.current = editor;
-        if (restoreFocusRef.current) {
-          // Recycled session: caret and scroll come back from the state
-          // cache, DOM focus does not.
-          restoreFocusRef.current = false;
-          editor.focus({ preventScroll: true });
-          return;
-        }
-        // First mount: place the caret on the first visible editable line;
-        // preventScroll keeps the reading position.
         editor.focus({ lineNumber: 'first-visible', preventScroll: true });
       }
     }),
-    [handleEditorChange]
+    []
   );
 
-  // Teardown flushes the last change instead of waiting out the autosave
-  // delay; the library tears the editor itself down.
   React.useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       cancelPendingSave();
-      void persist();
     };
-  }, [cancelPendingSave, persist]);
-
-  // Let the "Saved" confirmation fade on its own.
+  }, [cancelPendingSave]);
   React.useEffect(() => {
     if (saveState !== 'saved') {
       return;
@@ -1315,54 +1225,39 @@ function EditableFileDiff(props: {
     return () => clearTimeout(timer);
   }, [saveState]);
 
-  // Ctrl/Cmd+S persists immediately; `data-lm-suppress-shortcuts` below keeps
-  // the keystroke from Lumino's save command and the browser dialog.
-  const handleKeyDown = React.useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
-        event.preventDefault();
-        event.stopPropagation();
-        cancelPendingSave();
-        void persist();
-      }
-    },
-    [cancelPendingSave, persist]
-  );
-
-  // Keyed per session epoch: the library's in-place transition between
-  // different diffs is unreliable, a fresh mount is not. Memoized so status
-  // re-renders leave the library component untouched.
-  const diffElement = React.useMemo(
-    () => (
-      <EditProvider createEditor={createEditor}>
-        <FileDiff<IHunkActionAnnotation>
-          key={session.epoch}
-          fileDiff={session.fileDiff}
-          edit={true}
-          editorOptions={editorOptions}
-          lineAnnotations={lineAnnotations}
-          renderAnnotation={renderAnnotation}
-          // This surface mounts straight into an edit session, so a sync
-          // main-thread render beats a pooled paint the attach would redo.
-          disableWorkerPool={true}
-          style={hostStyle}
-          options={session.options}
-        />
-      </EditProvider>
-    ),
-    [session, editorOptions, lineAnnotations, renderAnnotation, hostStyle]
-  );
-
   return (
     <div
       className="jp-xtralab-DiffWidget-editRegion"
       data-lm-suppress-shortcuts="true"
-      onKeyDownCapture={handleKeyDown}
+      onKeyDownCapture={event => {
+        if (
+          (event.metaKey || event.ctrlKey) &&
+          event.key.toLowerCase() === 's'
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          cancelPendingSave();
+          void persist();
+        }
+      }}
     >
       <div className="jp-xtralab-DiffWidget-saveStatusBar">
         <EditSaveStatus state={saveState} trans={trans} />
       </div>
-      {diffElement}
+      <EditProvider createEditor={createEditor}>
+        <FileDiff<IHunkActionAnnotation>
+          fileDiff={externalDiff}
+          edit
+          editorOptions={editorOptions}
+          onEditChange={handleEditChange}
+          onEditComplete={handleEditComplete}
+          lineAnnotations={canDiscardHunk ? lineAnnotations : []}
+          renderAnnotation={renderAnnotation}
+          disableWorkerPool
+          style={hostStyle}
+          options={options}
+        />
+      </EditProvider>
     </div>
   );
 }
@@ -1445,11 +1340,9 @@ export function NotebookViewModeControl(props: {
 }
 
 /**
- * Split / unified glyphs, inlined from the `@pierre/diffs` icon sprite
- * (`diffs-icon-diff-split` / `diffs-icon-diff-unified`) so the toggle looks
- * like the one on the library's own docs site without depending on the
- * sprite sheet being injected into the document. `currentColor` lets the
- * segmented-button styling drive the fill (including the active state).
+ * Split / unified glyphs inlined from the `@pierre/diffs` icon sprite so
+ * the toggle matches the library's docs site without the sprite sheet;
+ * `currentColor` lets the button styling drive the fill.
  */
 function DiffSplitIcon(): React.ReactElement {
   return (
@@ -1482,11 +1375,8 @@ function DiffUnifiedIcon(): React.ReactElement {
 }
 
 /**
- * Segmented Split/Unified selector. Mirrors {@link NotebookViewModeControl}:
- * hosts mount it into their own toolbar and drive its value/visibility from
- * the same state they pass to {@link DiffSurface}. Only meaningful while the
- * textual/code file diff is the active view, so `available` mirrors the
- * surface's `onFileDiffActiveChange`.
+ * Segmented Split/Unified selector; mirrors {@link NotebookViewModeControl}.
+ * `available` mirrors the surface's `onFileDiffActiveChange`.
  */
 export function DiffStyleControl(props: {
   diffStyle: DiffStyle;

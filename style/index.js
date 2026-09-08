@@ -3,6 +3,7 @@ import './about.css';
 import './askAgent.css';
 import './chrome.css';
 import './commandBar.css';
+import './customPanel.css';
 import './editorBreadcrumbs.css';
 import './git.css';
 import './highlight.css';

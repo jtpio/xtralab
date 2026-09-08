@@ -11,21 +11,15 @@ import { computeSections, IOmniboxItem } from './model';
 import { loadWorkspaceFiles } from './files';
 import type { OmniboxRecents } from './recents';
 
-/**
- * DOM id of the results listbox, referenced by the input's `aria-controls`.
- */
 const LIST_ID = 'jp-xtralab-Omnibox-list';
 
-/**
- * Stable DOM id for the result row at `index`, for `aria-activedescendant`.
- */
 function optionId(index: number): string {
   return `jp-xtralab-Omnibox-option-${index}`;
 }
 
 /**
  * Render `text` with the fuzzy-matched characters at `indices` wrapped in a
- * highlight span, leaving the rest as plain text.
+ * highlight span.
  */
 function renderHighlight(
   text: string,
@@ -125,13 +119,10 @@ function OmniboxComponent(props: OmniboxWidget.IOptions): JSX.Element {
   );
   const hasResults = flat.length > 0;
 
-  // Reset the highlighted row whenever the result set changes, and keep the
-  // index in range when results shrink.
   React.useEffect(() => {
     setActive(current => (current < flat.length ? current : 0));
   }, [flat]);
 
-  // Keep the highlighted row scrolled into view as it moves.
   React.useEffect(() => {
     listRef.current
       ?.querySelector('.jp-mod-active')
@@ -139,8 +130,8 @@ function OmniboxComponent(props: OmniboxWidget.IOptions): JSX.Element {
   }, [active, flat]);
 
   const dismiss = React.useCallback(() => {
-    // Defer so unmounting this React root (via onClose) never happens
-    // synchronously inside the event handler that triggered it.
+    // Defer so unmounting this React root never happens synchronously inside
+    // the event handler that triggered it.
     window.setTimeout(onClose, 0);
   }, [onClose]);
 
@@ -307,10 +298,8 @@ function OmniboxComponent(props: OmniboxWidget.IOptions): JSX.Element {
 }
 
 /**
- * The omnibox overlay widget. Hosts {@link OmniboxComponent} in a React root
- * attached to `document.body`. It carries `jp-ThemedContainer` so JupyterLab's
- * theme CSS variables resolve outside the shell, and its own `jp-xtralab-Omnibox`
- * class for the overlay/panel styling (style/omnibox.css).
+ * The omnibox overlay widget, attached to `document.body`; `jp-ThemedContainer`
+ * makes JupyterLab's theme CSS variables resolve outside the shell.
  */
 export class OmniboxWidget extends ReactWidget {
   constructor(options: OmniboxWidget.IOptions) {
@@ -321,6 +310,9 @@ export class OmniboxWidget extends ReactWidget {
     this.addClass('jp-ThemedContainer');
   }
 
+  /**
+   * Render the omnibox overlay content.
+   */
   render(): JSX.Element {
     return <OmniboxComponent {...this._options} />;
   }
@@ -328,20 +320,23 @@ export class OmniboxWidget extends ReactWidget {
   private _options: OmniboxWidget.IOptions;
 }
 
-/**
- * A namespace for `OmniboxWidget` statics.
- */
 export namespace OmniboxWidget {
   /**
    * Construction options for {@link OmniboxWidget}.
    */
   export interface IOptions {
+    /**
+     * The command registry used to look up and execute commands.
+     */
     commands: CommandRegistry;
     /**
      * Snapshot of the command palette's items, read once when the overlay
      * opens; empty when the palette isn't available.
      */
     paletteItems: ReadonlyArray<CommandPalette.IItem>;
+    /**
+     * The document registry used to pick file icons.
+     */
     docRegistry: DocumentRegistry;
     /**
      * Snapshot of the available agents, read once when the overlay opens.

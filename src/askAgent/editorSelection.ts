@@ -8,13 +8,21 @@ import type { Widget } from '@lumino/widgets';
 import type { IAskAgentContext, IAskAgentRequest } from './tokens';
 
 /**
- * A CodeMirror view a selection can be asked about, plus the context needed
- * to describe it to an agent: the document path and, for notebooks, which
- * cell the view belongs to.
+ * A CodeMirror view a selection can be asked about, plus the document path
+ * and, for notebooks, the owning cell.
  */
 interface IEditorTarget {
+  /**
+   * The CodeMirror view holding the selection.
+   */
   view: EditorView;
+  /**
+   * The path of the document the view belongs to.
+   */
   path: string;
+  /**
+   * The index and type of the owning notebook cell; absent for file editors.
+   */
   cell?: {
     index: number;
     type: string;
@@ -22,19 +30,10 @@ interface IEditorTarget {
 }
 
 /**
- * Resolve the CodeMirror view a selection in `widget` would live in, or
- * `null` when the widget holds no such editor. Two widget shapes are
- * recognized:
- *
- * - a notebook panel, where the active cell carries the editor and
- *   `activeCellIndex` names its 0-based position in the nbformat `cells`
- *   array. A rendered markdown cell keeps its (hidden) editor, but a
- *   selection in the rendered HTML never passes {@link domSelectionInView},
- *   so no pill appears there; and
- * - a document widget whose content is a `FileEditor`. The wrapper is not
- *   checked with `instanceof DocumentWidget`: `@jupyterlab/docregistry` is
- *   not a core singleton, so another copy of the class could be in play.
- *   `FileEditor` and `NotebookPanel` come from singleton packages.
+ * Resolve the CodeMirror view a selection in `widget` would live in — the
+ * active notebook cell or a `FileEditor` document — or `null`. The wrapper is
+ * duck-typed, not `instanceof DocumentWidget`: `@jupyterlab/docregistry` is
+ * not a core singleton, unlike `FileEditor` and `NotebookPanel`.
  */
 export function resolveEditorTarget(
   widget: Widget | null
@@ -63,10 +62,8 @@ export function resolveEditorTarget(
 }
 
 /**
- * Whether the current DOM selection lives inside `view`. Guards the
- * selection-change listener against selections made elsewhere (a terminal,
- * a sidebar, another notebook cell) while the widget owning `view` happens
- * to be the shell's current widget.
+ * Whether the current DOM selection lives inside `view`; guards against
+ * selections made elsewhere while the owning widget is current.
  */
 export function domSelectionInView(
   view: EditorView,
@@ -80,12 +77,9 @@ export function domSelectionInView(
 
 /**
  * Build an ask-agent request from the current selection in the shell's
- * current widget — a file editor or the active notebook cell — or return
- * `null` when that widget holds no CodeMirror document editor.
- *
- * With `allowEmpty`, a collapsed selection falls back to the cursor's line
- * (used by the command/shortcut path so it works without a mouse
- * selection); otherwise an empty selection yields `null`.
+ * current widget, or `null` when it holds no CodeMirror document editor.
+ * With `allowEmpty`, a collapsed selection falls back to the cursor's line;
+ * otherwise it yields `null`.
  */
 export function editorAskRequest(
   app: JupyterFrontEnd,
@@ -110,15 +104,14 @@ export function editorAskRequest(
     endLine = startLine;
     text = state.doc.lineAt(main.from).text;
   } else {
-    // A selection that ends exactly at the start of a line (the common
-    // "drag over whole lines" gesture) should not count that line.
+    // A selection ending exactly at a line start (the whole-line drag
+    // gesture) should not count that line.
     const endPos =
       main.to === state.doc.lineAt(main.to).from ? main.to - 1 : main.to;
     endLine = state.doc.lineAt(endPos).number;
     text = state.sliceDoc(main.from, main.to);
   }
 
-  // Anchor the popup at the selection head (where the cursor ended up).
   // `coordsAtPos` returns `null` for positions scrolled out of view.
   const coords = view.coordsAtPos(main.head);
   const anchor = coords

@@ -15,15 +15,25 @@ const CURRENT_ITEM_CLASS = 'jp-mod-current';
 const SEPARATOR_CLASS = 'jp-BreadCrumbs-separator';
 
 /**
- * Command dispatched when the user clicks a breadcrumb segment.
- * Registered by the file browser plugin; the breadcrumbs only know
- * the name so they stay decoupled from the file browser internals.
+ * Registered by the file browser plugin; only the name is shared here.
  */
 const REVEAL_COMMAND = 'xtralab:reveal-path';
 
+/**
+ * The options used to create an `EditorBreadcrumbs` widget.
+ */
 interface IEditorBreadcrumbsOptions {
+  /**
+   * The document context whose path is rendered.
+   */
   context: DocumentRegistry.IContext<DocumentRegistry.IModel>;
+  /**
+   * The command registry used to dispatch the reveal command.
+   */
   commands: CommandRegistry;
+  /**
+   * The application translation bundle.
+   */
   trans: TranslationBundle;
 }
 
@@ -38,9 +48,8 @@ export class EditorBreadcrumbs extends Widget {
     this._commands = options.commands;
     this._trans = options.trans;
     this.addClass(EDITOR_BREADCRUMBS_CLASS);
-    // The breadcrumbs stretch to fill the toolbar, so ReactiveToolbar's
-    // overflow math must count them as a spacer (2px) — measured at their
-    // stretched clientWidth they would evict every item into the popup.
+    // ReactiveToolbar must count the stretched breadcrumbs as a spacer (2px);
+    // measured at clientWidth they would evict every item into the popup.
     this.addClass(TOOLBAR_SPACER_CLASS);
     this.node.setAttribute('aria-label', this._trans.__('Editor file path'));
 
@@ -55,6 +64,9 @@ export class EditorBreadcrumbs extends Widget {
     this._render();
   }
 
+  /**
+   * Dispose of the resources held by the widget.
+   */
   dispose(): void {
     if (this.isDisposed) {
       return;
@@ -81,9 +93,7 @@ export class EditorBreadcrumbs extends Widget {
     parts.forEach((part, index) => {
       const isLast = index === parts.length - 1;
       const subPath = parts.slice(0, index + 1).join('/');
-      // Canonical `@pierre/trees` paths: directories carry a trailing
-      // slash, files do not. Every part except the last names a folder
-      // along the way to the open file.
+      // Canonical @pierre/trees paths: directories carry a trailing slash.
       const canonical = isLast ? subPath : `${subPath}/`;
 
       const item = document.createElement('span');
@@ -117,19 +127,15 @@ export class EditorBreadcrumbs extends Widget {
     item.dataset.path = '/';
     item.tabIndex = 0;
     item.setAttribute('role', 'button');
-    // Empty canonical path: the reveal command treats this as the
-    // workspace-root gesture — surface the file browser, clear its
-    // selection, and scroll back to the top. The tree has no row for
-    // the workspace root itself.
+    // Empty path is the workspace-root gesture; the tree has no row for
+    // the root itself.
     this._attachReveal(item, '');
     return item;
   }
 
   /**
-   * Bind click and keyboard activation on a crumb element to the
-   * shared reveal command. Dispatch is best-effort: a failure to
-   * resolve or execute the command is logged but never thrown into
-   * the editor's toolbar.
+   * Bind click and keyboard activation on a crumb to the reveal command;
+   * dispatch failures are logged, never thrown into the toolbar.
    */
   private _attachReveal(element: HTMLElement, canonicalPath: string): void {
     const fire = (event: Event): void => {

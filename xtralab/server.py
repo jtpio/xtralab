@@ -1,26 +1,8 @@
 """Server-side helpers for the xtralab labextension.
 
-Two endpoints, both thin and opinion-free — the frontend owns the agent list
-(defaults + user settings) and just asks the server narrow questions:
-
-``/xtralab/agents/availability``
-    Which configured agent commands are present on ``$PATH``. Accepts a list
-    of command strings and replies with the resolved binary path for each, or
-    ``null`` when ``shutil.which`` returns nothing. Used by the launcher to
-    filter its agent cards.
-
-``/xtralab/terminals/agents``
-    Which of those commands is *currently running* inside each open terminal
-    session. For every live terminal the handler walks the shell's child
-    processes (via ``psutil``) and reports the first one whose command matches
-    one the caller asked about, or ``null`` when the session is sitting at its
-    prompt. The Terminals panel uses this to badge each row with the running
-    agent's logo — including agents the user started by hand, which the
-    frontend could not otherwise know about.
-
-On load the extension also swaps the contents manager's checkpoints for a no-op
-(see :mod:`xtralab.checkpoints`) so opening or saving a file no longer scatters
-``.ipynb_checkpoints`` directories through the working tree and file browser.
+``/xtralab/agents/availability`` resolves agent commands through ``$PATH``;
+``/xtralab/terminals/agents`` walks each terminal's child processes (psutil)
+to report the running agent — including ones the user started by hand.
 """
 
 from __future__ import annotations
@@ -41,12 +23,6 @@ try:
 except ImportError:  # pragma: no cover - psutil is a declared dependency
     psutil = None  # type: ignore[assignment]
 
-# Executables whose *identity* is their script argument rather than the
-# binary itself, e.g. ``node /path/to/claude`` or ``python -m foo``. For these
-# we look at the first non-flag argv token to recognise the agent; for every
-# other process we only trust its own name/argv[0]. This split is what keeps
-# ``vim claude`` (editing a file called ``claude``) from being mistaken for
-# the Claude agent while still recognising ``node …/bin/claude``.
 _INTERPRETERS = frozenset(
     {"node", "nodejs", "python", "python3", "deno", "bun", "ruby", "perl"}
 )
@@ -84,12 +60,8 @@ class AgentAvailabilityHandler(APIHandler):
 def _candidate_names(name: str, cmdline: list[str]) -> set[str]:
     """Command basenames that could identify one process.
 
-    Always includes the process' own executable name and ``argv[0]`` basename
-    (covers native binaries and shebang scripts invoked as ``claude``); for
-    interpreter wrappers it also includes the basename of the first non-flag
-    argument (covers ``node …/bin/claude``). Deliberately does *not* fold in
-    arbitrary arguments, so an editor or interpreter pointed at a file that
-    merely shares an agent's name is not a false match.
+    The process name and ``argv[0]``, plus — for interpreter wrappers only —
+    the first non-flag argument, so ``vim claude`` never matches an agent.
     """
     cands: set[str] = set()
     name_base = os.path.basename(name) if name else ""
@@ -132,10 +104,8 @@ def _running_agent(pty: object, commands: set[str]) -> str | None:
         shell = psutil.Process(pid)
     except Exception:
         return None
-    # A direct child is the command the shell launched (the common case, incl.
-    # interpreter wrappers like ``node …/claude``); prefer it so a busy agent's
-    # own grandchildren never shadow it. Fall back to the whole subtree for
-    # indirection like ``npm exec`` or re-exec shims.
+    # Prefer direct children so a busy agent's grandchildren never shadow it;
+    # fall back to the whole subtree for indirection like ``npm exec``.
     try:
         match = _match_processes(shell.children(), commands)
         if match:
@@ -189,11 +159,8 @@ def _setup_handlers(server_app: ServerApp) -> None:
 def _disable_checkpoints(server_app: ServerApp) -> None:
     """Replace the contents manager's checkpoints with a no-op manager.
 
-    The contents manager is already built by the time server extensions load,
-    so its ``checkpoints`` instance may have been created from the default
-    ``checkpoints_class``. We set the class for any later rebuild and replace
-    the live instance, constructing it from the manager's own
-    ``checkpoints_kwargs`` (parent + logger) exactly as the default does.
+    The contents manager is built before server extensions load, so both the
+    class (for rebuilds) and the live instance must be replaced.
     """
     contents_manager = server_app.contents_manager
     if not hasattr(contents_manager, "checkpoints_class"):
