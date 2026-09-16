@@ -24,6 +24,16 @@ pip install xtralab
 jupyter lab
 ```
 
+To try it from any directory without setting up an environment first, uv can
+build a throwaway one:
+
+```bash
+uvx --from xtralab jupyter-lab
+```
+
+The [installation docs](https://jtpio.github.io/xtralab/installation/) also
+cover installing xtralab on your PATH or adding it to a project.
+
 A standalone desktop app (DMG on macOS, AppImage on Linux) ships with every
 tagged release on the
 [releases page](https://github.com/jtpio/xtralab/releases/latest). The macOS
