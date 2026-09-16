@@ -36,9 +36,9 @@ classifiers = [
 ]
 dependencies = [
     "ajlab>=0.1.11",
-    "jupyter-server-mcp>=0.4.0a0",
+    "jupyter-server-mcp>=0.4.0",
     "jupyterlab>=4.6.2",
-    "jupyterlab-commands-toolkit>=0.3.0a0",
+    "jupyterlab-commands-toolkit>=0.3.0",
     "jupyterlab-cursor-light>=1.0.2",
     "jupyterlab-cursor-dark>=1.0.2",
     "jupyterlab-day>=0.2.0",
@@ -107,12 +107,6 @@ build_cmd = "install:extension"
 npm = ["pnpm"]
 source_dir = "src"
 build_dir = "xtralab/labextension"
-
-[tool.uv]
-prerelease = "allow"
-# prerelease = "allow" is needed for jupyter-server-mcp, but dev
-# environments should stay on stable JupyterLab releases like the desktop app.
-constraint-dependencies = ["jupyterlab<4.7.0a0"]
 
 [tool.jupyter-releaser]
 # Skip check-npm: it runs a fresh `npm install` on the built tarball (no
