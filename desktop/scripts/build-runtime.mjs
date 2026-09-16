@@ -228,8 +228,8 @@ if (!existsSync(pythonExecutable)) {
 }
 
 console.log('Installing dependencies into runtime');
-// --no-config keeps `uv pip` from reading [tool.uv] in pyproject.toml:
-// its constraint-dependencies are unpinned, which --require-hashes rejects.
+// --no-config keeps the hashed, offline install independent of any uv
+// configuration (user-level, or a pyproject's [tool.uv] up the tree).
 await run('uv', [
   'pip',
   'install',
