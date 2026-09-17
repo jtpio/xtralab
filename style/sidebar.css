@@ -5,4 +5,30 @@
  */
 .jp-SideBar[data-orientation='horizontal'] .lm-TabBar-content {
   justify-content: safe center;
+
+  /*
+   * Carve-out from the thin scrollbars in chrome.css, which would clip the
+   * icons on overflow; `auto` lets the stock 4px webkit scrollbar apply.
+   */
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+}
+
+/*
+ * Match the height of the dock tab strip.
+ */
+.jp-SideBar.lm-TabBar[data-orientation='horizontal'] {
+  min-height: calc(
+    var(--jp-private-horizontal-tab-height) + 2 * var(--jp-border-width)
+  );
+  max-height: calc(
+    var(--jp-private-horizontal-tab-height) + 2 * var(--jp-border-width)
+  );
+}
+
+/*
+ * The stock 20px icons crowd the shorter bar.
+ */
+.jp-SideBar[data-orientation='horizontal'] .lm-TabBar-tabIcon svg {
+  width: 18px;
 }
