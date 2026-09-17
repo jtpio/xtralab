@@ -25,3 +25,10 @@
     var(--jp-private-horizontal-tab-height) + 2 * var(--jp-border-width)
   );
 }
+
+/*
+ * The stock 20px icons crowd the shorter bar.
+ */
+.jp-SideBar[data-orientation='horizontal'] .lm-TabBar-tabIcon svg {
+  width: 18px;
+}

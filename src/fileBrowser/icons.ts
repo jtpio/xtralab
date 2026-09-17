@@ -8,12 +8,12 @@ import type { FileTreeIconConfig } from '@pierre/trees';
 /**
  * Sidebar tab icon, distinct from the core `folderIcon` so the xtralab
  * browser is distinguishable from the built-in one. `file-tree` from SVG Repo
- * (https://www.svgrepo.com/svg/371275/file-tree), refit with
- * `fill="currentColor"` and `jp-icon3` so it follows the theme.
+ * (https://www.svgrepo.com/svg/371275/file-tree), refit to follow the theme
+ * (`currentColor`, `jp-icon3`) and padded to the size of the stock glyphs.
  */
 export const xtralabFileBrowserIcon = new LabIcon({
   name: 'xtralab:file-browser',
-  svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="jp-icon3" fill="currentColor">
+  svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 20 20" class="jp-icon3" fill="currentColor">
   <path d="M16 10v-4h-11v1h-2v-3h9v-4h-12v4h2v10h3v2h11v-4h-11v1h-2v-5h2v2z"/>
 </svg>`
 });
