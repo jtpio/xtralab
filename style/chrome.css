@@ -612,6 +612,15 @@ body[data-jp-theme-light] .lm-cursor-backdrop {
   );
 }
 
+/*
+ * Stock keeps a toolbar with no visible items as an 8px strip. The BoxLayout
+ * reserves the CSS min-height even for an undisplayed node, hence both.
+ */
+.jp-MainAreaWidget > .jp-Toolbar.jp-Toolbar-micro {
+  display: none;
+  min-height: 0;
+}
+
 /* -----------------------------------------------------------------------------
 | Controls
 |---------------------------------------------------------------------------- */
