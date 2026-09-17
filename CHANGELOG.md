@@ -2,6 +2,31 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.15.1
+
+([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.15.0...994cb2d5630c1477097c07d6951465980db0e952))
+
+### Enhancements made
+
+- Match the activity bar height to the dock tab bar [#100](https://github.com/jtpio/xtralab/pull/100) ([@jtpio](https://github.com/jtpio))
+
+### Maintenance and upkeep improvements
+
+- Update to jupyter-server-mcp 0.4.0 and jupyterlab-commands-toolkit 0.3.0 [#99](https://github.com/jtpio/xtralab/pull/99) ([@jtpio](https://github.com/jtpio))
+- Update Diffs to 1.4.1 [#98](https://github.com/jtpio/xtralab/pull/98) ([@jtpio](https://github.com/jtpio))
+- Trim code comments [#97](https://github.com/jtpio/xtralab/pull/97) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-08-14&to=2026-09-17&type=c))
+
+@jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-08-14..2026-09-17&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.15.0
 
 ([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.14.1...8b584be04dc0ecc66b8d6a91e3cabc25f3ffd63c))
@@ -35,8 +60,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-07-31&to=2026-08-14&type=c))
 
 @jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-07-31..2026-08-14&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.14.1
 
