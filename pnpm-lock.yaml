@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@pierre/diffs@1.4.1':
+    hash: 38aa0f0a3e769e9fed3c9b254f668ee084905c435936422f46c7d047c98ff1fa
+    path: patches/@pierre__diffs@1.4.1.patch
+
 importers:
 
   .:
@@ -103,7 +108,7 @@ importers:
         version: 2.8.0
       '@pierre/diffs':
         specifier: ^1.4.1
-        version: 1.4.1(@shikijs/themes@3.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 1.4.1(patch_hash=38aa0f0a3e769e9fed3c9b254f668ee084905c435936422f46c7d047c98ff1fa)(@shikijs/themes@3.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@pierre/trees':
         specifier: 1.0.0-beta.4
         version: 1.0.0-beta.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -5771,7 +5776,7 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
 
-  '@pierre/diffs@1.4.1(@shikijs/themes@3.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@pierre/diffs@1.4.1(patch_hash=38aa0f0a3e769e9fed3c9b254f668ee084905c435936422f46c7d047c98ff1fa)(@shikijs/themes@3.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@pierre/theme': 2.0.0
       '@pierre/theming': 1.0.1(@pierre/theme@2.0.0)(@shikijs/themes@3.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(shiki@3.23.0)

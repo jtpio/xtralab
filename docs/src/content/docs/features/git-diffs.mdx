@@ -15,6 +15,11 @@ notebooks.
 The working-tree side stays editable, so you can fix a line or discard a hunk
 without leaving the diff. Edits are saved straight back to the file.
 
+Before saving, the diff checks for changes on disk, including edits made by
+running agents. If the file has changed, autosave pauses and asks whether to
+overwrite it or keep the version on disk. Discarding a change inside the editor
+can be undone with the editor's undo shortcut.
+
 ## Notebook diffs
 
 Notebook diffs get the same treatment: rendered cell by cell, side by side,

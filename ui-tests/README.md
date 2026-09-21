@@ -71,3 +71,12 @@ of the captures:
 cwebp -q 90 -resize 2400 0 ../docs/src/assets/screenshots/hero.png -o ../images/hero.webp
 cwebp -q 90 -resize 2400 0 ../docs/src/assets/screenshots/launcher.png -o ../images/launcher.webp
 ```
+
+## Editable diff regressions
+
+Run `pnpm exec playwright test editable-diffs.spec.ts` to exercise typing,
+autosave, undo/redo, hunk discard, external file conflicts, save failures,
+layout and theme changes, and Unicode/line-ending handling. The suite uses the
+same disposable seeded project and isolated server as the screenshots. It
+restores the fixture file and its Git index entry after each case and does not
+write documentation screenshots.

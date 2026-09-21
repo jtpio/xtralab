@@ -1164,9 +1164,6 @@ function CellSubDiff(props: {
       </div>
       <FileDiff
         fileDiff={metadata}
-        // The worker bootstrap can't resolve through JupyterLab's federation
-        // pipeline (see diffSurface.tsx); run on the main thread.
-        disableWorkerPool={true}
         options={{ ...diffLibraryOptions(theme, dark), diffStyle }}
       />
     </div>

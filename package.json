@@ -21,6 +21,8 @@
         "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
         "style/**/*.{css,js,eot,gif,html,jpg,json,png,svg,woff2,ttf}",
         "src/**/*.{ts,tsx}",
+        "patches/**/*",
+        "webpack.config.js",
         "schema/*.json",
         "logo.svg"
     ],
@@ -118,7 +120,10 @@
     "pnpm": {
         "ignoredBuiltDependencies": [
             "@fortawesome/fontawesome-free"
-        ]
+        ],
+        "patchedDependencies": {
+            "@pierre/diffs@1.4.1": "patches/@pierre__diffs@1.4.1.patch"
+        }
     },
     "sideEffects": [
         "style/*.css",
@@ -130,6 +135,7 @@
     },
     "jupyterlab": {
         "extension": true,
+        "webpackConfig": "./webpack.config.js",
         "outputDir": "xtralab/labextension",
         "schemaDir": "schema",
         "sharedPackages": {
