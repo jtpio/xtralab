@@ -1,13 +1,15 @@
 ---
 title: Desktop app
-description: A standalone xtralab app for macOS and Linux.
+description: The standalone xtralab app for macOS and Linux.
 ---
 
-import { LinkButton } from '@astrojs/starlight/components';
+import { LinkButton, Steps } from '@astrojs/starlight/components';
+import Screenshot from '../../components/Screenshot.astro';
+import restore from '../../assets/screenshots/restore.png';
 
-xtralab also ships as a standalone desktop app: a DMG on macOS and an AppImage
-on Linux. It bundles its own Python runtime, so it does not require Python,
-`pip`, `uv`, or network access on your machine.
+The xtralab desktop app is a standalone application for macOS (DMG) and Linux
+(AppImage). It includes its own Python runtime, so it does not need Python,
+`pip`, `uv`, or network access.
 
 ## Download
 
@@ -27,58 +29,118 @@ on Linux. It bundles its own Python runtime, so it does not require Python,
   Download for Linux (x64)
 </LinkButton>
 
-The buttons always download the installer from the latest tagged release.
-Older versions are on the
-[releases page](https://github.com/jtpio/xtralab/releases), and builds from
-`main` are also uploaded as workflow artifacts on the
-[Actions tab](https://github.com/jtpio/xtralab/actions).
+The buttons download the latest release. Older versions are on the
+[releases page](https://github.com/jtpio/xtralab/releases). Builds from `main`
+are workflow artifacts on the
+[Actions tab](https://github.com/jtpio/xtralab/actions). The macOS app is
+signed and notarized.
 
-The macOS app is signed and notarized, so it opens like any other app. It
-also keeps itself up to date: the app checks for new releases in the
-background and asks before downloading one, then offers to restart once the
-update is ready. The launcher window shows the current version in its bottom
-corner, next to a button to check for updates on demand. The Linux AppImage
-does not auto-update; grab new versions from the releases page.
+## Open a project
 
-## One window per project
+<Steps>
 
-The app opens with a small launcher window where you pick a local folder. Each
-folder gets its own JupyterLab server and window, with its own named workspace,
-so open tabs and panel layout stay scoped to the project instead of leaking
-through a shared workspace.
+1. Start the app. The launcher window opens.
 
-On macOS the project windows follow the system "Prefer tabs when opening
-documents" setting: they open as native tabs when that is set to Always, and
-otherwise as separate windows that can still be merged from the Window menu.
-The tab bar plus button and <kbd>Cmd</kbd>+<kbd>T</kbd> open the launcher in a
-new tab, and the project you pick replaces that tab.
+2. Select **Open folder...**, or select a folder in **Recent folders**.
 
-Quitting the app keeps the session. The next launch reopens the projects that
-were open, puts their windows and tabs back in place, and reselects the one
-that was active, with the launcher showing the progress while the servers
-start. Each window then recovers its open files and panel layout from its
-project workspace. Windows closed before quitting stay closed, and tab groups
-assembled purely by hand in the window manager (for example with Merge All
-Windows) come back as separate windows that follow the system tab preference.
+3. In **Python environment**, select the environment for notebook kernels. To
+   use an interpreter that is not in the list, select
+   **Choose interpreter...**.
 
-![The launcher restoring three projects from the previous session, with one
-window already open and two still starting](../../assets/screenshots/restore.png)
+4. Select **Open in xtralab**.
 
-## Project environments and kernels
+</Steps>
 
-The launcher detects common project Python environments such as `.venv`,
-`venv`, `env`, `.conda`, and pixi environments. Selecting one registers a
-folder-local kernel so notebooks execute with the project interpreter, while
-the JupyterLab server itself keeps running from the isolated bundled runtime.
-Environments without `ipykernel` are left alone and not exposed as kernels.
+Each project has its own JupyterLab server, window, and workspace. The open
+tabs and the panel layout are saved for each project.
 
-The bundled `ty` language server follows the same selection, so completions
-and diagnostics resolve imports from the project environment rather than from
-the bundled runtime. See
-[Language servers](../customize/language-servers/) for details.
+## Project environments
 
-## Building it yourself
+The launcher finds these Python environments in the project folder:
 
-The Electron app lives in the repository's `desktop/` folder. See
+| Folder                 | Environment type    |
+| ---------------------- | ------------------- |
+| `.venv`, `venv`, `env` | Virtual environment |
+| `.conda`               | Conda environment   |
+| `.pixi/envs/<name>`    | Pixi environment    |
+
+When you select an environment, xtralab registers a kernel for the project
+that uses its interpreter. The JupyterLab server continues to run from the
+bundled runtime. An environment is available as a kernel only when `ipykernel`
+is installed in it.
+
+The bundled `ty` language server uses the same environment. See
+[Language servers](../customize/language-servers/).
+
+## Tabs and windows on macOS
+
+Project windows follow the macOS setting **Prefer tabs when opening
+documents** (**System Settings → Desktop & Dock**):
+
+| Setting value | Project windows open as                                                   |
+| ------------- | ------------------------------------------------------------------------- |
+| Always        | Tabs in one window                                                        |
+| Other values  | Separate windows. To combine them, select **Window → Merge All Windows**. |
+
+To open the launcher in a new tab, press <kbd>Cmd</kbd>+<kbd>T</kbd> or select
+**+** in the tab bar. The project that you open replaces the launcher tab.
+
+## Session restore
+
+When you quit the app, it saves the open projects. When you start it again, it
+reopens them:
+
+- The windows and tabs go back to their positions, and the last active project
+  is selected.
+- Each window restores its open files and panel layout.
+- The launcher shows the progress while the servers start.
+
+<Screenshot
+  src={restore}
+  alt="The launcher window restoring three projects: one is open, two are starting"
+/>
+
+Windows that you close before you quit do not reopen. Tab groups that you
+make with the window manager (for example with **Merge All Windows**) reopen
+as separate windows.
+
+## Updates
+
+| Platform | Update method                                                                                                                                                                                                   |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| macOS    | The app checks for releases in the background and asks before it downloads one. When the download is complete, select **Restart to update**. To check now, select **Check for updates** in the launcher window. |
+| Linux    | No automatic updates. Download the new AppImage from the [releases page](https://github.com/jtpio/xtralab/releases).                                                                                            |
+
+The launcher window shows the app version in its bottom corner.
+
+## Troubleshooting
+
+### Notifications do not appear on macOS
+
+The app shows native notifications for [terminal
+notifications](../features/terminals/#notifications). macOS asks for
+permission the first time a notification fires.
+
+<Steps>
+
+1. Open **System Settings → Notifications** and select **xtralab**.
+
+2. Make sure that **Allow notifications** is on. The app can be in this list
+   with notifications off, even if macOS did not ask for permission.
+
+3. If **xtralab** is not in the list, refresh the registration of the app
+   bundle:
+
+   ```sh
+   /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/xtralab.app
+   ```
+
+4. Quit and start the app again.
+
+</Steps>
+
+## Build from source
+
+The Electron app is in the `desktop/` folder of the repository. See
 [CONTRIBUTING.md](https://github.com/jtpio/xtralab/blob/main/CONTRIBUTING.md)
-for the architecture, local builds, and the release pipeline.
+for the architecture, local builds, and the release process.

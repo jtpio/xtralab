@@ -11,8 +11,8 @@ The seed script copies `fixtures/demo-project/` into
 that shows up in captured terminal output reads the same on every machine and
 checkout), commits the baseline versions from `fixtures/baseline/` with a
 fixed author and date, then restores the working-tree edits on top. Every run
-therefore starts from the same repository state: a modified `README.md` and
-`metrics.py`, plus an untracked `forecast.py`.
+therefore starts from the same repository state: a modified `README.md`,
+`metrics.py`, and `exploration.ipynb`, plus an untracked `forecast.py`.
 
 ## Run it
 
@@ -29,6 +29,10 @@ pnpm screenshots
 Playwright starts the server itself (port 8899) with an isolated Jupyter
 config, forces the Pierre Dark theme in memory, and shuts everything down
 afterwards.
+
+Except for `hero.png`, each capture is cropped to one feature (the launcher,
+a diff, the prompt box, a panel) instead of the whole window, so that it stays
+readable at the size of the documentation column.
 
 ## The agent captures
 
@@ -64,10 +68,16 @@ on screen while it runs.
 
 ## README images
 
-The images referenced by the repository README are down-scaled copies of two
-of the captures:
+The images referenced by the repository README are WebP copies of the
+captures:
 
 ```bash
-cwebp -q 90 -resize 2400 0 ../docs/src/assets/screenshots/hero.png -o ../images/hero.webp
-cwebp -q 90 -resize 2400 0 ../docs/src/assets/screenshots/launcher.png -o ../images/launcher.webp
+cd ../docs/src/assets/screenshots
+cwebp -q 90 -resize 2400 0 hero.png -o ../../../../images/hero.webp
+for name in launcher diff ask-agent omnibox terminals; do
+  cwebp -q 90 $name.png -o ../../../../images/$name.webp
+done
 ```
+
+The README shows them with a `width` of half their pixel width, the size they
+have in the app.

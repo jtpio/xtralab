@@ -1,39 +1,55 @@
 ---
 title: Language servers
-description: Python works out of the box; add more servers when you need them.
+description: The language servers that xtralab registers, and how to add others.
 ---
 
-xtralab ships [`jupyterlab-lsp`](https://github.com/jupyter-lsp/jupyterlab-lsp)
-with Python pre-registered through
-[`ty`](https://github.com/astral-sh/ty), which is bundled and works out of the
-box: completions, diagnostics, and navigation with zero setup.
+import { Steps } from '@astrojs/starlight/components';
+
+xtralab includes
+[`jupyterlab-lsp`](https://github.com/jupyter-lsp/jupyterlab-lsp), which
+gives completions, diagnostics, and code navigation in editors and notebooks.
+
+| Language               | Server                                                                                                   | Installation                     |
+| ---------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| Python                 | [`ty`](https://github.com/astral-sh/ty)                                                                  | Included with xtralab            |
+| TypeScript, JavaScript | [`typescript-language-server`](https://github.com/typescript-language-server/typescript-language-server) | Registered. Install it yourself. |
 
 ## Python environments
 
-ty resolves imports from a Python environment. In the desktop app that is the
-same environment the notebook kernel runs in: when the opened folder has a
-project environment such as `.venv` (or a conda or pixi prefix), both the
-kernel and the language server use it, so third-party packages and local
-modules resolve without any configuration. Folders without a project
-environment fall back to the bundled runtime.
+`ty` resolves imports from a Python environment:
 
-With a pip install, ty follows its regular
-[environment discovery](https://docs.astral.sh/ty/modules/#python-environment):
-the environment that was active when the Jupyter server started, otherwise a
-`.venv` at the root of the folder the server was started in.
+| Installation | Environment                                                                                                                                                                                               |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Desktop app  | The [project environment](../../desktop/#project-environments) that the kernel uses. Without a project environment, the bundled runtime.                                                                  |
+| pip or uv    | The environment that was active when the server started. Otherwise, a `.venv` folder at the root of the server folder. See the [ty documentation](https://docs.astral.sh/ty/modules/#python-environment). |
 
-## TypeScript and JavaScript
+## Install the TypeScript server
 
-Install the server yourself and restart JupyterLab:
+<Steps>
 
-```bash
-npm install -g typescript-language-server typescript
-```
+1. Install the server:
 
-## Other languages
+   ```bash
+   npm install -g typescript-language-server typescript
+   ```
 
-To enable another server (bash, yaml, json, pyright, and more), install its
-binary and drop a JSON spec into a `jupyter_server_config.d/` directory; run
-`jupyter --paths` to find one. See the
-[`jupyterlab-lsp` docs](https://jupyterlab-lsp.readthedocs.io/en/latest/Configuring.html)
-for the spec format.
+2. Restart JupyterLab.
+
+</Steps>
+
+## Add a language server
+
+<Steps>
+
+1. Install the language server.
+
+2. Run `jupyter --paths` and find a `jupyter_server_config.d/` folder in the
+   `config` list.
+
+3. Add a JSON file with the server specification to that folder. See the
+   [`jupyterlab-lsp` documentation](https://jupyterlab-lsp.readthedocs.io/en/latest/Configuring.html)
+   for the format.
+
+4. Restart JupyterLab.
+
+</Steps>

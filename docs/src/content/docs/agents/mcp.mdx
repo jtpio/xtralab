@@ -1,29 +1,74 @@
 ---
 title: Connect agents with MCP
-description: Let agents open files, run cells, and read notebooks.
+description: Register the xtralab MCP server with an agent, so that it can open files, run cells, and read notebooks.
 ---
 
+import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
 xtralab runs a [Model Context Protocol](https://modelcontextprotocol.io)
-server inside JupyterLab, provided by
-[`jupyter-server-mcp`](https://github.com/jupyter-ai-contrib/jupyter-server-mcp),
-so an agent can drive the app: open files, run cells, and read the notebook.
+(MCP) server inside JupyterLab, from
+[`jupyter-server-mcp`](https://github.com/jupyter-ai-contrib/jupyter-server-mcp).
+An agent that connects to it can run JupyterLab commands: for example, open
+files, run notebook cells, and read notebooks.
 
-## Register the proxy
+## Register the server
 
-To wire up a client, register the bundled `jupyter-server-mcp-proxy` console
-script with it:
+<Steps>
 
-```bash
-claude mcp add jupyter -- jupyter-server-mcp-proxy
-codex mcp add jupyter -- jupyter-server-mcp-proxy
-copilot mcp add jupyter -- jupyter-server-mcp-proxy
-```
+1. Open a terminal in xtralab.
 
-Run this from a terminal inside xtralab so the proxy inherits the server
-environment and discovers the running server on its own. No port is needed,
-and a single registration keeps working across restarts.
+2. Run the command for your agent:
 
-The [launcher](../../features/launcher/) also surfaces these commands with
-copy buttons, filtered to the agents you have installed. See the
+   <Tabs syncKey="agent">
+     <TabItem label="Claude Code">
+       ```bash
+       claude mcp add jupyter -- jupyter-server-mcp-proxy
+       ```
+     </TabItem>
+     <TabItem label="Codex">
+       ```bash
+       codex mcp add jupyter -- jupyter-server-mcp-proxy
+       ```
+     </TabItem>
+     <TabItem label="GitHub Copilot CLI">
+       ```bash
+       copilot mcp add jupyter -- jupyter-server-mcp-proxy
+       ```
+     </TabItem>
+   </Tabs>
+
+3. Start a new agent session. The agent loads the `jupyter` server when the
+   session starts.
+
+</Steps>
+
+Register the server one time for each agent. The registration continues to
+work after JupyterLab restarts.
+
+The [launcher](../../features/launcher/#connect-agents-to-jupyterlab) shows
+the same commands for the installed agents, with a **Copy** button.
+
+:::note
+Run the command in an xtralab terminal. The `jupyter-server-mcp-proxy` command
+then gets the environment of the server and finds the running server. You do
+not need to give a port.
+:::
+
+## Other agents
+
+Goose, OpenCode, Kiro, Mistral Vibe, and Antigravity do not have an
+`mcp add` command. Add a stdio MCP server to the configuration of the agent,
+with the command `jupyter-server-mcp-proxy`. See the
 [`jupyter-server-mcp` README](https://github.com/jupyter-ai-contrib/jupyter-server-mcp)
 for other clients.
+
+## Tools
+
+| Tool                | Description                                           |
+| ------------------- | ----------------------------------------------------- |
+| `list_all_commands` | Lists the JupyterLab commands, with an optional query |
+| `execute_command`   | Runs a JupyterLab command with arguments              |
+
+The tools come from
+[`jupyterlab-commands-toolkit`](https://github.com/jupyter-ai-contrib/jupyterlab-commands-toolkit).
+The [guided-code-walkthrough skill](../skills/) uses them to drive the app.

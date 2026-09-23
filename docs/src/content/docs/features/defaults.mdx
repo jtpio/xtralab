@@ -1,35 +1,114 @@
 ---
 title: Defaults and themes
-description: A quieter workspace out of the box.
+description: The JupyterLab defaults that xtralab changes, and how to change them back.
 ---
 
-xtralab applies a set of quieter, opinionated defaults so the workspace stays
-calm without any configuration.
+import Screenshot from '../../../components/Screenshot.astro';
+import mainMenu from '../../../assets/screenshots/main-menu.png';
 
-## Quieter defaults
+xtralab changes some JupyterLab defaults. They are settings like all other
+JupyterLab settings: change them in the Settings Editor. Your user settings
+override the xtralab defaults. The full list is in the
+[bundled configuration](https://github.com/jtpio/xtralab/tree/main/jupyter-config/labconfig).
 
-Unused UI is hidden for a calmer workspace, and the activity bar sits at the
-top. Autocompletion, continuous LSP hinting, code folding, and
-gitignore-aware quick open are on by default. See the
-[bundled labconfig overrides](https://github.com/jtpio/xtralab/blob/main/jupyter-config/labconfig)
-for the full set.
+## Menu bar
 
-## Collapsed menu bar
+The main menu bar is hidden. The menu button (☰) at the left of the top bar
+opens the same menus. In this documentation, menu paths such as
+**Settings → Settings Editor** start from this button.
 
-The main menu bar (File, Edit, View, and friends) is hidden by default. A
-menu button at the top left opens the same menus as a compact popup, so
-everything stays one click away without a permanent strip of chrome. To
-bring the classic bar back, use **View → Appearance → Show Menu Bar** or
-the "Show the menu bar" setting.
+<Screenshot
+  src={mainMenu}
+  alt="The menu button open, with the File, Edit, View, Git, Tabs, Settings, and Help menus"
+/>
+
+To show the menu bar, use one of these methods:
+
+- Select **View → Appearance → Show Menu Bar**.
+- In the Settings Editor, open **xtralab menu bar** and turn on
+  **Show the menu bar** (`visible`).
+
+## Sidebar tabs
+
+The activity bar (the row of sidebar tabs) is at the top of the sidebar. The
+left sidebar has these tabs:
+
+| Tab                           | Default |
+| ----------------------------- | ------- |
+| Terminals                     | Shown   |
+| File Browser (xtralab)        | Shown   |
+| Git                           | Shown   |
+| Search and Replace            | Shown   |
+| Default File Browser          | Hidden  |
+| Running Terminals and Kernels | Hidden  |
+
+To show or hide a tab, select **View → Appearance → Sidebars**, then select
+the tab. The setting for each tab is in **xtralab sidebar** in the Settings
+Editor.
+
+## Editor and notebook defaults
+
+| Area            | xtralab default                                                                                                    |
+| --------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Completion      | Shows completions as you type, with the documentation panel                                                        |
+| Language server | Continuous hinting is on                                                                                           |
+| Code editor     | Auto-closing brackets, code folding, active line highlight, trailing whitespace highlight, and scroll past the end |
+| JSON files      | Open in the text editor                                                                                            |
+| Notebooks       | No kernel starts when you open a notebook. Cell execution timing is recorded.                                      |
+| Checkpoints     | No `.ipynb_checkpoints` folders are created                                                                        |
+| Git panel       | One click on a changed file opens its [diff](../git-diffs/)                                                        |
+| Terminal font   | MesloLGS NF                                                                                                        |
+| Quick open      | Files that match `.gitignore` do not show                                                                          |
+| File icons      | File-type icons from `@pierre/trees` in the file browser, the tabs, and the Git panel                              |
+
+## Keyboard shortcuts
+
+xtralab adds these shortcuts. <kbd>Cmd/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>
+replaces the JupyterLab shortcut that shows the file browser.
+
+| Shortcut                                          | Action                                                |
+| ------------------------------------------------- | ----------------------------------------------------- |
+| <kbd>Cmd/Ctrl</kbd>+<kbd>K</kbd>                  | Open the [omnibox](../omnibox/)                       |
+| <kbd>Cmd/Ctrl</kbd>+<kbd>.</kbd>                  | [Ask an agent](../ask-agent/) about the selected code |
+| <kbd>Cmd/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | Open search and replace                               |
+
+To change a shortcut, open **Settings → Settings Editor → Keyboard
+Shortcuts**.
+
+## Disabled extensions
+
+xtralab disables these JupyterLab plugins:
+
+| Plugin                                                   | Feature                                 |
+| -------------------------------------------------------- | --------------------------------------- |
+| `@jupyterlab/application-extension:logo`                 | JupyterLab logo in the top bar          |
+| `@jupyterlab/application-extension:property-inspector`   | Property inspector                      |
+| `@jupyterlab/apputils-extension:announcements`           | News and update announcements           |
+| `@jupyterlab/apputils-extension:running-sessions-status` | Running sessions item in the status bar |
+| `@jupyterlab/extensionmanager-extension:plugin`          | Extension manager                       |
+| `@jupyterlab/toc-extension:tracker`                      | Table of contents                       |
+| `@jupyterlab/notebook-extension:tools`                   | Notebook tools                          |
+| `@jupyterlab/notebook-extension:update-raw-mimetype`     | Raw cell MIME type metadata form        |
+| `@jupyterlab/metadataform-extension:metadataforms`       | Metadata forms                          |
+| `@jupyterlab/debugger-extension:main`                    | Debugger                                |
+| `@axlair/jupyterlab_vim`                                 | Vim key bindings                        |
+| `@jupyter/docprovider-extension:statusBarTimeline`       | Collaboration timeline slider           |
+
+To turn a plugin on again:
+
+```bash
+jupyter labextension enable <plugin>
+```
 
 ## Themes
 
-xtralab ships light and dark themes (Pierre, Cursor, Day, Night) but picks
-none for you: JupyterLab's default light theme stays active until you choose
-one under **Settings → Theme**.
+xtralab installs these themes. It does not change the active theme.
 
-## Everything stays configurable
+| Theme  | Variants    |
+| ------ | ----------- |
+| Pierre | Light, Dark |
+| Cursor | Light, Dark |
+| Day    | Light       |
+| Night  | Dark        |
 
-These are defaults, not decisions made for you. Anything xtralab overrides can
-be changed back from the Settings Editor, and per-user settings always win
-over the shipped defaults.
+To select a theme, select **Settings → Theme**.

@@ -1,0 +1,16 @@
+---
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
+
+interface Props {
+  src: ImageMetadata;
+  alt: string;
+}
+
+const { src, alt } = Astro.props;
+// The captures are taken at a device scale factor of 2: show them at the
+// size they have in the app, with the full-resolution file for 2x screens.
+const width = Math.round(src.width / 2);
+---
+
+<Image src={src} alt={alt} width={width} densities={[1, 2]} />

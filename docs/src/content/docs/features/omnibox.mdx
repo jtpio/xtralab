@@ -1,23 +1,45 @@
 ---
 title: Omnibox
-description: One search box for files, commands, and agents.
+description: Search files and commands, or send a prompt to an agent, from one search box.
 ---
 
-A single pill in the top bar (or <kbd>Cmd/Ctrl</kbd>+<kbd>K</kbd>) opens an
-omnibox that fuzzy-matches across your files, every JupyterLab command
-(including command palette entries such as switching to a specific theme), and
-an **Ask an agent** row that sends whatever you typed to the agent of your
-choice.
+import Screenshot from '../../../components/Screenshot.astro';
+import omnibox from '../../../assets/screenshots/omnibox.png';
 
-![The omnibox matching files and commands](../../../assets/screenshots/omnibox.png)
+The omnibox searches the files of the project and the JupyterLab commands. It
+can also send the text that you type to an agent as a prompt.
 
-## Scope the search
+<Screenshot
+  src={omnibox}
+  alt='The omnibox with the query "notebook": matching commands, the matching notebook file, and one Ask row per agent'
+/>
 
-Prefix the query with `>` for commands only, or `/` for files only.
+## Open the omnibox
 
-## Recents
+Select **Search...** in the top bar, or press <kbd>Cmd/Ctrl</kbd>+<kbd>K</kbd>.
 
-The commands you run and the files you open through the omnibox are remembered
-and offered at the top the next time you open it, so a repeat action is a
-single <kbd>Enter</kbd> away. The number of remembered items is configurable
-in the omnibox settings.
+## Results
+
+| Section       | Contents                                                                                                                            |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Recently used | The commands and files that you opened from the omnibox. Shows only when the search box is empty.                                   |
+| Commands      | JupyterLab commands, including the command palette entries, for example **Use Theme: Pierre Dark**.                                 |
+| Files         | The files of the project. Files that match `.gitignore` do not show.                                                                |
+| Ask an agent  | One row for each installed agent that accepts a first prompt. It starts the agent in a new terminal, with your query as the prompt. |
+
+Use the arrow keys to select a result, then press <kbd>Enter</kbd>.
+
+## Search only commands or only files
+
+| Prefix | Results       |
+| ------ | ------------- |
+| `>`    | Commands only |
+| `/`    | Files only    |
+
+## Settings
+
+**Settings → Settings Editor → xtralab Omnibox**
+
+| Setting                                  | Default | Description                                                                                        |
+| ---------------------------------------- | ------- | -------------------------------------------------------------------------------------------------- |
+| Recent items number (`maxNumberRecents`) | `5`     | The number of recent commands, and of recent files, that the omnibox keeps. `0` turns off recents. |

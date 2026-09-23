@@ -1,33 +1,70 @@
 ---
 title: Launcher entries
-description: Override, hide, or add agents and editors in the launcher.
+description: Hide, change, or add the agents and editors of the launcher.
 ---
 
-Open **Settings → Settings Editor → xtralab launcher** to override, hide, or
-add [launcher](../../features/launcher/) entries. The editor shows xtralab's
-full built-in list as the default for both the `agents` and `editors`
-settings, so you can read every shipped entry and copy one into your user
-preferences to tweak.
+import { Steps } from '@astrojs/starlight/components';
 
-## Merge by id
+The `agents` and `editors` settings control the buttons of the
+[launcher](../../features/launcher/). Your entries merge with the built-in
+entries by `id`, so an entry needs only the `id` and the fields that you
+change.
 
-Both lists merge with the defaults by `id`, so an override only needs the `id`
-plus the fields you want to change:
+## Change the launcher entries
 
-```jsonc
-{
-  "agents": [
-    { "id": "kiro", "enabled": false }, // hide an agent
-    { "id": "claude", "command": "cl" }, // point Claude at a shell alias
-    { "id": "aider", "label": "Aider", "command": "aider", "promptArgs": [] }
-  ]
-}
-```
+<Steps>
 
-## Fields
+1. Select **Settings → Settings Editor**.
 
-Each entry takes `id` (required) plus optional `label`, `caption`, `command`,
-`promptArgs`, `iconSvg`, `rank`, `enabled`, and `requireAvailable`.
+2. Select **JSON Settings Editor**, then select **xtralab launcher**.
 
-The **Open** row's terminal-editor tile (Neovim, falling back to Vim) is
-configured the same way through an `editors` array.
+   The default value of each setting shows all built-in entries.
+
+3. In the user preferences, add your entries to `agents` or `editors`. For
+   example:
+
+   ```jsonc
+   {
+     "agents": [
+       { "id": "kiro", "enabled": false }, // hide an agent
+       { "id": "claude", "command": "cl" }, // use a shell alias
+       {
+         // add an agent
+         "id": "aider",
+         "label": "Aider",
+         "command": "aider",
+         "promptArgs": []
+       }
+     ]
+   }
+   ```
+
+4. Save the settings.
+
+</Steps>
+
+## Agent fields
+
+| Field              | Type                    | Description                                                                                                                                                          |
+| ------------------ | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`               | string                  | Required. A built-in id changes that agent. A new id adds an agent.                                                                                                  |
+| `label`            | string                  | The button label. The default for a new id is the id.                                                                                                                |
+| `caption`          | string                  | The button tooltip and the command palette caption.                                                                                                                  |
+| `command`          | string                  | The text typed in the new terminal. Shell aliases work. The default for a new id is the id.                                                                          |
+| `promptArgs`       | string array, or `null` | The arguments between `command` and the quoted prompt. `[]` adds the prompt at the end. `["-i"]` adds `-i` before the prompt. `null` turns off first-prompt support. |
+| `iconSvg`          | string                  | An inline SVG icon. Without it, a new agent gets a terminal icon.                                                                                                    |
+| `rank`             | number                  | The position of the button.                                                                                                                                          |
+| `enabled`          | boolean                 | `false` hides the agent from the launcher and the command palette.                                                                                                   |
+| `requireAvailable` | boolean                 | `true` shows the button only when `command` is on the `PATH`. The default is `true`, and `false` when you change `command`.                                          |
+
+The built-in agent ids are `claude`, `codex`, `antigravity`, `copilot`,
+`goose`, `opencode`, `kiro`, `mistral-vibe`, and `pi`.
+
+## Editor fields
+
+The `editors` setting controls the terminal editor tile in the **Open**
+section. The launcher shows the first editor, by `rank`, whose command is on
+the `PATH`. The built-in editor ids are `nvim` and `vim`.
+
+Editor entries use the same fields as agent entries, except `promptArgs`. To
+remove the tile, set `enabled` to `false` for both built-in editors.

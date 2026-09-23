@@ -2,6 +2,7 @@
 import { test as base } from '@jupyterlab/galata';
 import type { IJupyterLabPageFixture } from '@jupyterlab/galata';
 import { expect } from '@playwright/test';
+import type { Locator } from '@playwright/test';
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -248,8 +249,57 @@ async function shot(
   });
 }
 
-test('launcher', async ({ page }) => {
-  await ready(page);
+type Box = { x: number; y: number; width: number; height: number };
+
+/**
+ * Capture the smallest box that holds every given element, plus padding, so
+ * the image shows one feature instead of the whole window.
+ */
+async function shotAround(
+  page: IJupyterLabPageFixture,
+  name: string,
+  elements: (Locator | Box)[],
+  padding = 16
+): Promise<void> {
+  await page.waitForTimeout(1000);
+  const boxes: Box[] = [];
+  for (const element of elements) {
+    const box =
+      'boundingBox' in element ? await element.boundingBox() : element;
+    if (!box) {
+      throw new Error(`${name}: an element to capture is not visible`);
+    }
+    boxes.push(box);
+  }
+  const viewport = page.viewportSize()!;
+  const left = Math.max(0, Math.min(...boxes.map(b => b.x)) - padding);
+  const top = Math.max(0, Math.min(...boxes.map(b => b.y)) - padding);
+  const right = Math.min(
+    viewport.width,
+    Math.max(...boxes.map(b => b.x + b.width)) + padding
+  );
+  const bottom = Math.min(
+    viewport.height,
+    Math.max(...boxes.map(b => b.y + b.height)) + padding
+  );
+  await page.screenshot({
+    path: path.join(OUTPUT, name),
+    animations: 'disabled',
+    clip: { x: left, y: top, width: right - left, height: bottom - top }
+  });
+}
+
+/**
+ * Collapse the left sidebar. Galata's sidebar helper goes through the View
+ * menu, which xtralab hides behind the menu button.
+ */
+function collapseLeft(page: IJupyterLabPageFixture): Promise<void> {
+  return page.evaluate(() => {
+    (window as any).jupyterapp.shell.collapseLeft();
+  });
+}
+
+async function launcherReady(page: IJupyterLabPageFixture): Promise<void> {
   await page.locator('.jp-xtralab-Launcher-body').waitFor();
   // The changes list waits on git status, the agent row on the probes.
   await page
@@ -259,69 +309,49 @@ test('launcher', async ({ page }) => {
     .locator('button', { hasText: 'Claude' })
     .first()
     .waitFor({ timeout: 15000 });
-  await shot(page, 'launcher.png');
-});
+}
 
-test('git diff', async ({ page }) => {
-  await ready(page);
-  await page.evaluate(() => {
-    (window as any).jupyterapp.shell.activateById('jp-git-sessions');
-  });
-  await page
-    .locator('[id="jp-git-sessions"]')
-    .getByText('metrics.py')
-    .first()
-    .waitFor({ timeout: 15000 });
-  await page
-    .locator('.jp-xtralab-Launcher-change', { hasText: 'src/acme/metrics.py' })
-    .click();
-  await page.locator('.jp-git-diff-root').waitFor();
-  // Give the diff worker time to tokenize both sides.
-  await page.waitForTimeout(2000);
-  await shot(page, 'diff.png');
-});
-
-test('omnibox', async ({ page }) => {
-  await ready(page);
-  // The omnibox lists agents too, so wait for the probes to resolve.
-  await page
-    .locator('button', { hasText: 'Claude' })
-    .first()
-    .waitFor({ timeout: 15000 });
-  await page.evaluate(async () => {
-    await (window as any).jupyterapp.commands.execute('xtralab:omnibox:open');
-  });
-  const input = page.locator('.jp-xtralab-Omnibox-input');
-  await input.waitFor();
-  await input.pressSequentially('metrics', { delay: 50 });
-  // File results stream in after the agent rows; wait for both sections.
-  await page
-    .locator('.jp-xtralab-Omnibox-item', { hasText: 'metrics.py' })
-    .waitFor({ timeout: 15000 });
-  await shot(page, 'omnibox.png');
-});
-
-test('ask agent', async ({ page }) => {
-  await ready(page);
-  await page.evaluate(async () => {
+/**
+ * Open a file in the editor and wait for its collaborative document, which
+ * streams in after the editor mounts.
+ */
+async function openEditor(
+  page: IJupyterLabPageFixture,
+  filePath: string,
+  minLines: number
+): Promise<void> {
+  await page.evaluate(async p => {
     await (window as any).jupyterapp.commands.execute('docmanager:open', {
-      path: 'src/acme/metrics.py'
+      path: p
     });
-  });
+  }, filePath);
   await page.locator('.jp-FileEditor .cm-content').waitFor();
-  // The collaborative document streams in after the editor mounts.
-  await page.waitForFunction(() => {
+  await page.waitForFunction(n => {
     const widget = (window as any).jupyterapp.shell.currentWidget;
-    return (widget?.content?.editor?.lineCount ?? 0) > 25;
-  });
-  // Select the average_order_value function.
-  await page.evaluate(() => {
-    const widget = (window as any).jupyterapp.shell.currentWidget;
-    widget.content.editor.setSelection({
-      start: { line: 18, column: 0 },
-      end: { line: 22, column: 43 }
-    });
-  });
+    return (widget?.content?.editor?.lineCount ?? 0) > n;
+  }, minLines);
+}
+
+/**
+ * Select a line range in the current editor and open the ask-agent popup.
+ */
+async function askAbout(
+  page: IJupyterLabPageFixture,
+  from: number,
+  to: number,
+  instruction: string
+): Promise<Locator> {
+  await page.evaluate(
+    ([start, end]) => {
+      const editor = (window as any).jupyterapp.shell.currentWidget.content
+        .editor;
+      editor.setSelection({
+        start: { line: start, column: 0 },
+        end: { line: end, column: editor.getLine(end).length }
+      });
+    },
+    [from, to]
+  );
   await page.evaluate(async () => {
     await (window as any).jupyterapp.commands.execute('xtralab:ask-agent');
   });
@@ -329,8 +359,171 @@ test('ask agent', async ({ page }) => {
   await popup.waitFor();
   await popup
     .locator('.jp-xtralab-AskAgent-input')
-    .pressSequentially('Round the result to two decimals', { delay: 30 });
-  await shot(page, 'ask-agent.png');
+    .pressSequentially(instruction, { delay: 20 });
+  return popup;
+}
+
+test('launcher', async ({ page }) => {
+  await ready(page);
+  await launcherReady(page);
+  await shotAround(
+    page,
+    'launcher.png',
+    [page.locator('.jp-xtralab-Launcher-body')],
+    0
+  );
+});
+
+test('launcher mcp', async ({ page }) => {
+  await ready(page);
+  await launcherReady(page);
+  const section = page.locator('.jp-xtralab-Launcher-mcp-section');
+  await section.locator('summary').click();
+  await section.locator('.jp-xtralab-Launcher-mcp-item').first().waitFor();
+  await shotAround(page, 'launcher-mcp.png', [section]);
+});
+
+test('git diff', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 530 });
+  await ready(page);
+  await launcherReady(page);
+  await collapseLeft(page);
+  await page
+    .locator('.jp-xtralab-Launcher-change', { hasText: 'src/acme/metrics.py' })
+    .click();
+  await page.locator('.jp-git-diff-root').waitFor();
+  // Give the diff worker time to tokenize both sides.
+  await page.waitForTimeout(2000);
+  await shotAround(page, 'diff.png', [page.locator('#jp-main-dock-panel')], 0);
+});
+
+test('notebook diff', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 935 });
+  await ready(page);
+  await launcherReady(page);
+  await collapseLeft(page);
+  await page
+    .locator('.jp-xtralab-Launcher-change', {
+      hasText: 'notebooks/exploration.ipynb'
+    })
+    .click();
+  await page.locator('.jp-git-diff-root').waitFor();
+  await page.waitForTimeout(2000);
+  await shotAround(
+    page,
+    'notebook-diff.png',
+    [page.locator('#jp-main-dock-panel')],
+    0
+  );
+});
+
+test('omnibox', async ({ page }) => {
+  await ready(page);
+  // The omnibox lists agents too, so wait for the probes to resolve.
+  await launcherReady(page);
+  await page.evaluate(async () => {
+    await (window as any).jupyterapp.commands.execute('xtralab:omnibox:open');
+  });
+  const input = page.locator('.jp-xtralab-Omnibox-input');
+  await input.waitFor();
+  // A hovered row takes the active highlight from the first result.
+  await page.mouse.move(0, 0);
+  await input.pressSequentially('notebook', { delay: 50 });
+  // File results stream in after the agent rows; wait for both sections.
+  await page
+    .locator('.jp-xtralab-Omnibox-item', { hasText: 'exploration.ipynb' })
+    .waitFor({ timeout: 15000 });
+  await shotAround(
+    page,
+    'omnibox.png',
+    [page.locator('.jp-xtralab-Omnibox-panel')],
+    0
+  );
+});
+
+test('ask agent', async ({ page }) => {
+  await ready(page);
+  await launcherReady(page);
+  await collapseLeft(page);
+  await openEditor(page, 'src/acme/metrics.py', 25);
+  // The average_order_value function.
+  const popup = await askAbout(
+    page,
+    18,
+    22,
+    'Round the result to two decimals'
+  );
+  const gutter = (await page
+    .locator('.jp-FileEditor .cm-gutters')
+    .boundingBox())!;
+  const lineBoxes = await page
+    .locator('.jp-FileEditor .cm-line')
+    .evaluateAll(nodes =>
+      nodes.map(node => {
+        const rect = node.getBoundingClientRect();
+        return { top: rect.top, bottom: rect.bottom };
+      })
+    );
+  const popupBox = (await popup.boundingBox())!;
+  const popupBottom = popupBox.y + popupBox.height;
+  const top = lineBoxes[16].top;
+  const bottom =
+    lineBoxes.find(line => line.bottom >= popupBottom + 6)?.bottom ??
+    popupBottom + 8;
+  await shotAround(
+    page,
+    'ask-agent.png',
+    [
+      {
+        x: gutter.x,
+        y: top,
+        width: popupBox.x + popupBox.width + 16 - gutter.x,
+        height: bottom - top
+      }
+    ],
+    0
+  );
+});
+
+test('prompt queue', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await ready(page);
+  await launcherReady(page);
+  await openEditor(page, 'src/acme/metrics.py', 25);
+  let popup = await askAbout(page, 18, 22, 'Round the result to two decimals');
+  await popup.locator('.jp-xtralab-AskAgent-input').press('Control+Enter');
+  await popup.waitFor({ state: 'detached' });
+  popup = await askAbout(page, 25, 30, 'Raise ValueError on empty input');
+  await popup.locator('.jp-xtralab-AskAgent-input').press('Control+Enter');
+  await popup.waitFor({ state: 'detached' });
+  await page.evaluate(async () => {
+    await (window as any).jupyterapp.commands.execute(
+      'xtralab:ask-agent-queue'
+    );
+  });
+  const queue = page.locator('.jp-xtralab-AskAgentQueue');
+  await queue.waitFor();
+  await page.sidebar.setWidth(400, 'right');
+  await shotAround(page, 'prompt-queue.png', [queue], 0);
+});
+
+test('main menu', async ({ page }) => {
+  await ready(page);
+  await launcherReady(page);
+  await collapseLeft(page);
+  await page.evaluate(async () => {
+    await (window as any).jupyterapp.commands.execute(
+      'xtralab:open-main-menu'
+    );
+  });
+  const menu = page.locator('.jp-xtralab-MainMenuPopup');
+  await menu.waitFor();
+  await shotAround(
+    page,
+    'main-menu.png',
+    [page.locator('.jp-xtralab-TopBarButton').first(), menu],
+    8
+  );
 });
 
 // The terminals-panel capture: live coding agents side by side. Runs late so
@@ -347,12 +540,11 @@ test('terminals', async ({ page }) => {
   );
   test.setTimeout(300000);
 
-  // Narrower than the hero: the panel plus the start of the active session.
   await page.setViewportSize({ width: 960, height: 1160 });
   await hideWebgl(page);
   await ready(page);
-  // The captured crop leans on the sidebar — give activity lines room.
-  await page.sidebar.setWidth(380);
+  // Room for the activity lines under each row.
+  await page.sidebar.setWidth(420);
   await page.evaluate(() => {
     (window as any).jupyterapp.shell.activateById('xtralab-running-terminals');
   });
@@ -392,9 +584,26 @@ test('terminals', async ({ page }) => {
   );
   await refitRenderer(page, claudeId);
 
-  await shot(page, 'terminals.png', {
-    clip: { x: 0, y: 0, width: 960, height: 420 }
-  });
+  const panel = (await page
+    .locator('[id="xtralab-running-terminals"]')
+    .boundingBox())!;
+  const lastRow = (await page
+    .locator('.jp-xtralab-Terminals-item')
+    .last()
+    .boundingBox())!;
+  await shotAround(
+    page,
+    'terminals.png',
+    [
+      {
+        x: panel.x,
+        y: panel.y,
+        width: panel.width,
+        height: lastRow.y + lastRow.height + 12 - panel.y
+      }
+    ],
+    0
+  );
 
   for (const widgetId of widgetIds) {
     await shutdownTerminal(page, widgetId);

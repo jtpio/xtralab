@@ -1,82 +1,97 @@
 ---
 title: Installation
-description: Install xtralab with pip or uv, or grab the desktop app.
+description: Install xtralab with pip or uv, or download the desktop app.
 ---
 
-xtralab is published on [PyPI](https://pypi.org/project/xtralab/) and requires
-Python 3.10 or newer.
+import { Steps } from '@astrojs/starlight/components';
 
-## With pip
+xtralab is on [PyPI](https://pypi.org/project/xtralab/). It requires Python
+3.10 or newer. The [desktop app](../desktop/) includes its own Python runtime
+and does not need either of the methods on this page.
+
+## Install with pip
 
 ```bash
 pip install xtralab
 jupyter lab
 ```
 
-## With uv
+## Install with uv
 
-### Run it from anywhere, without installing
+| Method                                  | Use it to                                               |
+| --------------------------------------- | ------------------------------------------------------- |
+| [`uvx`](#run-without-installing)        | Run xtralab in any folder, without installing it.       |
+| [`uv tool install`](#install-as-a-tool) | Make the `jupyter lab` command available in all shells. |
+| [`uv add`](#add-to-a-project)           | Add xtralab to the dependencies of a project.           |
+
+### Run without installing
 
 ```bash
 uvx --from xtralab jupyter-lab
 ```
 
-uv builds a throwaway environment for xtralab and starts JupyterLab in the
-current directory, so this works from any folder and leaves an environment you
-already have alone. uv caches that environment, so every run after the first
-starts in about a second.
+uv creates a cached environment for xtralab on the first run and uses it again
+on the next runs. JupyterLab starts in the current folder.
 
-uv also warns that `jupyter-lab` comes from `jupyterlab` rather than from
-`xtralab`, and suggests `--from jupyterlab` instead. Ignore the suggestion,
-since following it would drop xtralab from the environment.
+:::note
+uv warns that `jupyter-lab` comes from `jupyterlab`, not from `xtralab`, and
+suggests `--from jupyterlab`. Do not use this suggestion: it removes xtralab
+from the environment.
+:::
 
-### Install it on your PATH
-
-To keep `jupyter lab` available in every shell rather than resolving it on each
-run:
+### Install as a tool
 
 ```bash
 uv tool install --with xtralab jupyterlab
 ```
 
-The tool being installed is `jupyterlab`, because that is the package providing
-the `jupyter-lab` command; `--with xtralab` puts xtralab alongside it in the
-same environment.
+The tool is `jupyterlab` because that package provides the `jupyter-lab`
+command. `--with xtralab` installs xtralab in the same environment.
 
-### Add it to a project
+### Add to a project
 
 ```bash
 uv add xtralab
 uv run jupyter lab
 ```
 
-## What gets installed
+## Verify the installation
 
-xtralab is a meta-package: on top of [ajlab](https://github.com/jtpio/ajlab)
-it pulls in JupyterLab 4.6+ with `jupyterlab-git`, `jupyterlab-lsp`,
-`jupyterlab-quickopen`, `jupyterlab-search-replace`, `jupyterlab-vim`, and a
-set of light and dark themes, then layers its own extension and quieter
-defaults on top. See
+<Steps>
+
+1. Start JupyterLab.
+
+2. Select the menu button (☰) at the left of the top bar, then
+   **Help → About xtralab**.
+
+   The dialog shows the xtralab version and the JupyterLab version.
+
+</Steps>
+
+## Upgrade
+
+| Installed with    | Command                                    |
+| ----------------- | ------------------------------------------ |
+| `pip`             | `pip install --upgrade xtralab`            |
+| `uvx`             | `uvx --refresh --from xtralab jupyter-lab` |
+| `uv tool install` | `uv tool upgrade jupyterlab`               |
+| `uv add`          | `uv sync --upgrade-package xtralab`        |
+
+## Included packages
+
+xtralab is a meta-package. It installs these packages and adds its own
+JupyterLab extension. See
 [`pyproject.toml`](https://github.com/jtpio/xtralab/blob/main/pyproject.toml)
-for the full list and pinned versions.
+for the versions.
 
-## Desktop app
-
-A standalone desktop app (DMG on macOS, AppImage on Linux) ships with every
-tagged release. It bundles its own Python runtime, so it does not need any of
-the above. See the [desktop app page](../desktop/) for details.
-
-## Upgrading
-
-```bash
-pip install --upgrade xtralab
-```
-
-A `uv tool` install upgrades under the name of the tool, `jupyterlab`:
-
-```bash
-uv tool upgrade jupyterlab
-```
-
-`uvx` reuses its cached environment; add `--refresh` to that command to rebuild
-it against the latest releases.
+| Package                                             | Provides                                              |
+| --------------------------------------------------- | ----------------------------------------------------- |
+| [`ajlab`](https://github.com/jtpio/ajlab)           | The agent-ready JupyterLab base                       |
+| `jupyterlab`                                        | JupyterLab 4.6 or newer                               |
+| `jupyterlab-git`                                    | The Git panel and Git commands                        |
+| `jupyterlab-lsp`, `ty`                              | Language server support and a Python language server  |
+| `jupyterlab-quickopen`                              | The file index of the [omnibox](../features/omnibox/) |
+| `jupyterlab-search-replace`                         | Search and replace in all files of the project        |
+| `jupyterlab-vim`                                    | Vim key bindings, disabled by default                 |
+| `jupyter-server-mcp`, `jupyterlab-commands-toolkit` | The [MCP server](../agents/mcp/) and its tools        |
+| Pierre, Cursor, Day, and Night themes               | Light and dark [themes](../features/defaults/#themes) |

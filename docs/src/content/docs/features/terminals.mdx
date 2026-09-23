@@ -1,57 +1,105 @@
 ---
 title: Terminals
-description: A terminals panel that shows what is running where.
+description: The Terminals panel, movable sidebar sections, and terminal notifications.
 ---
 
-Agents live in terminals, so xtralab makes terminals first-class.
+import { Steps } from '@astrojs/starlight/components';
+import Screenshot from '../../../components/Screenshot.astro';
+import terminals from '../../../assets/screenshots/terminals.png';
 
-![The terminals panel with several coding agents running](../../../assets/screenshots/terminals.png)
+The **Terminals** panel lists the running terminals. It is the first tab in
+the left sidebar.
 
-## See what is running
+<Screenshot
+  src={terminals}
+  alt="The Terminals panel with Claude Code, Codex, and GitHub Copilot sessions, each with its latest line of output"
+/>
 
-The Terminals panel lists every running session, badges each one with the
-agent or editor detected inside it, and shows its latest line of activity, so
-a row of running agents stays readable at a glance. Open terminal tabs in the
-main area carry the same icon.
+## Terminal rows
 
-## Mix in sections from other panels
+Each row shows:
 
-The panel plugs into JupyterLab's movable sidebar sections. Right-click the
-Kernels section in the built-in Running Terminals and Kernels panel (shown
-via View > Appearance > Left Sidebar) and pick "Move to Terminals" to keep
-kernels next to your terminals. The Terminals section itself moves the same
-way, and so does the file tree, which travels with its toolbar: right-click
-the toolbar above the tree to move it. Moved sections can be dragged to
-reorder, collapsed, and sent back from the same right-click menu, and the
-arrangement is restored on reload.
+- The terminal title.
+- The icon of the agent or editor that runs in the terminal. xtralab finds it
+  from the processes of the terminal, also for agents that you start
+  yourself.
+- The latest line of output of the agent.
 
-## Build a panel of your own
+Terminal tabs in the main area show the same icon.
 
-Every move menu also offers "Move to Custom Panel", an empty panel you fill
-yourself. It stays out of the sidebar until it holds something, so it costs
-nothing until you use it, and it gives up its tab again once you move the
-last section out. Dropping the file tree and the Kernels section into it
-gives you files and kernels side by side, without the panels you took them
-from. The file browser behaves the same way while its tree is away: with
-nothing left to show, it hides its own tab until a section comes back.
+| Button                          | Location      | Action                                                      |
+| ------------------------------- | ------------- | ----------------------------------------------------------- |
+| **+** (New Terminal)            | Panel toolbar | Opens a menu: start an installed agent, or open a terminal. |
+| **■** (Shut Down All Terminals) | Panel toolbar | Stops all terminals, after you confirm.                     |
+| **×** (Shut down)               | Row           | Stops that terminal.                                        |
 
-## Get notified when an agent needs you
+### Settings
 
-Terminals surface notifications: when a program rings the terminal bell or
-emits a notification escape sequence (as coding agents do when they finish a
-task or need input), xtralab raises a notification, native in the
-[desktop app](../../desktop/) and a web notification in the browser. xtralab
-advertises a terminal program agents recognize, so most of them emit these
-sequences out of the box.
+**Settings → Settings Editor → xtralab Terminals panel**
 
-On macOS the desktop app posts native notifications, which needs a one-time
-permission: macOS shows the prompt the first time a notification fires, and
-xtralab appears under System Settings > Notifications. If notifications stay
-silent, check that entry first: the app can end up listed with notifications
-switched off without the prompt ever showing. If xtralab is missing from the
-list entirely, macOS is holding a stale registration of the app bundle;
-refresh it and relaunch the app:
+| Setting                                                       | Default | Description                                           |
+| ------------------------------------------------------------- | ------- | ----------------------------------------------------- |
+| Show agent activity under each terminal (`showAgentActivity`) | `true`  | Shows the latest line of output under each agent row. |
 
-```sh
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/xtralab.app
-```
+## Move sections between panels
+
+These sidebar sections are movable:
+
+| Section   | Panel                                                                                            |
+| --------- | ------------------------------------------------------------------------------------------------ |
+| Terminals | Terminals                                                                                        |
+| File tree | File browser. The toolbar above the tree moves with it.                                          |
+| Kernels   | Running Terminals and Kernels (hidden by default, see [Sidebar tabs](../defaults/#sidebar-tabs)) |
+
+<Steps>
+
+1. Right-click the section header. For the file tree, right-click its
+   toolbar.
+
+2. Select **Move to _panel_**, for example **Move to Terminals**.
+
+</Steps>
+
+In the new panel, you can drag the section header to change the order, and
+select it to collapse the section. To move the section back, right-click it
+and select the original panel. JupyterLab restores the arrangement when you
+reload the page.
+
+### Custom Panel
+
+Each move menu has **Move to Custom Panel**. The Custom Panel is an empty
+sidebar panel for the sections that you move into it. Its tab shows only when
+it contains a section.
+
+The file browser tab also hides when its tree is in another panel. It shows
+again when the tree comes back.
+
+## Notifications
+
+xtralab shows a notification when a program in a terminal sends one of these
+signals:
+
+| Signal  | Description                                                                   |
+| ------- | ----------------------------------------------------------------------------- |
+| OSC 9   | The iTerm2 notification sequence                                              |
+| OSC 777 | The Ghostty and rxvt notification sequence                                    |
+| Bell    | The terminal bell. Controlled by the **Notify on the terminal bell** setting. |
+
+Coding agents send these signals when they finish a task or need input. The
+desktop app sets `TERM_PROGRAM=iTerm.app` in its terminals. With this value,
+most agents send OSC 9 by default.
+
+The notification does not show when you look at that terminal. The desktop
+app shows native notifications. In a browser, xtralab uses web notifications,
+and the browser asks for permission first. If notifications do not show in
+the desktop app on macOS, see
+[Troubleshooting](../../desktop/#notifications-do-not-appear-on-macos).
+
+### Settings
+
+**Settings → Settings Editor → xtralab terminal notifications**
+
+| Setting                                      | Default | Description                                 |
+| -------------------------------------------- | ------- | ------------------------------------------- |
+| Enable terminal notifications (`enabled`)    | `true`  | Shows notifications from terminal programs. |
+| Notify on the terminal bell (`notifyOnBell`) | `true`  | Also shows a notification for a plain bell. |

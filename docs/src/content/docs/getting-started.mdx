@@ -1,47 +1,102 @@
 ---
 title: Getting started
-description: Launch xtralab, start an agent, and find your way around.
+description: Start xtralab in a project, run a coding agent, and review its changes.
 ---
 
-## Launch it from your project
+import { Steps } from '@astrojs/starlight/components';
+import Screenshot from '../../components/Screenshot.astro';
+import launcher from '../../assets/screenshots/launcher.png';
+import diff from '../../assets/screenshots/diff.png';
 
-Start JupyterLab from the folder you want to work in:
+This tutorial starts xtralab in a project folder, runs a coding agent, and
+reviews the changes that the agent makes.
+
+Before you start:
+
+- [Install xtralab](../installation/).
+- Install one or more [supported agents](../features/launcher/#supported-agents),
+  for example Claude Code or Codex.
+- Use a project folder that is a Git repository.
+
+## Start xtralab
+
+In a terminal, go to the project folder and start JupyterLab:
 
 ```bash
 cd my-project
 jupyter lab
 ```
 
-The file browser is path-first: it shows the folder you launched from, the way
-a code editor would, and the git integration picks up the repository at that
-root.
+JupyterLab opens in your browser. The file browser shows the project folder,
+and the launcher opens in the main area.
+
+## The workspace
+
+| Area          | Contents                                                                                                  |
+| ------------- | --------------------------------------------------------------------------------------------------------- |
+| Top bar       | The menu button (☰), the sidebar toggles, and the [omnibox](../features/omnibox/) (**Search...**)        |
+| Left sidebar  | [Terminals](../features/terminals/), the file browser, the Git panel, and search and replace              |
+| Main area     | The [launcher](../features/launcher/), editors, notebooks, terminals, and [diffs](../features/git-diffs/) |
+| Right sidebar | The **Prompt Queue** panel, after you [queue a prompt](../features/ask-agent/#queue-prompts)              |
 
 ## Start an agent
 
-The first thing you see is the launcher.
+<Steps>
 
-![The xtralab launcher: a prompt box, one button per installed agent, an Open row, and the list of changed files](../../assets/screenshots/launcher.png)
+1. In the launcher, type a prompt in the **Start an agent** box. For example:
+   `Add type hints to src/acme/metrics.py`.
 
-Type an optional prompt, then pick an agent. The button opens a terminal that
-runs the agent in your project and passes the prompt along. Only agents
-installed on your machine get a button, so the row reflects what you can
-actually run.
+2. Select an agent, for example **Claude**.
 
-The **Open** row covers the rest of a working session: a plain terminal, a
-notebook, a console, or your terminal editor. The **Changes** list shows every
-modified file in the repository and jumps straight to its
-[diff](../features/git-diffs/).
+   The agent starts in a new terminal tab with your prompt.
 
-## Find your way around
+</Steps>
 
-The left sidebar keeps the terminals list, the file browser, the git panel,
-and search and replace. The top bar holds the menu button and the
-[omnibox](../features/omnibox/) pill, and the right sidebar hosts the prompt
-queue from [Ask an agent](../features/ask-agent/).
+<Screenshot
+  src={launcher}
+  alt="The launcher: a prompt box, one button per installed agent, the Open section, and the list of changed files"
+/>
 
-## Let the agent drive the app
+## Review the changes
 
-Agents can do more than run in a terminal: xtralab ships a Model Context
-Protocol server inside JupyterLab, so a connected agent can open files, run
-notebook cells, and read outputs. Wiring one up is a single command; see
-[Connect agents with MCP](../agents/mcp/).
+<Steps>
+
+1. Go back to the **Launcher** tab. The **Changes** list shows the modified
+   and untracked files in the repository.
+
+2. Select a file. Its diff opens in a new tab.
+
+3. To correct a line, edit it on the right side of the diff. xtralab saves the
+   change to the file.
+
+</Steps>
+
+<Screenshot
+  src={diff}
+  alt="A side-by-side diff of metrics.py with added lines highlighted on the right"
+/>
+
+## Ask about a selection
+
+<Steps>
+
+1. Open a file and select some lines.
+
+2. Press <kbd>Cmd/Ctrl</kbd>+<kbd>.</kbd>.
+
+3. Type an instruction, then select the running agent as the destination.
+
+4. Press <kbd>Enter</kbd>.
+
+   The prompt, with the file path, the line range, and the selected code, goes
+   to the agent in its terminal.
+
+</Steps>
+
+## Next steps
+
+- [Connect the agent to JupyterLab](../agents/mcp/) so that it can open files
+  and run notebook cells.
+- [Queue prompts](../features/ask-agent/#queue-prompts) while you review a
+  diff, then send them together.
+- Read about the [defaults](../features/defaults/) that xtralab changes.
