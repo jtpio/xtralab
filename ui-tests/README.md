@@ -28,7 +28,9 @@ pnpm screenshots
 
 Playwright starts the server itself (port 8899) with an isolated Jupyter
 config, forces the Pierre Dark theme in memory, and shuts everything down
-afterwards.
+afterwards. It also turns off Galata's fonts plugin, which swaps in DejaVu
+fonts and turns off font smoothing for regression tests, so the captures show
+the real fonts of the app.
 
 Except for `hero.png`, each capture is cropped to one feature (the launcher,
 a diff, the prompt box, a panel) instead of the whole window, so that it stays
@@ -68,14 +70,14 @@ on screen while it runs.
 
 ## README images
 
-The images referenced by the repository README are WebP copies of the
-captures:
+The images referenced by the repository README are lossless WebP copies of
+the captures (lossy WebP blurs the text):
 
 ```bash
 cd ../docs/src/assets/screenshots
-cwebp -q 90 -resize 2400 0 hero.png -o ../../../../images/hero.webp
+cwebp -lossless -resize 2400 0 hero.png -o ../../../../images/hero.webp
 for name in launcher diff ask-agent omnibox terminals; do
-  cwebp -q 90 $name.png -o ../../../../images/$name.webp
+  cwebp -lossless $name.png -o ../../../../images/$name.webp
 done
 ```
 
