@@ -1,27 +1,59 @@
 ---
 title: Git diffs
-description: Real side-by-side diffs for text and notebooks, editable in place.
+description: Side-by-side diffs for text files and notebooks, with an editable working copy.
 ---
 
-Opening a changed file (from the launcher's **Changes** list or the
-`jupyterlab-git` panel) shows a real side-by-side diff, powered by
-[`@pierre/diffs`](https://www.npmjs.com/package/@pierre/diffs) for text and
-notebooks.
+import Screenshot from '../../../components/Screenshot.astro';
+import diff from '../../../assets/screenshots/diff.png';
+import notebookDiff from '../../../assets/screenshots/notebook-diff.png';
 
-![The jupyterlab-git panel next to a side-by-side diff of a Python file, with additions highlighted](../../../assets/screenshots/diff.png)
+xtralab shows Git diffs with
+[`@pierre/diffs`](https://www.npmjs.com/package/@pierre/diffs). Text files
+and notebooks have side-by-side diffs.
 
-## Edit inside the diff
+<Screenshot
+  src={diff}
+  alt="A side-by-side diff of metrics.py: removed lines on the left, added lines on the right"
+/>
 
-The working-tree side stays editable, so you can fix a line or discard a hunk
-without leaving the diff. Edits are saved straight back to the file.
+## Open a diff
+
+- In the [launcher](../launcher/), select a file in the **Changes** list.
+- In the Git panel, select a file in **Changed** or **Staged**.
+
+## Change the layout
+
+| Toolbar button | Layout                                                         |
+| -------------- | -------------------------------------------------------------- |
+| Split view     | The old and the new version side by side. This is the default. |
+| Unified view   | The changes in one column.                                     |
+
+In split view, drag the line between the two sides to change their widths.
+Double-click the line to reset the widths.
+
+## Edit the working copy
+
+When the tab title ends with **(Working)**, the right side is the file on
+disk and you can edit it. xtralab saves the changes to the file.
+
+To revert one change, select the undo arrow at the right of the changed lines
+(**Discard hunk**).
 
 ## Notebook diffs
 
-Notebook diffs get the same treatment: rendered cell by cell, side by side,
-and readable, instead of a wall of raw JSON.
+A notebook diff compares the notebook cell by cell. Markdown cells show the
+source and the rendered text. Code cells show the source and the outputs.
 
-## File-type icons
+<Screenshot
+  src={notebookDiff}
+  alt="A notebook diff: one modified markdown cell with its source and rendered text, three unchanged cells collapsed, and two added cells"
+/>
 
-File-type icons from `@pierre/trees` carry across the file browser, document
-tabs, and the `jupyterlab-git` panel, so the same file looks the same
-everywhere.
+| Control      | Action                                                        |
+| ------------ | ------------------------------------------------------------- |
+| **Notebook** | Shows the cell-by-cell diff. This is the default.             |
+| **JSON**     | Shows the diff of the notebook file as JSON.                  |
+| Cell header  | Expands or collapses the cell. Unchanged cells are collapsed. |
+
+The line above the cells shows the number of modified, added, removed, and
+unchanged cells.

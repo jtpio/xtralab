@@ -1,39 +1,88 @@
 ---
 title: Ask an agent
-description: Send the code you are looking at to an agent, or queue prompts while you read.
+description: Send selected code with an instruction to a new or running agent, or queue prompts and send them later.
 ---
 
-Spot something while reading code? Ask an agent about it without losing your
-place.
+import { Steps } from '@astrojs/starlight/components';
+import Screenshot from '../../../components/Screenshot.astro';
+import askAgent from '../../../assets/screenshots/ask-agent.png';
+import promptQueue from '../../../assets/screenshots/prompt-queue.png';
 
-## From a selection
+Ask an agent sends a prompt about the code that you select. The prompt
+contains your instruction, the file path, the line range, and the selected
+code.
 
-Select code in a text editor or a notebook cell and a small **Ask agent**
-button appears next to the selection (or press
-<kbd>Cmd/Ctrl</kbd>+<kbd>.</kbd>). In a [git diff](../git-diffs/), click or
-drag over the line numbers and hit the `+` button that shows up in the gutter.
+<Screenshot
+  src={askAgent}
+  alt='The prompt box below a selected function in the editor, with the instruction "Round the result to two decimals" and one button per agent'
+/>
 
-![The ask-agent prompt box over a selection in the editor](../../../assets/screenshots/ask-agent.png)
+## Ask about a selection
 
-Both open a small prompt box where you describe the change and pick an agent.
-The prompt carries your instruction plus the file path, line range, and
-selected snippet, so you can request fixes the moment you spot them.
+<Steps>
+
+1. Select code in a text editor or in a notebook cell.
+
+2. Select **Ask agent** next to the selection, or press <kbd>Cmd/Ctrl</kbd>+<kbd>.</kbd>.
+
+3. Type an instruction.
+
+4. Select the destination:
+
+   - **New terminal** and an agent icon: the agent starts in a new terminal.
+   - A running agent: the prompt goes to that terminal.
+
+5. Press <kbd>Enter</kbd>, or select **Ask _agent_** (**Send to _terminal_**
+   for a running agent).
+
+</Steps>
+
+In a [Git diff](../git-diffs/), select a line number or drag over line
+numbers, then select **+** in the gutter to open the prompt box.
 
 ## Send to a running agent
 
-When an agent is already running in a terminal, the prompt box offers it as a
-target next to **New terminal**: pick it and the prompt lands in that agent's
-input box instead of starting another session, queued by the agent itself if
-it is still busy. These sends happen in the background, so your focus stays in
-the code you are reading, and a small notification offers to jump to the
-terminal.
+The prompt box shows a button next to **New terminal** for each terminal that
+runs an agent. When you select one, the prompt goes into the input of that
+agent. If the agent is busy, the agent queues the prompt.
 
-## Queue prompts while you read
+The focus stays in your editor. A notification shows with an **Open** button
+that goes to the terminal.
 
-Instead of sending prompts one by one, hit **Queue** in the prompt box (or
-press <kbd>Cmd/Ctrl</kbd>+<kbd>Enter</kbd>) while you read through a diff,
-leaving a comment on each spot. Every queued prompt remembers the destination
-you picked, and a panel in the right sidebar lets you review, edit, retarget,
-or remove them before sending everything in one go. Prompts that share a
-destination are combined into a single numbered message, and the queue
-survives page reloads.
+## Queue prompts
+
+Queue prompts to send them together, for example while you review a diff.
+
+<Steps>
+
+1. Open the prompt box and type an instruction.
+
+2. Select **Queue**, or press <kbd>Cmd/Ctrl</kbd>+<kbd>Enter</kbd>.
+
+   The first queued prompt opens the **Prompt Queue** panel in the right
+   sidebar. For the next prompts, a notification shows. Select **Review** in
+   the notification to open the panel.
+
+3. In the panel, edit the instructions, change the destinations, or remove
+   prompts.
+
+4. Select **Send _N_ prompts**.
+
+</Steps>
+
+<Screenshot
+  src={promptQueue}
+  alt="The Prompt Queue panel with two queued prompts about metrics.py and the Send 2 prompts button"
+/>
+
+Prompts for the same destination go in one numbered message. The queue stays
+when you reload the page. To remove all prompts, select **Clear**.
+
+## Keyboard shortcuts in the prompt box
+
+| Shortcut                             | Action                      |
+| ------------------------------------ | --------------------------- |
+| <kbd>Enter</kbd>                     | Send the prompt             |
+| <kbd>Shift</kbd>+<kbd>Enter</kbd>    | Start a new line            |
+| <kbd>Cmd/Ctrl</kbd>+<kbd>Enter</kbd> | Add the prompt to the queue |
+| <kbd>Esc</kbd>                       | Close the prompt box        |

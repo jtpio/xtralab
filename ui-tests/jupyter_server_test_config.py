@@ -1,6 +1,8 @@
 """Server configuration for the Galata screenshot suite."""
 
+import json
 import os
+from pathlib import Path
 
 from jupyterlab.galata import configure_jupyter_server
 
@@ -18,3 +20,11 @@ os.chdir(os.environ["JUPYTERLAB_GALATA_ROOT_DIR"])
 for key in list(os.environ):
     if key.startswith(("CLAUDE", "ANTHROPIC")):
         del os.environ[key]
+
+# Galata's fonts plugin swaps in DejaVu fonts and turns off font smoothing, so
+# regression screenshots match across platforms. The docs show the real UI.
+labconfig = Path(os.environ["JUPYTER_CONFIG_DIR"], "labconfig")
+labconfig.mkdir(parents=True, exist_ok=True)
+(labconfig / "page_config.json").write_text(
+    json.dumps({"disabledExtensions": {"@jupyterlab/galata-extension:fonts": True}})
+)

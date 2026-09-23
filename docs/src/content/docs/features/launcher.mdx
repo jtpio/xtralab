@@ -1,35 +1,78 @@
 ---
 title: Agent launcher
-description: A launcher built around how you actually start work.
+description: Start a coding agent, open a terminal or a notebook, and open the diff of a changed file.
 ---
 
-The launcher replaces JupyterLab's stock one with a panel built around how you
-actually start work: type an optional prompt, then pick an agent.
+import { Steps } from '@astrojs/starlight/components';
+import Screenshot from '../../../components/Screenshot.astro';
+import launcher from '../../../assets/screenshots/launcher.png';
+import launcherMcp from '../../../assets/screenshots/launcher-mcp.png';
 
-![The xtralab launcher](../../../assets/screenshots/launcher.png)
+The xtralab launcher replaces the JupyterLab launcher. It opens in the main
+area when JupyterLab starts, and when you select **+** in the tab bar.
+
+<Screenshot
+  src={launcher}
+  alt="The launcher: a prompt box, one button per installed agent, the Open section, and the list of changed files"
+/>
 
 ## Start an agent
 
-A button shows up for each agent installed on your machine (Claude, Codex,
-Antigravity, Copilot, Goose, OpenCode, Kiro, Mistral Vibe, Pi) and opens a
-terminal that runs it in your project. If you typed a prompt, it is passed to
-the agent; some agents only launch without one, and the launcher knows which.
+<Steps>
 
-The collapsible **Connect agents to JupyterLab (MCP)** section shows the exact
-registration command for each installed agent, with a copy button. See
-[Connect agents with MCP](../../agents/mcp/) for what that unlocks.
+1. Optional: type a prompt in the **Start an agent** box.
 
-## Open something else
+2. Select an agent.
 
-An **Open** row covers a plain terminal, notebook, console, or your terminal
-editor (Neovim, falling back to Vim).
+   The agent starts in a new terminal, in the project folder. If you typed a
+   prompt, the agent gets it as its first prompt.
 
-## Jump into the diff
+</Steps>
 
-A **Changes** list shows every modified file in the repository and jumps
-straight to its [side-by-side diff](../git-diffs/).
+The launcher shows a button only for the agents whose command is on your
+`PATH`.
 
-## Make it yours
+## Supported agents
 
-Every agent and editor entry can be overridden, hidden, or extended from the
-Settings Editor. See [Launcher entries](../../customize/launcher/).
+| Agent              | Command    | First prompt from the launcher |
+| ------------------ | ---------- | ------------------------------ |
+| Claude Code        | `claude`   | Yes                            |
+| Codex              | `codex`    | Yes                            |
+| Antigravity        | `agy`      | No                             |
+| GitHub Copilot CLI | `copilot`  | Yes                            |
+| Goose              | `goose`    | No                             |
+| OpenCode           | `opencode` | Yes                            |
+| Kiro               | `kiro`     | No                             |
+| Mistral Vibe       | `vibe`     | Yes                            |
+| Pi                 | `pi`       | Yes                            |
+
+The agents without first-prompt support start without the prompt. To add an
+agent, change a command, or hide a button, see
+[Launcher entries](../../customize/launcher/).
+
+## Connect agents to JupyterLab
+
+Expand **Connect agents to JupyterLab (MCP)** to see the command that
+registers the xtralab MCP server with each installed agent. Select **Copy** to
+copy a command, then run it in a terminal. See
+[Connect agents with MCP](../../agents/mcp/).
+
+<Screenshot
+  src={launcherMcp}
+  alt="The expanded MCP section with one registration command and a Copy button per installed agent"
+/>
+
+## Open a terminal, a notebook, or a console
+
+| Tile     | Opens                                                                  |
+| -------- | ---------------------------------------------------------------------- |
+| Terminal | A terminal                                                             |
+| Notebook | A notebook. The kernel starts when you select one.                     |
+| Console  | A console                                                              |
+| Neovim   | Neovim in a terminal. The tile shows Vim when Neovim is not installed. |
+
+## Open the diff of a changed file
+
+The **Changes** list shows the modified (**M**) and untracked (**U**) files in
+the Git repository. Select a file to open its
+[diff](../git-diffs/). To update the list, select the refresh button.
