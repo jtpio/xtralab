@@ -9,11 +9,30 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'xtralab',
-      description: 'An opinionated JupyterLab meta-package for coding agents.',
+      description: 'Agent-ready JupyterLab with opinionated extras.',
       logo: {
         src: './src/assets/logo.svg'
       },
       favicon: '/favicon.svg',
+      head: [
+        {
+          tag: 'meta',
+          attrs: {
+            property: 'og:image',
+            content: 'https://jtpio.github.io/xtralab/social-card.png'
+          }
+        },
+        { tag: 'meta', attrs: { property: 'og:image:width', content: '1200' } },
+        { tag: 'meta', attrs: { property: 'og:image:height', content: '630' } },
+        {
+          tag: 'meta',
+          attrs: {
+            property: 'og:image:alt',
+            content:
+              'The xtralab flask logo next to the tagline: Agent-ready JupyterLab with opinionated extras.'
+          }
+        }
+      ],
       social: [
         {
           icon: 'github',
