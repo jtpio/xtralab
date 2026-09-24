@@ -29,6 +29,20 @@ import omnibox from '../../../assets/screenshots/omnibox.png';
 <Screenshot src={omnibox} alt="The omnibox with matching commands and files" />
 ```
 
+## Social card
+
+Link previews on social media and chat apps show `public/social-card.png`,
+set as `og:image` in `astro.config.mjs`. After you edit its source,
+`src/assets/social-card.svg`, render it again from this folder with the
+Playwright of the screenshot suite (run `pnpm install` and
+`pnpm install:browsers` in `../ui-tests` first):
+
+```bash
+pnpm --dir ../ui-tests exec playwright screenshot --viewport-size "1200, 630" \
+  --wait-for-timeout 1500 "file://$PWD/src/assets/social-card.svg" "$PWD/public/social-card.png"
+pngquant --quality 85-98 --strip --force --ext .png public/social-card.png
+```
+
 ## Writing style
 
 - Start each page with one or two sentences that say what the feature is.
