@@ -1,0 +1,42 @@
+{
+  "title": "xtralab Git Diff",
+  "description": "Display options for the git diff views in the launcher and the Git panel.",
+  "type": "object",
+  "properties": {
+    "diffStyle": {
+      "type": "string",
+      "enum": ["split", "unified"],
+      "title": "Layout",
+      "description": "Show text diffs side by side (split) or in one column (unified).",
+      "default": "split"
+    },
+    "diffStyleControl": {
+      "type": "string",
+      "enum": ["buttons", "toggle"],
+      "title": "Layout buttons",
+      "description": "Show two toolbar buttons for the split and unified layouts (buttons), or one button that switches between them (toggle).",
+      "default": "buttons"
+    },
+    "lineWrap": {
+      "type": "boolean",
+      "title": "Wrap long lines",
+      "description": "When true, long lines in text diffs wrap to the width of the view. When false, they scroll horizontally.",
+      "default": false
+    },
+    "notebookViewMode": {
+      "type": "string",
+      "enum": ["notebook", "json"],
+      "title": "Notebook diff view",
+      "description": "Show notebook diffs cell by cell (notebook) or as the diff of the notebook JSON (json).",
+      "default": "notebook"
+    },
+    "imageViewMode": {
+      "type": "string",
+      "enum": ["2-up", "swipe", "onion"],
+      "title": "Image diff view",
+      "description": "Compare images side by side (2-up), with a slider (swipe), or overlaid (onion).",
+      "default": "2-up"
+    }
+  },
+  "additionalProperties": false
+}

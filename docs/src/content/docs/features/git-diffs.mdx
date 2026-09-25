@@ -23,13 +23,15 @@ and notebooks have side-by-side diffs.
 
 ## Change the layout
 
-| Toolbar button | Layout                                                         |
-| -------------- | -------------------------------------------------------------- |
-| Split view     | The old and the new version side by side. This is the default. |
-| Unified view   | The changes in one column.                                     |
+| Toolbar button | Layout                                                            |
+| -------------- | ----------------------------------------------------------------- |
+| Split view     | The old and the new version side by side. This is the default.    |
+| Unified view   | The changes in one column.                                        |
+| Wrap lines     | Long lines wrap to the width of the view. This is off by default. |
 
 In split view, drag the line between the two sides to change their widths.
-Double-click the line to reset the widths.
+Double-click the line to reset the widths. When lines wrap, the two sides
+always have the same width.
 
 ## Edit the working copy
 
@@ -57,3 +59,18 @@ source and the rendered text. Code cells show the source and the outputs.
 
 The line above the cells shows the number of modified, added, removed, and
 unchanged cells.
+
+## Settings
+
+The toolbar buttons change these settings, and all open diffs use the new
+value. The width of the two sides in split view is saved with the workspace.
+
+**Settings → Settings Editor → xtralab Git Diff**
+
+| Setting                                 | Default    | Description                                                                                               |
+| --------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------- |
+| Layout (`diffStyle`)                    | `split`    | `split` shows text diffs side by side. `unified` shows them in one column.                                |
+| Layout buttons (`diffStyleControl`)     | `buttons`  | `buttons` shows one toolbar button for each layout. `toggle` shows one button that switches between them. |
+| Wrap long lines (`lineWrap`)            | `false`    | Wraps long lines in text diffs.                                                                           |
+| Notebook diff view (`notebookViewMode`) | `notebook` | `notebook` shows the cell-by-cell diff. `json` shows the diff of the notebook JSON.                       |
+| Image diff view (`imageViewMode`)       | `2-up`     | `2-up`, `swipe`, or `onion`.                                                                              |
