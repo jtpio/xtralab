@@ -50,13 +50,15 @@
 }
 
 .jp-xtralab-DiffWidget-viewModeToolbarItem,
-.jp-xtralab-DiffWidget-diffStyleToolbarItem {
+.jp-xtralab-DiffWidget-diffStyleToolbarItem,
+.jp-xtralab-DiffWidget-lineWrapToolbarItem {
   display: flex;
   align-items: center;
   font-size: var(--jp-ui-font-size0);
 }
 
-.jp-xtralab-DiffWidget-diffStyleToolbarItem {
+.jp-xtralab-DiffWidget-diffStyleToolbarItem,
+.jp-xtralab-DiffWidget-lineWrapToolbarItem {
   margin-left: 4px;
 }
 

@@ -104,6 +104,9 @@ importers:
       '@pierre/diffs':
         specifier: ^1.5.1
         version: 1.5.1(@shikijs/themes@3.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@pierre/icons':
+        specifier: ^0.9.0
+        version: 0.9.0(react@18.3.1)
       '@pierre/trees':
         specifier: 1.0.0-beta.4
         version: 1.0.0-beta.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -956,6 +959,11 @@ packages:
         optional: true
       react-dom:
         optional: true
+
+  '@pierre/icons@0.9.0':
+    resolution: {integrity: sha512-lsvXfhb0ynOaQ+eFM54h8n3jS39Glh6Mng8VNFnxdwJTh0Mo8OGmU27mA3u8Ayha7bZNsAqhNw3jaflnPQEH/Q==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
 
   '@pierre/theme@2.0.0':
     resolution: {integrity: sha512-yNDd9GYLQl1mEUJR8AneJ5e4ohLIHQd/wZLWr4fagt78vS2RwwZNW530vVgHqXFAyFVcFlRmGUD5ramXH46OXw==}
@@ -5785,6 +5793,10 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
     transitivePeerDependencies:
       - '@shikijs/themes'
+
+  '@pierre/icons@0.9.0(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
 
   '@pierre/theme@2.0.0': {}
 

@@ -10,6 +10,7 @@ import { ISignal, Signal } from '@lumino/signaling';
 import type { IAskAgent } from '../askAgent/tokens';
 import { getTreeIcon } from '../fileBrowser/icons';
 import { fileChangeToDiffModel } from './diffModel';
+import type { IDiffPreferences } from './diffPreferences';
 import {
   DIFF_WIDGET_CSS_CLASS,
   XtralabDiffWidget,
@@ -157,6 +158,10 @@ interface ICreateDiffWidgetOptions {
    */
   askAgent: IAskAgent | null;
   /**
+   * The display choices shared by all diff views.
+   */
+  preferences: IDiffPreferences;
+  /**
    * Translation bundle for user-facing strings.
    */
   trans: TranslationBundle;
@@ -180,12 +185,13 @@ function createDiffWidget(
     contentsManager,
     rendermime,
     askAgent,
+    preferences,
     trans
   } = options;
   const pinned = options.pinned === true;
   const content = new XtralabDiffWidget(
     fileChangeToDiffModel(repoPath, change),
-    { contentsManager, rendermime, themeManager, askAgent, trans }
+    { contentsManager, rendermime, themeManager, askAgent, preferences, trans }
   );
   const widget = new DiffMainAreaWidget({ content }, change, pinned, trans);
   widget.id = pinned ? pinnedDiffWidgetId(change) : PREVIEW_DIFF_WIDGET_ID;
@@ -280,6 +286,10 @@ interface IRegisterGitCommandsOptions {
    */
   askAgent: IAskAgent | null;
   /**
+   * The display choices shared by all diff views.
+   */
+  preferences: IDiffPreferences;
+  /**
    * Translation bundle for user-facing strings.
    */
   trans: TranslationBundle;
@@ -309,6 +319,7 @@ export function registerGitCommands(
     contentsManager,
     rendermime,
     askAgent,
+    preferences,
     trans,
     trackDiff,
     findDiff,
@@ -340,6 +351,7 @@ export function registerGitCommands(
         contentsManager,
         rendermime,
         askAgent,
+        preferences,
         trans,
         pinned: pin,
         onPinned

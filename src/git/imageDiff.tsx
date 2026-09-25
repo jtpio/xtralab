@@ -2,6 +2,8 @@ import * as React from 'react';
 
 import type { TranslationBundle } from '@jupyterlab/translation';
 
+import type { ImageDiffViewMode } from './diffPreferences';
+
 /**
  * xtralab's image diff, registered in place of `@jupyterlab/git:image-diff`.
  * Both sides arrive base64-encoded through the same `content()` getters used
@@ -37,30 +39,6 @@ export function imageDataType(path: string): string | null {
     return null;
   }
   return IMAGE_DATA_TYPES[lower.slice(dot)] ?? null;
-}
-
-type ImageDiffViewMode = '2-up' | 'swipe' | 'onion';
-
-const IMAGE_DIFF_VIEW_MODE_STORAGE_KEY = 'xtralab:image-diff-view-mode';
-
-function readStoredImageViewMode(): ImageDiffViewMode {
-  try {
-    const raw = window.localStorage.getItem(IMAGE_DIFF_VIEW_MODE_STORAGE_KEY);
-    if (raw === '2-up' || raw === 'swipe' || raw === 'onion') {
-      return raw;
-    }
-  } catch {
-    // localStorage can throw in privacy/sandboxed contexts.
-  }
-  return '2-up';
-}
-
-function writeStoredImageViewMode(mode: ImageDiffViewMode): void {
-  try {
-    window.localStorage.setItem(IMAGE_DIFF_VIEW_MODE_STORAGE_KEY, mode);
-  } catch {
-    // Best-effort.
-  }
 }
 
 /**
@@ -144,6 +122,14 @@ interface IImageDiffViewProps {
    */
   fileType: string;
   /**
+   * The selected comparison mode (host-controlled).
+   */
+  mode: ImageDiffViewMode;
+  /**
+   * Called when the user picks another comparison mode.
+   */
+  onModeChange: (mode: ImageDiffViewMode) => void;
+  /**
    * Translation bundle for user-facing strings.
    */
   trans: TranslationBundle;
@@ -154,7 +140,7 @@ interface IImageDiffViewProps {
  * segmented-control styling) plus the selected 2-up / swipe / onion view.
  */
 export function ImageDiffView(props: IImageDiffViewProps): React.ReactElement {
-  const { reference, challenger, fileType, trans } = props;
+  const { reference, challenger, fileType, mode, onModeChange, trans } = props;
   const ref = React.useMemo(
     () => toSide(reference, fileType),
     [reference, fileType]
@@ -163,14 +149,6 @@ export function ImageDiffView(props: IImageDiffViewProps): React.ReactElement {
     () => toSide(challenger, fileType),
     [challenger, fileType]
   );
-
-  const [mode, setMode] = React.useState<ImageDiffViewMode>(() =>
-    readStoredImageViewMode()
-  );
-  const changeMode = React.useCallback((next: ImageDiffViewMode) => {
-    setMode(next);
-    writeStoredImageViewMode(next);
-  }, []);
 
   return (
     <div className="jp-xtralab-ImageDiff">
@@ -194,7 +172,7 @@ export function ImageDiffView(props: IImageDiffViewProps): React.ReactElement {
               aria-selected={mode === value}
               data-active={mode === value}
               className="jp-xtralab-DiffWidget-segmentedButton"
-              onClick={() => changeMode(value)}
+              onClick={() => onModeChange(value)}
             >
               {label}
             </button>
