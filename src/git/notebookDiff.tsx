@@ -4,6 +4,11 @@ import type * as nbformat from '@jupyterlab/nbformat';
 import { OutputAreaModel, SimplifiedOutputArea } from '@jupyterlab/outputarea';
 import { IRenderMimeRegistry, MimeModel } from '@jupyterlab/rendermime';
 import type { TranslationBundle } from '@jupyterlab/translation';
+import {
+  caretDownIcon,
+  caretRightIcon,
+  LabIcon
+} from '@jupyterlab/ui-components';
 import { MessageLoop } from '@lumino/messaging';
 import { Widget } from '@lumino/widgets';
 import { FileDiff } from '@pierre/diffs/react';
@@ -1074,9 +1079,11 @@ function CellDiffBlock(props: IPlacedCellDiffBlockProps): React.ReactElement {
           }
         }}
       >
-        <span className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellChevron`}>
-          {collapsed ? '▸' : '▾'}
-        </span>
+        <LabIcon.resolveReact
+          icon={collapsed ? caretRightIcon : caretDownIcon}
+          className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellChevron`}
+          tag="span"
+        />
         <span
           className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellBadge`}
           data-kind={entry.kind}
@@ -1191,7 +1198,11 @@ function NotebookMetadataBlock(props: {
         className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellHeader`}
         aria-label={trans.__('Notebook metadata')}
       >
-        <span className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellChevron`}>▾</span>
+        <LabIcon.resolveReact
+          icon={caretDownIcon}
+          className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellChevron`}
+          tag="span"
+        />
         <span
           className={`${NOTEBOOK_DIFF_CSS_CLASS}-cellBadge`}
           data-kind="modified"

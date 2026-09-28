@@ -254,6 +254,13 @@ function LauncherDashboardComponent(
     [commands, repoPath]
   );
 
+  const reviewChanges = React.useCallback(
+    (scope: 'uncommitted' | 'branch') => {
+      void commands.execute(GitCommandIDs.reviewChanges, { repoPath, scope });
+    },
+    [commands, repoPath]
+  );
+
   return (
     <div className="jp-xtralab-Launcher-body">
       <AgentSection
@@ -275,6 +282,7 @@ function LauncherDashboardComponent(
       <ChangesSection
         git={git}
         onOpen={openDiff}
+        onReview={reviewChanges}
         onRefresh={() => void refresh()}
         trans={trans}
       />
@@ -285,11 +293,20 @@ function LauncherDashboardComponent(
 function ChangesSection(props: {
   git: IGitState;
   onOpen: (change: IFileChange) => void;
+  onReview: (scope: 'uncommitted' | 'branch') => void;
   onRefresh: () => void;
   trans: TranslationBundle;
 }): React.ReactElement {
-  const { git, onOpen, onRefresh, trans } = props;
+  const { git, onOpen, onReview, onRefresh, trans } = props;
   const files = git.result ? expandStatusFiles(git.result.files) : [];
+  // Keep the click from toggling the surrounding `<details>`.
+  const review =
+    (scope: 'uncommitted' | 'branch') =>
+    (event: React.MouseEvent): void => {
+      event.preventDefault();
+      event.stopPropagation();
+      onReview(scope);
+    };
 
   return (
     <details
@@ -311,6 +328,30 @@ function ChangesSection(props: {
           >
             {files.length}
           </span>
+        )}
+        {files.length > 0 && (
+          <button
+            type="button"
+            className="jp-xtralab-Launcher-section-textAction"
+            title={trans.__(
+              'Show the diffs of all the uncommitted changes in one tab'
+            )}
+            onClick={review('uncommitted')}
+          >
+            {trans.__('Review all')}
+          </button>
+        )}
+        {git.result !== null && (
+          <button
+            type="button"
+            className="jp-xtralab-Launcher-section-textAction"
+            title={trans.__(
+              'Show the diffs of all the changes of the branch in one tab'
+            )}
+            onClick={review('branch')}
+          >
+            {trans.__('Review branch')}
+          </button>
         )}
         <button
           type="button"

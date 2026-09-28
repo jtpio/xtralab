@@ -23,6 +23,7 @@ import { IFileChange } from './tokens';
  */
 export namespace CommandIDs {
   export const openDiff = 'xtralab:git:open-diff';
+  export const reviewChanges = 'xtralab:git:review-changes';
 }
 
 /**
@@ -54,11 +55,15 @@ export const PREVIEW_DIFF_WIDGET_ID = 'xtralab:diff:preview';
  * Deterministic widget id for a pinned file/group pair.
  */
 export function pinnedDiffWidgetId(change: IFileChange): string {
-  return `xtralab:diff:pinned:${change.group}:${change.path}`;
+  const side = change.base?.sha ?? change.group;
+  return `xtralab:diff:pinned:${side}:${change.path}`;
 }
 
 function formatTitle(change: IFileChange, trans: TranslationBundle): string {
   const name = change.path.split('/').pop() ?? change.path;
+  if (change.base !== undefined) {
+    return trans.__('%1 (vs %2)', name, change.base.label);
+  }
   const groupLabel =
     change.group === 'staged' ? trans.__('Staged') : trans.__('Working');
   return `${name} (${groupLabel})`;

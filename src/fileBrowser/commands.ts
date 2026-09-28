@@ -36,6 +36,7 @@ import {
 import type { IFileChange } from '../git/tokens';
 import { toCanonicalPath, toServerPath } from './contents';
 import { GIT_REPO_PATH } from './gitStatus';
+import { changedFilesIcon } from './icons';
 import { FILE_BROWSER_ID, IXtralabFileBrowser } from './widget';
 
 /**
@@ -55,6 +56,8 @@ export namespace CommandIDs {
   export const refresh = 'xtralab:refresh';
   export const collapseAll = 'xtralab:collapse-all';
   export const toggleFileFilter = 'xtralab:toggle-file-filter';
+  export const toggleChangedFiles = 'xtralab:toggle-changed-files';
+  export const showChangedFiles = 'xtralab:show-changed-files';
   export const createNewDirectory = 'xtralab:create-new-directory';
   export const newLauncher = 'xtralab:new-launcher';
   export const revealPath = 'xtralab:reveal-path';
@@ -565,6 +568,32 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
     app.shell.activateById(FILE_BROWSER_ID);
   };
 
+  commands.addCommand(CommandIDs.toggleChangedFiles, {
+    label: trans.__('Show Changed Files Only'),
+    caption: trans.__(
+      'List only the changed files, or the files of the open review'
+    ),
+    icon: changedFilesIcon.bindprops({ stylesheet: 'menuItem' }),
+    isToggled: () => browser.changedFilesMode,
+    execute: () => {
+      browser.toggleChangedFilesMode();
+    }
+  });
+
+  commands.addCommand(CommandIDs.showChangedFiles, {
+    label: trans.__('Show Changed Files in the File Browser'),
+    icon: changedFilesIcon.bindprops({ stylesheet: 'menuItem' }),
+    execute: () => {
+      browser.setChangedFilesMode(true);
+      activateTreeHost();
+    }
+  });
+
+  const onChangedFilesModeChanged = (): void => {
+    commands.notifyCommandChanged(CommandIDs.toggleChangedFiles);
+  };
+  browser.changedFilesModeChanged.connect(onChangedFilesModeChanged);
+
   commands.addCommand(CommandIDs.revealPath, {
     label: trans.__('Reveal in File Browser'),
     execute: (args: ReadonlyPartialJSONObject) => {
@@ -641,6 +670,10 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
     command: CommandIDs.revealInFileTree,
     category: trans.__('File Browser')
   });
+  const changedFilesPaletteItem = palette?.addItem({
+    command: CommandIDs.toggleChangedFiles,
+    category: trans.__('File Browser')
+  });
 
   // Static context-menu items live in `schema/plugin.json` so users can
   // override them; the schema declares the empty "Open With" placeholder.
@@ -651,7 +684,9 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
     app.contextMenu.opened.disconnect(updateOpenWithMenu);
     app.shell.currentChanged?.disconnect(onCurrentChanged);
     browser.fileFilterVisibleChanged.disconnect(onFilterVisibleChanged);
+    browser.changedFilesModeChanged.disconnect(onChangedFilesModeChanged);
     paletteItem?.dispose();
+    changedFilesPaletteItem?.dispose();
   };
 }
 
@@ -665,6 +700,7 @@ export namespace ToolbarNames {
   export const refresh = 'refresh';
   export const collapseAll = 'collapse-all';
   export const toggleFileFilter = 'toggle-file-filter';
+  export const toggleChangedFiles = 'toggle-changed-files';
 }
 
 /**
@@ -715,6 +751,14 @@ export function populateToolbar(opts: {
     new CommandToolbarButton({
       commands,
       id: CommandIDs.toggleFileFilter,
+      label: ''
+    })
+  );
+  browser.toolbar.addItem(
+    ToolbarNames.toggleChangedFiles,
+    new CommandToolbarButton({
+      commands,
+      id: CommandIDs.toggleChangedFiles,
       label: ''
     })
   );

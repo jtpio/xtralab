@@ -26,8 +26,7 @@ import {
   DiffSurface,
   LineWrapControl,
   NotebookViewModeControl,
-  isDarkTheme,
-  isPierreTheme
+  useDiffThemeFlags
 } from './diffSurface';
 import { imageDataType } from './imageDiff';
 
@@ -339,32 +338,7 @@ function ModelDiffView(props: {
     [widget]
   );
 
-  const [dark, setDark] = React.useState<boolean>(() =>
-    isDarkTheme(themeManager)
-  );
-  const [pierre, setPierre] = React.useState<boolean>(() =>
-    isPierreTheme(themeManager)
-  );
-  React.useEffect(() => {
-    const sync = (): void => {
-      setDark(isDarkTheme(themeManager));
-      setPierre(isPierreTheme(themeManager));
-    };
-    if (themeManager !== null) {
-      themeManager.themeChanged.connect(sync);
-      return () => {
-        themeManager.themeChanged.disconnect(sync);
-      };
-    }
-    const observer = new MutationObserver(sync);
-    observer.observe(document.body, {
-      attributes: true,
-      attributeFilter: ['data-jp-theme-light']
-    });
-    return () => {
-      observer.disconnect();
-    };
-  }, [themeManager]);
+  const { dark, pierre } = useDiffThemeFlags(themeManager);
 
   const isImage = React.useMemo(
     () => imageDataType(model.filename) !== null,

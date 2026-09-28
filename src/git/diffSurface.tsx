@@ -44,7 +44,7 @@ const SPLIT_RESIZE_CSS = `pre[data-diff-type="split"][data-overflow="scroll"] {
   grid-template-columns: var(--xtralab-split-cols, 1fr 1fr);
 }`;
 
-const DIFF_SURFACE_CSS = `${SPLIT_RESIZE_CSS}\n${DIFF_SCROLLBAR_CSS}`;
+export const DIFF_SURFACE_CSS = `${SPLIT_RESIZE_CSS}\n${DIFF_SCROLLBAR_CSS}`;
 
 /**
  * Annotation payload threaded back into `renderAnnotation`; carries the target hunk index.
@@ -81,6 +81,43 @@ export function isDarkTheme(themeManager: IThemeManager | null): boolean {
 export function isPierreTheme(themeManager: IThemeManager | null): boolean {
   const theme = themeManager?.theme ?? null;
   return theme !== null && theme.toLowerCase().includes('pierre');
+}
+
+/**
+ * Follow the JupyterLab theme: whether it is dark and whether it is a
+ * Pierre theme.
+ */
+export function useDiffThemeFlags(themeManager: IThemeManager | null): {
+  dark: boolean;
+  pierre: boolean;
+} {
+  const [dark, setDark] = React.useState<boolean>(() =>
+    isDarkTheme(themeManager)
+  );
+  const [pierre, setPierre] = React.useState<boolean>(() =>
+    isPierreTheme(themeManager)
+  );
+  React.useEffect(() => {
+    const sync = (): void => {
+      setDark(isDarkTheme(themeManager));
+      setPierre(isPierreTheme(themeManager));
+    };
+    if (themeManager !== null) {
+      themeManager.themeChanged.connect(sync);
+      return () => {
+        themeManager.themeChanged.disconnect(sync);
+      };
+    }
+    const observer = new MutationObserver(sync);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['data-jp-theme-light']
+    });
+    return () => {
+      observer.disconnect();
+    };
+  }, [themeManager]);
+  return { dark, pierre };
 }
 
 /**

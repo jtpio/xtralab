@@ -17,7 +17,8 @@ import {
 import { Signal, ISignal } from '@lumino/signaling';
 import { AccordionPanel, PanelLayout, Widget } from '@lumino/widgets';
 
-import type { IFileChange } from '../git/tokens';
+import type { IFileChange, IReviewTracker } from '../git/tokens';
+import type { OpenReview } from './changedFiles';
 import { FileBrowserComponent } from './fileBrowser';
 import { xtralabFileBrowserIcon } from './icons';
 
@@ -64,6 +65,19 @@ interface IXtralabFileBrowserOptions {
    * The application language translator.
    */
   translator?: ITranslator;
+  /**
+   * The open review tabs; the changed-files mode lists the files of the
+   * current one.
+   */
+  reviewTracker?: IReviewTracker | null;
+  /**
+   * Activate a main-area widget by id.
+   */
+  activateWidget?: (id: string) => void;
+  /**
+   * Open a review tab, or change the scope of the open one.
+   */
+  openReview?: OpenReview;
 }
 
 /**
@@ -176,6 +190,31 @@ export interface IXtralabFileBrowser {
   toggleFileFilter(): void;
 
   /**
+   * Whether the tree lists only the changed files.
+   */
+  readonly changedFilesMode: boolean;
+
+  /**
+   * Emits when {@link changedFilesMode} changes.
+   */
+  readonly changedFilesModeChanged: ISignal<IXtralabFileBrowser, boolean>;
+
+  /**
+   * List only the changed files, or all files.
+   */
+  setChangedFilesMode(on: boolean): void;
+
+  /**
+   * Switch between the changed files and all files.
+   */
+  toggleChangedFilesMode(): void;
+
+  /**
+   * Emits when a status poll changes {@link gitChanges}.
+   */
+  readonly gitChangesChanged: ISignal<IXtralabFileBrowser, void>;
+
+  /**
    * The DOM node of the movable "Files" section, used to locate the panel
    * currently hosting the tree.
    */
@@ -216,6 +255,9 @@ export class XtralabFileBrowser
       docManager: this._docManager,
       onOpenFile: this._onOpenFile,
       translator: this._translator,
+      reviewTracker: options.reviewTracker ?? null,
+      activateWidget: options.activateWidget,
+      openReview: options.openReview,
       browser: this
     });
     this._content.addClass(CONTENT_CSS_CLASS);
@@ -326,7 +368,59 @@ export class XtralabFileBrowser
    * Update the cached git changes from the React tree's status poll.
    */
   updateGitChanges(changes: readonly IFileChange[]): void {
+    const same =
+      changes.length === this._gitChanges.length &&
+      changes.every((change, index) => {
+        const previous = this._gitChanges[index];
+        return (
+          change.path === previous.path &&
+          change.group === previous.group &&
+          change.status === previous.status
+        );
+      });
     this._gitChanges = changes;
+    if (!same) {
+      this._gitChangesChanged.emit();
+    }
+  }
+
+  /**
+   * A signal emitted when a status poll changes {@link gitChanges}.
+   */
+  get gitChangesChanged(): ISignal<this, void> {
+    return this._gitChangesChanged;
+  }
+
+  /**
+   * Whether the tree lists only the changed files.
+   */
+  get changedFilesMode(): boolean {
+    return this._changedFilesMode;
+  }
+
+  /**
+   * A signal emitted when {@link changedFilesMode} changes.
+   */
+  get changedFilesModeChanged(): ISignal<this, boolean> {
+    return this._changedFilesModeChanged;
+  }
+
+  /**
+   * List only the changed files, or all files.
+   */
+  setChangedFilesMode(on: boolean): void {
+    if (this._changedFilesMode === on) {
+      return;
+    }
+    this._changedFilesMode = on;
+    this._changedFilesModeChanged.emit(on);
+  }
+
+  /**
+   * Switch between the changed files and all files.
+   */
+  toggleChangedFilesMode(): void {
+    this.setChangedFilesMode(!this._changedFilesMode);
   }
 
   /**
@@ -559,6 +653,9 @@ export class XtralabFileBrowser
   private _selectedPaths: readonly string[] = [];
   private _selectionChanged = new Signal<this, readonly string[]>(this);
   private _gitChanges: readonly IFileChange[] = [];
+  private _gitChangesChanged = new Signal<this, void>(this);
+  private _changedFilesMode = false;
+  private _changedFilesModeChanged = new Signal<this, boolean>(this);
   private _refreshRequested = new Signal<this, void>(this);
   private _pathAdded = new Signal<this, string>(this);
   private _revealRequested = new Signal<this, string>(this);
@@ -597,6 +694,18 @@ interface IFileTreeContentOptions {
    */
   translator?: ITranslator;
   /**
+   * The open review tabs, or `null`.
+   */
+  reviewTracker: IReviewTracker | null;
+  /**
+   * Activate a main-area widget by id.
+   */
+  activateWidget?: (id: string) => void;
+  /**
+   * Open a review tab, or change the scope of the open one.
+   */
+  openReview?: OpenReview;
+  /**
    * The host widget the React tree reports selection and state changes to.
    */
   browser: XtralabFileBrowser;
@@ -621,6 +730,9 @@ class XtralabFileTreeContent extends ReactWidget {
         docManager={this._options.docManager}
         onOpenFile={this._options.onOpenFile}
         translator={this._options.translator}
+        reviewTracker={this._options.reviewTracker}
+        activateWidget={this._options.activateWidget}
+        openReview={this._options.openReview}
         widget={this._options.browser}
       />
     );

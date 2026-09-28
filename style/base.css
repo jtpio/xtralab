@@ -65,8 +65,11 @@
   height: unset;
 }
 
+/* 2px side margins (not 4px) keep the six buttons on one row in a
+   default-width sidebar. */
 .jp-xtralab-FileBrowser-toolbar > .jp-Toolbar-item .jp-ToolbarButtonComponent {
   width: 28px;
+  margin-inline: 2px;
 }
 
 /* Same blue call-to-action the default file browser gives `launcher:create`;
@@ -123,4 +126,37 @@
 .jp-xtralab-FileBrowser file-tree-container {
   flex: 1 1 auto;
   min-height: 0;
+}
+
+/* "Changed files" mode: a header above a tree of the changed files. */
+.jp-xtralab-ChangedFiles {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.jp-xtralab-ChangedFiles-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px 4px;
+}
+
+.jp-xtralab-ChangedFiles-header .jp-xtralab-ReviewScope {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.jp-xtralab-ChangedFiles-header .jp-xtralab-ReviewScope select {
+  width: 100%;
+  text-overflow: ellipsis;
+}
+
+.jp-xtralab-ChangedFiles-message {
+  padding: 8px 12px;
+  color: var(--jp-ui-font-color3);
+  font-size: var(--jp-ui-font-size1);
 }

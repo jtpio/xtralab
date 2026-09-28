@@ -14,7 +14,7 @@ export const GIT_REPO_PATH = '';
  * `GitStatus`. The tree only supports the six common statuses, so the rare
  * ones (unmerged, typechange, unknown) collapse onto `modified`.
  */
-function toTreeStatus(value: FileChangeStatus): GitStatus {
+export function toTreeStatus(value: FileChangeStatus): GitStatus {
   switch (value) {
     case 'added':
     case 'deleted':

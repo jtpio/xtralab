@@ -7,12 +7,19 @@ import type { GitReference, IFileChange } from './tokens';
 
 /**
  * Resolve the old/new git refs for a launcher file change. Staged diffs are
- * INDEX vs HEAD; unstaged diffs are WORKING vs INDEX.
+ * INDEX vs HEAD; unstaged diffs are WORKING vs INDEX; a change with a base
+ * is WORKING vs that commit.
  */
 function resolveReferences(change: IFileChange): {
   oldRef: GitReference | null;
   newRef: GitReference | null;
 } {
+  if (change.base !== undefined) {
+    return {
+      oldRef: change.status === 'untracked' ? null : { git: change.base.sha },
+      newRef: { special: 'WORKING' }
+    };
+  }
   if (change.status === 'untracked') {
     return { oldRef: null, newRef: { special: 'WORKING' } };
   }

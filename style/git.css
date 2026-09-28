@@ -12,7 +12,8 @@
   font-style: italic;
 }
 
-.jp-xtralab-DiffWidget-content {
+.jp-xtralab-DiffWidget-content,
+.jp-xtralab-Review-diffs {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -282,10 +283,9 @@
 }
 
 .jp-xtralab-NotebookDiff-cellChevron {
-  width: 12px;
-  text-align: center;
-  font-size: 10px;
-  color: var(--jp-ui-font-color2);
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
 }
 
 .jp-xtralab-NotebookDiff-cellBadge {
@@ -672,4 +672,99 @@
   width: min(480px, 100%);
   accent-color: var(--jp-brand-color1);
   cursor: ew-resize;
+}
+
+/* Review tab: the diffs of every changed file. */
+.jp-xtralab-Review-codeView {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.jp-xtralab-Review-status {
+  padding: 16px;
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size1);
+}
+
+.jp-xtralab-Review-status[data-error='true'] {
+  color: var(--jp-warn-color0);
+}
+
+.jp-xtralab-Review-display {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.jp-xtralab-Review-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size0);
+}
+
+.jp-xtralab-Review-additions {
+  color: var(--jp-success-color1);
+}
+
+.jp-xtralab-Review-deletions {
+  color: var(--jp-error-color1);
+}
+
+.jp-xtralab-Review-headerPrefix,
+.jp-xtralab-Review-headerMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--jp-ui-font-family);
+  font-size: var(--jp-ui-font-size1);
+}
+
+/* Slotted into the diff host, whose color scheme does not follow the
+   JupyterLab theme; the native check box needs the right one. */
+body[data-jp-theme-light='true'] .jp-xtralab-Review-headerMeta {
+  color-scheme: light;
+}
+
+body[data-jp-theme-light='false'] .jp-xtralab-Review-headerMeta {
+  color-scheme: dark;
+}
+
+.jp-xtralab-Review-note {
+  color: var(--jp-ui-font-color2);
+}
+
+.jp-xtralab-Review-counts {
+  display: inline-flex;
+  gap: 4px;
+  font-family: var(--jp-code-font-family);
+}
+
+.jp-xtralab-Review-viewed {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--jp-ui-font-color1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.jp-xtralab-Review-viewed input {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Same width as the toolbar button it stands in for. */
+.jp-xtralab-Review-iconSpacer {
+  width: 24px;
+}
+
+.jp-xtralab-Review-updatedDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--jp-brand-color1);
 }

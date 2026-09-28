@@ -126,6 +126,34 @@
   outline-offset: 1px;
 }
 
+.jp-xtralab-Launcher-section-textAction {
+  margin-left: auto;
+  height: 24px;
+  padding: 0 8px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size1);
+  cursor: pointer;
+}
+
+.jp-xtralab-Launcher-section-textAction:hover {
+  background-color: var(--jp-layout-color2);
+  color: var(--jp-ui-font-color1);
+}
+
+.jp-xtralab-Launcher-section-textAction:focus-visible {
+  outline: 1px solid var(--jp-brand-color1);
+  outline-offset: 1px;
+}
+
+.jp-xtralab-Launcher-section-textAction
+  + .jp-xtralab-Launcher-section-textAction,
+.jp-xtralab-Launcher-section-textAction + .jp-xtralab-Launcher-section-action {
+  margin-left: 0;
+}
+
 .jp-xtralab-Launcher-section-body {
   display: flex;
   flex-direction: column;

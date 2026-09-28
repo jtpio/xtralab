@@ -3,6 +3,8 @@
 ``/xtralab/agents/availability`` resolves agent commands through ``$PATH``;
 ``/xtralab/terminals/agents`` walks each terminal's child processes (psutil)
 to report the running agent — including ones the user started by hand.
+``/xtralab/git/review`` and ``/xtralab/git/bases`` feed the review tab (see
+``git_review``).
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ from jupyter_server.utils import url_path_join
 from tornado.web import authenticated
 
 from .checkpoints import NullCheckpoints
+from .git_review import GitBasesHandler, GitReviewHandler
 
 try:
     import psutil
@@ -152,6 +155,8 @@ def _setup_handlers(server_app: ServerApp) -> None:
             url_path_join(base_url, "xtralab", "terminals", "agents"),
             RunningAgentsHandler,
         ),
+        (url_path_join(base_url, "xtralab", "git", "review"), GitReviewHandler),
+        (url_path_join(base_url, "xtralab", "git", "bases"), GitBasesHandler),
     ]
     server_app.web_app.add_handlers(".*$", handlers)
 

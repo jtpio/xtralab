@@ -12,6 +12,8 @@ import { ISettingRegistry } from '@jupyterlab/settingregistry';
 
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 
+import { CommandIDs as GitCommandIDs } from '../git/commands';
+import { IReviewTracker } from '../git/tokens';
 import { populateToolbar, registerCommands } from './commands';
 import { FILE_BROWSER_ID, XtralabFileBrowser } from './widget';
 
@@ -32,7 +34,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
     ISettingRegistry,
     ICommandPalette,
     ITranslator,
-    IMovableSectionRegistry
+    IMovableSectionRegistry,
+    IReviewTracker
   ],
   activate: (
     app: JupyterFrontEnd,
@@ -41,7 +44,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
     settingRegistry: ISettingRegistry | null,
     palette: ICommandPalette | null,
     translator: ITranslator | null,
-    movableSections: IMovableSectionRegistry | null
+    movableSections: IMovableSectionRegistry | null,
+    reviewTracker: IReviewTracker | null
   ): void => {
     const browser = new XtralabFileBrowser({
       contentsManager: app.serviceManager.contents,
@@ -49,7 +53,15 @@ const plugin: JupyterFrontEndPlugin<void> = {
       onOpenFile: (serverPath: string) => {
         void app.commands.execute('docmanager:open', { path: serverPath });
       },
-      translator: translator ?? undefined
+      translator: translator ?? undefined,
+      reviewTracker,
+      activateWidget: (id: string) => app.shell.activateById(id),
+      openReview: ({ scope, base }) => {
+        void app.commands.execute(GitCommandIDs.reviewChanges, {
+          scope,
+          ...(base !== null ? { base } : {})
+        });
+      }
     });
     // Rank-only fallback for when the shipped `layout` setting is absent;
     // no area pin, so the browser stays movable via "Move Widget".

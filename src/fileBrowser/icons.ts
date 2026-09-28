@@ -19,6 +19,17 @@ export const xtralabFileBrowserIcon = new LabIcon({
 });
 
 /**
+ * A page with a plus and a minus, for the list of changed files.
+ */
+export const changedFilesIcon = new LabIcon({
+  name: 'xtralab:changed-files',
+  svgstr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="jp-icon3" fill="currentColor">
+  <path d="M3.5 1h6.3L13 4.2v9.3c0 .8-.7 1.5-1.5 1.5h-8C2.7 15 2 14.3 2 13.5v-11C2 1.7 2.7 1 3.5 1zm0 1a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V4.6L9.4 2z"/>
+  <path d="M7 4h1v2h2v1H8v2H7V7H5V6h2zM5 11h5v1H5z"/>
+</svg>`
+});
+
+/**
  * Sprite sheet injected into the tree's shadow DOM: the JupyterLab notebook
  * glyph, since `@pierre/trees` ships no Jupyter token. The `#EF6C00` fill is
  * a presentation attribute on the inner `<g>` so it survives the tree's

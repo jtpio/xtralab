@@ -4,9 +4,29 @@ import type { SelectedLineRange } from '@pierre/diffs';
 
 import type { IAskAgentRequest } from '../askAgent/tokens';
 
-import type { IXtralabDiffModel } from './diffWidget';
-
 type DiffSide = 'deletions' | 'additions';
+
+/**
+ * The parts of a diff model an ask request reads.
+ */
+export interface IDiffAskSource {
+  /**
+   * The repo-relative path of the new side.
+   */
+  filename: string;
+  /**
+   * The server-relative path of the repository.
+   */
+  repositoryPath?: string;
+  /**
+   * The old side; `source` names where its text comes from.
+   */
+  reference: Pick<Git.Diff.IContent, 'source'>;
+  /**
+   * The new side; `source` names where its text comes from.
+   */
+  challenger: Pick<Git.Diff.IContent, 'source'>;
+}
 
 /**
  * Agent-facing name of a diff content source. English on purpose — this
@@ -47,7 +67,7 @@ function sliceLines(text: string, startLine: number, endLine: number): string {
  * line-number spaces, so it is described textually instead of numerically.
  */
 export function buildDiffAskRequest(options: {
-  model: IXtralabDiffModel;
+  model: IDiffAskSource;
   oldText: string;
   newText: string;
   range: SelectedLineRange;

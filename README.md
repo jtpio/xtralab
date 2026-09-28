@@ -50,7 +50,8 @@ prompt. The **Changes** list opens the diff of each changed file.
 ### Git diffs
 
 Review changes side by side, for text files and for notebooks, and edit the
-working copy in the diff.
+working copy in the diff. The review tab shows every changed file of your
+work, or of the whole branch, in one list.
 [Read more](https://jtpio.github.io/xtralab/features/git-diffs/).
 
 <img src="./images/diff.webp" width="1000" alt="A side-by-side diff of a Python file, with removed lines on the left and added lines on the right" />

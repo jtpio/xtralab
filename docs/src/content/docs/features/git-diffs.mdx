@@ -62,6 +62,62 @@ source and the rendered text. Code cells show the source and the outputs.
 The line above the cells shows the number of modified, added, removed, and
 unchanged cells.
 
+## Review all changes
+
+The review tab shows the diffs of all the changed files in one list, one
+file after the other. The list at the left of the toolbar selects the
+changes to show:
+
+| Choice                  | Compares                                                                                                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Uncommitted changes** | The last commit with the files on disk, staged or not.                                                                                                              |
+| **Changes vs _branch_** | The commit where the current branch left _branch_ with the files on disk. The uncommitted work is part of the branch. This is the scope of a pull request. |
+
+The first branch in the list is the default base branch: `origin/HEAD`, or
+`main` or `master` when the repository has no `origin/HEAD`.
+
+To open the review tab:
+
+- In the Git menu, select **Review Uncommitted Changes** or **Review Branch
+  Changes**.
+- In the [launcher](../launcher/), select **Review all** or **Review
+  branch** in the **Changes** section.
+- In the file browser, show the changed files (see below) and select a
+  choice in the list above the files, or select **Review**.
+- In the command palette, run **Review Uncommitted Changes** or **Review
+  Branch Changes**.
+- An agent runs the command `xtralab:git:review-changes` with the arguments
+  `scope` (`uncommitted` or `branch`), `base`, and `repoPath`.
+
+Each file has a header with these controls:
+
+| Control          | Action                                                                                                                  |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Arrow            | Expands or collapses the file.                                                                                          |
+| **Viewed**       | Marks the file as viewed and collapses it. When the file changes again, the file is not viewed again.                  |
+| Open diff button | Opens the diff of the file in its own tab. Notebooks and images show a header only in the list; this button shows their diff. |
+| Open file button | Opens the file.                                                                                                         |
+
+Deleted files, lock files, and files with more than 1000 changed lines start
+collapsed. A dot before the file name shows a file that changed after you
+looked at it. The tab gets the changes again every few seconds while it is
+visible.
+
+### List the changed files in the file browser
+
+In the file browser toolbar, select **Show Changed Files Only**. The file
+browser shows only the changed files. Select the button again to show all
+the files. The review tab has the same button in its toolbar.
+
+The list above the files selects the changes, as in the review tab. A choice
+opens the review tab, or changes the open one. **Review** shows the review
+tab.
+
+When a review tab is open, the file browser shows the files of the review
+with a ✓ for the viewed files. Select a file to show its diff in the review.
+When you scroll the review, the file browser selects the file at the top.
+Without a review tab, the file browser shows the uncommitted changes.
+
 ## Settings
 
 The toolbar buttons change these settings, and all open diffs use the new

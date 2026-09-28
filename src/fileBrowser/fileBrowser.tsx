@@ -17,6 +17,8 @@ import type {
 
 import type { Ignore } from 'ignore';
 
+import type { IReviewTracker } from '../git/tokens';
+import { ChangedFilesTree, type OpenReview } from './changedFiles';
 import {
   ROOT_LOAD_KEY,
   listDirectory,
@@ -34,6 +36,7 @@ import {
 import { buildIgnoredEntries, loadGitignoreMatcher } from './gitignore';
 import { GIT_REPO_PATH, loadGitChanges, toGitStatusEntries } from './gitStatus';
 import { FILE_BROWSER_ICONS } from './icons';
+import { FILE_TREE_UNSAFE_CSS, useFileFilterBridge } from './treeShared';
 import type { XtralabFileBrowser } from './widget';
 
 type LoadState = 'unloaded' | 'loading' | 'loaded';
@@ -55,26 +58,6 @@ const FILE_LISTING_REFRESH_INTERVAL_MS = 10000;
 const FILE_LISTING_REFRESH_MAX_MS = 300_000;
 
 const FILE_TREE_TAG = 'file-tree-container';
-
-/**
- * Injected into the tree's shadow root, where outside CSS cannot reach.
- * The search box is hidden unless the host carries the filter-bridge marker
- * (the library always renders it), and the drag-hover row gets a quiet ring
- * — the library's selection background is illegible with xtralab's colors.
- */
-const FILE_TREE_UNSAFE_CSS =
-  '[data-type="item"][data-item-selected="true"] ' +
-  '[data-item-section="spacing-item"] {' +
-  'border-left-color: transparent;' +
-  '}' +
-  ':host(:not([data-xtralab-filter-visible])) ' +
-  '[data-file-tree-search-container] {' +
-  'display: none;' +
-  '}' +
-  '[data-type="item"][data-item-drag-target="true"] {' +
-  'background-color: var(--trees-bg-muted);' +
-  'box-shadow: inset 0 0 0 2px var(--trees-accent);' +
-  '}';
 
 /**
  * Props for {@link FileBrowserComponent}.
@@ -100,6 +83,18 @@ interface IFileBrowserProps {
    * The host widget; selection changes are pushed up for command handlers.
    */
   widget?: XtralabFileBrowser;
+  /**
+   * The open review tabs, for the changed-files mode; `null` without them.
+   */
+  reviewTracker?: IReviewTracker | null;
+  /**
+   * Activate a main-area widget by id.
+   */
+  activateWidget?: (id: string) => void;
+  /**
+   * Open a review tab, or change the scope of the open one.
+   */
+  openReview?: OpenReview;
 }
 
 /**
@@ -110,12 +105,37 @@ interface IFileBrowserProps {
 export function FileBrowserComponent(
   props: IFileBrowserProps
 ): React.ReactElement {
-  const { contentsManager, docManager, onOpenFile, translator, widget } = props;
+  const {
+    contentsManager,
+    docManager,
+    onOpenFile,
+    translator,
+    widget,
+    reviewTracker,
+    activateWidget,
+    openReview
+  } = props;
 
   const trans = React.useMemo(
     () => (translator ?? nullTranslator).load('jupyterlab'),
     [translator]
   );
+
+  const [changedFilesMode, setChangedFilesMode] = React.useState(
+    () => widget?.changedFilesMode ?? false
+  );
+  React.useEffect(() => {
+    if (widget === undefined) {
+      return;
+    }
+    const onMode = (sender: unknown, on: boolean): void => {
+      setChangedFilesMode(on);
+    };
+    widget.changedFilesModeChanged.connect(onMode);
+    return () => {
+      widget.changedFilesModeChanged.disconnect(onMode);
+    };
+  }, [widget]);
 
   const dropHandlerRef = React.useRef<ITreeDropHandler | null>(null);
 
@@ -876,50 +896,18 @@ export function FileBrowserComponent(
       lastSnapshot = next;
       widget.updateSelection(next);
     };
+    // The changed-files list takes over the selection while it is shown.
+    if (changedFilesMode) {
+      return;
+    }
     sync();
     const unsubscribe = model.subscribe(sync);
     return () => {
       unsubscribe();
     };
-  }, [model, widget]);
+  }, [model, widget, changedFilesMode]);
 
-  // Applying the widget's filter flag stamps the marker the unsafeCSS rule
-  // keys on and syncs the search session; the subscription surfaces the box
-  // when the tree opens a session itself (typing while focused).
-  React.useEffect(() => {
-    if (widget === undefined) {
-      return;
-    }
-    const apply = (visible: boolean): void => {
-      const host = model.getFileTreeContainer();
-      if (host !== undefined) {
-        if (visible) {
-          host.dataset.xtralabFilterVisible = 'true';
-        } else {
-          delete host.dataset.xtralabFilterVisible;
-        }
-      }
-      if (visible && !model.isSearchOpen()) {
-        model.openSearch();
-      } else if (!visible && model.isSearchOpen()) {
-        model.closeSearch();
-      }
-    };
-    apply(widget.fileFilterVisible);
-    const visibleSlot = (sender: unknown, visible: boolean): void => {
-      apply(visible);
-    };
-    widget.fileFilterVisibleChanged.connect(visibleSlot);
-    const unsubscribe = model.subscribe(() => {
-      if (model.isSearchOpen() && !widget.fileFilterVisible) {
-        widget.setFileFilterVisible(true);
-      }
-    });
-    return () => {
-      widget.fileFilterVisibleChanged.disconnect(visibleSlot);
-      unsubscribe();
-    };
-  }, [model, widget]);
+  useFileFilterBridge(model, widget);
 
   const wrapperRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -1004,7 +992,25 @@ export function FileBrowserComponent(
       ref={wrapperRef}
       style={{ display: 'flex', flex: '1 1 auto', minHeight: 0 }}
     >
-      <FileTree model={model} style={{ height: '100%', width: '100%' }} />
+      {/* Hidden, not unmounted, so expansion and scroll survive the mode. */}
+      <FileTree
+        model={model}
+        style={{
+          height: '100%',
+          width: '100%',
+          display: changedFilesMode ? 'none' : undefined
+        }}
+      />
+      {changedFilesMode && widget !== undefined ? (
+        <ChangedFilesTree
+          widget={widget}
+          reviewTracker={reviewTracker ?? null}
+          activateWidget={activateWidget}
+          openReview={openReview}
+          onOpenFile={onOpenFile}
+          trans={trans}
+        />
+      ) : null}
     </div>
   );
 }

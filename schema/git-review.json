@@ -1,0 +1,30 @@
+{
+  "jupyter.lab.menus": {
+    "main": [
+      {
+        "id": "jp-mainmenu-git",
+        "items": [
+          {
+            "command": "xtralab:git:review-changes",
+            "args": { "scope": "uncommitted" },
+            "rank": 0
+          },
+          {
+            "command": "xtralab:git:review-changes",
+            "args": { "scope": "branch" },
+            "rank": 0
+          },
+          {
+            "type": "separator",
+            "rank": 0
+          }
+        ]
+      }
+    ]
+  },
+  "title": "xtralab Git Review",
+  "description": "The tab that shows the diffs of all the changed files.",
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
