@@ -5,6 +5,7 @@ import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import type { TranslationBundle } from '@jupyterlab/translation';
 import { undoIcon } from '@jupyterlab/ui-components';
 import { FileDiff } from '@pierre/diffs/react';
+import { IconDiffSplit, IconDiffUnified, IconWordWrap } from '@pierre/icons';
 import {
   diffAcceptRejectHunk,
   parseDiffFromFile,
@@ -20,15 +21,18 @@ import {
   NotebookDiffView,
   type INotebookDiffResult
 } from './notebookDiff';
-import { resolveDiffTheme } from './diffTheme';
+import {
+  DEFAULT_SPLIT_RATIO,
+  MAX_SPLIT_RATIO,
+  MIN_SPLIT_RATIO,
+  type DiffStyle,
+  type DiffStyleControlMode,
+  type ImageDiffViewMode,
+  type NotebookDiffViewMode
+} from './diffPreferences';
+import { DIFF_SCROLLBAR_CSS, resolveDiffTheme } from './diffTheme';
 
 export const DIFF_WIDGET_CSS_CLASS = 'jp-xtralab-DiffWidget';
-
-const SPLIT_RATIO_STORAGE_KEY = 'xtralab:diff-split-ratio';
-
-const MIN_SPLIT_RATIO = 0.1;
-const MAX_SPLIT_RATIO = 0.9;
-const DEFAULT_SPLIT_RATIO = 0.5;
 
 /**
  * Injected via the `unsafeCSS` option into the shadow root's `@layer
@@ -40,95 +44,7 @@ const SPLIT_RESIZE_CSS = `pre[data-diff-type="split"][data-overflow="scroll"] {
   grid-template-columns: var(--xtralab-split-cols, 1fr 1fr);
 }`;
 
-function readStoredSplitRatio(): number {
-  try {
-    const raw = window.localStorage.getItem(SPLIT_RATIO_STORAGE_KEY);
-    if (raw === null) {
-      return DEFAULT_SPLIT_RATIO;
-    }
-    const parsed = Number.parseFloat(raw);
-    if (
-      Number.isFinite(parsed) &&
-      parsed >= MIN_SPLIT_RATIO &&
-      parsed <= MAX_SPLIT_RATIO
-    ) {
-      return parsed;
-    }
-  } catch {
-    // localStorage can throw in privacy mode or sandboxed contexts.
-  }
-  return DEFAULT_SPLIT_RATIO;
-}
-
-function writeStoredSplitRatio(ratio: number): void {
-  try {
-    window.localStorage.setItem(SPLIT_RATIO_STORAGE_KEY, ratio.toString());
-  } catch {
-    // See readStoredSplitRatio — best-effort persistence.
-  }
-}
-
-export type DiffStyle = 'split' | 'unified';
-
-const DIFF_STYLE_STORAGE_KEY = 'xtralab:diff-style';
-
-/**
- * Read the persisted diff style, defaulting to `'split'`.
- */
-export function readStoredDiffStyle(): DiffStyle {
-  try {
-    const raw = window.localStorage.getItem(DIFF_STYLE_STORAGE_KEY);
-    if (raw === 'split' || raw === 'unified') {
-      return raw;
-    }
-  } catch {
-    // See readStoredSplitRatio.
-  }
-  return 'split';
-}
-
-/**
- * Persist the diff style to local storage (best-effort).
- */
-export function writeStoredDiffStyle(style: DiffStyle): void {
-  try {
-    window.localStorage.setItem(DIFF_STYLE_STORAGE_KEY, style);
-  } catch {
-    // Best-effort.
-  }
-}
-
-export type NotebookDiffViewMode = 'notebook' | 'json';
-
-const NOTEBOOK_DIFF_VIEW_MODE_STORAGE_KEY = 'xtralab:notebook-diff-view-mode';
-
-/**
- * Read the persisted notebook view mode, defaulting to `'notebook'`.
- */
-export function readStoredNotebookViewMode(): NotebookDiffViewMode {
-  try {
-    const raw = window.localStorage.getItem(
-      NOTEBOOK_DIFF_VIEW_MODE_STORAGE_KEY
-    );
-    if (raw === 'json' || raw === 'notebook') {
-      return raw;
-    }
-  } catch {
-    // See readStoredSplitRatio.
-  }
-  return 'notebook';
-}
-
-/**
- * Persist the notebook view mode to local storage (best-effort).
- */
-export function writeStoredNotebookViewMode(mode: NotebookDiffViewMode): void {
-  try {
-    window.localStorage.setItem(NOTEBOOK_DIFF_VIEW_MODE_STORAGE_KEY, mode);
-  } catch {
-    // Best-effort.
-  }
-}
+const DIFF_SURFACE_CSS = `${SPLIT_RESIZE_CSS}\n${DIFF_SCROLLBAR_CSS}`;
 
 /**
  * Annotation payload threaded back into `renderAnnotation`; carries the target hunk index.
@@ -239,6 +155,26 @@ interface IDiffSurfaceProps {
    */
   diffStyle: DiffStyle;
   /**
+   * Whether long lines wrap instead of scrolling horizontally (host-controlled).
+   */
+  lineWrap: boolean;
+  /**
+   * Left pane width in split view, as a fraction of the diff width (host-controlled).
+   */
+  splitRatio: number;
+  /**
+   * Called when the user finishes resizing the split panes.
+   */
+  onSplitRatioChange: (ratio: number) => void;
+  /**
+   * 2-up, swipe or onion view for image diffs (host-controlled).
+   */
+  imageViewMode: ImageDiffViewMode;
+  /**
+   * Called when the user picks another image view mode.
+   */
+  onImageViewModeChange: (mode: ImageDiffViewMode) => void;
+  /**
    * Fires when rendered-notebook availability changes so the host can toggle its Notebook/JSON control.
    */
   onNotebookAvailabilityChange?: (available: boolean) => void;
@@ -283,6 +219,11 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     rendermime,
     notebookViewMode,
     diffStyle,
+    lineWrap,
+    splitRatio,
+    onSplitRatioChange,
+    imageViewMode,
+    onImageViewModeChange,
     onNotebookAvailabilityChange,
     onFileDiffActiveChange,
     onMetadataChange,
@@ -337,9 +278,11 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     onFileDiffActiveChange?.(showFileDiff);
   }, [onFileDiffActiveChange, showFileDiff]);
 
-  const [leftRatio, setLeftRatio] = React.useState<number>(() =>
-    readStoredSplitRatio()
-  );
+  // Local while dragging; the host hears the ratio when a drag ends.
+  const [leftRatio, setLeftRatio] = React.useState<number>(splitRatio);
+  React.useEffect(() => {
+    setLeftRatio(splitRatio);
+  }, [splitRatio]);
   const wrapperRef = React.useRef<HTMLDivElement | null>(null);
   // Drag listeners read the live ratio from a ref to avoid stale captures.
   const leftRatioRef = React.useRef(leftRatio);
@@ -461,19 +404,19 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
         handle.removeEventListener('pointermove', onPointerMove);
         handle.removeEventListener('pointerup', onPointerEnd);
         handle.removeEventListener('pointercancel', onPointerEnd);
-        writeStoredSplitRatio(leftRatioRef.current);
+        onSplitRatioChange(leftRatioRef.current);
       };
       handle.addEventListener('pointermove', onPointerMove);
       handle.addEventListener('pointerup', onPointerEnd);
       handle.addEventListener('pointercancel', onPointerEnd);
     },
-    []
+    [onSplitRatioChange]
   );
 
   const handleResizerDoubleClick = React.useCallback(() => {
     setLeftRatio(DEFAULT_SPLIT_RATIO);
-    writeStoredSplitRatio(DEFAULT_SPLIT_RATIO);
-  }, []);
+    onSplitRatioChange(DEFAULT_SPLIT_RATIO);
+  }, [onSplitRatioChange]);
 
   const handleResizerKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -502,9 +445,9 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
         Math.min(MAX_SPLIT_RATIO, next)
       );
       setLeftRatio(clamped);
-      writeStoredSplitRatio(clamped);
+      onSplitRatioChange(clamped);
     },
-    []
+    [onSplitRatioChange]
   );
 
   if (loading) {
@@ -535,6 +478,8 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
           reference={oldText}
           challenger={newText}
           fileType={imageType}
+          mode={imageViewMode}
+          onModeChange={onImageViewModeChange}
           trans={trans}
         />
       </div>
@@ -549,6 +494,9 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
   }
 
   const leftPercent = leftRatio * 100;
+  // The wrapped split grid sizes its gutter tracks to their content, so a
+  // percentage split cannot line up with the handle.
+  const showResizer = showFileDiff && diffStyle === 'split' && !lineWrap;
   const hostStyle = {
     '--xtralab-split-cols': `${leftPercent}% ${100 - leftPercent}%`
   } as React.CSSProperties;
@@ -576,11 +524,12 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
               disableWorkerPool={true}
               options={{
                 diffStyle,
+                overflow: lineWrap ? 'wrap' : 'scroll',
                 disableFileHeader: true,
                 theme: resolveDiffTheme(dark, pierreTheme),
                 themeType: dark ? 'dark' : 'light',
                 // Constant string lets the library skip its unsafeCSS re-render path.
-                unsafeCSS: SPLIT_RESIZE_CSS,
+                unsafeCSS: DIFF_SURFACE_CSS,
                 ...(onLineAsk !== undefined
                   ? {
                       enableLineSelection: true,
@@ -592,7 +541,7 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
             />
           ) : null}
         </div>
-        {showFileDiff && diffStyle === 'split' ? (
+        {showResizer ? (
           <div
             className="jp-xtralab-DiffWidget-resizer"
             style={{ left: `${leftPercent}%` }}
@@ -661,53 +610,40 @@ export function NotebookViewModeControl(props: {
 }
 
 /**
- * Split / unified glyphs inlined from the `@pierre/diffs` icon sprite so
- * the toggle matches the library's docs site without the sprite sheet;
- * `currentColor` lets the button styling drive the fill.
- */
-function DiffSplitIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-      <path d="M14 0H8.5v16H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2m-1.5 6.5v1h1a.5.5 0 0 1 0 1h-1v1a.5.5 0 0 1-1 0v-1h-1a.5.5 0 0 1 0-1h1v-1a.5.5 0 0 1 1 0" />
-      <path
-        d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5.5V0zm.5 7.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1 0-1"
-        opacity=".3"
-      />
-    </svg>
-  );
-}
-
-function DiffUnifiedIcon(): React.ReactElement {
-  return (
-    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-      <path
-        fillRule="evenodd"
-        d="M16 14a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V8.5h16zm-8-4a.5.5 0 0 0-.5.5v1h-1a.5.5 0 0 0 0 1h1v1a.5.5 0 0 0 1 0v-1h1a.5.5 0 0 0 0-1h-1v-1A.5.5 0 0 0 8 10"
-        clipRule="evenodd"
-      />
-      <path
-        fillRule="evenodd"
-        d="M14 0a2 2 0 0 1 2 2v5.5H0V2a2 2 0 0 1 2-2zM6.5 3.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1z"
-        clipRule="evenodd"
-        opacity=".4"
-      />
-    </svg>
-  );
-}
-
-/**
- * Segmented Split/Unified selector; mirrors {@link NotebookViewModeControl}.
+ * Split/Unified selector: two segmented buttons, or with `control: 'toggle'`
+ * one button that shows the layout it switches to.
  * `available` mirrors the surface's `onFileDiffActiveChange`.
  */
 export function DiffStyleControl(props: {
   diffStyle: DiffStyle;
+  control: DiffStyleControlMode;
   available: boolean;
   onChange: (style: DiffStyle) => void;
   trans: TranslationBundle;
 }): React.ReactElement {
-  const { diffStyle, available, onChange, trans } = props;
+  const { diffStyle, control, available, onChange, trans } = props;
   if (!available) {
     return <></>;
+  }
+  if (control === 'toggle') {
+    const next: DiffStyle = diffStyle === 'split' ? 'unified' : 'split';
+    const label =
+      next === 'split'
+        ? trans.__('Switch to split view')
+        : trans.__('Switch to unified view');
+    return (
+      <div className="jp-xtralab-DiffWidget-segmented">
+        <button
+          type="button"
+          className="jp-xtralab-DiffWidget-segmentedButton jp-xtralab-DiffWidget-segmentedButton-icon"
+          title={label}
+          aria-label={label}
+          onClick={() => onChange(next)}
+        >
+          {next === 'split' ? <IconDiffSplit /> : <IconDiffUnified />}
+        </button>
+      </div>
+    );
   }
   return (
     <div
@@ -725,7 +661,7 @@ export function DiffStyleControl(props: {
         aria-label={trans.__('Split view')}
         onClick={() => onChange('split')}
       >
-        <DiffSplitIcon />
+        <IconDiffSplit />
       </button>
       <button
         type="button"
@@ -737,7 +673,38 @@ export function DiffStyleControl(props: {
         aria-label={trans.__('Unified view')}
         onClick={() => onChange('unified')}
       >
-        <DiffUnifiedIcon />
+        <IconDiffUnified />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Line-wrap toggle styled as a one-button segmented control.
+ * `available` mirrors the surface's `onFileDiffActiveChange`.
+ */
+export function LineWrapControl(props: {
+  lineWrap: boolean;
+  available: boolean;
+  onChange: (wrap: boolean) => void;
+  trans: TranslationBundle;
+}): React.ReactElement {
+  const { lineWrap, available, onChange, trans } = props;
+  if (!available) {
+    return <></>;
+  }
+  return (
+    <div className="jp-xtralab-DiffWidget-segmented">
+      <button
+        type="button"
+        aria-pressed={lineWrap}
+        data-active={lineWrap}
+        className="jp-xtralab-DiffWidget-segmentedButton jp-xtralab-DiffWidget-segmentedButton-icon"
+        title={trans.__('Wrap long lines')}
+        aria-label={trans.__('Wrap lines')}
+        onClick={() => onChange(!lineWrap)}
+      >
+        <IconWordWrap />
       </button>
     </div>
   );

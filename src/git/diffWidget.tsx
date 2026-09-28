@@ -16,18 +16,18 @@ import type { IAskAgent } from '../askAgent/tokens';
 
 import { buildDiffAskRequest } from './askRequest';
 import {
+  useDiffPreferences,
+  type IDiffPreferences,
+  type ImageDiffViewMode
+} from './diffPreferences';
+import {
   DIFF_WIDGET_CSS_CLASS,
   DiffStyleControl,
   DiffSurface,
+  LineWrapControl,
   NotebookViewModeControl,
   isDarkTheme,
-  isPierreTheme,
-  readStoredDiffStyle,
-  readStoredNotebookViewMode,
-  writeStoredDiffStyle,
-  writeStoredNotebookViewMode,
-  type DiffStyle,
-  type NotebookDiffViewMode
+  isPierreTheme
 } from './diffSurface';
 import { imageDataType } from './imageDiff';
 
@@ -74,6 +74,10 @@ export interface IXtralabDiffContext {
    */
   askAgent: IAskAgent | null;
   /**
+   * The display choices shared by all diff views.
+   */
+  preferences: IDiffPreferences;
+  /**
    * The application translation bundle.
    */
   trans: TranslationBundle;
@@ -90,8 +94,6 @@ export class XtralabDiffWidget
     super();
     this._model = model;
     this._context = context;
-    this._notebookViewMode = readStoredNotebookViewMode();
-    this._diffStyle = readStoredDiffStyle();
     // Reuse jupyterlab-git's host sizing while applying xtralab styling.
     this.addClass('jp-git-diff-root');
     this.addClass(DIFF_WIDGET_CSS_CLASS);
@@ -150,32 +152,6 @@ export class XtralabDiffWidget
   }
 
   /**
-   * The current rendered-vs-JSON choice for notebook diffs.
-   */
-  get notebookViewMode(): NotebookDiffViewMode {
-    return this._notebookViewMode;
-  }
-
-  /**
-   * Set the notebook view mode and persist it.
-   */
-  setNotebookViewMode(mode: NotebookDiffViewMode): void {
-    if (mode === this._notebookViewMode) {
-      return;
-    }
-    this._notebookViewMode = mode;
-    writeStoredNotebookViewMode(mode);
-    this._notebookViewModeChanged.emit(mode);
-  }
-
-  /**
-   * A signal emitted when the notebook view mode changes.
-   */
-  get notebookViewModeChanged(): ISignal<this, NotebookDiffViewMode> {
-    return this._notebookViewModeChanged;
-  }
-
-  /**
    * Whether a rendered notebook view is currently available.
    */
   get hasNotebookView(): boolean {
@@ -201,33 +177,7 @@ export class XtralabDiffWidget
   }
 
   /**
-   * The current split/unified layout for textual file diffs.
-   */
-  get diffStyle(): DiffStyle {
-    return this._diffStyle;
-  }
-
-  /**
-   * Set the diff style and persist it.
-   */
-  setDiffStyle(style: DiffStyle): void {
-    if (style === this._diffStyle) {
-      return;
-    }
-    this._diffStyle = style;
-    writeStoredDiffStyle(style);
-    this._diffStyleChanged.emit(style);
-  }
-
-  /**
-   * A signal emitted when the diff style changes.
-   */
-  get diffStyleChanged(): ISignal<this, DiffStyle> {
-    return this._diffStyleChanged;
-  }
-
-  /**
-   * Whether the Split/Unified toolbar selector currently applies.
+   * Whether the Split/Unified and line-wrap toolbar controls currently apply.
    */
   get fileDiffActive(): boolean {
     return this._fileDiffActive;
@@ -309,14 +259,8 @@ export class XtralabDiffWidget
   private _context: IXtralabDiffContext;
   private _reloadNonce = 0;
   private _pendingRefresh: PromiseDelegate<void> | null = null;
-  private _notebookViewMode: NotebookDiffViewMode;
-  private _notebookViewModeChanged = new Signal<this, NotebookDiffViewMode>(
-    this
-  );
   private _hasNotebookView = false;
   private _hasNotebookViewChanged = new Signal<this, boolean>(this);
-  private _diffStyle: DiffStyle;
-  private _diffStyleChanged = new Signal<this, DiffStyle>(this);
   private _fileDiffActive = false;
   private _fileDiffActiveChanged = new Signal<this, boolean>(this);
   private _emptied = new Signal<this, void>(this);
@@ -349,8 +293,15 @@ function ModelDiffView(props: {
 }): React.ReactElement {
   const { widget } = props;
   const model = widget.model as IXtralabDiffModel;
-  const { contentsManager, rendermime, themeManager, askAgent, trans } =
-    widget.context;
+  const {
+    contentsManager,
+    rendermime,
+    themeManager,
+    askAgent,
+    preferences,
+    trans
+  } = widget.context;
+  const values = useDiffPreferences(preferences);
   const nonce = widget.reloadNonce;
 
   const [state, setState] = React.useState<IModelDiffState>({
@@ -360,22 +311,6 @@ function ModelDiffView(props: {
     error: null
   });
 
-  const [notebookViewMode, setNotebookViewMode] =
-    React.useState<NotebookDiffViewMode>(() => widget.notebookViewMode);
-  React.useEffect(() => {
-    const handler = (
-      sender: XtralabDiffWidget,
-      mode: NotebookDiffViewMode
-    ): void => {
-      setNotebookViewMode(mode);
-    };
-    widget.notebookViewModeChanged.connect(handler);
-    setNotebookViewMode(widget.notebookViewMode);
-    return () => {
-      widget.notebookViewModeChanged.disconnect(handler);
-    };
-  }, [widget]);
-
   const handleNotebookAvailabilityChange = React.useCallback(
     (available: boolean) => {
       widget.setHasNotebookView(available);
@@ -383,19 +318,19 @@ function ModelDiffView(props: {
     [widget]
   );
 
-  const [diffStyle, setDiffStyle] = React.useState<DiffStyle>(
-    () => widget.diffStyle
+  const handleSplitRatioChange = React.useCallback(
+    (splitRatio: number) => {
+      preferences.update({ splitRatio });
+    },
+    [preferences]
   );
-  React.useEffect(() => {
-    const handler = (sender: XtralabDiffWidget, style: DiffStyle): void => {
-      setDiffStyle(style);
-    };
-    widget.diffStyleChanged.connect(handler);
-    setDiffStyle(widget.diffStyle);
-    return () => {
-      widget.diffStyleChanged.disconnect(handler);
-    };
-  }, [widget]);
+
+  const handleImageViewModeChange = React.useCallback(
+    (imageViewMode: ImageDiffViewMode) => {
+      preferences.update({ imageViewMode });
+    },
+    [preferences]
+  );
 
   const handleFileDiffActiveChange = React.useCallback(
     (active: boolean) => {
@@ -562,8 +497,13 @@ function ModelDiffView(props: {
       dark={dark}
       pierreTheme={pierre}
       rendermime={rendermime}
-      notebookViewMode={notebookViewMode}
-      diffStyle={diffStyle}
+      notebookViewMode={values.notebookViewMode}
+      diffStyle={values.diffStyle}
+      lineWrap={values.lineWrap}
+      splitRatio={values.splitRatio}
+      onSplitRatioChange={handleSplitRatioChange}
+      imageViewMode={values.imageViewMode}
+      onImageViewModeChange={handleImageViewModeChange}
       onNotebookAvailabilityChange={handleNotebookAvailabilityChange}
       onFileDiffActiveChange={handleFileDiffActiveChange}
       onMetadataChange={handleMetadataChange}
@@ -598,38 +538,27 @@ function NotebookViewModeToolbarControl(props: {
   widget: XtralabDiffWidget;
 }): React.ReactElement {
   const { widget } = props;
-  const [mode, setMode] = React.useState<NotebookDiffViewMode>(
-    () => widget.notebookViewMode
-  );
+  const { preferences, trans } = widget.context;
+  const { notebookViewMode } = useDiffPreferences(preferences);
   const [available, setAvailable] = React.useState<boolean>(
     () => widget.hasNotebookView
   );
   React.useEffect(() => {
-    const onMode = (
-      sender: XtralabDiffWidget,
-      next: NotebookDiffViewMode
-    ): void => {
-      setMode(next);
-    };
     const onAvailable = (sender: XtralabDiffWidget, next: boolean): void => {
       setAvailable(next);
     };
-    widget.notebookViewModeChanged.connect(onMode);
     widget.hasNotebookViewChanged.connect(onAvailable);
-    setMode(widget.notebookViewMode);
     setAvailable(widget.hasNotebookView);
     return () => {
-      widget.notebookViewModeChanged.disconnect(onMode);
       widget.hasNotebookViewChanged.disconnect(onAvailable);
     };
   }, [widget]);
 
-  const trans = widget.context.trans;
   return (
     <NotebookViewModeControl
-      mode={mode}
+      mode={notebookViewMode}
       available={available}
-      onChange={next => widget.setNotebookViewMode(next)}
+      onChange={next => preferences.update({ notebookViewMode: next })}
       trans={trans}
     />
   );
@@ -659,36 +588,76 @@ function DiffStyleToolbarControl(props: {
   widget: XtralabDiffWidget;
 }): React.ReactElement {
   const { widget } = props;
-  const [style, setStyle] = React.useState<DiffStyle>(() => widget.diffStyle);
-  const [available, setAvailable] = React.useState<boolean>(
-    () => widget.fileDiffActive
-  );
-  React.useEffect(() => {
-    const onStyle = (sender: XtralabDiffWidget, next: DiffStyle): void => {
-      setStyle(next);
-    };
-    const onAvailable = (sender: XtralabDiffWidget, next: boolean): void => {
-      setAvailable(next);
-    };
-    widget.diffStyleChanged.connect(onStyle);
-    widget.fileDiffActiveChanged.connect(onAvailable);
-    setStyle(widget.diffStyle);
-    setAvailable(widget.fileDiffActive);
-    return () => {
-      widget.diffStyleChanged.disconnect(onStyle);
-      widget.fileDiffActiveChanged.disconnect(onAvailable);
-    };
-  }, [widget]);
-
-  const trans = widget.context.trans;
+  const { preferences, trans } = widget.context;
+  const { diffStyle, diffStyleControl } = useDiffPreferences(preferences);
+  const available = useFileDiffActive(widget);
   return (
     <DiffStyleControl
-      diffStyle={style}
+      diffStyle={diffStyle}
+      control={diffStyleControl}
       available={available}
-      onChange={next => widget.setDiffStyle(next)}
+      onChange={next => preferences.update({ diffStyle: next })}
       trans={trans}
     />
   );
+}
+
+/**
+ * Line-wrap toggle mounted into a host-owned toolbar.
+ */
+class LineWrapToolbarItem extends ReactWidget {
+  constructor(widget: XtralabDiffWidget) {
+    super();
+    this._widget = widget;
+    this.addClass('jp-xtralab-DiffWidget-lineWrapToolbarItem');
+  }
+
+  /**
+   * Render the line-wrap toggle.
+   */
+  protected render(): React.ReactElement {
+    return <LineWrapToolbarControl widget={this._widget} />;
+  }
+
+  private _widget: XtralabDiffWidget;
+}
+
+function LineWrapToolbarControl(props: {
+  widget: XtralabDiffWidget;
+}): React.ReactElement {
+  const { widget } = props;
+  const { preferences, trans } = widget.context;
+  const { lineWrap } = useDiffPreferences(preferences);
+  const available = useFileDiffActive(widget);
+  return (
+    <LineWrapControl
+      lineWrap={lineWrap}
+      available={available}
+      onChange={next => preferences.update({ lineWrap: next })}
+      trans={trans}
+    />
+  );
+}
+
+/**
+ * Track {@link XtralabDiffWidget.fileDiffActive} for the split/unified and
+ * line-wrap controls.
+ */
+function useFileDiffActive(widget: XtralabDiffWidget): boolean {
+  const [active, setActive] = React.useState<boolean>(
+    () => widget.fileDiffActive
+  );
+  React.useEffect(() => {
+    const onActive = (sender: XtralabDiffWidget, next: boolean): void => {
+      setActive(next);
+    };
+    widget.fileDiffActiveChanged.connect(onActive);
+    setActive(widget.fileDiffActive);
+    return () => {
+      widget.fileDiffActiveChanged.disconnect(onActive);
+    };
+  }, [widget]);
+  return active;
 }
 
 /**
@@ -713,4 +682,5 @@ export function addDiffToolbarItems(
     new NotebookViewModeToolbarItem(widget)
   );
   toolbar.addItem('xtralab-diff-style', new DiffStyleToolbarItem(widget));
+  toolbar.addItem('xtralab-diff-line-wrap', new LineWrapToolbarItem(widget));
 }

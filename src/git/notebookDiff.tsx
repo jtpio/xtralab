@@ -13,7 +13,7 @@ import {
   type FileDiffMetadata
 } from '@pierre/diffs';
 
-import { resolveDiffTheme } from './diffTheme';
+import { DIFF_SCROLLBAR_CSS, resolveDiffTheme } from './diffTheme';
 
 const NOTEBOOK_DIFF_CSS_CLASS = 'jp-xtralab-NotebookDiff';
 
@@ -560,7 +560,8 @@ function diffLibraryOptions(theme: DiffsThemeNames, dark: boolean) {
     diffStyle: 'split' as const,
     disableFileHeader: true,
     theme,
-    themeType: dark ? ('dark' as const) : ('light' as const)
+    themeType: dark ? ('dark' as const) : ('light' as const),
+    unsafeCSS: DIFF_SCROLLBAR_CSS
   };
 }
 

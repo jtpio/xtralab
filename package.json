@@ -91,6 +91,7 @@
         "@lumino/signaling": "^2.1.5",
         "@lumino/widgets": "^2.8.0",
         "@pierre/diffs": "^1.5.1",
+        "@pierre/icons": "^0.9.0",
         "@pierre/trees": "1.0.0-beta.4",
         "detect-indent": "^7.0.2",
         "ignore": "^5.3.2",
@@ -136,7 +137,8 @@
             "@jupyterlab/git": {
                 "bundled": false,
                 "singleton": true
-            }
+            },
+            "@pierre/icons": false
         },
         "disabledExtensions": [
             "@jupyterlab/git:notebook-diff",
