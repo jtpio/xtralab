@@ -2,6 +2,36 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.15.2
+
+([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.15.1...18a44b027bc2a34df9cd47ac0ede956afbf8b489))
+
+### Enhancements made
+
+- Make long lines easier to read in diffs [#111](https://github.com/jtpio/xtralab/pull/111) ([@jtpio](https://github.com/jtpio))
+- Open git diffs from the file browser [#110](https://github.com/jtpio/xtralab/pull/110) ([@jtpio](https://github.com/jtpio))
+
+### Maintenance and upkeep improvements
+
+- Update Pierre Diffs to 1.5.1 [#106](https://github.com/jtpio/xtralab/pull/106) ([@jtpio](https://github.com/jtpio))
+- Update FastMCP to 4.0.5 [#101](https://github.com/jtpio/xtralab/pull/101) ([@jtpio](https://github.com/jtpio))
+
+### Documentation improvements
+
+- Add a social card to the docs site [#103](https://github.com/jtpio/xtralab/pull/103) ([@jtpio](https://github.com/jtpio))
+- Rewrite the docs with focused screenshots [#102](https://github.com/jtpio/xtralab/pull/102) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-09-17&to=2026-09-28&type=c))
+
+@jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-09-17..2026-09-28&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.15.1
 
 ([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.15.0...994cb2d5630c1477097c07d6951465980db0e952))
@@ -24,8 +54,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-08-14&to=2026-09-17&type=c))
 
 @jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-08-14..2026-09-17&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.15.0
 
