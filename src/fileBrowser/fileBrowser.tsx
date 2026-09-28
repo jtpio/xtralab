@@ -32,7 +32,7 @@ import {
   useRootDropZone
 } from './dragAndDrop';
 import { buildIgnoredEntries, loadGitignoreMatcher } from './gitignore';
-import { loadGitStatusEntries } from './gitStatus';
+import { GIT_REPO_PATH, loadGitChanges, toGitStatusEntries } from './gitStatus';
 import { FILE_BROWSER_ICONS } from './icons';
 import type { XtralabFileBrowser } from './widget';
 
@@ -53,12 +53,6 @@ const GIT_STATUS_POLL_MAX_MS = 300_000;
 const FILE_LISTING_REFRESH_INTERVAL_MS = 10000;
 
 const FILE_LISTING_REFRESH_MAX_MS = 300_000;
-
-/**
- * Repo path for `/git/*` calls; empty means the server root, letting git
- * resolve the enclosing repo (same convention as the git panel).
- */
-const GIT_REPO_PATH = '';
 
 const FILE_TREE_TAG = 'file-tree-container';
 
@@ -180,11 +174,12 @@ export function FileBrowserComponent(
     };
 
     const refreshGitStatus = async (): Promise<void> => {
-      const next = await loadGitStatusEntries(GIT_REPO_PATH);
+      const changes = await loadGitChanges(GIT_REPO_PATH);
       if (cancelled) {
         return;
       }
-      gitStatusEntries = next;
+      gitStatusEntries = toGitStatusEntries(changes);
+      widget?.updateGitChanges(changes);
       syncGitStatus();
     };
 

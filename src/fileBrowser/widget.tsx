@@ -17,6 +17,7 @@ import {
 import { Signal, ISignal } from '@lumino/signaling';
 import { AccordionPanel, PanelLayout, Widget } from '@lumino/widgets';
 
+import type { IFileChange } from '../git/tokens';
 import { FileBrowserComponent } from './fileBrowser';
 import { xtralabFileBrowserIcon } from './icons';
 
@@ -91,6 +92,12 @@ export interface IXtralabFileBrowser {
    * Emits when the tree's selection changes.
    */
   readonly selectionChanged: ISignal<IXtralabFileBrowser, readonly string[]>;
+
+  /**
+   * Git changes from the latest status poll, one per staged or unstaged
+   * change; paths are repo-relative.
+   */
+  readonly gitChanges: readonly IFileChange[];
 
   /**
    * Emits when {@link refresh} is called.
@@ -252,6 +259,13 @@ export class XtralabFileBrowser
   }
 
   /**
+   * Git changes from the latest status poll.
+   */
+  get gitChanges(): readonly IFileChange[] {
+    return this._gitChanges;
+  }
+
+  /**
    * A signal emitted when {@link refresh} is called.
    */
   get refreshRequested(): ISignal<this, void> {
@@ -306,6 +320,13 @@ export class XtralabFileBrowser
   updateSelection(paths: readonly string[]): void {
     this._selectedPaths = paths;
     this._selectionChanged.emit(paths);
+  }
+
+  /**
+   * Update the cached git changes from the React tree's status poll.
+   */
+  updateGitChanges(changes: readonly IFileChange[]): void {
+    this._gitChanges = changes;
   }
 
   /**
@@ -537,6 +558,7 @@ export class XtralabFileBrowser
   private _translator: ITranslator | undefined;
   private _selectedPaths: readonly string[] = [];
   private _selectionChanged = new Signal<this, readonly string[]>(this);
+  private _gitChanges: readonly IFileChange[] = [];
   private _refreshRequested = new Signal<this, void>(this);
   private _pathAdded = new Signal<this, string>(this);
   private _revealRequested = new Signal<this, string>(this);

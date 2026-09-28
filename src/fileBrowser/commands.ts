@@ -21,6 +21,7 @@ import {
   fileIcon,
   filterIcon,
   IDisposableMenuItem,
+  LabIcon,
   newFolderIcon,
   RankedMenu,
   refreshIcon
@@ -28,7 +29,13 @@ import {
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { ContextMenu, Widget } from '@lumino/widgets';
 
+import {
+  CommandArguments as GitCommandArguments,
+  CommandIDs as GitCommandIDs
+} from '../git/commands';
+import type { IFileChange } from '../git/tokens';
 import { toCanonicalPath, toServerPath } from './contents';
+import { GIT_REPO_PATH } from './gitStatus';
 import { FILE_BROWSER_ID, IXtralabFileBrowser } from './widget';
 
 /**
@@ -39,6 +46,7 @@ import { FILE_BROWSER_ID, IXtralabFileBrowser } from './widget';
 export namespace CommandIDs {
   export const open = 'xtralab:open';
   export const openBrowserTab = 'xtralab:open-browser-tab';
+  export const openGitDiff = 'xtralab:open-git-diff';
   export const rename = 'xtralab:rename';
   export const del = 'xtralab:delete';
   export const duplicate = 'xtralab:duplicate';
@@ -133,6 +141,23 @@ function getOpenPaths(
     candidates = selection;
   }
   return candidates.filter(path => !path.endsWith('/'));
+}
+
+/**
+ * Git changes of the target file, at most one staged and one unstaged.
+ * Status paths are repo-relative; like the tree's git badges, this assumes
+ * the repo root is the server root.
+ */
+function getTargetChanges(
+  app: JupyterFrontEnd,
+  browser: IXtralabFileBrowser
+): IFileChange[] {
+  const targetPath = getTargetPath(app, browser);
+  if (targetPath === undefined) {
+    return [];
+  }
+  const serverPath = toServerPath(targetPath);
+  return browser.gitChanges.filter(change => change.path === serverPath);
 }
 
 function hasTarget(
@@ -242,6 +267,19 @@ function makeOpenWithUpdater(
         command: CommandIDs.open
       })
     );
+
+    const changes = getTargetChanges(app, browser);
+    if (changes.length > 0) {
+      items.push(submenu.addItem({ type: 'separator' }));
+      for (const change of changes) {
+        items.push(
+          submenu.addItem({
+            args: { group: change.group },
+            command: CommandIDs.openGitDiff
+          })
+        );
+      }
+    }
   };
 }
 
@@ -300,6 +338,32 @@ export function registerCommands(opts: IRegisterCommandsOptions): () => void {
       return commands.execute('docmanager:open-browser-tab', {
         path: toServerPath(targetPath)
       });
+    }
+  });
+
+  commands.addCommand(CommandIDs.openGitDiff, {
+    label: args =>
+      args.group === 'staged'
+        ? trans.__('Git Diff (Staged)')
+        : trans.__('Git Diff (Working)'),
+    icon: LabIcon.resolve({ icon: 'git:diff' }).bindprops({
+      stylesheet: 'menuItem'
+    }),
+    execute: async (args: ReadonlyPartialJSONObject) => {
+      const change = getTargetChanges(app, browser).find(
+        candidate => candidate.group === args.group
+      );
+      if (change === undefined) {
+        return;
+      }
+      const diffArgs: GitCommandArguments.IOpenDiff = {
+        repoPath: GIT_REPO_PATH,
+        change
+      };
+      return commands.execute(
+        GitCommandIDs.openDiff,
+        diffArgs as unknown as ReadonlyPartialJSONObject
+      );
     }
   });
 
