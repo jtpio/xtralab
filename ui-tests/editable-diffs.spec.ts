@@ -229,6 +229,15 @@ const scenarios: Array<
           .getByRole('tab', { name: 'Unified view', exact: true })
           .click();
         await expect(editor(page)).toContainText('layout-preserved draft');
+        const wrap = page.getByRole('button', {
+          name: 'Wrap lines',
+          exact: true
+        });
+        await wrap.click();
+        await expect(wrap).toHaveAttribute('aria-pressed', 'true');
+        await expect(editor(page)).toContainText('layout-preserved draft');
+        // The split resizer is only shown when lines scroll.
+        await wrap.click();
         await page
           .getByRole('tab', { name: 'Split view', exact: true })
           .click();
