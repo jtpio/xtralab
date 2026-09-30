@@ -83,3 +83,12 @@ done
 
 The README shows them with a `width` of half their pixel width, the size they
 have in the app.
+
+## Editable diff regressions
+
+Run `pnpm exec playwright test editable-diffs.spec.ts` to exercise typing,
+autosave, undo/redo, hunk discard, external file conflicts, save failures,
+layout and theme changes, and Unicode/line-ending handling. The suite uses the
+same disposable seeded project and isolated server as the screenshots. It
+restores the fixture file and its Git index entry after each case and does not
+write documentation screenshots.

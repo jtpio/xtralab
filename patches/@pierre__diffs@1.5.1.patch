@@ -1,0 +1,21 @@
+diff --git a/dist/editor/tokenizer.js b/dist/editor/tokenizer.js
+index 65b253189587323e1826259f26898ad8602c85ae..dfdd61b1f319b1c59d7c7c2f885a36c441f867a4 100644
+--- a/dist/editor/tokenizer.js
++++ b/dist/editor/tokenizer.js
+@@ -172,12 +172,13 @@ var EditorTokenizer = class {
+     }`);
+ 		this.#themeName = themeName;
+ 		this.#themeType = themeType ?? theme.type;
+-		this.#colorMap = colorMap;
++		// Resolve Shiki's synthetic colors before rendering CSS-variable themes.
++		this.#colorMap = colorMap.map(color => theme.colorReplacements?.[color?.toLowerCase()] ?? color);
+ 	}
+ 	#ensureActiveTheme() {
+ 		if (this.#themeName === "") return;
+-		const { colorMap } = this.#highlighter.setTheme(this.#themeName);
+-		this.#colorMap = colorMap;
++		const { theme, colorMap } = this.#highlighter.setTheme(this.#themeName);
++		this.#colorMap = colorMap.map(color => theme.colorReplacements?.[color?.toLowerCase()] ?? color);
+ 	}
+ 	cleanUp() {
+ 		this.#isCleanedUp = true;
