@@ -11,12 +11,14 @@ import {
   chmodSync,
   closeSync,
   existsSync,
+  mkdtempSync,
   openSync,
   readFileSync,
   readSync,
   renameSync,
   writeFileSync
 } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const variant =
@@ -62,6 +64,40 @@ function installAppImageLauncher(outputPath: string): void {
   }
   writeFileSync(launcherPath, appImageLauncherScript, 'utf8');
   chmodSync(launcherPath, 0o755);
+}
+
+// Architecture names as AppImage tooling spells them.
+const appImageArchs: Record<string, string> = {
+  x64: 'x86_64',
+  arm64: 'aarch64'
+};
+
+// The desktop entry the AppImage maker generates declares Version=1.5, which
+// desktop-file-validate releases before 0.27 (the appimage.github.io catalog
+// test runs 0.26) reject as unknown, so write the entry here instead. It uses
+// only keys from version 1.0 of the specification, and a single main category
+// so the app shows up once in application menus.
+function writeAppImageDesktopFile(arch: string): string {
+  const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
+  const desktopEntry = [
+    '[Desktop Entry]',
+    'Version=1.0',
+    'Type=Application',
+    `Name=${productName}`,
+    `Exec=${executableName} %U`,
+    `Icon=${executableName}`,
+    'Categories=Development;IDE;',
+    `X-AppImage-Name=${executableName}`,
+    `X-AppImage-Version=${version}`,
+    `X-AppImage-Arch=${appImageArchs[arch] ?? arch}`,
+    ''
+  ].join('\n');
+  const desktopFilePath = join(
+    mkdtempSync(join(tmpdir(), 'xtralab-desktop-entry-')),
+    `${executableName}.desktop`
+  );
+  writeFileSync(desktopFilePath, desktopEntry, 'utf8');
+  return desktopFilePath;
 }
 
 function isMachO(filePath: string): boolean {
@@ -132,15 +168,15 @@ const config: ForgeConfig = {
     // human-facing installer.
     new MakerZIP({}, ['darwin']),
     new MakerAppImage(
-      {
+      arch => ({
         options: {
           name: executableName,
           productName,
           bin: executableName,
           icon: './assets/xtralab.png',
-          categories: ['Development', 'Science']
+          desktopFile: writeAppImageDesktopFile(arch)
         }
-      },
+      }),
       ['linux']
     )
   ],
