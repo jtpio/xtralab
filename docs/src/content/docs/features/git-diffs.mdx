@@ -43,6 +43,11 @@ disk and you can edit it. xtralab saves the changes to the file.
 To revert one change, select the undo arrow at the right of the changed lines
 (**Discard hunk**).
 
+Before saving, the diff checks for changes on disk, including edits made by
+running agents. If the file has changed, autosave pauses and asks whether to
+overwrite it or keep the version on disk. Discarding a change inside the editor
+can be undone with the editor's undo shortcut.
+
 ## Notebook diffs
 
 A notebook diff compares the notebook cell by cell. Markdown cells show the

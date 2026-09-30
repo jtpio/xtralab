@@ -1,0 +1,2 @@
+# Patch context preserves the dependency's indentation after a diff prefix.
+patches/*.patch -whitespace
