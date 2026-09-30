@@ -27,14 +27,14 @@ jobs:
               desktop/out/make/**/*.dmg
               desktop/out/make/**/*.zip
             release-globs: '*.dmg *.zip'
-            platform: darwin-arm64
+            asset-suffix: darwin-arm64
           - os: ubuntu-latest
             label: Linux (x64)
             artifact: xtralab-linux-x64
             artifact-paths: |
               desktop/out/make/**/*.AppImage
             release-globs: '*.AppImage'
-            platform: linux-x64
+            asset-suffix: x86_64
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -172,12 +172,15 @@ jobs:
 
       # The darwin zip asset name must keep the "darwin" and "arm64" tokens:
       # update.electronjs.org matches release assets on them to serve updates.
+      # The AppImage asset name follows the AppImage convention instead
+      # (<name>-<version>-<arch>.AppImage, no "linux"), which the
+      # appimage.github.io catalog checks.
       - name: Attach installers to GitHub Release
         if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event.release.tag_name }}
-          PLATFORM: ${{ matrix.platform }}
+          ASSET_SUFFIX: ${{ matrix.asset-suffix }}
           RELEASE_GLOBS: ${{ matrix.release-globs }}
           REPO: ${{ github.repository }}
         shell: bash
@@ -193,7 +196,7 @@ jobs:
             fi
             installer=$(find desktop/out/make -type f -name "$glob")
             ext="${installer##*.}"
-            asset_name="xtralab-${version}-${PLATFORM}.${ext}"
+            asset_name="xtralab-${version}-${ASSET_SUFFIX}.${ext}"
             staged="$RUNNER_TEMP/$asset_name"
             cp "$installer" "$staged"
             echo "Uploading $staged to release $TAG"
@@ -203,7 +206,7 @@ jobs:
             # The update zip gets no alias: update.electronjs.org must match
             # exactly one darwin zip per release.
             if [ "$ext" != "zip" ]; then
-              alias_name="xtralab-${PLATFORM}.${ext}"
+              alias_name="xtralab-${ASSET_SUFFIX}.${ext}"
               staged_alias="$RUNNER_TEMP/$alias_name"
               cp "$installer" "$staged_alias"
               echo "Uploading $staged_alias to release $TAG"
