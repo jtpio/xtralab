@@ -16,6 +16,7 @@ import {
   readFileSync,
   readSync,
   renameSync,
+  rmSync,
   writeFileSync
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -69,7 +70,9 @@ function installAppImageLauncher(outputPath: string): void {
 // Architecture names as AppImage tooling spells them.
 const appImageArchs: Record<string, string> = {
   x64: 'x86_64',
-  arm64: 'aarch64'
+  ia32: 'i686',
+  arm64: 'aarch64',
+  armv7l: 'armhf'
 };
 
 // The desktop entry the AppImage maker generates declares Version=1.5, which
@@ -92,10 +95,11 @@ function writeAppImageDesktopFile(arch: string): string {
     `X-AppImage-Arch=${appImageArchs[arch] ?? arch}`,
     ''
   ].join('\n');
-  const desktopFilePath = join(
-    mkdtempSync(join(tmpdir(), 'xtralab-desktop-entry-')),
-    `${executableName}.desktop`
-  );
+  const desktopDir = mkdtempSync(join(tmpdir(), 'xtralab-desktop-entry-'));
+  process.once('exit', () => {
+    rmSync(desktopDir, { recursive: true, force: true });
+  });
+  const desktopFilePath = join(desktopDir, `${executableName}.desktop`);
   writeFileSync(desktopFilePath, desktopEntry, 'utf8');
   return desktopFilePath;
 }
