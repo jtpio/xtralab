@@ -566,9 +566,11 @@ function ModelDiffView(props: {
           // Surface failures even for tail saves after the session ended;
           // rethrow so an in-session save still shows "Save failed".
           Notification.error(
-            `Failed to save edits to ${model.filename}: ${
+            trans.__(
+              'Failed to save edits to %1: %2',
+              model.filename,
               err instanceof Error ? err.message : String(err)
-            }`
+            )
           );
           throw err;
         }
@@ -593,7 +595,7 @@ function ModelDiffView(props: {
         await widget.refresh();
       }
     }),
-    [canEdit, serverPath, saveWorkingFile, readDiskText, widget, model]
+    [canEdit, serverPath, saveWorkingFile, readDiskText, widget, model, trans]
   );
 
   return (
