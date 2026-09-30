@@ -138,12 +138,12 @@ When the Jupyter Releaser publishes a new GitHub Release (Step 2 of the
 release workflow), the same desktop-build job runs once more against the
 release tag and uploads renamed installers
 (`xtralab-<version>-darwin-arm64.dmg`, `xtralab-<version>-darwin-arm64.zip`,
-`xtralab-<version>-linux-x64.AppImage`) directly to that release's assets,
+`xtralab-<version>-x86_64.AppImage`) directly to that release's assets,
 alongside the Python wheel/sdist that Jupyter Releaser pushes for PyPI. The
 zip is what installed apps consume to update themselves through
 [update.electronjs.org](https://update.electronjs.org). The DMG and AppImage
 are uploaded a second time under fixed names (`xtralab-darwin-arm64.dmg`,
-`xtralab-linux-x64.AppImage`) so the documentation's download buttons can
+`xtralab-x86_64.AppImage`) so the documentation's download buttons can
 point at the latest release through `releases/latest/download` URLs.
 
 ## Documentation
