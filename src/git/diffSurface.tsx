@@ -30,7 +30,8 @@ import {
   type ImageDiffViewMode,
   type NotebookDiffViewMode
 } from './diffPreferences';
-import { DIFF_SCROLLBAR_CSS, resolveDiffTheme } from './diffTheme';
+import { DiffScrollbar } from './diffScrollbar';
+import { DIFF_HIDDEN_SCROLLBAR_CSS, resolveDiffTheme } from './diffTheme';
 
 export const DIFF_WIDGET_CSS_CLASS = 'jp-xtralab-DiffWidget';
 
@@ -44,7 +45,7 @@ const SPLIT_RESIZE_CSS = `pre[data-diff-type="split"][data-overflow="scroll"] {
   grid-template-columns: var(--xtralab-split-cols, 1fr 1fr);
 }`;
 
-const DIFF_SURFACE_CSS = `${SPLIT_RESIZE_CSS}\n${DIFF_SCROLLBAR_CSS}`;
+const DIFF_SURFACE_CSS = `${SPLIT_RESIZE_CSS}\n${DIFF_HIDDEN_SCROLLBAR_CSS}`;
 
 /**
  * Annotation payload threaded back into `renderAnnotation`; carries the target hunk index.
@@ -290,6 +291,29 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
     leftRatioRef.current = leftRatio;
   }, [leftRatio]);
 
+  const scrollbarNodeRef = React.useRef<HTMLDivElement | null>(null);
+  const scrollbarRef = React.useRef<DiffScrollbar | null>(null);
+  React.useEffect(() => {
+    const node = scrollbarNodeRef.current;
+    if (node === null) {
+      return;
+    }
+    const scrollbar = new DiffScrollbar(node);
+    scrollbarRef.current = scrollbar;
+    // The library's first render ran before this effect.
+    scrollbar.sync(
+      wrapperRef.current?.querySelector('diffs-container') ?? null
+    );
+    return () => {
+      scrollbarRef.current = null;
+      scrollbar.dispose();
+    };
+  }, [showFileDiff]);
+
+  const handlePostRender = React.useCallback((container: HTMLElement) => {
+    scrollbarRef.current?.sync(container);
+  }, []);
+
   const canDiscardHunk = hunkDiscard?.enabled === true;
 
   const lineAnnotations = React.useMemo<
@@ -530,6 +554,7 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
                 themeType: dark ? 'dark' : 'light',
                 // Constant string lets the library skip its unsafeCSS re-render path.
                 unsafeCSS: DIFF_SURFACE_CSS,
+                onPostRender: handlePostRender,
                 ...(onLineAsk !== undefined
                   ? {
                       enableLineSelection: true,
@@ -538,6 +563,13 @@ export function DiffSurface(props: IDiffSurfaceProps): React.ReactElement {
                     }
                   : {})
               }}
+            />
+          ) : null}
+          {showFileDiff ? (
+            <div
+              ref={scrollbarNodeRef}
+              className="jp-xtralab-DiffWidget-scrollbar"
+              aria-hidden="true"
             />
           ) : null}
         </div>

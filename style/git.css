@@ -49,6 +49,75 @@
   overflow: auto;
 }
 
+/*
+ * Stays at the bottom of the view while the diff scrolls under it.
+ */
+.jp-xtralab-DiffWidget-scrollbar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+}
+
+.jp-xtralab-DiffWidget-scrollbar[hidden] {
+  display: none;
+}
+
+/*
+ * `auto` opts out of the thin app scrollbars in chrome.css, which hide
+ * themselves where the system uses overlay scrollbars.
+ */
+body[data-jp-theme-light] .jp-xtralab-DiffWidget-scrollbarTrack {
+  flex: none;
+  height: 10px;
+  overflow: auto hidden;
+  overscroll-behavior-x: none;
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+}
+
+.jp-xtralab-DiffWidget-scrollbarTrack > div {
+  height: 1px;
+}
+
+.jp-xtralab-DiffWidget-scrollbarTrack::-webkit-scrollbar {
+  height: 10px;
+}
+
+.jp-xtralab-DiffWidget-scrollbarTrack::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.jp-xtralab-DiffWidget-scrollbarTrack::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-color: color-mix(
+    in srgb,
+    var(--jp-ui-font-color1) 28%,
+    transparent
+  );
+  background-clip: content-box;
+}
+
+.jp-xtralab-DiffWidget-scrollbarTrack::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(
+    in srgb,
+    var(--jp-ui-font-color1) 45%,
+    transparent
+  );
+}
+
+@supports (-moz-appearance: none) {
+  body[data-jp-theme-light] .jp-xtralab-DiffWidget-scrollbarTrack {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(
+        in srgb,
+        var(--jp-ui-font-color1) 28%,
+        transparent
+      )
+      transparent;
+  }
+}
+
 .jp-xtralab-DiffWidget-viewModeToolbarItem,
 .jp-xtralab-DiffWidget-diffStyleToolbarItem,
 .jp-xtralab-DiffWidget-lineWrapToolbarItem {
