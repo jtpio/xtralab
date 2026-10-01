@@ -102,12 +102,17 @@ setting, `auto`, reads the terminal from `TERM_PROGRAM` and sends nothing
 when it does not know the terminal. With `iTerm.app`, it sends OSC 9. You do
 not need to install iTerm2.
 
-Claude Code sends the notification after it has waited 60 seconds for your
-input.
+Claude Code sends the notification 60 seconds after it stops, if you did not
+type in that time. To change the delay, set `messageIdleNotifThresholdMs` in
+`~/.claude.json` to a number of milliseconds, for example `10000` for 10
+seconds. The Claude Code documentation does not list this key, so it can
+change. For the documented notification settings, see
+[Get a terminal bell or notification](https://code.claude.com/docs/en/terminal-config#get-a-terminal-bell-or-notification).
 
 If you remove the variables in your shell, set
-`"preferredNotifChannel": "iterm2"` in `~/.claude/settings.json`, or select
-**iTerm2 (OSC 9)** for notifications in `/config`.
+[`preferredNotifChannel`](https://code.claude.com/docs/en/settings-reference#preferrednotifchannel)
+to `"iterm2"` in `~/.claude/settings.json`, or select **iTerm2 (OSC 9)** for
+notifications in `/config`.
 :::
 
 The notification does not show when you look at that terminal. Select a
