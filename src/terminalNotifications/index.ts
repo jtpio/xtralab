@@ -93,7 +93,8 @@ interface IDesktopBridge {
  * Turns the OSC 9 / OSC 777 / bell sequences agents emit into desktop
  * notifications via `window.xtralab.notify` (desktop) or the web Notifications
  * API — JupyterLab's xterm renders them but never forwards them to the OS.
- * The desktop shell advertises `TERM_PROGRAM=iTerm.app` so agents emit OSC 9.
+ * The server extension sets `TERM_PROGRAM=iTerm.app` in terminals so agents
+ * emit OSC 9.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
