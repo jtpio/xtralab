@@ -2,6 +2,26 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.15.3
+
+([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.15.2...7bf43f9df4282077774958074636952c83d722f8))
+
+### Maintenance and upkeep improvements
+
+- Make the AppImage desktop entry pass desktop-file-validate [#113](https://github.com/jtpio/xtralab/pull/113) ([@jtpio](https://github.com/jtpio))
+- Drop linux from the AppImage release asset name [#112](https://github.com/jtpio/xtralab/pull/112) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-09-28&to=2026-10-01&type=c))
+
+@jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-09-28..2026-10-01&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.15.2
 
 ([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.15.1...18a44b027bc2a34df9cd47ac0ede956afbf8b489))
@@ -29,8 +49,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-09-17&to=2026-09-28&type=c))
 
 @jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-09-17..2026-09-28&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.15.1
 
