@@ -2,6 +2,7 @@ import {
   JupyterFrontEnd,
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
+import { Notification as LabNotification } from '@jupyterlab/apputils';
 import type { MainAreaWidget } from '@jupyterlab/apputils';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ITerminal, ITerminalTracker } from '@jupyterlab/terminal';
@@ -118,6 +119,67 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const isActivelyViewing = (widget: TerminalWidget): boolean =>
       document.hasFocus() && app.shell.currentWidget === widget;
 
+    // `terminal:open` activates the session's tab or reopens the session.
+    const focusTerminal = (session?: string): void => {
+      if (session) {
+        void app.commands.execute('terminal:open', { name: session });
+      }
+    };
+
+    const showWebNotification = (
+      title: string,
+      body: string,
+      session?: string
+    ): void => {
+      // The constructor throws where only service workers may notify (Chrome
+      // on Android).
+      try {
+        const notification = new Notification(title, { body });
+        notification.onclick = () => {
+          window.focus();
+          focusTerminal(session);
+          notification.close();
+        };
+      } catch (reason) {
+        console.warn('xtralab: web notification failed', reason);
+      }
+    };
+
+    // Browsers only show the permission prompt from a user gesture (Firefox
+    // and Safari drop the request otherwise), which a terminal sequence is
+    // not: offer it once per page in a toast, whose button click is one.
+    let permissionOffered = false;
+    const offerWebNotifications = (
+      title: string,
+      body: string,
+      session?: string
+    ): void => {
+      if (permissionOffered) {
+        return;
+      }
+      permissionOffered = true;
+      LabNotification.info(
+        trans.__(
+          'A terminal sent a notification. Allow notifications in the browser to see them outside of this tab.'
+        ),
+        {
+          autoClose: false,
+          actions: [
+            {
+              label: trans.__('Allow notifications'),
+              callback: () => {
+                void Notification.requestPermission().then(permission => {
+                  if (permission === 'granted') {
+                    showWebNotification(title, body, session);
+                  }
+                });
+              }
+            }
+          ]
+        }
+      );
+    };
+
     const deliver = (title: string, body: string, session?: string): void => {
       const bridge = (window as Window & { xtralab?: IDesktopBridge }).xtralab;
       if (bridge && typeof bridge.notify === 'function') {
@@ -132,13 +194,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
         return;
       }
       if (Notification.permission === 'granted') {
-        new Notification(title, { body });
+        showWebNotification(title, body, session);
       } else if (Notification.permission !== 'denied') {
-        void Notification.requestPermission().then(permission => {
-          if (permission === 'granted') {
-            new Notification(title, { body });
-          }
-        });
+        offerWebNotifications(title, body, session);
       }
     };
 
@@ -245,14 +303,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
     tracker.widgetAdded.connect((_, widget) => hookWidget(widget));
 
     // Focus the terminal that fired a notification when the desktop shell
-    // reports a click. `terminal:open` activates its tab or reopens the session.
+    // reports a click.
     const desktopBridge = (window as Window & { xtralab?: IDesktopBridge })
       .xtralab;
-    desktopBridge?.onFocusTerminal?.(session => {
-      if (session) {
-        void app.commands.execute('terminal:open', { name: session });
-      }
-    });
+    desktopBridge?.onFocusTerminal?.(focusTerminal);
 
     if (settingRegistry) {
       try {

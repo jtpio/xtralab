@@ -85,15 +85,37 @@ signals:
 | OSC 777 | The Ghostty and rxvt notification sequence                                    |
 | Bell    | The terminal bell. Controlled by the **Notify on the terminal bell** setting. |
 
-Coding agents send these signals when they finish a task or need input. The
-desktop app sets `TERM_PROGRAM=iTerm.app` in its terminals. With this value,
-most agents send OSC 9 by default.
+Coding agents send these signals when they finish a task or need input, but
+they choose the signal from the terminal that they detect. The desktop app
+sets `TERM_PROGRAM=iTerm.app` in its terminals. With this value, most agents
+send OSC 9 by default.
 
-The notification does not show when you look at that terminal. The desktop
-app shows native notifications. In a browser, xtralab uses web notifications,
-and the browser asks for permission first. If notifications do not show in
+In a browser, agents usually do not recognize the terminal:
+
+- Codex rings the bell. Its notifications work without setup.
+- Claude Code sends nothing by default. Add
+  `"preferredNotifChannel": "iterm2"` to `~/.claude/settings.json`, or select
+  **iTerm2 (OSC 9)** for notifications in `/config`.
+
+The notification does not show when you look at that terminal. Select a
+notification to open its terminal.
+
+The desktop app shows native notifications. If notifications do not show in
 the desktop app on macOS, see
 [Troubleshooting](../../desktop/#notifications-do-not-appear-on-macos).
+
+In a browser, xtralab uses web notifications. They need permission from the
+browser:
+
+1. The first time that a terminal sends a notification, xtralab shows a
+   message with an **Allow notifications** button. Select the button.
+
+   If you closed the message, it stays in the notification center in the
+   status bar.
+
+2. Select **Allow** when the browser asks for permission.
+
+Web notifications need a secure context: `localhost` or HTTPS.
 
 ### Settings
 
