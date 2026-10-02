@@ -51,6 +51,17 @@ export const DIFF_SCROLLBAR_CSS = `:host {
 }`;
 
 /**
+ * `unsafeCSS` that hides the pane scrollbars, for hosts that show a
+ * `DiffScrollbar` instead.
+ */
+export const DIFF_HIDDEN_SCROLLBAR_CSS = `:host {
+  --diffs-scrollbar-gutter-override: 0px;
+}
+[data-code] {
+  scrollbar-width: none;
+}`;
+
+/**
  * Choose Pierre's palette or the JupyterLab CSS-variable theme.
  */
 export function resolveDiffTheme(
