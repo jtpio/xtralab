@@ -1,4 +1,5 @@
 {
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "xtralab",
   "version": "0.2.0",
   "description": "Connect a coding agent to xtralab and JupyterLab: the Jupyter MCP server, and skills to customize the UI and give guided code walkthroughs.",
@@ -7,6 +8,5 @@
   },
   "homepage": "https://github.com/jtpio/xtralab",
   "repository": "https://github.com/jtpio/xtralab",
-  "license": "BSD-3-Clause",
-  "mcpServers": "./mcp.json"
+  "license": "BSD-3-Clause"
 }

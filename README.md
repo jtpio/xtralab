@@ -82,8 +82,16 @@ See the agent in each terminal and its latest line of output.
 
 xtralab runs a [Model Context Protocol][mcp-spec] server inside JupyterLab,
 provided by [`jupyter-server-mcp`][mcp], so an agent can open files, run
-cells, and read notebooks. Register the bundled proxy from a terminal inside
-xtralab:
+cells, and read notebooks. For Claude Code, the xtralab plugin registers the
+server and installs the agent skills. It starts the proxy with [uv][uv]:
+
+```bash
+claude plugin marketplace add jtpio/xtralab
+claude plugin install xtralab@xtralab
+```
+
+Without uv, or for another agent, register the bundled proxy from a terminal
+inside xtralab:
 
 ```bash
 claude mcp add jupyter -- jupyter-server-mcp-proxy
@@ -94,6 +102,7 @@ The launcher shows this command for each installed agent. See the
 Copilot, and other agents.
 
 [mcp]: https://github.com/jupyter-ai-contrib/jupyter-server-mcp
+[uv]: https://docs.astral.sh/uv/
 [mcp-spec]: https://modelcontextprotocol.io
 
 ## Contributing

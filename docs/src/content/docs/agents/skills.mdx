@@ -14,8 +14,8 @@ folder of the repository.
 | `customize-jupyterlab`    | Change JupyterLab and xtralab settings. The agent edits the correct configuration file.                                                                         | "Hide the status bar by default."                |
 | `guided-code-walkthrough` | Get a tour of code in the running app. The agent opens files, highlights lines, and builds a walkthrough panel with text, code, and diagrams beside the editor. | "Walk me through how this module fits together." |
 
-The `guided-code-walkthrough` skill uses the MCP server. Register it first:
-see [Connect agents with MCP](../mcp/).
+The `guided-code-walkthrough` skill uses the MCP server: see
+[Connect agents with MCP](../mcp/).
 
 ## Install the skills
 
@@ -24,11 +24,12 @@ CLI, Gemini CLI, GitHub Copilot, and other agents that read this format.
 
 <Tabs syncKey="agent">
   <TabItem label="Claude Code">
-    The repository is also a Claude Code plugin marketplace. In Claude Code, run:
+    The repository is also a plugin marketplace. The xtralab plugin installs
+    the skills and registers the MCP server:
 
-    ```text
-    /plugin marketplace add jtpio/xtralab
-    /plugin install xtralab-skills@xtralab
+    ```bash
+    claude plugin marketplace add jtpio/xtralab
+    claude plugin install xtralab@xtralab
     ```
 
   </TabItem>
