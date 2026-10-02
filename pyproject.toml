@@ -69,6 +69,7 @@ packages = ["xtralab"]
 "xtralab/labextension" = "share/jupyter/labextensions/xtralab"
 "jupyter-config/labconfig" = "etc/jupyter/labconfig"
 "jupyter-config/jupyter_server_config.d" = "etc/jupyter/jupyter_server_config.d"
+"jupyter-config/jupyter_jupyter_server_mcp_config.json" = "etc/jupyter/jupyter_jupyter_server_mcp_config.json"
 
 [tool.hatch.build.targets.sdist]
 artifacts = ["xtralab/labextension"]

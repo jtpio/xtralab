@@ -1,0 +1,10 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "jupyter": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["--from", "jupyter-server-mcp", "jupyter-server-mcp-proxy"]
+    }
+  }
+}

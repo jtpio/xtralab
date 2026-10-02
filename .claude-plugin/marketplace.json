@@ -5,10 +5,9 @@
   },
   "plugins": [
     {
-      "name": "xtralab-skills",
+      "name": "xtralab",
       "source": "./agent-skill",
-      "description": "Agent skills for xtralab and JupyterLab: customize the UI (themes, sidebars, language servers, launcher) and drive the live app for guided code walkthroughs.",
-      "version": "0.1.0",
+      "description": "Connect a coding agent to xtralab and JupyterLab: the Jupyter MCP server, and skills to customize the UI and give guided code walkthroughs.",
       "homepage": "https://github.com/jtpio/xtralab",
       "license": "BSD-3-Clause"
     }
