@@ -2,6 +2,26 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+## 0.15.4
+
+([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.15.3...6929285446aaeed432d4a6bb984cda67943ab899))
+
+### Enhancements made
+
+- Make terminal notifications work in a browser tab [#115](https://github.com/jtpio/xtralab/pull/115) ([@jtpio](https://github.com/jtpio))
+- Pin the diff horizontal scrollbar to the bottom of the view [#114](https://github.com/jtpio/xtralab/pull/114) ([@jtpio](https://github.com/jtpio))
+
+### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-10-01&to=2026-10-02&type=c))
+
+@jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-10-01..2026-10-02&type=Issues))
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
 ## 0.15.3
 
 ([Full Changelog](https://github.com/jtpio/xtralab/compare/v0.15.2...7bf43f9df4282077774958074636952c83d722f8))
@@ -19,8 +39,6 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 ([GitHub contributors page for this release](https://github.com/jtpio/xtralab/graphs/contributors?from=2026-09-28&to=2026-10-01&type=c))
 
 @jtpio ([activity](https://github.com/search?q=repo%3Ajtpio%2Fxtralab+involves%3Ajtpio+updated%3A2026-09-28..2026-10-01&type=Issues))
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.15.2
 
