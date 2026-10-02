@@ -2040,11 +2040,6 @@ function getSupervisorEnvironment(
   clearInheritedPythonEnvironment(environment);
   exportPythonEnvironmentRoot(environment, projectEnvironment);
 
-  // Advertise an iTerm2-class terminal: coding agents only emit OSC 9
-  // notifications under a recognized TERM_PROGRAM; the renderer forwards them.
-  environment.TERM_PROGRAM = 'iTerm.app';
-  environment.TERM_PROGRAM_VERSION = '3.5.0';
-
   const jupyterStateRoot = path.join(app.getPath('userData'), 'jupyter');
   const jupyterDataDir = path.join(jupyterStateRoot, 'data');
   const jupyterConfigDir = path.join(jupyterStateRoot, 'config');

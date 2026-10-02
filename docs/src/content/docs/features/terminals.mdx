@@ -85,15 +85,55 @@ signals:
 | OSC 777 | The Ghostty and rxvt notification sequence                                    |
 | Bell    | The terminal bell. Controlled by the **Notify on the terminal bell** setting. |
 
-Coding agents send these signals when they finish a task or need input. The
-desktop app sets `TERM_PROGRAM=iTerm.app` in its terminals. With this value,
-most agents send OSC 9 by default.
+Coding agents send these signals when they finish a task or need input. They
+choose the signal from the terminal that they detect, so xtralab sets these
+environment variables in its terminals:
 
-The notification does not show when you look at that terminal. The desktop
-app shows native notifications. In a browser, xtralab uses web notifications,
-and the browser asks for permission first. If notifications do not show in
+| Variable               | Value       |
+| ---------------------- | ----------- |
+| `TERM_PROGRAM`         | `iTerm.app` |
+| `TERM_PROGRAM_VERSION` | `3.5.0`     |
+
+With these values, most agents send OSC 9 by default.
+
+:::note[Claude Code]
+Claude Code is the reason for these variables. Its default notification
+setting, `auto`, reads the terminal from `TERM_PROGRAM` and sends nothing
+when it does not know the terminal. With `iTerm.app`, it sends OSC 9. You do
+not need to install iTerm2.
+
+Claude Code sends the notification 60 seconds after it stops, if you did not
+type in that time. To change the delay, set `messageIdleNotifThresholdMs` in
+`~/.claude.json` to a number of milliseconds, for example `10000` for 10
+seconds. The Claude Code documentation does not list this key, so it can
+change. For the documented notification settings, see
+[Get a terminal bell or notification](https://code.claude.com/docs/en/terminal-config#get-a-terminal-bell-or-notification).
+
+If you remove the variables in your shell, set
+[`preferredNotifChannel`](https://code.claude.com/docs/en/settings-reference#preferrednotifchannel)
+to `"iterm2"` in `~/.claude/settings.json`, or select **iTerm2 (OSC 9)** for
+notifications in `/config`.
+:::
+
+The notification does not show when you look at that terminal. Select a
+notification to open its terminal.
+
+The desktop app shows native notifications. If notifications do not show in
 the desktop app on macOS, see
 [Troubleshooting](../../desktop/#notifications-do-not-appear-on-macos).
+
+In a browser, xtralab uses web notifications. They need permission from the
+browser:
+
+1. The first time that a terminal sends a notification, xtralab shows a
+   message with an **Allow notifications** button. Select the button.
+
+   If you closed the message, it stays in the notification center in the
+   status bar.
+
+2. Select **Allow** when the browser asks for permission.
+
+Web notifications need a secure context: `localhost` or HTTPS.
 
 ### Settings
 

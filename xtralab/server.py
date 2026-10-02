@@ -27,6 +27,8 @@ _INTERPRETERS = frozenset(
     {"node", "nodejs", "python", "python3", "deno", "bun", "ruby", "perl"}
 )
 
+_TERMINAL_ENV = {"TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "3.5.0"}
+
 
 class AgentAvailabilityHandler(APIHandler):
     """Resolve a list of command names through ``shutil.which``."""
@@ -171,7 +173,21 @@ def _disable_checkpoints(server_app: ServerApp) -> None:
     )
 
 
+def _advertise_terminal(server_app: ServerApp) -> None:
+    """Set ``TERM_PROGRAM`` to iTerm2 in the environment of new terminals.
+
+    Coding agents choose their notification sequence from this variable and
+    send nothing for an unknown terminal. With iTerm2 they send OSC 9, which
+    the labextension forwards as a notification.
+    """
+    manager = server_app.web_app.settings.get("terminal_manager")
+    if manager is None:
+        return
+    manager.extra_env = {**(manager.extra_env or {}), **_TERMINAL_ENV}
+
+
 def _load_jupyter_server_extension(server_app: ServerApp) -> None:
     _setup_handlers(server_app)
     _disable_checkpoints(server_app)
+    _advertise_terminal(server_app)
     server_app.log.info("Registered xtralab server extension")
