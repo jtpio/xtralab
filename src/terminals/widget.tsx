@@ -88,6 +88,11 @@ export class RunningTerminals
     );
 
     this.addWidget(section);
+    this._ownSections = [section];
+    if (options.externalSection) {
+      this.addWidget(options.externalSection);
+      this._ownSections.push(options.externalSection);
+    }
   }
 
   /**
@@ -105,37 +110,38 @@ export class RunningTerminals
   }
 
   /**
-   * The hosted section widgets, excluding the panel's own Terminals section.
+   * The hosted section widgets, excluding the panel's own sections.
    */
   get sections(): ReadonlyArray<Widget> {
-    return this.accordionPanel.widgets.filter(w => w !== this._section);
+    return this.accordionPanel.widgets.filter(
+      w => !this._ownSections.includes(w as PanelWithToolbar)
+    );
   }
 
   /**
-   * Get the movable sections: just the Terminals section, while attached here.
+   * Get the movable sections: the panel's own sections still attached here.
    */
   getSections(): ReadonlyArray<ISectionEntry> {
-    const entry = this._sectionEntry();
-    return entry ? [entry] : [];
+    return this._ownSections
+      .map(section => this._sectionEntry(section))
+      .filter((entry): entry is ISectionEntry => entry !== null);
   }
 
   /**
-   * Detach the Terminals section for the move plugin and return it; `null`
-   * for an unknown id or when the section is already hosted elsewhere.
+   * Detach one of the panel's own sections for the move plugin and return
+   * it; `null` for an unknown id or when it is already hosted elsewhere.
    */
   removeSectionById(sectionId: string): Widget | null {
-    if (
-      sectionId !== TERMINALS_SECTION_ID ||
-      this._section.parent !== this.content
-    ) {
+    const section = this._ownSections.find(s => s.id === sectionId);
+    if (!section || section.parent !== this.content) {
       return null;
     }
-    this._section.parent = null;
-    return this._section;
+    section.parent = null;
+    return section;
   }
 
   /**
-   * Re-attach the Terminals section after it moves back to this panel.
+   * Re-attach one of the panel's own sections after it moves back here.
    */
   reinsertSection(widget: Widget): void {
     this.addWidget(widget);
@@ -174,8 +180,7 @@ export class RunningTerminals
    * after `registerSource`, and this panel builds its section in the constructor.
    */
   announceSections(): void {
-    const entry = this._sectionEntry();
-    if (entry) {
+    for (const entry of this.getSections()) {
       this._sectionAdded.emit(entry);
     }
   }
@@ -192,22 +197,23 @@ export class RunningTerminals
     super.dispose();
   }
 
-  private _sectionEntry(): ISectionEntry | null {
+  private _sectionEntry(section: PanelWithToolbar): ISectionEntry | null {
     const accordion = this.accordionPanel;
-    const index = Array.from(accordion.widgets).indexOf(this._section);
+    const index = Array.from(accordion.widgets).indexOf(section);
     const titleNode = accordion.titles[index] as HTMLElement | undefined;
     if (index < 0 || !titleNode) {
       return null;
     }
     return {
-      id: TERMINALS_SECTION_ID,
+      id: section.id,
       titleNode,
-      widget: this._section
+      widget: section
     };
   }
 
   private _registry: SessionRegistry;
   private _section: PanelWithToolbar;
+  private _ownSections: PanelWithToolbar[];
   private _sectionAdded = new Signal<this, ISectionEntry>(this);
 }
 
@@ -246,6 +252,10 @@ export namespace RunningTerminals {
      * coordinates; the plugin decides what to show there.
      */
     onCreate: (anchor: { x: number; y: number }) => void;
+    /**
+     * A second section, listed and movable like the Terminals one.
+     */
+    externalSection?: PanelWithToolbar;
   }
 }
 

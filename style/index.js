@@ -1,3 +1,5 @@
+import '@jupyter/chat/style/index.js';
+
 import './base.css';
 import './about.css';
 import './askAgent.css';
@@ -5,6 +7,7 @@ import './chrome.css';
 import './commandBar.css';
 import './customPanel.css';
 import './editorBreadcrumbs.css';
+import './externalAgents.css';
 import './git.css';
 import './highlight.css';
 import './launcher.css';

@@ -969,6 +969,15 @@ wheels = [
 ]
 
 [[package]]
+name = "jupyter-chat-components"
+version = "0.6.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/22/89/8c06d99d1dc077843d4620dcc99c5aa5c6cdde487bf73004d5bb18d4391d/jupyter_chat_components-0.6.0.tar.gz", hash = "sha256:894821160bb28ca60e6eddbbaa7427f14ed9b22cb1c9ab9e2de239f99db98727", size = 333695, upload-time = "2026-06-02T07:09:32.2Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/50/20/f865d6b61a47be77c0c1be1917945a0f376ba60a75d4a50f5b4e46b5a3d8/jupyter_chat_components-0.6.0-py3-none-any.whl", hash = "sha256:2e5993e03ab082c2c81d3590e52b0eeccba3deb3c01b1808728e18c385385c65", size = 33945, upload-time = "2026-06-02T07:09:30.521Z" },
+]
+
+[[package]]
 name = "jupyter-client"
 version = "8.9.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2726,6 +2735,7 @@ name = "xtralab"
 source = { directory = "../" }
 dependencies = [
     { name = "ajlab" },
+    { name = "jupyter-chat-components" },
     { name = "jupyter-server-mcp" },
     { name = "jupyterlab" },
     { name = "jupyterlab-commands-toolkit" },
@@ -2748,6 +2758,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "ajlab", specifier = ">=0.1.11" },
+    { name = "jupyter-chat-components", specifier = ">=0.6.0" },
     { name = "jupyter-server-mcp", specifier = ">=0.4.0" },
     { name = "jupyterlab", specifier = ">=4.6.2" },
     { name = "jupyterlab-commands-toolkit", specifier = ">=0.3.0" },

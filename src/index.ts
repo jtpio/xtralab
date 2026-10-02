@@ -9,6 +9,7 @@ import fileBrowserPlugin from './fileBrowser';
 import fileTypeIconsPlugin from './fileTypeIcons';
 import editorBreadcrumbsPlugin from './editorBreadcrumbs';
 import editorIndentPlugin from './editorIndent';
+import externalAgentsPlugin from './externalAgents';
 import gitPlugins from './git';
 import highlightPlugin from './highlight';
 import launcherPlugins from './launcher';
@@ -31,6 +32,7 @@ const plugins: JupyterFrontEndPlugin<unknown>[] = [
   customPanelPlugin,
   editorBreadcrumbsPlugin,
   editorIndentPlugin,
+  externalAgentsPlugin,
   fileBrowserPlugin,
   fileTypeIconsPlugin,
   ...gitPlugins,

@@ -14,6 +14,8 @@ import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { LabIcon, MenuSvg, terminalIcon } from '@jupyterlab/ui-components';
 
 import { IAgentSessions } from '../agentSessions';
+import { ExternalAgentsSection } from '../externalAgents/section';
+import { IExternalAgents } from '../externalAgents/tokens';
 import { IEditorRegistry } from '../launcher/editorRegistry';
 import { agentCommandId, IAgentRegistry } from '../launcher/tokens';
 import { AgentTerminals } from './agentTerminals';
@@ -37,7 +39,8 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
     IEditorRegistry,
     IAgentSessions,
     ISettingRegistry,
-    IMovableSectionRegistry
+    IMovableSectionRegistry,
+    IExternalAgents
   ],
   activate: (
     app: JupyterFrontEnd,
@@ -48,7 +51,8 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
     editorRegistry: IEditorRegistry | null,
     agentSessions: IAgentSessions | null,
     settingRegistry: ISettingRegistry | null,
-    movableSections: IMovableSectionRegistry | null
+    movableSections: IMovableSectionRegistry | null,
+    externalAgents: IExternalAgents | null
   ): IAgentTerminals => {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
@@ -171,6 +175,15 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
       newMenu.open(anchor.x, anchor.y);
     };
 
+    const externalSection = externalAgents
+      ? new ExternalAgentsSection({
+          agents: externalAgents,
+          commands: app.commands,
+          iconForAgent: iconForCommand,
+          trans
+        })
+      : undefined;
+
     const panel = new RunningTerminals({
       registry,
       trans,
@@ -178,7 +191,8 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
       onActivate,
       onShutdown,
       onShutdownAll,
-      onCreate
+      onCreate,
+      externalSection
     });
 
     // The shipped labconfig `layout` setting ranks this panel first (rank only,
@@ -205,6 +219,9 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
           const applyActivitySetting = (): void => {
             registry.setActivityEnabled(
               boolOption(settings.composite.showAgentActivity, true)
+            );
+            externalSection?.setHidden(
+              !boolOption(settings.composite.showExternalAgents, true)
             );
           };
           applyActivitySetting();

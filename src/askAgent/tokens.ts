@@ -74,12 +74,14 @@ export interface IAskAgentContext {
 
 /**
  * Where a submitted prompt goes: a fresh terminal started with the chosen
- * agent's command, or an existing session whose running agent receives the
- * prompt in its input box (queued by the agent itself when busy).
+ * agent's command, an existing session whose running agent receives the
+ * prompt in its input box (queued by the agent itself when busy), or an
+ * agent running outside JupyterLab that accepts prompts over its own channel.
  */
 export type AskAgentTarget =
   | { kind: 'new'; agentId: string }
-  | { kind: 'session'; name: string };
+  | { kind: 'session'; name: string }
+  | { kind: 'external'; id: string };
 
 /**
  * A request to open the ask-agent popup: what code to prompt about and

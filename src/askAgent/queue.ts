@@ -205,12 +205,20 @@ function sanitizeTarget(value: unknown): AskAgentTarget | null {
   if (value === null || typeof value !== 'object') {
     return null;
   }
-  const raw = value as { kind?: unknown; agentId?: unknown; name?: unknown };
+  const raw = value as {
+    kind?: unknown;
+    agentId?: unknown;
+    name?: unknown;
+    id?: unknown;
+  };
   if (raw.kind === 'new' && typeof raw.agentId === 'string') {
     return { kind: 'new', agentId: raw.agentId };
   }
   if (raw.kind === 'session' && typeof raw.name === 'string') {
     return { kind: 'session', name: raw.name };
+  }
+  if (raw.kind === 'external' && typeof raw.id === 'string') {
+    return { kind: 'external', id: raw.id };
   }
   return null;
 }

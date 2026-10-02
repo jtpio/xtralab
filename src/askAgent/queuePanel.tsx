@@ -16,7 +16,7 @@ import type { IAgent } from '../launcher/agents';
 import { contextSummary } from './popup';
 import { serverPath } from './prompt';
 import type { IQueuedPrompt, PromptQueue } from './queue';
-import type { ISessionTarget } from './targetPicker';
+import { ISessionTarget, targetFor } from './targetPicker';
 import type { AskAgentTarget } from './tokens';
 
 const HIGHLIGHT_LINES_COMMAND = 'xtralab:highlight-lines';
@@ -33,19 +33,47 @@ function encodeTarget(target: AskAgentTarget | null): string {
   if (target === null) {
     return '';
   }
-  return target.kind === 'session'
-    ? `session:${target.name}`
-    : `new:${target.agentId}`;
+  switch (target.kind) {
+    case 'session':
+      return `session:${target.name}`;
+    case 'external':
+      return `external:${target.id}`;
+    default:
+      return `new:${target.agentId}`;
+  }
 }
 
 function decodeTarget(value: string): AskAgentTarget | null {
   if (value.startsWith('session:')) {
     return { kind: 'session', name: value.slice('session:'.length) };
   }
+  if (value.startsWith('external:')) {
+    return { kind: 'external', id: value.slice('external:'.length) };
+  }
   if (value.startsWith('new:')) {
     return { kind: 'new', agentId: value.slice('new:'.length) };
   }
   return null;
+}
+
+/**
+ * The picker entry a session or external target stands for, if still live.
+ */
+function pickerEntry(
+  target: AskAgentTarget,
+  targets: readonly ISessionTarget[]
+): ISessionTarget | undefined {
+  switch (target.kind) {
+    case 'session':
+      return targets.find(
+        session =>
+          session.externalId === undefined && session.name === target.name
+      );
+    case 'external':
+      return targets.find(session => session.externalId === target.id);
+    default:
+      return undefined;
+  }
 }
 
 function targetIsLive(
@@ -56,9 +84,9 @@ function targetIsLive(
   if (target === null) {
     return false;
   }
-  return target.kind === 'session'
-    ? targets.some(session => session.name === target.name)
-    : agents.some(agent => agent.id === target.agentId);
+  return target.kind === 'new'
+    ? agents.some(agent => agent.id === target.agentId)
+    : pickerEntry(target, targets) !== undefined;
 }
 
 function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
@@ -136,12 +164,17 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
           );
           if (live && target !== null) {
             if (target.kind === 'session') {
-              icon =
-                targets.find(session => session.name === target.name)?.icon ??
-                null;
+              icon = pickerEntry(target, targets)?.icon ?? null;
               targetTitle = trans.__(
                 'Sends into the agent running in terminal %1',
                 target.name
+              );
+            } else if (target.kind === 'external') {
+              const entry = pickerEntry(target, targets);
+              icon = entry?.icon ?? null;
+              targetTitle = trans.__(
+                'Sends to %1, running outside JupyterLab',
+                entry?.label ?? target.id
               );
             } else {
               const agent = agents.find(entry => entry.id === target.agentId);
@@ -228,13 +261,15 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
                       {targets.map(session => (
                         <option
                           key={session.name}
-                          value={`session:${session.name}`}
+                          value={encodeTarget(targetFor(session))}
                         >
-                          {trans.__(
-                            'Terminal %1 · %2',
-                            session.name,
-                            session.label
-                          )}
+                          {session.externalId !== undefined
+                            ? trans.__('Outside JupyterLab · %1', session.label)
+                            : trans.__(
+                                'Terminal %1 · %2',
+                                session.name,
+                                session.label
+                              )}
                         </option>
                       ))}
                     </optgroup>

@@ -40,6 +40,41 @@ Terminal tabs in the main area show the same icon.
 | Setting                                                       | Default | Description                                           |
 | ------------------------------------------------------------- | ------- | ----------------------------------------------------- |
 | Show agent activity under each terminal (`showAgentActivity`) | `true`  | Shows the latest line of output under each agent row. |
+| Show agents running outside JupyterLab (`showExternalAgents`) | `true`  | Shows the **External agents** section.                |
+
+## External agents
+
+The **External agents** section lists the coding agents that run in the
+open folder, or in a folder inside it, but not in a JupyterLab terminal: for
+example an agent that you started in another terminal app. xtralab finds
+them from the files each agent writes on the computer, and from the running
+processes.
+
+Each row shows the agent icon, a status dot (blue while the agent works,
+green when it waits for input), the title of the conversation, and the last
+prompt.
+
+| Action                    | Location | Description                                                                                                          |
+| ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------- |
+| Select the row            | Row      | Opens the conversation in a chat tab. The tab follows the conversation while the agent works. Its input at the bottom sends a prompt to the agent. |
+| **Attach a terminal** (▣) | Row      | Opens a new terminal that connects to the agent's session, with the command shown in the tooltip.                    |
+| Refresh (↻)               | Toolbar  | Looks again for agents. The list also refreshes every few seconds.                                                   |
+
+An external agent that accepts prompts is also a target in the
+[ask-agent popup](../ask-agent/) and in the prompt queue, marked **outside**.
+
+xtralab cannot show the terminal screen of a program that another terminal
+app owns. The conversation tab shows the same messages, tool calls and
+results, but not the agent's own screen layout.
+
+| Agent       | Conversation | Send a prompt                                     | Attach a terminal                                      |
+| ----------- | ------------ | ------------------------------------------------- | ------------------------------------------------------ |
+| Claude Code | Yes          | Yes. The prompt arrives as a message from a peer. | No. Only sessions started with `claude --bg` attach.   |
+| Codex       | Yes          | Yes, through `codex queue`.                       | Yes, through `codex resume`.                           |
+| pi          | Yes          | No                                                | No                                                     |
+
+A Claude Code session that runs with permission prompts off holds a prompt
+from outside until you approve it in that session.
 
 ## Move sections between panels
 

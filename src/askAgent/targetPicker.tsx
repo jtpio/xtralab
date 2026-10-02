@@ -4,6 +4,8 @@ import * as React from 'react';
 
 import type { IAgent } from '../launcher/agents';
 
+import type { AskAgentTarget } from './tokens';
+
 /**
  * A running agent terminal offered as a prompt target: the session data
  * from `IAgentTerminals` plus the matching agent's icon, resolved by the
@@ -29,6 +31,21 @@ export interface ISessionTarget {
    * The running agent's icon.
    */
   icon: LabIcon;
+
+  /**
+   * Set for an agent running outside JupyterLab: its external session id.
+   * `name` is then a synthetic unique key, not a terminal name.
+   */
+  externalId?: string;
+}
+
+/**
+ * Convert a picker target to the ask-agent target it stands for.
+ */
+export function targetFor(session: ISessionTarget): AskAgentTarget {
+  return session.externalId !== undefined
+    ? { kind: 'external', id: session.externalId }
+    : { kind: 'session', name: session.name };
 }
 
 /**
@@ -121,14 +138,22 @@ export function TargetChips(props: {
           aria-checked={target.name === targetName}
           tabIndex={target.name === targetName ? 0 : -1}
           title={
-            target.activity
-              ? trans.__(
-                  '%1 · %2 — %3',
-                  target.label,
-                  target.name,
-                  target.activity
-                )
-              : trans.__('%1 · %2', target.label, target.name)
+            target.externalId !== undefined
+              ? target.activity
+                ? trans.__(
+                    '%1 · running outside JupyterLab — %2',
+                    target.label,
+                    target.activity
+                  )
+                : trans.__('%1 · running outside JupyterLab', target.label)
+              : target.activity
+                ? trans.__(
+                    '%1 · %2 — %3',
+                    target.label,
+                    target.name,
+                    target.activity
+                  )
+                : trans.__('%1 · %2', target.label, target.name)
           }
           className={
             'jp-xtralab-AskAgent-targetButton' +
@@ -144,7 +169,11 @@ export function TargetChips(props: {
           <span className="jp-xtralab-AskAgent-targetLabel">
             {target.label}
           </span>
-          <span className="jp-xtralab-AskAgent-targetName">{target.name}</span>
+          <span className="jp-xtralab-AskAgent-targetName">
+            {target.externalId !== undefined
+              ? trans.__('outside')
+              : target.name}
+          </span>
         </button>
       ))}
     </div>

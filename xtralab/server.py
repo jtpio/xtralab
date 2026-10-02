@@ -7,6 +7,7 @@ to report the running agent — including ones the user started by hand.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from shutil import which
@@ -17,6 +18,12 @@ from jupyter_server.utils import url_path_join
 from tornado.web import authenticated
 
 from .checkpoints import NullCheckpoints
+from .external_agents import (
+    list_sessions,
+    read_entries,
+    split_id,
+    terminal_pids,
+)
 
 try:
     import psutil
@@ -141,6 +148,72 @@ class RunningAgentsHandler(APIHandler):
         self.finish(json.dumps(self._detect(commands)))
 
 
+class ExternalAgentsHandler(APIHandler):
+    """List the agent sessions started outside JupyterLab for the server root."""
+
+    @authenticated
+    async def get(self) -> None:
+        root = self.settings.get("server_root_dir") or os.getcwd()
+        exclude = terminal_pids(self.settings.get("terminal_manager"))
+        loop = asyncio.get_running_loop()
+        # Process and file scans block; keep them off the event loop.
+        sessions = await loop.run_in_executor(
+            None, list_sessions, os.path.expanduser(root), exclude
+        )
+        self.finish(json.dumps({"sessions": [s.to_dict() for s in sessions]}))
+
+
+class ExternalAgentTranscriptHandler(APIHandler):
+    """Replay one session's transcript as normalized entries, incrementally."""
+
+    @authenticated
+    async def get(self) -> None:
+        resolved = split_id(self.get_query_argument("id", ""))
+        if resolved is None:
+            self.set_status(404)
+            self.finish(json.dumps({"error": "Unknown session"}))
+            return
+        provider, session_id = resolved
+        raw_offset = self.get_query_argument("offset", None)
+        offset = int(raw_offset) if raw_offset and raw_offset.isdigit() else None
+        path = provider.transcript_path(session_id)
+        if path is None:
+            self.set_status(404)
+            self.finish(json.dumps({"error": "No transcript for this session"}))
+            return
+        loop = asyncio.get_running_loop()
+        entries, next_offset, truncated = await loop.run_in_executor(
+            None, read_entries, path, provider.parse, offset
+        )
+        self.finish(
+            json.dumps(
+                {"entries": entries, "offset": next_offset, "truncated": truncated}
+            )
+        )
+
+
+class ExternalAgentPromptHandler(APIHandler):
+    """Deliver a prompt to a running external session."""
+
+    @authenticated
+    async def post(self) -> None:
+        body = self.get_json_body() or {}
+        resolved = split_id(str(body.get("id") or ""))
+        text = body.get("text")
+        if resolved is None or not isinstance(text, str) or not text.strip():
+            self.set_status(400)
+            self.finish(json.dumps({"error": "'id' and a non-empty 'text' are required"}))
+            return
+        provider, session_id = resolved
+        try:
+            await provider.send(session_id, text)
+        except Exception as error:
+            self.set_status(502)
+            self.finish(json.dumps({"error": str(error)}))
+            return
+        self.finish(json.dumps({"ok": True}))
+
+
 def _setup_handlers(server_app: ServerApp) -> None:
     base_url = server_app.web_app.settings["base_url"]
     handlers = [
@@ -151,6 +224,18 @@ def _setup_handlers(server_app: ServerApp) -> None:
         (
             url_path_join(base_url, "xtralab", "terminals", "agents"),
             RunningAgentsHandler,
+        ),
+        (
+            url_path_join(base_url, "xtralab", "external-agents"),
+            ExternalAgentsHandler,
+        ),
+        (
+            url_path_join(base_url, "xtralab", "external-agents", "transcript"),
+            ExternalAgentTranscriptHandler,
+        ),
+        (
+            url_path_join(base_url, "xtralab", "external-agents", "prompt"),
+            ExternalAgentPromptHandler,
         ),
     ]
     server_app.web_app.add_handlers(".*$", handlers)

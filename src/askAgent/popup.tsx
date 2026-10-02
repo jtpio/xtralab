@@ -6,7 +6,12 @@ import * as React from 'react';
 
 import type { IAgent } from '../launcher/agents';
 
-import { AgentChoices, ISessionTarget, TargetChips } from './targetPicker';
+import {
+  AgentChoices,
+  ISessionTarget,
+  TargetChips,
+  targetFor
+} from './targetPicker';
 import type { AskAgentTarget, IAskAgentContext } from './tokens';
 
 const ANCHOR_GAP = 6;
@@ -146,7 +151,7 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
   const resolveTarget = React.useCallback((): AskAgentTarget | null => {
     const session = targets.find(entry => entry.name === targetName);
     if (session !== undefined) {
-      return { kind: 'session', name: session.name };
+      return targetFor(session);
     }
     const agent = agents.find(entry => entry.id === agentId);
     if (agent !== undefined) {
