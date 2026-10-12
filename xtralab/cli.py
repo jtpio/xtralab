@@ -28,6 +28,10 @@ def main() -> None:
         from .servers import stop_main
 
         sys.exit(stop_main(args))
+    if command == ["list"]:
+        from .servers import list_main
+
+        sys.exit(list_main(args))
     from jupyterlab.labapp import main as lab_main
 
     lab_main()

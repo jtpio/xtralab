@@ -5,22 +5,47 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.request
 
 from jupyter_server.serverapp import list_running_servers, shutdown_server
 
 START_TIMEOUT = 120
+PROBE_TIMEOUT = 2
+
+
+def jupyter_servers() -> list[dict]:
+    """The info of every running Jupyter server."""
+    # Other apps (the MCP server) write jpserver-*.json files too; only
+    # Jupyter Server writes base_url.
+    return [info for info in list_running_servers() if "base_url" in info]
 
 
 def running_server(folder: str, pid: int | None = None) -> dict | None:
     """The info of the Jupyter server that serves `folder`, if one runs."""
-    for info in list_running_servers():
-        # Other apps (the MCP server) write jpserver-*.json files too; only
-        # Jupyter Server writes base_url.
-        if "base_url" not in info or os.path.realpath(info["root_dir"]) != folder:
+    for info in jupyter_servers():
+        if os.path.realpath(info["root_dir"]) != folder:
             continue
         if pid is None or info["pid"] == pid:
             return info
     return None
+
+
+def is_xtralab(info: dict) -> bool:
+    """True when the server answers on the xtralab API, so it runs the extension."""
+    request = urllib.request.Request(
+        info["url"] + "xtralab/agents/availability",
+        headers={"Authorization": f"token {info.get('token', '')}"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=PROBE_TIMEOUT) as response:
+            return response.status == 200
+    except OSError:
+        return False
+
+
+def xtralab_servers() -> list[dict]:
+    """The info of every running server that has the xtralab extension."""
+    return [info for info in jupyter_servers() if is_xtralab(info)]
 
 
 def lab_url(info: dict) -> str:
@@ -30,15 +55,19 @@ def lab_url(info: dict) -> str:
     return url
 
 
-def report(title: str, info: dict, log: str | None = None) -> None:
-    # uv sets UV for the tools it runs, so the stop command matches the install.
+def stop_command(info: dict) -> str:
+    # uv sets UV for the tools it runs, so the command matches the install.
     command = "uvx xtralab" if os.environ.get("UV") else "xtralab"
+    return f"{command} stop {info['port']}"
+
+
+def report(title: str, info: dict, log: str | None = None) -> None:
     print(title)
     print(f"  URL:     {lab_url(info)}")
     print(f"  Folder:  {info['root_dir']}")
     if log:
         print(f"  Log:     {log}")
-    print(f"  Stop:    {command} stop {info['port']}")
+    print(f"  Stop:    {stop_command(info)}")
 
 
 def start(folder: str) -> tuple[subprocess.Popen, str]:
@@ -109,16 +138,42 @@ def open_main(argv: list[str]) -> int:
     return 1
 
 
+def list_main(argv: list[str]) -> int:
+    if argv:
+        print("usage: xtralab list", file=sys.stderr)
+        return 2
+    servers = xtralab_servers()
+    if not servers:
+        print("No xtralab server is running.")
+        return 0
+    for info in servers:
+        print(info["root_dir"])
+        print(f"  URL:   {lab_url(info)}")
+        print(f"  Stop:  {stop_command(info)}")
+    return 0
+
+
+def stop(info: dict) -> bool:
+    if not shutdown_server(info):
+        print(f"error: the server on port {info['port']} did not stop", file=sys.stderr)
+        return False
+    print(f"Stopped the xtralab server on port {info['port']} for {info['root_dir']}.")
+    return True
+
+
 def stop_main(argv: list[str]) -> int:
-    folder = folder_argument(argv, "usage: xtralab stop [folder | port]")
+    if argv == ["--all"]:
+        servers = xtralab_servers()
+        if not servers:
+            print("No xtralab server is running.")
+            return 0
+        results = [stop(info) for info in servers]
+        return 0 if all(results) else 1
+    folder = folder_argument(argv, "usage: xtralab stop [folder | port | --all]")
     if folder is None:
         return 2
     info = running_server(folder)
     if info is None:
         print(f"error: no xtralab server runs for {folder}", file=sys.stderr)
         return 1
-    if not shutdown_server(info):
-        print(f"error: the server on port {info['port']} did not stop", file=sys.stderr)
-        return 1
-    print(f"Stopped the xtralab server on port {info['port']} for {folder}.")
-    return 0
+    return 0 if stop(info) else 1
