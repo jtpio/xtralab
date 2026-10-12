@@ -1,4 +1,4 @@
-"""`xtralab open [folder]`: start a detached server for a folder and print its URL."""
+"""The `open` and `stop` subcommands: start or stop the server of a folder."""
 
 import os
 import subprocess
@@ -6,9 +6,8 @@ import sys
 import tempfile
 import time
 
-from jupyter_server.serverapp import list_running_servers
+from jupyter_server.serverapp import list_running_servers, shutdown_server
 
-USAGE = "usage: xtralab open [folder]"
 START_TIMEOUT = 120
 
 
@@ -65,14 +64,22 @@ def start(folder: str) -> tuple[subprocess.Popen, str]:
     return proc, log
 
 
-def main(argv: list[str]) -> int:
+def folder_argument(argv: list[str], usage: str) -> str | None:
+    """The resolved folder named by `argv`, or None after a usage or folder error."""
     if len(argv) > 1 or argv[:1] in (["-h"], ["--help"]):
-        print(USAGE, file=sys.stderr)
-        return 2
+        print(usage, file=sys.stderr)
+        return None
     folder = os.path.realpath(argv[0] if argv else os.getcwd())
     if not os.path.isdir(folder):
         print(f"error: not a folder: {folder}", file=sys.stderr)
-        return 1
+        return None
+    return folder
+
+
+def open_main(argv: list[str]) -> int:
+    folder = folder_argument(argv, "usage: xtralab open [folder]")
+    if folder is None:
+        return 2
 
     info = running_server(folder)
     if info is not None:
@@ -100,3 +107,18 @@ def main(argv: list[str]) -> int:
         file=sys.stderr,
     )
     return 1
+
+
+def stop_main(argv: list[str]) -> int:
+    folder = folder_argument(argv, "usage: xtralab stop [folder | port]")
+    if folder is None:
+        return 2
+    info = running_server(folder)
+    if info is None:
+        print(f"error: no xtralab server runs for {folder}", file=sys.stderr)
+        return 1
+    if not shutdown_server(info):
+        print(f"error: the server on port {info['port']} did not stop", file=sys.stderr)
+        return 1
+    print(f"Stopped the xtralab server on port {info['port']} for {folder}.")
+    return 0

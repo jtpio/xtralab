@@ -1,14 +1,15 @@
 # xtralab agent skills
 
-Agent skills that teach a coding agent how to work with JupyterLab and xtralab. There are three:
+Agent skills that teach a coding agent how to work with JupyterLab and xtralab. There are four:
 
 - **open** starts xtralab in a folder with `uvx xtralab open` and opens it in the browser. From a Claude Code session in a terminal, `/xtralab:open path/to/worktree` opens that worktree in a browser tab while the session continues.
+- **stop** stops the server of a folder with `uvx xtralab stop`, so the user does not need to know its port.
 - **customize-jupyterlab** turns plain-English requests like "hide the status bar", "change the theme", "add a language server", or "rearrange the activity bar" into the right config-file edits.
 - **guided-code-walkthrough** drives the _running_ app over xtralab's MCP command bridge: open files, jump to and highlight specific lines, and build a read-only Walkthrough panel of prose, snippets, diagrams, and clickable code links beside the editor, so the agent can _show_ the user something at their own pace instead of only describing it in chat.
 
-All three are built on the [Agent Skills open standard](https://agentskills.io) so the same files work in Claude Code, Codex CLI, Gemini CLI, GitHub Copilot, Cursor, Goose, OpenCode, and any other skills-compatible client.
+All four are built on the [Agent Skills open standard](https://agentskills.io) so the same files work in Claude Code, Codex CLI, Gemini CLI, GitHub Copilot, Cursor, Goose, OpenCode, and any other skills-compatible client.
 
-This folder is also an agent plugin named `xtralab`. The plugin installs the three skills and registers the `jupyter` MCP server, so the agent can drive the running app with no `mcp add` command.
+This folder is also an agent plugin named `xtralab`. The plugin installs the four skills and registers the `jupyter` MCP server, so the agent can drive the running app with no `mcp add` command.
 
 ## What's in here
 
@@ -21,6 +22,8 @@ agent-skill/
 └── skills/
     ├── open/
     │   └── SKILL.md                    # start xtralab in a folder and open the browser
+    ├── stop/
+    │   └── SKILL.md                    # stop the xtralab server of a folder
     ├── customize-jupyterlab/
     │   ├── SKILL.md                    # configure JupyterLab from plain English
     │   └── references/
@@ -99,6 +102,7 @@ Or for live updates from a working checkout:
 ```bash
 mkdir -p ~/.agents/skills
 ln -s "$(pwd)/agent-skill/skills/open" ~/.agents/skills/open
+ln -s "$(pwd)/agent-skill/skills/stop" ~/.agents/skills/stop
 ln -s "$(pwd)/agent-skill/skills/customize-jupyterlab" ~/.agents/skills/customize-jupyterlab
 ln -s "$(pwd)/agent-skill/skills/guided-code-walkthrough" ~/.agents/skills/guided-code-walkthrough
 ```
@@ -120,6 +124,7 @@ To pick the skill up automatically inside the xtralab repo itself:
 ```bash
 mkdir -p .agents/skills
 ln -s ../../agent-skill/skills/open .agents/skills/open
+ln -s ../../agent-skill/skills/stop .agents/skills/stop
 ln -s ../../agent-skill/skills/customize-jupyterlab .agents/skills/customize-jupyterlab
 ln -s ../../agent-skill/skills/guided-code-walkthrough .agents/skills/guided-code-walkthrough
 ```
@@ -134,6 +139,8 @@ ln -s ../../agent-skill/skills/guided-code-walkthrough .agents/skills/guided-cod
 - Keeps settings in the xtralab config folder (the same one as the desktop app), not in `~/.jupyter`.
 
 Try it after install: `/xtralab:open .` in any project, or "start xtralab in the worktree you just created".
+
+**stop.** `/xtralab:stop [folder]` (or "stop xtralab for this worktree") runs `uvx xtralab stop <folder>`, which finds the server by its root folder and shuts it down. A port works too: `uvx xtralab stop 8888`. Other servers keep running.
 
 **customize-jupyterlab.** After install, the agent will:
 

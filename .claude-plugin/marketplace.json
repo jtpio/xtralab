@@ -7,7 +7,7 @@
     {
       "name": "xtralab",
       "source": "./agent-skill",
-      "description": "Connect a coding agent to xtralab and JupyterLab: the Jupyter MCP server, and skills to open xtralab in a folder, customize the UI, and give guided code walkthroughs.",
+      "description": "Connect a coding agent to xtralab and JupyterLab: the Jupyter MCP server, and skills to open and stop xtralab in a folder, customize the UI, and give guided code walkthroughs.",
       "homepage": "https://github.com/jtpio/xtralab",
       "license": "BSD-3-Clause"
     }
