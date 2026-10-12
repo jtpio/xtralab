@@ -33,12 +33,22 @@ The xtralab plugin registers the MCP server with Claude Code and installs the
 
 </Steps>
 
-The proxy finds the xtralab server from the folder of the session.
+The proxy connects to the xtralab server whose folder contains the folder of
+the session. It does not connect to a server of another project, so agent
+sessions in different projects do not interfere with each other.
 
-| xtralab runs in | Start the agent in                                              |
-| --------------- | --------------------------------------------------------------- |
-| A browser tab   | An xtralab terminal, or a different terminal in the same folder |
-| The desktop app | An xtralab terminal                                             |
+| xtralab runs in | Start the agent in                                                            |
+| --------------- | ----------------------------------------------------------------------------- |
+| A browser tab   | An xtralab terminal, or a different terminal in the project folder or under it |
+| The desktop app | An xtralab terminal                                                           |
+
+To connect from a folder outside the project on purpose, set the URL of the
+server before you start the agent. `xtralab list` shows the URL next to the
+project folder:
+
+```bash
+JUPYTER_SERVER_MCP_URL=http://localhost:56977/mcp claude
+```
 
 ## Register the server manually
 

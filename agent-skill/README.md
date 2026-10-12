@@ -52,7 +52,7 @@ claude plugin install xtralab@xtralab
 
 The first command registers this repo as a marketplace; the second installs the `xtralab` plugin from it. Inside Claude Code, the same commands are `/plugin marketplace add jtpio/xtralab` and `/plugin install xtralab@xtralab`. Updates land via `claude plugin marketplace update xtralab`.
 
-The plugin starts the MCP proxy with `uvx --from jupyter-server-mcp jupyter-server-mcp-proxy`, so [uv](https://docs.astral.sh/uv/) must be installed. The proxy finds the xtralab server from the folder of the session. See [Connect agents with MCP](https://jtpio.github.io/xtralab/agents/mcp/).
+The plugin starts the MCP proxy with `uvx --from "jupyter-server-mcp>=0.4.1" jupyter-server-mcp-proxy`, so [uv](https://docs.astral.sh/uv/) must be installed. The proxy connects to the xtralab server whose folder contains the folder of the session, and to no other server. See [Connect agents with MCP](https://jtpio.github.io/xtralab/agents/mcp/).
 
 ### Codex CLI and GitHub Copilot CLI (plugin)
 
