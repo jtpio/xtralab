@@ -13,46 +13,53 @@ and does not need either of the methods on this page.
 
 ```bash
 pip install xtralab
-jupyter lab
+xtralab
 ```
+
+The `xtralab` command starts JupyterLab with the
+[settings folder of xtralab](#settings-folder). `jupyter lab` also works, with
+the default Jupyter settings folder.
 
 ## Install with uv
 
 | Method                                  | Use it to                                               |
 | --------------------------------------- | ------------------------------------------------------- |
-| [`uvx`](#run-without-installing)        | Run xtralab in any folder, without installing it.       |
-| [`uv tool install`](#install-as-a-tool) | Make the `jupyter lab` command available in all shells. |
-| [`uv add`](#add-to-a-project)           | Add xtralab to the dependencies of a project.           |
+| [`uvx`](#run-without-installing)        | Run xtralab in any folder, without installing it.   |
+| [`uv tool install`](#install-as-a-tool) | Make the `xtralab` command available in all shells. |
+| [`uv add`](#add-to-a-project)           | Add xtralab to the dependencies of a project.       |
 
 ### Run without installing
 
 ```bash
-uvx --from xtralab jupyter-lab
+uvx xtralab
 ```
 
 uv creates a cached environment for xtralab on the first run and uses it again
-on the next runs. JupyterLab starts in the current folder.
+on the next runs. xtralab starts in the current folder.
 
-:::note
-uv warns that `jupyter-lab` comes from `jupyterlab`, not from `xtralab`, and
-suggests `--from jupyterlab`. Do not use this suggestion: it removes xtralab
-from the environment.
-:::
+To start a server for a folder in the background, for example from a coding
+agent, use `open`:
+
+```bash
+uvx xtralab open path/to/folder
+```
+
+The command prints the URL of the server, reuses a server that already serves
+the folder, and returns. The server opens a browser tab and continues to run
+after the terminal closes. The [agent skills](../agents/skills/) use this
+command.
 
 ### Install as a tool
 
 ```bash
-uv tool install --with xtralab jupyterlab
+uv tool install xtralab
 ```
-
-The tool is `jupyterlab` because that package provides the `jupyter-lab`
-command. `--with xtralab` installs xtralab in the same environment.
 
 ### Add to a project
 
 ```bash
 uv add xtralab
-uv run jupyter lab
+uv run xtralab
 ```
 
 ## Verify the installation
@@ -70,12 +77,28 @@ uv run jupyter lab
 
 ## Upgrade
 
-| Installed with    | Command                                    |
-| ----------------- | ------------------------------------------ |
-| `pip`             | `pip install --upgrade xtralab`            |
-| `uvx`             | `uvx --refresh --from xtralab jupyter-lab` |
-| `uv tool install` | `uv tool upgrade jupyterlab`               |
-| `uv add`          | `uv sync --upgrade-package xtralab`        |
+| Installed with    | Command                             |
+| ----------------- | ----------------------------------- |
+| `pip`             | `pip install --upgrade xtralab`     |
+| `uvx`             | `uvx xtralab@latest`                |
+| `uv tool install` | `uv tool upgrade xtralab`           |
+| `uv add`          | `uv sync --upgrade-package xtralab` |
+
+## Settings folder
+
+The `xtralab` command stores the JupyterLab settings, the workspaces, and the
+Jupyter server configuration in the folder of xtralab, the same folder as the
+[desktop app](../desktop/). It does not read `~/.jupyter`. Kernels and other
+Jupyter data stay in the default Jupyter folders.
+
+| System  | Folder                                                 |
+| ------- | ------------------------------------------------------ |
+| macOS   | `~/Library/Application Support/xtralab/jupyter/config` |
+| Linux   | `~/.config/xtralab/jupyter/config`                     |
+| Windows | `%APPDATA%\xtralab\jupyter\config`                      |
+
+`xtralab paths` prints the settings folder. To use a different folder, set the
+`JUPYTER_CONFIG_DIR` environment variable before you start xtralab.
 
 ## Included packages
 

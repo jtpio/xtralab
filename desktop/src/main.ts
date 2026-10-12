@@ -1976,7 +1976,10 @@ function getManagedEnvironment(): ManagedEnvironment {
   const envDir = getManagedEnvironmentDir();
   const binDir = getManagedEnvironmentBinDir(envDir);
   const pythonPath = getManagedEnvironmentExecutablePath(envDir, 'python');
-  const xtralabPath = getManagedEnvironmentExecutablePath(envDir, 'xtralab');
+  const xtralabPath = getManagedEnvironmentExecutablePath(
+    envDir,
+    'xtralab-desktop'
+  );
 
   if (!existsSync(xtralabPath)) {
     throw new Error(

@@ -26,7 +26,7 @@ jupyter lab
 To run xtralab in any folder without installing it, use uv:
 
 ```bash
-uvx --from xtralab jupyter-lab
+uvx xtralab
 ```
 
 The [installation docs](https://jtpio.github.io/xtralab/installation/) also

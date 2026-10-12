@@ -2741,6 +2741,7 @@ dependencies = [
     { name = "jupyterlab-quickopen" },
     { name = "jupyterlab-search-replace" },
     { name = "jupyterlab-vim" },
+    { name = "platformdirs" },
     { name = "psutil" },
     { name = "ty" },
 ]
@@ -2763,6 +2764,7 @@ requires-dist = [
     { name = "jupyterlab-quickopen", specifier = ">=2.3.0" },
     { name = "jupyterlab-search-replace", specifier = ">=1.1.3" },
     { name = "jupyterlab-vim", specifier = ">=4.1.4" },
+    { name = "platformdirs", specifier = ">=2.5" },
     { name = "psutil", specifier = ">=5.9" },
     { name = "ty", specifier = ">=0.0.65" },
 ]

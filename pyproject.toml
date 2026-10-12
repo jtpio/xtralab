@@ -51,10 +51,14 @@ dependencies = [
     "jupyterlab-quickopen>=2.3.0",
     "jupyterlab-search-replace>=1.1.3",
     "jupyterlab-vim>=4.1.4",
+    "platformdirs>=2.5",
     "psutil>=5.9",
     "ty>=0.0.65",
 ]
 dynamic = ["version", "description", "urls"]
+
+[project.scripts]
+xtralab = "xtralab.cli:main"
 
 [tool.hatch.version]
 source = "nodejs"
