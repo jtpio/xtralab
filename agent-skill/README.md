@@ -2,7 +2,7 @@
 
 Agent skills that teach a coding agent how to work with JupyterLab and xtralab. There are three:
 
-- **open** starts xtralab in a folder with `uvx --from xtralab jupyter-lab` and opens it in the browser. From a Claude Code session in a terminal, `/xtralab:open path/to/worktree` opens that worktree in a browser tab while the session continues.
+- **open** starts xtralab in a folder with `uvx xtralab open` and opens it in the browser. From a Claude Code session in a terminal, `/xtralab:open path/to/worktree` opens that worktree in a browser tab while the session continues.
 - **customize-jupyterlab** turns plain-English requests like "hide the status bar", "change the theme", "add a language server", or "rearrange the activity bar" into the right config-file edits.
 - **guided-code-walkthrough** drives the _running_ app over xtralab's MCP command bridge: open files, jump to and highlight specific lines, and build a read-only Walkthrough panel of prose, snippets, diagrams, and clickable code links beside the editor, so the agent can _show_ the user something at their own pace instead of only describing it in chat.
 
@@ -20,10 +20,7 @@ agent-skill/
 ├── mcp.json                            # the jupyter MCP server, shared by the two manifests
 └── skills/
     ├── open/
-    │   ├── SKILL.md                    # start xtralab in a folder and open the browser
-    │   └── scripts/
-    │       ├── open.sh                 # uvx launcher: reuse, start, wait for the URL
-    │       └── find_server.py          # URL of the server that already serves a folder
+    │   └── SKILL.md                    # start xtralab in a folder and open the browser
     ├── customize-jupyterlab/
     │   ├── SKILL.md                    # configure JupyterLab from plain English
     │   └── references/
@@ -129,11 +126,12 @@ ln -s ../../agent-skill/skills/guided-code-walkthrough .agents/skills/guided-cod
 
 ## What the skills know
 
-**open.** After install, `/xtralab:open [folder] [--upgrade]` (or a request such as "open xtralab in this worktree") runs `scripts/open.sh`, which:
+**open.** After install, `/xtralab:open [folder]` (or a request such as "open xtralab in this worktree") runs `uvx xtralab open <folder>`, which:
 
-- Starts `uvx --from xtralab jupyter-lab <folder>` detached from the agent session, so the server outlives it. The first run downloads xtralab into the uv cache; later runs reuse that environment, and `--upgrade` resolves the latest release first.
+- Starts an xtralab server for the folder, detached from the agent session, so the server outlives it. The first run downloads xtralab into the uv cache; later runs reuse that environment. `uvx xtralab@latest open <folder>` updates xtralab first.
 - Reuses the server that already serves the folder instead of starting a second one.
-- Waits for the URL, then prints it with the folder, the log file, and the `jupyter-lab stop <port>` command. The server opens the browser tab itself.
+- Waits for the server, then prints its URL with the folder, the log file, and the `uvx xtralab stop <port>` command. The server opens the browser tab itself.
+- Keeps settings in the xtralab config folder (the same one as the desktop app), not in `~/.jupyter`.
 
 Try it after install: `/xtralab:open .` in any project, or "start xtralab in the worktree you just created".
 

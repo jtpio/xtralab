@@ -16,9 +16,9 @@ folder of the repository.
 | `guided-code-walkthrough` | Get a tour of code in the running app. The agent opens files, highlights lines, and builds a walkthrough panel with text, code, and diagrams beside the editor. | "Walk me through how this module fits together." |
 
 In Claude Code, the skills are also slash commands: `/xtralab:open path/to/folder`
-starts xtralab for that folder and prints its URL. Add `--upgrade` to update
-xtralab to the latest release first. The server runs after the agent session
-ends. To stop it, run the stop command that the agent reports.
+runs [`uvx xtralab open`](../../installation/#run-without-installing) for that
+folder and reports its URL. The server runs after the agent session ends. To
+stop it, run the stop command that the agent reports.
 
 The `guided-code-walkthrough` skill uses the MCP server: see
 [Connect agents with MCP](../mcp/).
