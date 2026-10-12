@@ -5,14 +5,20 @@ description: Agent Skills that teach a coding agent to configure and drive Jupyt
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
-xtralab includes two [Agent Skills](https://agentskills.io). They are in the
+xtralab includes three [Agent Skills](https://agentskills.io). They are in the
 [`agent-skill/`](https://github.com/jtpio/xtralab/tree/main/agent-skill)
 folder of the repository.
 
 | Skill                     | Use it to                                                                                                                                                       | Example request                                  |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `open`                    | Start xtralab in a folder from a terminal session and open it in the browser. The agent runs xtralab with `uvx`, so nothing is installed into the project.      | "Open xtralab in this worktree."                 |
 | `customize-jupyterlab`    | Change JupyterLab and xtralab settings. The agent edits the correct configuration file.                                                                         | "Hide the status bar by default."                |
 | `guided-code-walkthrough` | Get a tour of code in the running app. The agent opens files, highlights lines, and builds a walkthrough panel with text, code, and diagrams beside the editor. | "Walk me through how this module fits together." |
+
+In Claude Code, the skills are also slash commands: `/xtralab:open path/to/folder`
+starts xtralab for that folder and prints its URL. Add `--upgrade` to update
+xtralab to the latest release first. The server runs after the agent session
+ends. To stop it, run the stop command that the agent reports.
 
 The `guided-code-walkthrough` skill uses the MCP server: see
 [Connect agents with MCP](../mcp/).

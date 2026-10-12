@@ -1,7 +1,7 @@
 {
   "name": "xtralab",
   "version": "0.2.0",
-  "description": "Connect a coding agent to xtralab and JupyterLab: the Jupyter MCP server, and skills to customize the UI and give guided code walkthroughs.",
+  "description": "Connect a coding agent to xtralab and JupyterLab: the Jupyter MCP server, and skills to open xtralab in a folder, customize the UI, and give guided code walkthroughs.",
   "author": {
     "name": "Jeremy Tuloup"
   },
