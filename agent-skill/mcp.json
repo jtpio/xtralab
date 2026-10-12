@@ -4,11 +4,7 @@
     "jupyter": {
       "type": "stdio",
       "command": "uvx",
-      "args": [
-        "--from",
-        "jupyter-server-mcp>=0.4.1",
-        "jupyter-server-mcp-proxy"
-      ]
+      "args": ["--from", "jupyter-server-mcp", "jupyter-server-mcp-proxy"]
     }
   }
 }
