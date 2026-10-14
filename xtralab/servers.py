@@ -8,6 +8,7 @@ import time
 import urllib.request
 
 from jupyter_server.serverapp import list_running_servers, shutdown_server
+from jupyter_server_mcp.runtime import list_running_mcp_servers
 
 START_TIMEOUT = 120
 PROBE_TIMEOUT = 2
@@ -18,16 +19,6 @@ def jupyter_servers() -> list[dict]:
     # Other apps (the MCP server) write jpserver-*.json files too; only
     # Jupyter Server writes base_url.
     return [info for info in list_running_servers() if "base_url" in info]
-
-
-def running_server(folder: str, pid: int | None = None) -> dict | None:
-    """The info of the Jupyter server that serves `folder`, if one runs."""
-    for info in jupyter_servers():
-        if os.path.realpath(info["root_dir"]) != folder:
-            continue
-        if pid is None or info["pid"] == pid:
-            return info
-    return None
 
 
 def is_xtralab(info: dict) -> bool:
@@ -43,9 +34,28 @@ def is_xtralab(info: dict) -> bool:
         return False
 
 
+def running_server(folder: str, pid: int | None = None) -> dict | None:
+    """The info of the xtralab server that serves `folder`, if one runs."""
+    for info in jupyter_servers():
+        if os.path.realpath(info["root_dir"]) != folder:
+            continue
+        if pid is not None and info["pid"] != pid:
+            continue
+        if is_xtralab(info):
+            return info
+    return None
+
+
 def xtralab_servers() -> list[dict]:
     """The info of every running server that has the xtralab extension."""
     return [info for info in jupyter_servers() if is_xtralab(info)]
+
+
+def mcp_urls() -> dict[int, str]:
+    """The MCP endpoint of each server, by pid of the server process."""
+    return {
+        mcp["pid"]: mcp["url"] for mcp in list_running_mcp_servers() if "url" in mcp
+    }
 
 
 def lab_url(info: dict) -> str:
@@ -146,9 +156,12 @@ def list_main(argv: list[str]) -> int:
     if not servers:
         print("No xtralab server is running.")
         return 0
+    urls = mcp_urls()
     for info in servers:
         print(info["root_dir"])
         print(f"  URL:   {lab_url(info)}")
+        if info["pid"] in urls:
+            print(f"  MCP:   {urls[info['pid']]}")
         print(f"  Stop:  {stop_command(info)}")
     return 0
 

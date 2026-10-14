@@ -140,7 +140,7 @@ ln -s ../../agent-skill/skills/guided-code-walkthrough .agents/skills/guided-cod
 
 Try it after install: `/xtralab:open .` in any project, or "start xtralab in the worktree you just created".
 
-**stop.** `/xtralab:stop [folder]` (or "stop xtralab for this worktree") runs `uvx xtralab stop <folder>`, which finds the server by its root folder and shuts it down. A port works too: `uvx xtralab stop 8888`. Other servers keep running. "Which xtralab servers are running?" runs `uvx xtralab list`, and "stop all xtralab servers" runs `uvx xtralab stop --all`; both cover xtralab servers only.
+**stop.** `/xtralab:stop [folder]` (or "stop xtralab for this worktree") runs `uvx xtralab stop <folder>`, which finds the server by its root folder and shuts it down. A port works too: `uvx xtralab stop 8888`. Other servers keep running. "Which xtralab servers are running?" runs `uvx xtralab list`, and "stop all xtralab servers" runs `uvx xtralab stop --all`. The commands cover xtralab servers only.
 
 **customize-jupyterlab.** After install, the agent will:
 

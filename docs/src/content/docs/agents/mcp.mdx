@@ -43,11 +43,12 @@ sessions in different projects do not interfere with each other.
 | The desktop app | An xtralab terminal                                                           |
 
 To connect from a folder outside the project on purpose, set the URL of the
-server before you start the agent. `xtralab list` shows the URL next to the
-project folder:
+MCP server before you start the agent. The MCP server has its own port, not
+the port of the JupyterLab URL. `xtralab list` shows it on the **MCP** line
+of the project folder:
 
 ```bash
-JUPYTER_SERVER_MCP_URL=http://localhost:56977/mcp claude
+JUPYTER_SERVER_MCP_URL=http://localhost:56978/mcp claude
 ```
 
 ## Register the server manually

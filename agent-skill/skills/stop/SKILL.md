@@ -10,7 +10,7 @@ allowed-tools: Bash(uvx xtralab *) Bash(uvx xtralab@latest *)
 `xtralab stop <folder>` finds the server whose root is the folder and asks it
 to shut down. Kernels and terminals of that server stop with it. The browser
 tab stays open and shows that the server is gone. `xtralab list` shows every
-running xtralab server with its folder, URL, and stop command.
+running xtralab server with its folder, URL, MCP URL, and stop command.
 
 ## Steps
 
@@ -40,7 +40,7 @@ running xtralab server with its folder, URL, and stop command.
 
 - `stop <folder>` stops only the server of that folder. Other servers continue
   to run.
-- `list` and `stop --all` cover xtralab servers only. Other Jupyter servers on
-  the machine are not listed and not stopped.
+- The commands cover xtralab servers only. Other Jupyter servers on the
+  machine are not listed and not stopped, also when they serve the folder.
 - Each stop waits up to 5 seconds for the server to exit, then reports an
   error if it still runs.
