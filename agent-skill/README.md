@@ -68,15 +68,14 @@ copilot plugin marketplace add jtpio/xtralab
 copilot plugin install xtralab@xtralab
 ```
 
-These two agents start the MCP proxy in the plugin folder, not in the folder of the session, and Codex does not pass the environment of the terminal to it. The MCP server of the plugin thus has limits that Claude Code does not have:
+These two agents start the MCP proxy in the plugin folder, not in the folder of the session, and Codex does not pass the environment of the terminal to it. The proxy finds a server only from a folder inside the project, so the MCP server of the plugin has limits that Claude Code does not have:
 
 | xtralab runs as                | Claude Code | GitHub Copilot CLI | Codex CLI |
 | ------------------------------ | ----------- | ------------------ | --------- |
 | Desktop app (xtralab terminal) | Works       | Works              | Not found |
-| Browser tab, one server        | Works       | Works              | Works     |
-| Browser tab, several servers   | Works       | Ambiguous          | Ambiguous |
+| Browser tab                    | Works       | Not found          | Not found |
 
-When the plugin cannot find the server, register the proxy with the `mcp add` command of the agent: see [Connect agents with MCP](https://jtpio.github.io/xtralab/agents/mcp/).
+In the desktop app, Copilot gets the URL of the server from the environment of the xtralab terminal. In a browser tab, `JUPYTER_SERVER_MCP_URL=<url> copilot` does the same; `xtralab list` prints the URL. When the plugin cannot find the server, register the proxy with the `mcp add` command of the agent instead: see [Connect agents with MCP](https://jtpio.github.io/xtralab/agents/mcp/).
 
 ### Claude Code (no install, one command — for testing)
 
