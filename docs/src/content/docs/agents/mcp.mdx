@@ -11,7 +11,49 @@ xtralab runs a [Model Context Protocol](https://modelcontextprotocol.io)
 An agent that connects to it can run JupyterLab commands: for example, open
 files, run notebook cells, and read notebooks.
 
-## Register the server
+## Install the plugin for Claude Code
+
+The xtralab plugin registers the MCP server with Claude Code and installs the
+[agent skills](../skills/).
+
+<Steps>
+
+1. Install [uv](https://docs.astral.sh/uv/). The plugin starts the MCP proxy
+   with `uvx`.
+
+2. Add the marketplace and install the plugin:
+
+   ```bash
+   claude plugin marketplace add jtpio/xtralab
+   claude plugin install xtralab@xtralab
+   ```
+
+3. Start xtralab, then start a new Claude Code session in the same folder.
+   The agent loads the `jupyter` server when the session starts.
+
+</Steps>
+
+The proxy connects to the xtralab server whose folder contains the folder of
+the session. It does not connect to a server of another project, so agent
+sessions in different projects do not interfere with each other.
+
+| xtralab runs in | Start the agent in                                                            |
+| --------------- | ----------------------------------------------------------------------------- |
+| A browser tab   | An xtralab terminal, or a different terminal in the project folder or under it |
+| The desktop app | An xtralab terminal                                                           |
+
+To connect from a folder outside the project on purpose, set the URL of the
+MCP server before you start the agent. The MCP server has its own port, not
+the port of the JupyterLab URL. `xtralab list` shows it on the **MCP** line
+of the project folder:
+
+```bash
+JUPYTER_SERVER_MCP_URL=http://localhost:56978/mcp claude
+```
+
+## Register the server manually
+
+Use this procedure for the other agents, or when uv is not installed.
 
 <Steps>
 
@@ -52,6 +94,11 @@ the same commands for the installed agents, with a **Copy** button.
 Run the command in an xtralab terminal. The `jupyter-server-mcp-proxy` command
 then gets the environment of the server and finds the running server. You do
 not need to give a port.
+:::
+
+:::caution
+For Claude Code, use the plugin or the manual registration, not the two
+together. With the two together, the agent gets each tool two times.
 :::
 
 ## Other agents

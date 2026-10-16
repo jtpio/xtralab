@@ -89,7 +89,7 @@ def _serve_main(args: argparse.Namespace) -> int:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="xtralab")
+    parser = argparse.ArgumentParser(prog="xtralab-desktop")
     subparsers = parser.add_subparsers(dest="command")
 
     serve = subparsers.add_parser(

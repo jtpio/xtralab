@@ -1082,15 +1082,15 @@ wheels = [
 
 [[package]]
 name = "jupyter-server-mcp"
-version = "0.4.0"
+version = "0.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastmcp" },
     { name = "jupyter-server" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/42/ff/5370d2fc564de2762d8017e47749754e10a2972ea755333ba208efc59789/jupyter_server_mcp-0.4.0.tar.gz", hash = "sha256:9202377f0396dea3f165183180ba33256c8552bf88106ee468ffac11b3f4b519", size = 40326, upload-time = "2026-09-16T19:15:02.657Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9c/54/947b0ee39b38aa52fa43dadab67c9b9109fbd0fecf205ca551db83a557cf/jupyter_server_mcp-0.4.1.tar.gz", hash = "sha256:0f8a5a6a28fcdf55d8c3691b412e794af42c139f28855c6a279708d30caa4e6f", size = 40775, upload-time = "2026-10-12T19:31:41.666Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2e/27/d476cbf4e8404a9d41513baf1d9a8a51c0f3f866ca479581b55a7ad20868/jupyter_server_mcp-0.4.0-py3-none-any.whl", hash = "sha256:cd3b792c8002ee9a061e699722d21cca9cd6739b080f771de9c3d9ab29744547", size = 23441, upload-time = "2026-09-16T19:15:00.885Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/d4/e2d23dcc3d99cb458592b40951efbeca003c6ddb5560dce8f0ba05e1e3c7/jupyter_server_mcp-0.4.1-py3-none-any.whl", hash = "sha256:3f25ca60d93e5a493411a6e6d3174f96ba72194baca3c0a09c3c35a63018efb9", size = 23469, upload-time = "2026-10-12T19:31:39.897Z" },
 ]
 
 [[package]]
@@ -2741,6 +2741,7 @@ dependencies = [
     { name = "jupyterlab-quickopen" },
     { name = "jupyterlab-search-replace" },
     { name = "jupyterlab-vim" },
+    { name = "platformdirs" },
     { name = "psutil" },
     { name = "ty" },
 ]
@@ -2748,7 +2749,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "ajlab", specifier = ">=0.1.11" },
-    { name = "jupyter-server-mcp", specifier = ">=0.4.0" },
+    { name = "jupyter-server-mcp", specifier = ">=0.4.1" },
     { name = "jupyterlab", specifier = ">=4.6.2" },
     { name = "jupyterlab-commands-toolkit", specifier = ">=0.3.0" },
     { name = "jupyterlab-cursor-dark", specifier = ">=1.0.2" },
@@ -2763,6 +2764,7 @@ requires-dist = [
     { name = "jupyterlab-quickopen", specifier = ">=2.3.0" },
     { name = "jupyterlab-search-replace", specifier = ">=1.1.3" },
     { name = "jupyterlab-vim", specifier = ">=4.1.4" },
+    { name = "platformdirs", specifier = ">=2.5" },
     { name = "psutil", specifier = ">=5.9" },
     { name = "ty", specifier = ">=0.0.65" },
 ]

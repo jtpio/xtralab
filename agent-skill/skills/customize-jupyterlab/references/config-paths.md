@@ -26,7 +26,7 @@ For UI customization, only **config** matters. **data** holds installed kernels 
 **Default priority** (when no other signal from the user):
 
 1. **Active project env's `etc/jupyter/`** — `<venv>/etc/jupyter/`, `$CONDA_PREFIX/etc/jupyter/`, or whatever `sys.prefix/etc/jupyter` resolves to. Scopes the change to this project; this is what users usually want when they're already working inside a normal venv or conda env. **Trade-off:** rebuilding the env (`rm -rf .venv && uv sync`, force-reinstall, `conda env remove`) wipes it — always mention this when writing here.
-2. **The user-config entry from `jupyter --paths`** — usually `~/.jupyter/`, but `JUPYTER_CONFIG_DIR` replaces this slot when it is set. Use this when no project env is active, when the user explicitly wants the change to apply to _every_ JupyterLab they run as themselves, or when the env-config path is an installed/bundled runtime rather than the user's project env. This survives normal env rebuilds.
+2. **The user-config entry from `jupyter --paths`** — usually `~/.jupyter/`, but `JUPYTER_CONFIG_DIR` replaces this slot when it is set (the xtralab desktop app and the `xtralab` command set it to the xtralab directory). Use this when no project env is active, when the user explicitly wants the change to apply to _every_ JupyterLab they run as themselves, or when the env-config path is an installed/bundled runtime rather than the user's project env. This survives normal env rebuilds.
 3. **System config** (`/usr/local/etc/jupyter/`, `/etc/jupyter/`) — only with explicit user/admin intent.
 
 | Environment                                 | Default writable config dir                                             | Fallback / alternative                                     |

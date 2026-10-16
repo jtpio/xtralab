@@ -36,7 +36,7 @@ classifiers = [
 ]
 dependencies = [
     "ajlab>=0.1.11",
-    "jupyter-server-mcp>=0.4.0",
+    "jupyter-server-mcp>=0.4.1",
     "jupyterlab>=4.6.2",
     "jupyterlab-commands-toolkit>=0.3.0",
     "jupyterlab-cursor-light>=1.0.2",
@@ -51,10 +51,14 @@ dependencies = [
     "jupyterlab-quickopen>=2.3.0",
     "jupyterlab-search-replace>=1.1.3",
     "jupyterlab-vim>=4.1.4",
+    "platformdirs>=2.5",
     "psutil>=5.9",
     "ty>=0.0.65",
 ]
 dynamic = ["version", "description", "urls"]
+
+[project.scripts]
+xtralab = "xtralab.cli:main"
 
 [tool.hatch.version]
 source = "nodejs"
@@ -69,6 +73,7 @@ packages = ["xtralab"]
 "xtralab/labextension" = "share/jupyter/labextensions/xtralab"
 "jupyter-config/labconfig" = "etc/jupyter/labconfig"
 "jupyter-config/jupyter_server_config.d" = "etc/jupyter/jupyter_server_config.d"
+"jupyter-config/jupyter_jupyter_server_mcp_config.json" = "etc/jupyter/jupyter_jupyter_server_mcp_config.json"
 
 [tool.hatch.build.targets.sdist]
 artifacts = ["xtralab/labextension"]

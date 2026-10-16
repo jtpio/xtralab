@@ -186,8 +186,22 @@ def _advertise_terminal(server_app: ServerApp) -> None:
     manager.extra_env = {**(manager.extra_env or {}), **_TERMINAL_ENV}
 
 
+def _name_app_after_root(server_app: ServerApp) -> None:
+    """Show the project folder in the browser tab title.
+
+    JupyterLab builds the tab title from the ``appName`` page config, which
+    the lab page handler reads from ``LabApp.app_name``. That is a plain class
+    attribute, not a trait, so no config file can set it.
+    """
+    from jupyterlab.labapp import LabApp
+
+    root = os.path.normpath(server_app.root_dir)
+    LabApp.app_name = os.path.basename(root) or root
+
+
 def _load_jupyter_server_extension(server_app: ServerApp) -> None:
     _setup_handlers(server_app)
     _disable_checkpoints(server_app)
     _advertise_terminal(server_app)
+    _name_app_after_root(server_app)
     server_app.log.info("Registered xtralab server extension")

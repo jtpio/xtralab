@@ -10,7 +10,7 @@ requires-python = ">=3.13"
 dependencies = ["xtralab"]
 
 [project.scripts]
-xtralab = "xtralab_desktop.app:main"
+xtralab-desktop = "xtralab_desktop.app:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["xtralab_desktop"]

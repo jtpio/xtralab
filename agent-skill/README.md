@@ -1,11 +1,15 @@
 # xtralab agent skills
 
-Agent skills that teach a coding agent how to work with JupyterLab and xtralab. There are two:
+Agent skills that teach a coding agent how to work with JupyterLab and xtralab. There are four:
 
+- **open** starts xtralab in a folder with `uvx xtralab open` and opens it in the browser. From a Claude Code session in a terminal, `/xtralab:open path/to/worktree` opens that worktree in a browser tab while the session continues.
+- **stop** stops the server of a folder with `uvx xtralab stop`, so the user does not need to know its port. It also lists the running xtralab servers and stops all of them.
 - **customize-jupyterlab** turns plain-English requests like "hide the status bar", "change the theme", "add a language server", or "rearrange the activity bar" into the right config-file edits.
 - **guided-code-walkthrough** drives the _running_ app over xtralab's MCP command bridge: open files, jump to and highlight specific lines, and build a read-only Walkthrough panel of prose, snippets, diagrams, and clickable code links beside the editor, so the agent can _show_ the user something at their own pace instead of only describing it in chat.
 
-Both are built on the [Agent Skills open standard](https://agentskills.io) so the same files work in Claude Code, Codex CLI, Gemini CLI, GitHub Copilot, Cursor, Goose, OpenCode, and any other skills-compatible client.
+All four are built on the [Agent Skills open standard](https://agentskills.io) so the same files work in Claude Code, Codex CLI, Gemini CLI, GitHub Copilot, Cursor, Goose, OpenCode, and any other skills-compatible client.
+
+This folder is also an agent plugin named `xtralab`. The plugin installs the four skills and registers the `jupyter` MCP server, so the agent can drive the running app with no `mcp add` command.
 
 ## What's in here
 
@@ -13,7 +17,13 @@ Both are built on the [Agent Skills open standard](https://agentskills.io) so th
 agent-skill/
 ├── .claude-plugin/
 │   └── plugin.json                     # Claude Code plugin manifest
+├── plugin.json                         # Agent Plugins manifest (Codex, Copilot CLI)
+├── mcp.json                            # the jupyter MCP server, shared by the two manifests
 └── skills/
+    ├── open/
+    │   └── SKILL.md                    # start xtralab in a folder and open the browser
+    ├── stop/
+    │   └── SKILL.md                    # stop the xtralab server of a folder
     ├── customize-jupyterlab/
     │   ├── SKILL.md                    # configure JupyterLab from plain English
     │   └── references/
@@ -31,16 +41,41 @@ agent-skill/
 
 ## Install
 
-The xtralab repo is its own one-plugin Claude Code marketplace (via `.claude-plugin/marketplace.json` at the repo root). For other agents, copy or symlink the skill directory into `~/.agents/skills/`.
+The xtralab repo is its own one-plugin marketplace (via `.claude-plugin/marketplace.json` at the repo root). For agents with no plugin support, copy or symlink the skill directory into `~/.agents/skills/`.
 
 ### Claude Code (two commands)
 
-```text
-/plugin marketplace add jtpio/xtralab
-/plugin install xtralab-skills@xtralab
+```bash
+claude plugin marketplace add jtpio/xtralab
+claude plugin install xtralab@xtralab
 ```
 
-The first command registers this repo as a marketplace; the second installs the `xtralab-skills` plugin from it. Updates land via `/plugin marketplace update xtralab`.
+The first command registers this repo as a marketplace; the second installs the `xtralab` plugin from it. Inside Claude Code, the same commands are `/plugin marketplace add jtpio/xtralab` and `/plugin install xtralab@xtralab`. Updates land via `claude plugin marketplace update xtralab`.
+
+The plugin starts the MCP proxy with `uvx --from jupyter-server-mcp jupyter-server-mcp-proxy`, so [uv](https://docs.astral.sh/uv/) must be installed. The proxy connects to the xtralab server whose folder contains the folder of the session, and to no other server. See [Connect agents with MCP](https://jtpio.github.io/xtralab/agents/mcp/).
+
+### Codex CLI and GitHub Copilot CLI (plugin)
+
+The plugin also follows the [Agent Plugins](https://agent-plugins.org) format (`plugin.json` and `mcp.json`), which Codex CLI and GitHub Copilot CLI read:
+
+```bash
+codex plugin marketplace add jtpio/xtralab
+codex plugin add xtralab@xtralab
+```
+
+```bash
+copilot plugin marketplace add jtpio/xtralab
+copilot plugin install xtralab@xtralab
+```
+
+These two agents start the MCP proxy in the plugin folder, not in the folder of the session, and Codex does not pass the environment of the terminal to it. The proxy finds a server only from a folder inside the project, so the MCP server of the plugin has limits that Claude Code does not have:
+
+| xtralab runs as                | Claude Code | GitHub Copilot CLI | Codex CLI |
+| ------------------------------ | ----------- | ------------------ | --------- |
+| Desktop app (xtralab terminal) | Works       | Works              | Not found |
+| Browser tab                    | Works       | Not found          | Not found |
+
+In the desktop app, Copilot gets the URL of the server from the environment of the xtralab terminal. In a browser tab, `JUPYTER_SERVER_MCP_URL=<url> copilot` does the same; `xtralab list` prints the URL. When the plugin cannot find the server, register the proxy with the `mcp add` command of the agent instead: see [Connect agents with MCP](https://jtpio.github.io/xtralab/agents/mcp/).
 
 ### Claude Code (no install, one command — for testing)
 
@@ -65,6 +100,8 @@ Or for live updates from a working checkout:
 
 ```bash
 mkdir -p ~/.agents/skills
+ln -s "$(pwd)/agent-skill/skills/open" ~/.agents/skills/open
+ln -s "$(pwd)/agent-skill/skills/stop" ~/.agents/skills/stop
 ln -s "$(pwd)/agent-skill/skills/customize-jupyterlab" ~/.agents/skills/customize-jupyterlab
 ln -s "$(pwd)/agent-skill/skills/guided-code-walkthrough" ~/.agents/skills/guided-code-walkthrough
 ```
@@ -85,11 +122,24 @@ To pick the skill up automatically inside the xtralab repo itself:
 
 ```bash
 mkdir -p .agents/skills
+ln -s ../../agent-skill/skills/open .agents/skills/open
+ln -s ../../agent-skill/skills/stop .agents/skills/stop
 ln -s ../../agent-skill/skills/customize-jupyterlab .agents/skills/customize-jupyterlab
 ln -s ../../agent-skill/skills/guided-code-walkthrough .agents/skills/guided-code-walkthrough
 ```
 
 ## What the skills know
+
+**open.** After install, `/xtralab:open [folder]` (or a request such as "open xtralab in this worktree") runs `uvx xtralab open <folder>`, which:
+
+- Starts an xtralab server for the folder, detached from the agent session, so the server outlives it. The first run downloads xtralab into the uv cache; later runs reuse that environment. `uvx xtralab@latest open <folder>` updates xtralab first.
+- Reuses the server that already serves the folder instead of starting a second one.
+- Waits for the server, then prints its URL with the folder, the log file, and the `uvx xtralab stop <port>` command. The server opens the browser tab itself.
+- Keeps settings in the xtralab config folder (the same one as the desktop app), not in `~/.jupyter`.
+
+Try it after install: `/xtralab:open .` in any project, or "start xtralab in the worktree you just created".
+
+**stop.** `/xtralab:stop [folder]` (or "stop xtralab for this worktree") runs `uvx xtralab stop <folder>`, which finds the server by its root folder and shuts it down. A port works too: `uvx xtralab stop 8888`. Other servers keep running. "Which xtralab servers are running?" runs `uvx xtralab list`, and "stop all xtralab servers" runs `uvx xtralab stop --all`. The commands cover xtralab servers only.
 
 **customize-jupyterlab.** After install, the agent will:
 
@@ -113,7 +163,7 @@ Try it after install: open a project and ask "change my JupyterLab theme to dark
 
 Try it after install: open a project and ask "walk me through how this module fits together" or "open src/index.ts and highlight the plugin list".
 
-This skill assumes the `jupyter` MCP server is registered with the agent and a JupyterLab tab is open; in xtralab both are wired by default (see the main README's "Connecting agents to Jupyter").
+This skill assumes the `jupyter` MCP server is registered with the agent and a JupyterLab tab is open. The plugin registers the server; for the other install methods, see [Connect agents with MCP](https://jtpio.github.io/xtralab/agents/mcp/).
 
 ## Distribution
 
@@ -123,7 +173,7 @@ The skill is open-standard SKILL.md, so any of these channels work:
 | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
 | **Agent Skills marketplace** ([skills.sh](https://skills.sh)) | submit each skill directory as a public skill; users install with `npx skills add`                                    | any skills-compatible agent              |
 | **Claude Code community marketplace**                         | submit this directory as a plugin via [claude.ai/settings/plugins/submit](https://claude.ai/settings/plugins/submit)  | Claude Code users                        |
-| **Codex plugin marketplace**                                  | add a `.codex-plugin/plugin.json` mirror, then list in `~/.agents/plugins/marketplace.json` per the Codex plugin docs | Codex CLI users                          |
+| **Codex plugin marketplace**                                  | `plugin.json` follows the Agent Plugins format that Codex CLI reads; add the repo with `codex plugin marketplace add` | Codex CLI users                          |
 | **As part of xtralab pip release**                            | exclude from the published wheel (skill is not Python code); document the manual install path in xtralab's README     | xtralab installers who also use an agent |
 | **As a separate Git repo** (`xtralab-skills`)                 | move this directory out into its own repo for cleaner versioning                                                      | all of the above                         |
 
@@ -136,6 +186,7 @@ A reasonable order of operations:
 
 ## Notes on content
 
+- The plugin version is in `plugin.json` and in `.claude-plugin/plugin.json`. Keep the two values the same.
 - `SKILL.md` is intentionally short. Detail lives in `references/*.md` so the agent only loads what it needs.
 - Recipes prefer xtralab-native settings (`xtralab:sidebar`, `xtralab:launcher`) when they exist, and fall back to upstream JupyterLab plugin IDs otherwise.
 - The customize-jupyterlab recipes match xtralab's _shipped_ defaults: if you change `page_config.d/00-xtralab.json` or `default_setting_overrides.d/00-xtralab.json` in this repo, update [`recipes.md`](skills/customize-jupyterlab/references/recipes.md) and [`known-plugin-ids.md`](skills/customize-jupyterlab/references/known-plugin-ids.md) in the same change.
