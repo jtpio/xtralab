@@ -2771,7 +2771,7 @@ requires-dist = [
 
 [[package]]
 name = "xtralab-desktop"
-version = "0.15.4"
+version = "0.16.0"
 source = { editable = "." }
 dependencies = [
     { name = "xtralab" },
