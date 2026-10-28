@@ -18,19 +18,38 @@ the [features](https://jtpio.github.io/xtralab/features/launcher/), and the
 
 ## Install
 
+Install from [PyPI](https://pypi.org/project/xtralab/) with pip:
+
 ```bash
 pip install xtralab
-jupyter lab
+xtralab
 ```
 
-To run xtralab in any folder without installing it, use uv:
+Or create an environment with the
+[conda-forge package](https://anaconda.org/conda-forge/xtralab):
+
+```bash
+conda create -n xtralab -c conda-forge xtralab
+conda activate xtralab
+xtralab
+```
+
+To run xtralab in any folder using a temporary environment, use
+[Pixi](https://pixi.sh/):
+
+```bash
+pixi exec --channel conda-forge xtralab
+```
+
+Or use uv:
 
 ```bash
 uvx xtralab
 ```
 
 The [installation docs](https://jtpio.github.io/xtralab/installation/) also
-show how to install xtralab as a uv tool or add it to a project.
+show how to install xtralab as a uv tool, add it to a Pixi or uv project,
+and upgrade it.
 
 The desktop app (DMG on macOS, AppImage on Linux) is on the
 [releases page](https://github.com/jtpio/xtralab/releases/latest). It
