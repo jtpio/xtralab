@@ -20,12 +20,17 @@ Before you start:
 
 ## Start xtralab
 
-In a terminal, go to the project folder and start JupyterLab:
+In a terminal, go to the project folder and start xtralab. If you installed
+it with conda, first activate the environment with `conda activate xtralab`
+(or the name of the environment you used).
 
 ```bash
 cd my-project
-jupyter lab
+xtralab
 ```
+
+For a Pixi project, use `pixi run xtralab`. To run in a temporary environment,
+use `pixi exec --channel conda-forge xtralab` or `uvx xtralab`.
 
 JupyterLab opens in your browser. The file browser shows the project folder,
 and the launcher opens in the main area.

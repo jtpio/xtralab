@@ -1,13 +1,19 @@
 ---
 title: Installation
-description: Install xtralab with pip or uv, or download the desktop app.
+description: Install and run xtralab with pip, conda, mamba, Pixi, or uv, or download the desktop app.
 ---
 
 import { Steps } from '@astrojs/starlight/components';
 
-xtralab is on [PyPI](https://pypi.org/project/xtralab/). It requires Python
-3.11 or newer. The [desktop app](../desktop/) includes its own Python runtime
-and does not need either of the methods on this page.
+xtralab is on [PyPI](https://pypi.org/project/xtralab/) and
+[conda-forge](https://anaconda.org/conda-forge/xtralab). It requires Python
+3.11 or newer; conda and Pixi install Python as a dependency. The
+[desktop app](../desktop/) includes its own Python runtime and does not need
+the installation methods on this page.
+
+The `xtralab` command starts JupyterLab with the
+[settings folder of xtralab](#settings-folder). `jupyter lab` also works, with
+the default Jupyter settings folder.
 
 ## Install with pip
 
@@ -16,9 +22,80 @@ pip install xtralab
 xtralab
 ```
 
-The `xtralab` command starts JupyterLab with the
-[settings folder of xtralab](#settings-folder). `jupyter lab` also works, with
-the default Jupyter settings folder.
+## Install with conda or mamba
+
+With [conda](https://conda-forge.org/docs/user/introduction/) or
+[mamba](https://mamba.readthedocs.io/) installed (for mamba, write `mamba` in
+place of `conda` in each command):
+
+<Steps>
+
+1. Create an environment with xtralab from conda-forge:
+
+   ```bash
+   conda create -n xtralab -c conda-forge xtralab
+   ```
+
+2. Activate the environment:
+
+   ```bash
+   conda activate xtralab
+   ```
+
+3. Start xtralab from the folder you want to work in:
+
+   ```bash
+   xtralab
+   ```
+
+</Steps>
+
+To add xtralab to an existing conda environment, activate it and run:
+
+```bash
+conda install -c conda-forge xtralab
+```
+
+## Install with Pixi
+
+[Pixi](https://pixi.sh/) installs xtralab from conda-forge. Install Pixi first,
+then choose a temporary environment or add xtralab to a project.
+
+### Run in a temporary environment
+
+```bash
+pixi exec --channel conda-forge xtralab
+```
+
+Pixi creates a cached environment for xtralab and starts it in the current
+folder. This does not add xtralab to the dependencies of a project.
+
+### Add to a Pixi project
+
+<Steps>
+
+1. In your project folder, initialize a Pixi workspace with conda-forge:
+
+   ```bash
+   pixi init --channel conda-forge
+   ```
+
+   For an existing Pixi workspace, skip initialization. If `conda-forge` is
+   missing from its channels, run `pixi workspace channel add conda-forge`.
+
+2. Add xtralab to the project dependencies:
+
+   ```bash
+   pixi add xtralab
+   ```
+
+3. Start xtralab in the project environment:
+
+   ```bash
+   pixi run xtralab
+   ```
+
+</Steps>
 
 ## Install with uv
 
@@ -79,12 +156,15 @@ uv run xtralab
 
 ## Upgrade
 
-| Installed with    | Command                             |
-| ----------------- | ----------------------------------- |
-| `pip`             | `pip install --upgrade xtralab`     |
-| `uvx`             | `uvx xtralab@latest`                |
-| `uv tool install` | `uv tool upgrade xtralab`           |
-| `uv add`          | `uv sync --upgrade-package xtralab` |
+| Installed with                      | Command                                                     |
+| ----------------------------------- | ----------------------------------------------------------- |
+| `pip`                               | `pip install --upgrade xtralab`                             |
+| `conda` (in the active environment) | `conda update -c conda-forge xtralab`                       |
+| `pixi exec`                         | `pixi exec --force-reinstall --channel conda-forge xtralab` |
+| `pixi add`                          | `pixi upgrade xtralab`                                      |
+| `uvx`                               | `uvx xtralab@latest`                                        |
+| `uv tool install`                   | `uv tool upgrade xtralab`                                   |
+| `uv add`                            | `uv sync --upgrade-package xtralab`                         |
 
 ## Settings folder
 
