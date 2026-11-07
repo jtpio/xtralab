@@ -41,10 +41,6 @@ env/
 .mypy_cache/
 .ruff_cache/
 
-# Built labextension and generated version file
-xtralab/labextension/
-xtralab/_version.py
-
 # Jupyter
 .ipynb_checkpoints/
 .virtual_documents/

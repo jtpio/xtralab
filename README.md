@@ -1,4 +1,4 @@
-<h1><img src="./logo.svg" width="34" align="absmiddle" alt="" /> xtralab</h1>
+<h1><img src="./packages/xtralab/logo.svg" width="34" align="absmiddle" alt="" /> xtralab</h1>
 
 An opinionated JupyterLab meta-package for coding agents.
 

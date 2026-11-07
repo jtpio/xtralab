@@ -36,7 +36,7 @@ jobs:
       - name: Build the extension
         run: |
           set -eux
-          python -m pip install .
+          python -m pip install ./python/xtralab
 
       - name: Validate metapackage
         run: |
@@ -98,8 +98,8 @@ jobs:
           set -eux
 
           pip install build
-          python -m build
-          pip uninstall -y "xtralab" jupyterlab
+          python -m build python/xtralab --outdir dist
+          pip uninstall -y xtralab jupyterlab
 
       - name: Upload extension packages
         uses: actions/upload-artifact@v7

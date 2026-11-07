@@ -3,6 +3,7 @@ node_modules
 **/lib
 **/package.json
 !/package.json
+python/*/*/labextension
 
 # Standalone subprojects with their own tooling and formatting conventions.
 docs/
