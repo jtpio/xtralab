@@ -5,6 +5,7 @@ import type { CommandRegistry } from '@lumino/commands';
 import { DisposableSet, type IDisposable } from '@lumino/disposable';
 
 import type { IAgentSessions } from '../agentSessions';
+import { hasServerExtension } from '../server';
 import type { IAgent } from './agents';
 import { buildAgentInvocation } from './invocation';
 import { agentCommandId } from './tokens';
@@ -32,6 +33,9 @@ export function registerAgentCommands(
         const cwd = args['cwd'] as string | undefined;
         const promptArg = args['prompt'];
         const prompt = typeof promptArg === 'string' ? promptArg : '';
+        if (agent.start) {
+          return agent.start({ prompt, cwd });
+        }
         const invocation = buildAgentInvocation(agent, prompt);
         return launchInTerminal(app.commands, {
           cwd,
@@ -91,18 +95,49 @@ export async function launchInTerminal(
   };
 
   // Without waiting for `connected` the stdin write races the websocket
-  // handshake and the command silently disappears.
-  if (session.connectionStatus === 'connected') {
-    sendCommand();
-  } else {
-    const onStatus = (): void => {
-      if (session.connectionStatus === 'connected') {
-        session.connectionStatusChanged.disconnect(onStatus);
-        sendCommand();
-      }
-    };
-    session.connectionStatusChanged.connect(onStatus);
+  // handshake and the command silently disappears. The JupyterLite shell
+  // also queries the terminal colors when it starts, and reads the command
+  // as the answer if it comes too early: there, wait for its output to settle.
+  const waitForPrompt = !hasServerExtension();
+  let sent = false;
+  let settle: ReturnType<typeof setTimeout> | undefined;
+  const sendOnce = (): void => {
+    if (!sent) {
+      sent = true;
+      clearTimeout(settle);
+      session.messageReceived.disconnect(onMessage);
+      sendCommand();
+    }
+  };
+  const onMessage = (sender: unknown, message: { type: string }): void => {
+    if (message.type === 'stdout') {
+      clearTimeout(settle);
+      settle = setTimeout(sendOnce, SETTLE_MS);
+    }
+  };
+  const onConnected = (): void => {
+    if (session.connectionStatus !== 'connected') {
+      return;
+    }
+    session.connectionStatusChanged.disconnect(onConnected);
+    if (waitForPrompt) {
+      setTimeout(sendOnce, PROMPT_TIMEOUT_MS);
+    } else {
+      sendOnce();
+    }
+  };
+  if (waitForPrompt) {
+    session.messageReceived.connect(onMessage);
   }
+  session.connectionStatusChanged.connect(onConnected);
+  onConnected();
 
   return main;
 }
+
+/**
+ * How long the output of a JupyterLite shell must stay quiet before the
+ * command is sent, and the longest wait for it.
+ */
+const SETTLE_MS = 300;
+const PROMPT_TIMEOUT_MS = 5000;

@@ -146,10 +146,12 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
             } else {
               const agent = agents.find(entry => entry.id === target.agentId);
               icon = agent?.icon ?? null;
-              targetTitle = trans.__(
-                'Starts %1 in a new terminal',
-                agent?.label ?? target.agentId
-              );
+              targetTitle = agent?.start
+                ? agent.caption
+                : trans.__(
+                    'Starts %1 in a new terminal',
+                    agent?.label ?? target.agentId
+                  );
             }
           }
           return (

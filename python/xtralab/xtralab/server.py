@@ -199,8 +199,19 @@ def _name_app_after_root(server_app: ServerApp) -> None:
     LabApp.app_name = os.path.basename(root) or root
 
 
+def _advertise_server(server_app: ServerApp) -> None:
+    """Tell the labextension that this server extension runs.
+
+    The labextension reads ``xtralabServer`` from the page config. Without it,
+    as in JupyterLite, it makes no requests to this extension or to git.
+    """
+    page_config = server_app.web_app.settings.setdefault("page_config_data", {})
+    page_config["xtralabServer"] = True
+
+
 def _load_jupyter_server_extension(server_app: ServerApp) -> None:
     _setup_handlers(server_app)
+    _advertise_server(server_app)
     _disable_checkpoints(server_app)
     _advertise_terminal(server_app)
     _name_app_after_root(server_app)

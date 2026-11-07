@@ -32,6 +32,7 @@ import {
   useRootDropZone
 } from './dragAndDrop';
 import { buildIgnoredEntries, loadGitignoreMatcher } from './gitignore';
+import { hasGit } from '../server';
 import { GIT_REPO_PATH, loadGitChanges, toGitStatusEntries } from './gitStatus';
 import { FILE_BROWSER_ICONS } from './icons';
 import type { XtralabFileBrowser } from './widget';
@@ -320,7 +321,9 @@ export function FileBrowserComponent(
 
       // Each re-applies the statuses itself when it completes.
       void refreshGitignoreMatcher();
-      void refreshGitStatus();
+      if (gitStatusPoll) {
+        void refreshGitStatus();
+      }
 
       // `resetPaths` starts every directory collapsed, so re-expand after it.
       for (const path of expandedPaths) {
@@ -745,16 +748,18 @@ export function FileBrowserComponent(
     knownDirs.set(ROOT_LOAD_KEY, 'unloaded');
     void fetchDirectory(ROOT_LOAD_KEY);
     void refreshGitignoreMatcher();
-    const gitStatusPoll = new Poll({
-      name: '@xtralab/fileBrowser:gitStatus',
-      factory: () => refreshGitStatus(),
-      frequency: {
-        interval: GIT_STATUS_POLL_INTERVAL_MS,
-        backoff: true,
-        max: GIT_STATUS_POLL_MAX_MS
-      },
-      standby: 'when-hidden'
-    });
+    const gitStatusPoll = hasGit()
+      ? new Poll({
+          name: '@xtralab/fileBrowser:gitStatus',
+          factory: () => refreshGitStatus(),
+          frequency: {
+            interval: GIT_STATUS_POLL_INTERVAL_MS,
+            backoff: true,
+            max: GIT_STATUS_POLL_MAX_MS
+          },
+          standby: 'when-hidden'
+        })
+      : null;
 
     // `auto: false` keeps the first tick from racing the initial root
     // fetch above; the poll is started explicitly below.
@@ -834,7 +839,7 @@ export function FileBrowserComponent(
     return () => {
       cancelled = true;
       dropHandlerRef.current = null;
-      gitStatusPoll.dispose();
+      gitStatusPoll?.dispose();
       contentsManager.fileChanged.disconnect(onContentsFileChanged);
       listingPoll.dispose();
       unsubscribe();

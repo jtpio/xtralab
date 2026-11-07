@@ -1,5 +1,6 @@
 import type { DocumentRegistry } from '@jupyterlab/docregistry';
 import type { TranslationBundle } from '@jupyterlab/translation';
+import type { Contents } from '@jupyterlab/services';
 import { LabIcon, ReactWidget } from '@jupyterlab/ui-components';
 import type { CommandRegistry } from '@lumino/commands';
 import type { CommandPalette } from '@lumino/widgets';
@@ -63,6 +64,7 @@ function renderIcon(icon?: LabIcon): React.ReactNode {
 function OmniboxComponent(props: OmniboxWidget.IOptions): JSX.Element {
   const {
     commands,
+    contents,
     paletteItems,
     docRegistry,
     agents,
@@ -84,7 +86,7 @@ function OmniboxComponent(props: OmniboxWidget.IOptions): JSX.Element {
 
   React.useEffect(() => {
     let cancelled = false;
-    void loadWorkspaceFiles().then(loaded => {
+    void loadWorkspaceFiles(contents).then(loaded => {
       if (!cancelled) {
         setFiles(loaded);
       }
@@ -92,7 +94,7 @@ function OmniboxComponent(props: OmniboxWidget.IOptions): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [contents]);
 
   const sections = React.useMemo(
     () =>
@@ -329,6 +331,10 @@ export namespace OmniboxWidget {
      * The command registry used to look up and execute commands.
      */
     commands: CommandRegistry;
+    /**
+     * The contents manager, to list the files without a server.
+     */
+    contents: Contents.IManager;
     /**
      * Snapshot of the command palette's items, read once when the overlay
      * opens; empty when the palette isn't available.

@@ -1,6 +1,8 @@
 import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
 
+import { hasServerExtension } from '../server';
+
 /**
  * Ask the xtralab server which of `commands` runs in each open terminal
  * session: a map from session name to matched command (`null` = idle). Any
@@ -12,6 +14,9 @@ export async function fetchRunningAgents(
 ): Promise<Record<string, string | null> | null> {
   if (commands.length === 0) {
     return {};
+  }
+  if (!hasServerExtension()) {
+    return null;
   }
 
   const settings = ServerConnection.makeSettings();

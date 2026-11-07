@@ -55,28 +55,38 @@ export function registerLauncherSchemaDefaults(
   settingRegistry.transform(LAUNCHER_PLUGIN_ID, {
     compose: plugin => {
       const { user } = plugin.data;
+      const properties = plugin.schema.properties;
       const composite = { ...plugin.data.composite };
       composite.agents = mergeSettingsById(
-        defaultAgentSettings(),
+        mergeSettingsById(defaultAgentSettings(), properties?.agents?.default),
         user.agents
       ) as unknown as PartialJSONValue;
       composite.editors = mergeSettingsById(
-        defaultEditorSettings(),
+        mergeSettingsById(
+          defaultEditorSettings(),
+          properties?.editors?.default
+        ),
         user.editors
       ) as unknown as PartialJSONValue;
       plugin.data = { composite, user };
       return plugin;
     },
     fetch: plugin => {
+      // A default from the setting overrides (`overrides.json`, or
+      // `settingsOverrides` in JupyterLite) applies on top of the built-ins.
       const properties = plugin.schema.properties;
       if (properties) {
         if (properties.agents) {
-          properties.agents.default =
-            defaultAgentSettings() as unknown as PartialJSONValue;
+          properties.agents.default = mergeSettingsById(
+            defaultAgentSettings(),
+            properties.agents.default
+          ) as unknown as PartialJSONValue;
         }
         if (properties.editors) {
-          properties.editors.default =
-            defaultEditorSettings() as unknown as PartialJSONValue;
+          properties.editors.default = mergeSettingsById(
+            defaultEditorSettings(),
+            properties.editors.default
+          ) as unknown as PartialJSONValue;
         }
       }
       return plugin;

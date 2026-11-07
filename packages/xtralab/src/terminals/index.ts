@@ -14,6 +14,7 @@ import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { LabIcon, MenuSvg, terminalIcon } from '@jupyterlab/ui-components';
 
 import { IAgentSessions } from '../agentSessions';
+import type { IAgent } from '../launcher/agents';
 import { IEditorRegistry } from '../launcher/editorRegistry';
 import { agentCommandId, IAgentRegistry } from '../launcher/tokens';
 import { AgentTerminals } from './agentTerminals';
@@ -52,13 +53,17 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
   ): IAgentTerminals => {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
 
+    // Agents that start elsewhere (a chat) never run in a terminal.
+    const terminalAgents = (): IAgent[] =>
+      (agentRegistry?.agents ?? []).filter(agent => !agent.start);
+
     // Detection reports either the configured `command` or the canonical `id`,
     // so an aliased command (e.g. `ccm` for `claude`) still maps to its logo.
     const iconForCommand = (command: string | null): LabIcon => {
       if (!command) {
         return terminalIcon;
       }
-      const agent = agentRegistry?.agents.find(
+      const agent = terminalAgents().find(
         a => a.command === command || a.id === command
       );
       if (agent) {
@@ -72,7 +77,7 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
 
     const detectCommands = (): string[] => {
       const names = new Set<string>();
-      for (const agent of agentRegistry?.agents ?? []) {
+      for (const agent of terminalAgents()) {
         names.add(agent.command);
         names.add(agent.id);
       }
@@ -84,9 +89,7 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
     };
 
     const isAgentCommand = (command: string): boolean =>
-      agentRegistry?.agents.some(
-        a => a.command === command || a.id === command
-      ) ?? false;
+      terminalAgents().some(a => a.command === command || a.id === command);
 
     const registry = new SessionRegistry({
       serviceManager: app.serviceManager,
@@ -154,7 +157,7 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
     // LabIcon stylesheet — the bare menu renders raw, oversized SVGs.
     let newMenu: MenuSvg | null = null;
     const onCreate = (anchor: { x: number; y: number }): void => {
-      const agents = agentRegistry?.agents ?? [];
+      const agents = terminalAgents();
       if (agents.length === 0) {
         void app.commands.execute('terminal:create-new');
         return;

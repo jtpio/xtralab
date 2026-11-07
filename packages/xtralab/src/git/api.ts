@@ -1,6 +1,8 @@
 import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
 
+import { hasGit } from '../server';
+
 import {
   GitReference,
   IFileChange,
@@ -16,6 +18,9 @@ async function postWithPath<T>(
   repoPath: string,
   body: unknown
 ): Promise<T> {
+  if (!hasGit()) {
+    throw new Error('git is not available');
+  }
   const settings = ServerConnection.makeSettings();
   // encodeParts keeps the slashes the server's posix-path routing expects.
   const encodedPath = repoPath.length > 0 ? URLExt.encodeParts(repoPath) : '';

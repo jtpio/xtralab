@@ -1,6 +1,21 @@
 import { LabIcon, terminalIcon } from '@jupyterlab/ui-components';
+import type { Widget } from '@lumino/widgets';
 
 import { BUILTIN_AGENT_ICONS } from './icons';
+
+/**
+ * What an agent receives when it starts.
+ */
+export interface IAgentStartOptions {
+  /**
+   * The first prompt, empty for none.
+   */
+  prompt: string;
+  /**
+   * The folder to work in, relative to the root.
+   */
+  cwd?: string;
+}
 
 /**
  * An agent card on the launcher. `command` is the literal text typed into the
@@ -40,8 +55,14 @@ export interface IAgent {
    * Argv tokens spliced between `command` and the shell-quoted prompt:
    * `[]` appends the prompt positionally, `['-i']` prefixes a flag, and
    * `undefined` means no prompt support (the launcher dims the button).
+   * Agents with {@link start} use `[]` when they take a prompt.
    */
   promptArgs?: string[];
+  /**
+   * Start the agent elsewhere than in a new terminal, for example in a chat;
+   * `command` is then only an identifier. Resolves with the opened widget.
+   */
+  start?: (options: IAgentStartOptions) => Promise<Widget | undefined>;
 }
 
 /**

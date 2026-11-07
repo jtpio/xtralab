@@ -9,6 +9,8 @@ import type { Widget } from '@lumino/widgets';
 
 const PLUGIN_ID = 'xtralab:sidebar';
 
+const FILE_BROWSER_ID = 'xtralab:file-browser';
+
 /**
  * `rank` is the fallback used when re-adding a hidden tab; the shipped
  * `layout` setting normally wins because `LabShell.add` merges its
@@ -52,7 +54,7 @@ const TARGETS: ITarget[] = [
     label: trans => trans.__('Terminals')
   },
   {
-    id: 'xtralab:file-browser',
+    id: FILE_BROWSER_ID,
     rank: 2,
     settingKey: 'showFileBrowser',
     command: 'xtralab:toggle-file-browser',
@@ -172,9 +174,28 @@ const plugin: JupyterFrontEndPlugin<void> = {
         hiddenFrom.delete(target.id);
       } else if (!wantPresent && area) {
         hiddenFrom.set(target.id, area);
+        const wasCurrent = widget.isVisible;
         // Detaching makes the SideBarHandler remove the tab while the
         // widget instance stays alive for a later re-add.
         widget.parent = null;
+        if (wasCurrent) {
+          showReplacement(area);
+        }
+      }
+    };
+
+    /**
+     * Show another tab of a sidebar whose current tab was hidden, which
+     * would otherwise stay open and empty (the default file browser is the
+     * current tab of a new workspace).
+     */
+    const showReplacement = (area: 'left' | 'right'): void => {
+      const replacement =
+        locate(FILE_BROWSER_ID) === area
+          ? FILE_BROWSER_ID
+          : Array.from(labShell.widgets(area))[0]?.id;
+      if (replacement) {
+        labShell.activateById(replacement);
       }
     };
 

@@ -95,7 +95,7 @@ export function TargetChips(props: {
           role="radio"
           aria-checked={targetName === null}
           tabIndex={targetName === null ? 0 : -1}
-          title={trans.__('Start the agent in a new terminal')}
+          title={trans.__('Start the agent in a new terminal or chat')}
           className={
             'jp-xtralab-AskAgent-targetButton' +
             (targetName === null ? ' jp-mod-selected' : '')

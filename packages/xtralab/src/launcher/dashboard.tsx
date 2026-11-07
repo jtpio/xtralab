@@ -17,6 +17,7 @@ import type { Widget } from '@lumino/widgets';
 
 import type { IAgentSessions } from '../agentSessions';
 import { expandStatusFiles, status } from '../git/api';
+import { hasGit, hasServerExtension } from '../server';
 import {
   CommandIDs as GitCommandIDs,
   CommandArguments as GitCommandArguments
@@ -30,7 +31,7 @@ import type {
 import type { IAgent } from './agents';
 import { launchInTerminal } from './commands';
 import type { IEditor } from './editors';
-import { agentCommandId } from './tokens';
+import { agentCommandId, type IAgentRegistry } from './tokens';
 
 /**
  * Construction options for the launcher dashboard. `onAgentLaunch` is an
@@ -43,9 +44,10 @@ interface ILauncherDashboardOptions {
    */
   commands: CommandRegistry;
   /**
-   * Agent list to render, already filtered by availability and sorted by rank.
+   * The agents to render, already filtered by availability and sorted by
+   * rank; the dashboard re-renders when they change.
    */
-  agents: IAgent[];
+  registry: IAgentRegistry;
   /**
    * Terminal editor for the "Open" section, or `null` when none is installed.
    */
@@ -84,13 +86,19 @@ export class LauncherDashboard extends ReactWidget {
     super();
     this.addClass('jp-xtralab-Launcher');
     this._options = options;
+    options.registry.changed.connect(this.update, this);
   }
 
   /**
    * Render the launcher dashboard component.
    */
   protected render(): React.ReactElement {
-    return <LauncherDashboardComponent {...this._options} />;
+    return (
+      <LauncherDashboardComponent
+        {...this._options}
+        agents={this._options.registry.agents}
+      />
+    );
   }
 
   private _options: ILauncherDashboardOptions;
@@ -124,7 +132,7 @@ const CHANGES_POLL_INTERVAL_MS = 8000;
 const CHANGES_POLL_MAX_MS = 300_000;
 
 function LauncherDashboardComponent(
-  props: ILauncherDashboardOptions
+  props: Omit<ILauncherDashboardOptions, 'registry'> & { agents: IAgent[] }
 ): React.ReactElement {
   const {
     commands,
@@ -137,6 +145,7 @@ function LauncherDashboardComponent(
     trans
   } = props;
   const [prompt, setPrompt] = React.useState('');
+  const showChanges = hasGit();
   const [git, setGit] = React.useState<IGitState>({
     loading: true,
     result: null,
@@ -157,6 +166,9 @@ function LauncherDashboardComponent(
   }, [repoPath]);
 
   React.useEffect(() => {
+    if (!showChanges) {
+      return;
+    }
     const poll = new Poll({
       name: '@xtralab/launcher:gitChanges',
       factory: () => refresh(),
@@ -170,7 +182,7 @@ function LauncherDashboardComponent(
     return () => {
       poll.dispose();
     };
-  }, [refresh]);
+  }, [refresh, showChanges]);
 
   const launch = React.useCallback(
     async (agent: IAgent) => {
@@ -263,7 +275,7 @@ function LauncherDashboardComponent(
         onLaunch={launch}
         trans={trans}
       />
-      <McpSection agents={agents} trans={trans} />
+      {hasServerExtension() && <McpSection agents={agents} trans={trans} />}
       <OpenSection
         editor={editor}
         onLaunchTerminal={launchTerminal}
@@ -272,12 +284,14 @@ function LauncherDashboardComponent(
         onLaunchEditor={launchEditor}
         trans={trans}
       />
-      <ChangesSection
-        git={git}
-        onOpen={openDiff}
-        onRefresh={() => void refresh()}
-        trans={trans}
-      />
+      {showChanges && (
+        <ChangesSection
+          git={git}
+          onOpen={openDiff}
+          onRefresh={() => void refresh()}
+          trans={trans}
+        />
+      )}
     </div>
   );
 }

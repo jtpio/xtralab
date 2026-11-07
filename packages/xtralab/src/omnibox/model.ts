@@ -406,7 +406,9 @@ function buildAgentItems(
       key: `agent:${agent.id}`,
       label: trans.__('Ask %1', agent.label),
       matchIndices: [],
-      caption: trans.__('Run prompt in a new terminal'),
+      caption: agent.start
+        ? agent.caption
+        : trans.__('Run prompt in a new terminal'),
       icon: agent.icon,
       execute: () => {
         void commands

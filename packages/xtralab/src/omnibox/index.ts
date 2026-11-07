@@ -98,6 +98,7 @@ const plugin: JupyterFrontEndPlugin<IOmnibox> = {
       close();
       const widget = new OmniboxWidget({
         commands,
+        contents: app.serviceManager.contents,
         paletteItems: paletteItems(),
         docRegistry,
         agents: agentRegistry ? agentRegistry.agents : [],

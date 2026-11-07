@@ -72,12 +72,13 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
       );
       const available = await fetchAvailableCommands(probe);
 
-      const filtered = filterAgents(agents, available);
-
-      registered?.dispose();
-      registered = registerAgentCommands(app, filtered, agentSessions);
-      registry.setAgents(filtered);
+      registry.setAgents(filterAgents(agents, available));
     };
+
+    registry.changed.connect(() => {
+      registered?.dispose();
+      registered = registerAgentCommands(app, registry.agents, agentSessions);
+    });
 
     const readOverrides = (
       settings: ISettingRegistry.ISettings
@@ -125,7 +126,7 @@ const plugin: JupyterFrontEndPlugin<IAgentRegistry> = {
         };
         const launcher = new LauncherDashboard({
           commands,
-          agents: registry.agents,
+          registry,
           editor: editorRegistry?.current ?? null,
           agentSessions,
           onAgentLaunch,

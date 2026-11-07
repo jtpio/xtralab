@@ -1,3 +1,4 @@
+import { hasServerExtension } from '../server';
 import type { IAgent } from './agents';
 
 /**
@@ -15,6 +16,15 @@ function shellQuote(value: string): string {
 }
 
 /**
+ * Quote a string for the JupyterLite shell (cockle): it has no `$'…'`
+ * quoting, but a single-quoted string continues over several lines.
+ */
+function liteShellQuote(value: string): string {
+  const escaped = value.replace(/'/g, "'\"'\"'").replace(/\r?\n/g, '\r');
+  return `'${escaped}'`;
+}
+
+/**
  * Compose the literal command line typed into a fresh terminal for `agent`:
  * the shell-quoted prompt is spliced in per the `promptArgs` recipe. Returns
  * bare `agent.command` when the prompt is empty or the agent has no prompt
@@ -25,6 +35,7 @@ export function buildAgentInvocation(agent: IAgent, prompt: string): string {
   if (trimmed.length === 0 || agent.promptArgs === undefined) {
     return agent.command;
   }
-  const tokens = [agent.command, ...agent.promptArgs, shellQuote(trimmed)];
+  const quote = hasServerExtension() ? shellQuote : liteShellQuote;
+  const tokens = [agent.command, ...agent.promptArgs, quote(trimmed)];
   return tokens.filter(token => token.length > 0).join(' ');
 }

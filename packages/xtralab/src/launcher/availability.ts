@@ -1,15 +1,19 @@
 import { URLExt } from '@jupyterlab/coreutils';
 import { ServerConnection } from '@jupyterlab/services';
 
+import { hasServerExtension } from '../server';
+
 /**
  * Ask the server extension's `which`-proxy endpoint which commands resolve on
  * its `$PATH`. Returns `null` on any failure — callers should treat that as
- * "availability unknown", not as "nothing available".
+ * "availability unknown", not as "nothing available". Without the server
+ * extension (JupyterLite) no command is available: only the entries with
+ * `requireAvailable: false` show.
  */
 export async function fetchAvailableCommands(
   commands: string[]
 ): Promise<Set<string> | null> {
-  if (commands.length === 0) {
+  if (commands.length === 0 || !hasServerExtension()) {
     return new Set();
   }
 
