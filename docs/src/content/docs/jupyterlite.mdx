@@ -1,0 +1,111 @@
+---
+title: JupyterLite
+description: Run the xtralab extensions and defaults in the browser with xtralite and JupyterLite.
+---
+
+import { Steps } from '@astrojs/starlight/components';
+
+[JupyterLite](https://jupyterlite.readthedocs.io) runs JupyterLab in the
+browser, with no server. The `xtralite` package makes a JupyterLite site with
+the extensions and defaults of xtralab, and with coding agents that run in
+the browser:
+
+- [Pi](https://github.com/jupyter-ai-contrib/jupyter-ai-pi-lite), the pi
+  coding agent, in the JupyterLite terminal.
+- Pi and Jupyternaut, the personas of
+  [Jupyter AI Lite](https://github.com/jupyterlite/ai), in a chat.
+
+[Try xtralite](https://jtpio.github.io/xtralab/lite/lab/index.html) in your
+browser.
+
+## Build a site
+
+<Steps>
+
+1. Install xtralite in a Python environment. It installs JupyterLite and the
+   extensions of the site:
+
+   ```bash
+   pip install xtralite
+   ```
+
+2. Put the files of the site in a `contents` folder, then build the site:
+
+   ```bash
+   jupyter lite build --contents contents --output-dir dist
+   ```
+
+3. Serve the `dist` folder with a static file server, for example:
+
+   ```bash
+   python -m http.server --directory dist
+   ```
+
+</Steps>
+
+The JupyterLite terminal downloads its shell commands (WebAssembly) with
+[micromamba](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html)
+during the build. Install micromamba before you build the site.
+
+`jupyter lite build` applies the xtralab defaults (the layout, the settings,
+and the disabled extensions), then the changes of xtralite for the browser.
+
+## Features in the browser
+
+| Feature                                               | JupyterLite                                                     |
+| ----------------------------------------------------- | --------------------------------------------------------------- |
+| [Agent launcher](../features/launcher/)               | Yes: Pi in a terminal, and Pi or Jupyternaut in a chat          |
+| [Ask an agent](../features/ask-agent/)                | Yes, in a new terminal or a new chat                            |
+| [Omnibox](../features/omnibox/)                       | Yes. The file search reads the files of the site                |
+| [Terminals panel](../features/terminals/)             | Yes, for the agents that you start from xtralab                 |
+| File browser, editor breadcrumbs, themes and defaults | Yes                                                             |
+| [Git diffs](../features/git-diffs/)                   | No: git needs a server                                          |
+| [Language servers](../customize/language-servers/)    | No: language servers need a server                              |
+| Search and replace in files                           | No: the search runs on the server                               |
+| [MCP server](../agents/mcp/)                          | No: the agents run in the browser and use JupyterLab directly   |
+
+## Agents
+
+The launcher shows:
+
+- **Pi**: starts the `pi` command in a new JupyterLite terminal. The prompt
+  of the launcher is the first message.
+- **Pi chat** and **Jupyternaut chat**: open a new chat and send the prompt
+  to the persona.
+
+The omnibox and the ask-agent prompt show the same agents.
+
+The agents call the model provider from the browser. Add a provider before
+you send a prompt:
+
+- For Pi, run **Pi: Add a Model Provider** from the command palette, or type
+  `/login` in the `pi` command of a terminal. Pi uses the same provider in
+  the terminal and in the chat.
+- For Jupyternaut, open the **AI Agent** settings.
+
+The provider must accept requests from a web page (CORS). See the
+[pi documentation](https://github.com/jupyter-ai-contrib/jupyter-ai-pi-lite)
+for the providers that do.
+
+## Configure the site
+
+Put a `jupyter-lite.json` file or an `overrides.json` file in the folder of
+the site to change the configuration. Their values replace the values of
+xtralab and xtralite.
+
+For example, to make Jupyternaut the default persona of the chats, add this
+`jupyter-lite.json`:
+
+```json
+{
+  "jupyter-lite-schema-version": 0,
+  "jupyter-config-data": {
+    "jupyter_ai_default_persona": "jupyternaut-frontend"
+  }
+}
+```
+
+The launcher shows a terminal agent only when the command exists in the
+JupyterLite terminal. Without a server, xtralab cannot check the commands:
+set `requireAvailable` to `false` for each agent to show, in the `agents`
+setting of `xtralab:launcher`. xtralite does this for Pi.
