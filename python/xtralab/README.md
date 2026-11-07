@@ -12,5 +12,8 @@ pip install xtralab
 xtralab
 ```
 
+For JupyterLite, in the browser and without a server, see
+[`xtralite`](https://pypi.org/project/xtralite/).
+
 See the [documentation](https://jtpio.github.io/xtralab/) and the
 [repository](https://github.com/jtpio/xtralab).

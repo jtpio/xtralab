@@ -1,0 +1,91 @@
+[build-system]
+requires = [
+    "hatchling>=1.5.0",
+    "hatch-jupyter-builder>=0.5",
+    "jupyter-builder>=1.0.2,<2.0.0a0",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "xtralite"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+description = "xtralab for JupyterLite: the xtralab extensions and defaults, with coding agents in the browser."
+authors = [
+    { name = "Jeremy Tuloup" },
+]
+keywords = ["jupyter", "jupyterlab", "jupyterlite", "meta-package"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Jupyter",
+    "Framework :: Jupyter :: JupyterLab",
+    "Framework :: Jupyter :: JupyterLab :: 4",
+    "Framework :: Jupyter :: JupyterLab :: Extensions",
+    "Framework :: Jupyter :: JupyterLab :: Extensions :: Prebuilt",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "xtralab==0.16.0",
+    "jupyter-ai-lite>=0.21.0",
+    "jupyter-ai-pi-lite>=0.1.2",
+    "jupyter-ai-pi-lite-terminal>=0.1.2",
+    "jupyterlite-core>=0.8.7",
+    "jupyterlite-pyodide-kernel>=0.8.7",
+    "jupyterlite-terminal>=1.7.1",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/jtpio/xtralab"
+Documentation = "https://jtpio.github.io/xtralab/jupyterlite/"
+"Bug Tracker" = "https://github.com/jtpio/xtralab/issues"
+Repository = "https://github.com/jtpio/xtralab.git"
+
+[project.entry-points."jupyterlite.addon.v0"]
+xtralite = "xtralite.addon:XtraliteAddon"
+
+[tool.hatch.version]
+path = "xtralite/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["xtralite"]
+
+[tool.hatch.build.targets.wheel.shared-data]
+"xtralite/labextension" = "share/jupyter/labextensions/xtralite"
+"install.json" = "share/jupyter/labextensions/xtralite/install.json"
+
+[tool.hatch.build.targets.sdist]
+artifacts = ["xtralite/labextension"]
+exclude = [".github"]
+
+[tool.hatch.build.hooks.jupyter-builder]
+dependencies = ["hatch-jupyter-builder>=0.5"]
+build-function = "hatch_jupyter_builder.npm_builder"
+ensured-targets = [
+    "xtralite/labextension/package.json",
+]
+skip-if-exists = ["xtralite/labextension/package.json"]
+
+[tool.hatch.build.hooks.jupyter-builder.build-kwargs]
+build_cmd = "build:prod"
+npm = ["pnpm"]
+path = "../.."
+
+[tool.hatch.build.hooks.jupyter-builder.editable-build-kwargs]
+build_cmd = "install:extension"
+npm = ["pnpm"]
+path = "../.."
+source_dir = "../../packages/xtralite/src"
+build_dir = "xtralite/labextension"
+
+[tool.check-wheel-contents]
+ignore = ["W002"]

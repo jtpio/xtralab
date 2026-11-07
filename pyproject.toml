@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xtralab-monorepo"
-description = "Monorepo root for xtralab"
+description = "Monorepo root for xtralab and xtralite"
 readme = "README.md"
 license = { file = "LICENSE" }
 dynamic = ["version"]
@@ -32,6 +32,7 @@ skip = ["check-npm"]
 version_cmd = "cd ../.. && python scripts/bump_version.py --skip-if-dirty"
 python_packages = [
     "python/xtralab",
+    "python/xtralite",
 ]
 
 [tool.jupyter-releaser.hooks]

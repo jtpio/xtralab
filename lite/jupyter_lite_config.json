@@ -1,0 +1,6 @@
+{
+  "LiteBuildConfig": {
+    "contents": ["../ui-tests/fixtures/demo-project"],
+    "output_dir": "dist"
+  }
+}

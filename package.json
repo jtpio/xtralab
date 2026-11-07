@@ -2,7 +2,7 @@
     "name": "xtralab-monorepo",
     "version": "0.16.0",
     "private": true,
-    "description": "Monorepo for xtralab: an opinionated JupyterLab for coding agents",
+    "description": "Monorepo for xtralab and xtralite: an opinionated JupyterLab and JupyterLite for coding agents",
     "license": "BSD-3-Clause",
     "author": "Jeremy Tuloup",
     "repository": {
@@ -65,7 +65,8 @@
         "desktop/python/wheels",
         "desktop/python/runtime",
         "desktop/python/runtime.staging",
-        "python"
+        "python",
+        "lite"
     ],
     "eslintConfig": {
         "extends": [
