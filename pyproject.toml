@@ -40,7 +40,8 @@ after-bump-version = ["python scripts/sync-desktop-version.py"]
 before-build-npm = [
     "python -m pip install 'jupyter-builder>=1.0.2,<2.0.0a0'",
     "npm install -g pnpm@10.28.0",
-    "pnpm install",
+    # The version bump changes the range of `xtralab` in packages/xtralite.
+    "pnpm install --no-frozen-lockfile",
     "pnpm build:prod"
 ]
 before-build-python = ["pnpm clean:all"]

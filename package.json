@@ -25,6 +25,7 @@
         "install:extension": "pnpm build",
         "lint": "pnpm stylelint && pnpm prettier && pnpm eslint",
         "lint:check": "pnpm stylelint:check && pnpm prettier:check && pnpm eslint:check",
+        "postinstall": "node scripts/ensure-node-modules.mjs",
         "prettier": "pnpm prettier:base --write --list-different",
         "prettier:base": "prettier \"**/*{.ts,.tsx,.js,.jsx,.css,.json,.md}\"",
         "prettier:check": "pnpm prettier:base --check",
