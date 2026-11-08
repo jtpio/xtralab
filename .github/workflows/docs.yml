@@ -57,10 +57,15 @@ jobs:
           python-version: '3.13'
 
       # jupyterlite-terminal fetches the wasm shell commands with micromamba.
+      # The conda-forge package does not depend on GitHub release downloads,
+      # which often time out.
       - name: Install micromamba
-        uses: mamba-org/setup-micromamba@v2
-        with:
-          init-shell: none
+        run: |
+          set -eux
+          mkdir -p "$RUNNER_TEMP/micromamba"
+          curl -fsSL --retry 3 https://micro.mamba.pm/api/micromamba/linux-64/latest \
+            | tar -xj -C "$RUNNER_TEMP/micromamba" bin/micromamba
+          echo "$RUNNER_TEMP/micromamba/bin" >> "$GITHUB_PATH"
 
       - name: Install xtralab and xtralite
         run: |
