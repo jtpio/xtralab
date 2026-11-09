@@ -24,7 +24,7 @@ export interface IAgentDetector {
    * Emitted when a result may have changed, so the terminals detect again at
    * once instead of at the next poll.
    */
-  readonly changed?: ISignal<unknown, void>;
+  readonly changed?: ISignal<IAgentDetector, void>;
 }
 
 /**

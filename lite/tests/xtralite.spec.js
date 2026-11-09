@@ -138,6 +138,19 @@ test('the ask-agent prompt box sends to open chats and Pi terminals', async ({
     );
   });
   await expectPiTerminalTarget(page, 1);
+
+  // The detection must not run the command at each poll: each run closes the
+  // modal command palette.
+  await page.locator('.jp-FileEditor .cm-content').first().click();
+  await page.keyboard.press('Control+Shift+C');
+  const palette = page.locator(
+    '.jp-ModalCommandPalette:not(.lm-mod-hidden):not(:has(.jp-QuickOpen))'
+  );
+  await expect(palette).toBeVisible();
+  await page.waitForTimeout(7000);
+  await expect(palette).toBeVisible();
+  await page.keyboard.press('Escape');
+
   await page.evaluate(() => {
     window.piTerminals = [];
     window.jupyterapp.commands.notifyCommandChanged(

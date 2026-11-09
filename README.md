@@ -141,9 +141,9 @@ Copilot, and other agents.
 JupyterLite. The launcher, the omnibox, and the ask-agent prompt send a prompt
 to [Pi](https://github.com/jupyter-ai-contrib/jupyter-ai-pi-lite) in the
 JupyterLite terminal, or to the Pi and Jupyternaut personas of
-[Jupyter AI Lite](https://github.com/jupyterlite/ai) in a new or open chat.
-The features that need a server (git, language servers, search and replace in
-files, MCP) are off.
+[Jupyter AI Lite](https://github.com/jupyterlite/ai) in a chat. The ask-agent
+prompt can also send to a chat that is open. The features that need a server
+(git, language servers, search and replace in files, MCP) are off.
 [Try it in your browser](https://jtpio.github.io/xtralab/lite/lab/index.html).
 
 ## Contributing

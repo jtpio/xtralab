@@ -5,8 +5,6 @@ import type { TranslationBundle } from '@jupyterlab/translation';
 import { ISignal, Signal } from '@lumino/signaling';
 import type { IAgentSession, IAgentSessionProvider } from 'xtralab';
 
-const OPEN_CHAT_COMMAND = 'jupyterlab-chat:open';
-
 /**
  * The message fields that tell who a message is from and for.
  */
@@ -43,12 +41,16 @@ export class ChatSessions implements IAgentSessionProvider {
   }
 
   /**
-   * The open chats where the persona takes part.
+   * The open chats where the persona takes part, named by their path without
+   * the extension, so that chats with the same file name stay distinct.
    */
   list(): IAgentSession[] {
     return this._models().map(model => ({
       id: model.id!,
-      label: PathExt.basename(model.name, PathExt.extname(model.name))
+      label: model.name.slice(
+        0,
+        model.name.length - PathExt.extname(model.name).length
+      )
     }));
   }
 
@@ -73,17 +75,12 @@ export class ChatSessions implements IAgentSessionProvider {
     if (panel === undefined) {
       throw new Error(this._trans.__('The chat is closed.'));
     }
-    if (
-      panel.area === 'main' ||
-      !this._app.commands.hasCommand(OPEN_CHAT_COMMAND)
-    ) {
-      this._app.shell.activateById(panel.id);
-      return;
-    }
-    await this._app.commands.execute(OPEN_CHAT_COMMAND, {
-      filepath: panel.model.name,
-      inSidePanel: true
-    });
+    // The side panel shows one chat at a time, and its chat is in the
+    // tracker. `jupyterlab-chat:open` would load the file into a new model.
+    const container = ['left', 'right']
+      .flatMap(area => Array.from(this._app.shell.widgets(area)))
+      .find(widget => widget.contains(panel));
+    this._app.shell.activateById(container?.id ?? panel.id);
   }
 
   private _watch(panel: IChatPanel): void {
@@ -132,12 +129,16 @@ export class ChatSessions implements IAgentSessionProvider {
     return this._models().find(model => model.id === id);
   }
 
+  /**
+   * The panel of the model that {@link sendPrompt} writes to: a chat open
+   * twice has a model per panel.
+   */
   private _findPanel(id: string): IChatPanel | undefined {
-    return (
-      this._tracker.find(
-        panel => !panel.model.isDisposed && panel.model.id === id
-      ) ?? undefined
-    );
+    const model = this._findModel(id);
+    if (model === undefined) {
+      return undefined;
+    }
+    return this._tracker.find(panel => panel.model === model) ?? undefined;
   }
 
   private _computeSignature(): string {

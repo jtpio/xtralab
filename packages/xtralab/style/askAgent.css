@@ -150,7 +150,11 @@
 }
 
 .jp-xtralab-AskAgent-targetName {
+  max-width: 140px;
+  overflow: hidden;
   color: var(--jp-ui-font-color3);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .jp-xtralab-AskAgent-footer {

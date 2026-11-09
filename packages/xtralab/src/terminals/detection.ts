@@ -100,8 +100,9 @@ export class AgentDetection {
 
   /**
    * Merge the results of the server and of every detector. A session runs an
-   * agent when any source reports one. Resolves `null` ("unavailable") only
-   * when no source could check anything.
+   * agent when any source reports one. Resolves `null` ("unavailable") when
+   * the xtralab server runs but its check failed, or when no source could
+   * check anything.
    */
   async detect(commands: string[]): Promise<AgentDetectionResult | null> {
     if (commands.length === 0) {
@@ -109,16 +110,23 @@ export class AgentDetection {
     }
     const results = await Promise.all([
       fetchRunningAgents(commands),
-      ...this._detectors.map(detector =>
-        detector.detect(commands).catch(error => {
+      ...this._detectors.map(async detector => {
+        try {
+          return (await detector.detect(commands)) ?? null;
+        } catch (error) {
           console.warn('xtralab: running-agent detector failed', error);
           return null;
-        })
-      )
+        }
+      })
     ]);
+    // Without the server result, the "idle" entries of the detectors would
+    // clear the badges of agents that only the server can see.
+    if (results[0] === null && hasServerExtension()) {
+      return null;
+    }
     let merged: AgentDetectionResult | null = null;
     for (const result of results) {
-      if (result === null) {
+      if (!result || typeof result !== 'object') {
         continue;
       }
       merged = merged ?? {};

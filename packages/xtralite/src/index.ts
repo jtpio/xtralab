@@ -2,7 +2,7 @@ import {
   IPersonaSessionRegistry,
   type PersonaSessionRegistry
 } from '@jupyter-ai/persona-manager';
-import { IChatTracker } from '@jupyter/chat';
+import { IChatTracker, type IChatPanel } from '@jupyter/chat';
 import type {
   JupyterFrontEnd,
   JupyterFrontEndPlugin
@@ -76,20 +76,6 @@ const CREATE_CHAT_COMMAND = 'jupyterlab-chat:createAndOpen';
 const PERSONA_TIMEOUT_MS = 10_000;
 
 /**
- * The parts of a chat panel this plugin uses, so that it does not import
- * `@jupyter/chat`.
- */
-interface IChatWidget extends Widget {
-  model?: {
-    ready: Promise<string>;
-    sendMessage(message: {
-      body: string;
-      metadata?: { to_persona: string };
-    }): unknown;
-  };
-}
-
-/**
  * Resolve once `persona` is in the persona list of the chat: the persona then
  * answers the new messages, but not the ones sent before it joined.
  */
@@ -134,17 +120,15 @@ async function startChat(
 ): Promise<Widget | undefined> {
   const widget = (await app.commands.execute(CREATE_CHAT_COMMAND, {
     path: options.cwd ?? ''
-  })) as IChatWidget | undefined;
+  })) as IChatPanel | undefined;
   const model = widget?.model;
   const prompt = options.prompt.trim();
   if (model && prompt) {
     const chatId = await model.ready;
     await personaJoined(registry, chatId, agent.persona);
     // `to_persona` routes the message as the persona menu of the chat does.
-    model.sendMessage({
-      body: prompt,
-      metadata: { to_persona: agent.persona }
-    });
+    const metadata = { to_persona: agent.persona };
+    await model.sendMessage({ body: prompt, metadata });
   }
   return widget;
 }

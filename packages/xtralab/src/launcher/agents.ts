@@ -28,7 +28,8 @@ export interface IAgentSession {
    */
   id: string;
   /**
-   * Short display name, for example the name of the chat.
+   * Display name that tells the sessions of the agent apart, for example the
+   * path of the chat.
    */
   label: string;
 }
@@ -45,7 +46,7 @@ export interface IAgentSessionProvider {
   /**
    * Emitted whenever the {@link list} snapshot may have changed.
    */
-  readonly changed: ISignal<unknown, void>;
+  readonly changed: ISignal<IAgentSessionProvider, void>;
   /**
    * Send `prompt` into the session `id` without revealing it. Rejects when
    * the session is gone.
