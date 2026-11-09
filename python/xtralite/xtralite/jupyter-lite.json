@@ -5,6 +5,7 @@
     "jupyter_ai_default_persona": "pi-frontend",
     "disabledExtensions": [
       "@jupyter-ai/router",
+      "@jupyter-lsp/completion-manager",
       "@jupyter-lsp/fileeditor-adapter",
       "@jupyter-lsp/jupyterlab-lsp",
       "@jupyter-lsp/notebook-adapter",
