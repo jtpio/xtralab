@@ -100,8 +100,11 @@ class XtraliteAddon(BaseAddon):
         if overrides_json.exists():
             site_overrides = json.loads(overrides_json.read_text(**UTF8))
             site = merge_config(site, {SETTINGS_OVERRIDES: site_overrides})
-        xtralite = read_config_data(HERE / JUPYTERLITE_JSON)
-        for layer in (xtralab_config(), xtralite, site):
+        defaults = merge_config(xtralab_config(), read_config_data(HERE / JUPYTERLITE_JSON))
+        # Put back only the site values that the defaults replace: the other
+        # addons also change the output, for example `litePluginSettings`.
+        site = {key: value for key, value in site.items() if key in defaults}
+        for layer in (defaults, site):
             data = merge_config(data, layer)
         config[JUPYTER_CONFIG_DATA] = data
         jupyterlite_json.write_text(json.dumps(config, **JSON_FMT), **UTF8)
