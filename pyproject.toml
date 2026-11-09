@@ -30,9 +30,10 @@ skip = ["check-npm"]
 # The releaser runs this in each Python package folder; the script bumps every
 # package at once, and `--skip-if-dirty` makes the next runs no-ops.
 version_cmd = "cd ../.. && python scripts/bump_version.py --skip-if-dirty"
+# With the names, each package uploads only its own files to PyPI.
 python_packages = [
-    "python/xtralab",
-    "python/xtralite",
+    "python/xtralab:xtralab",
+    "python/xtralite:xtralite",
 ]
 
 [tool.jupyter-releaser.hooks]
