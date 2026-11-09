@@ -26,7 +26,7 @@ export class ChatSessions implements IAgentSessionProvider {
     this._persona = options.persona;
     this._trans = options.trans;
     this._tracker.forEach(panel => this._watch(panel));
-    this._tracker.widgetAdded.connect((_, panel) => {
+    this._tracker.widgetAdded.connect((sender, panel) => {
       this._watch(panel);
       this._update();
     }, this);
