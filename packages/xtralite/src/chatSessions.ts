@@ -41,17 +41,16 @@ export class ChatSessions implements IAgentSessionProvider {
   }
 
   /**
-   * The open chats where the persona takes part, named by their path without
-   * the extension, so that chats with the same file name stay distinct.
+   * The open chats where the persona takes part. The label is the file name
+   * without the extension, then the folder: a shortened label keeps the file
+   * name, and chats with the same file name stay distinct.
    */
   list(): IAgentSession[] {
-    return this._models().map(model => ({
-      id: model.id!,
-      label: model.name.slice(
-        0,
-        model.name.length - PathExt.extname(model.name).length
-      )
-    }));
+    return this._models().map(model => {
+      const name = PathExt.basename(model.name, PathExt.extname(model.name));
+      const folder = PathExt.dirname(model.name);
+      return { id: model.id!, label: folder ? `${name} — ${folder}` : name };
+    });
   }
 
   /**

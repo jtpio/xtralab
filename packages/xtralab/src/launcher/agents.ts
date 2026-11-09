@@ -29,7 +29,7 @@ export interface IAgentSession {
   id: string;
   /**
    * Display name that tells the sessions of the agent apart, for example the
-   * path of the chat.
+   * name and the folder of the chat.
    */
   label: string;
 }
