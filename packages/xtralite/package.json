@@ -42,9 +42,13 @@
     },
     "dependencies": {
         "@jupyter-ai/persona-manager": "^0.3.0-a0",
+        "@jupyter/chat": "^0.25.0",
         "@jupyterlab/application": "^4.6.0",
+        "@jupyterlab/coreutils": "^6.6.0",
         "@jupyterlab/translation": "^4.6.0",
         "@jupyterlab/ui-components": "^4.6.0",
+        "@lumino/commands": "^2.3.2",
+        "@lumino/signaling": "^2.1.5",
         "@lumino/widgets": "^2.8.0",
         "xtralab": "^0.16.0"
     },
@@ -62,6 +66,10 @@
         "outputDir": "../../python/xtralite/xtralite/labextension",
         "sharedPackages": {
             "@jupyter-ai/persona-manager": {
+                "bundled": false,
+                "singleton": true
+            },
+            "@jupyter/chat": {
                 "bundled": false,
                 "singleton": true
             },

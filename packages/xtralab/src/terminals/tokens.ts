@@ -1,5 +1,31 @@
 import { Token } from '@lumino/coreutils';
+import type { IDisposable } from '@lumino/disposable';
 import type { ISignal } from '@lumino/signaling';
+
+/**
+ * Detection results: each terminal session name a detector checked, mapped to
+ * the agent command that runs in it, or `null` when none does.
+ */
+export type AgentDetectionResult = Record<string, string | null>;
+
+/**
+ * A source of running-agent detection besides the xtralab server, for
+ * example the agents of a JupyterLite site, which has no server.
+ */
+export interface IAgentDetector {
+  /**
+   * Which of `commands` runs in each terminal session the detector can check.
+   * Leave out the sessions it cannot check; resolve `null` when it cannot
+   * check any.
+   */
+  detect(commands: string[]): Promise<AgentDetectionResult | null>;
+
+  /**
+   * Emitted when a result may have changed, so the terminals detect again at
+   * once instead of at the next poll.
+   */
+  readonly changed?: ISignal<unknown, void>;
+}
 
 /**
  * One running terminal session with a confirmed coding agent inside — an
@@ -53,6 +79,13 @@ export interface IAgentTerminals {
    * its tab. Rejects when the session is gone or no agent runs in it anymore.
    */
   sendPrompt(name: string, prompt: string): Promise<void>;
+
+  /**
+   * Add a running-agent detector next to the xtralab server. A session is
+   * running an agent when any detector reports one; disposing the result
+   * removes the detector.
+   */
+  addDetector(detector: IAgentDetector): IDisposable;
 }
 
 /**

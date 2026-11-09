@@ -2,6 +2,7 @@ import {
   IPersonaSessionRegistry,
   type PersonaSessionRegistry
 } from '@jupyter-ai/persona-manager';
+import { IChatTracker } from '@jupyter/chat';
 import type {
   JupyterFrontEnd,
   JupyterFrontEndPlugin
@@ -9,7 +10,14 @@ import type {
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { LabIcon } from '@jupyterlab/ui-components';
 import type { Widget } from '@lumino/widgets';
-import { IAgentRegistry, type IAgentStartOptions } from 'xtralab';
+import {
+  IAgentRegistry,
+  IAgentTerminals,
+  type IAgentStartOptions
+} from 'xtralab';
+
+import { ChatSessions } from './chatSessions';
+import { PiTerminalDetector } from './piTerminals';
 
 /**
  * A chat persona offered as an agent.
@@ -144,6 +152,7 @@ async function startChat(
 /**
  * Offer the chat personas of Jupyter AI (Jupyternaut, Pi) as agents in the
  * xtralab launcher, omnibox and ask-agent popup, next to the terminal agents.
+ * The ask-agent popup also offers the open chats of each persona.
  */
 const chatAgentsPlugin: JupyterFrontEndPlugin<void> = {
   id: 'xtralite:chat-agents',
@@ -151,11 +160,12 @@ const chatAgentsPlugin: JupyterFrontEndPlugin<void> = {
     'Offer the chat personas as agents, next to the terminal agents of xtralab.',
   autoStart: true,
   requires: [IAgentRegistry],
-  optional: [IPersonaSessionRegistry, ITranslator],
+  optional: [IPersonaSessionRegistry, IChatTracker, ITranslator],
   activate: (
     app: JupyterFrontEnd,
     agentRegistry: IAgentRegistry,
     personaRegistry: PersonaSessionRegistry | null,
+    chatTracker: IChatTracker | null,
     translator: ITranslator | null
   ): void => {
     const trans = (translator ?? nullTranslator).load('xtralite');
@@ -172,10 +182,36 @@ const chatAgentsPlugin: JupyterFrontEndPlugin<void> = {
         rank: agent.rank,
         requireAvailable: false,
         promptArgs: [],
-        start: options => startChat(app, personaRegistry, agent, options)
+        start: options => startChat(app, personaRegistry, agent, options),
+        startLabel: trans.__('New chat'),
+        sessions: chatTracker
+          ? new ChatSessions({
+              app,
+              tracker: chatTracker,
+              persona: agent.persona,
+              trans
+            })
+          : undefined
       });
     }
   }
 };
 
-export default [chatAgentsPlugin];
+/**
+ * Tell the xtralab terminals where pi runs: JupyterLite has no server to
+ * inspect the processes of the terminals.
+ */
+const piTerminalsPlugin: JupyterFrontEndPlugin<void> = {
+  id: 'xtralite:pi-terminals',
+  description: 'Detect pi in the JupyterLite terminals for xtralab.',
+  autoStart: true,
+  optional: [IAgentTerminals],
+  activate: (
+    app: JupyterFrontEnd,
+    agentTerminals: IAgentTerminals | null
+  ): void => {
+    agentTerminals?.addDetector(new PiTerminalDetector(app));
+  }
+};
+
+export default [chatAgentsPlugin, piTerminalsPlugin];

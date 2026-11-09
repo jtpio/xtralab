@@ -11,9 +11,10 @@ import { terminalIcon } from '@jupyterlab/ui-components';
 import { CommandRegistry } from '@lumino/commands';
 import type { ReadonlyPartialJSONValue } from '@lumino/coreutils';
 import { Debouncer } from '@lumino/polling';
+import { Signal } from '@lumino/signaling';
 import { Widget } from '@lumino/widgets';
 
-import type { IAgent } from '../launcher/agents';
+import type { IAgent, IAgentSessionProvider } from '../launcher/agents';
 import { agentCommandId, IAgentRegistry } from '../launcher/tokens';
 import { IAgentTerminals } from '../terminals/tokens';
 
@@ -32,6 +33,7 @@ import {
   serializeQueuedPrompts
 } from './queue';
 import { AskAgentQueuePanel } from './queuePanel';
+import { targetKey } from './targets';
 import type { ISessionTarget } from './targetPicker';
 import {
   ASK_AGENT_COMMAND,
@@ -57,8 +59,6 @@ const QUEUE_PERSIST_MS = 500;
 
 const NEW_TARGET_VALUE = 'new';
 
-const SESSION_TARGET_PREFIX = 'session:';
-
 /**
  * Delay before showing the pill, so it does not flicker along a drag.
  */
@@ -76,10 +76,16 @@ const PILL_GAP = 6;
 const PILL_VIEWPORT_MARGIN = 8;
 
 /**
+ * A running terminal or agent session that receives a prompt as is.
+ */
+type RunningTarget = Exclude<AskAgentTarget, { kind: 'new' }>;
+
+/**
  * Prompt a coding agent about selected code: a pill/popup over editor,
  * notebook-cell and git-diff selections sends the instruction to a fresh
- * agent terminal or into a running one, or defers it into a persistent
- * queue reviewed in a right-sidebar panel and flushed as one batch.
+ * agent (terminal or chat) or into a running one, or defers it into a
+ * persistent queue reviewed in a right-sidebar panel and flushed as one
+ * batch.
  */
 const plugin: JupyterFrontEndPlugin<IAskAgent> = {
   id: PLUGIN_ID,
@@ -154,22 +160,114 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
         agent => agent.promptArgs !== undefined
       );
 
+    const agentById = (agentId: string): IAgent | undefined =>
+      (agentRegistry?.agents ?? []).find(agent => agent.id === agentId);
+
     /**
      * Running agent terminals offered as prompt targets, badged with the
      * matching agent's icon like the terminals panel (configured command or
      * canonical id). Pasting into a running TUI needs no `promptArgs`.
      */
-    const sessionTargets = (): ISessionTarget[] =>
-      (agentTerminals?.sessions() ?? []).map(session => ({
-        name: session.name,
-        label: session.label,
-        activity: session.activity,
-        icon:
-          (agentRegistry?.agents ?? []).find(
-            agent =>
-              agent.command === session.command || agent.id === session.command
-          )?.icon ?? terminalIcon
-      }));
+    const terminalTargets = (): ISessionTarget[] =>
+      (agentTerminals?.sessions() ?? []).map(session => {
+        const target: RunningTarget = { kind: 'session', name: session.name };
+        return {
+          target,
+          key: targetKey(target),
+          label: session.label,
+          detail: session.name,
+          description: trans.__(
+            'Sends into the agent running in terminal %1',
+            session.name
+          ),
+          activity: session.activity,
+          icon:
+            (agentRegistry?.agents ?? []).find(
+              agent =>
+                agent.command === session.command ||
+                agent.id === session.command
+            )?.icon ?? terminalIcon
+        };
+      });
+
+    /**
+     * Running sessions of the agents that do not run in a terminal, such as
+     * open chats. A failing provider only hides its own sessions.
+     */
+    const agentSessionTargets = (): ISessionTarget[] =>
+      (agentRegistry?.agents ?? []).flatMap(agent => {
+        let sessions: ReturnType<IAgentSessionProvider['list']> = [];
+        try {
+          sessions = agent.sessions?.list() ?? [];
+        } catch (error) {
+          console.error(
+            `xtralab: failed to list the sessions of ${agent.id}`,
+            error
+          );
+        }
+        return sessions.map(session => {
+          const target: RunningTarget = {
+            kind: 'agent-session',
+            agentId: agent.id,
+            sessionId: session.id
+          };
+          return {
+            target,
+            key: targetKey(target),
+            label: agent.label,
+            detail: session.label,
+            description: trans.__(
+              'Sends to %1 in %2',
+              agent.label,
+              session.label
+            ),
+            activity: null,
+            icon: agent.icon
+          };
+        });
+      });
+
+    const sessionTargets = (): ISessionTarget[] => [
+      ...terminalTargets(),
+      ...agentSessionTargets()
+    ];
+
+    /**
+     * How notifications name a running target: the terminal title, or the
+     * agent and its session.
+     */
+    const describeTarget = (target: RunningTarget): string => {
+      const key = targetKey(target);
+      const entry = sessionTargets().find(candidate => candidate.key === key);
+      if (target.kind === 'session') {
+        return entry?.label ?? target.name;
+      }
+      return entry === undefined
+        ? target.sessionId
+        : trans.__('%1 · %2', entry.label, entry.detail);
+    };
+
+    // Re-emits the `changed` signal of every agent's session provider, so the
+    // queue panel re-renders when a chat opens or closes.
+    const sessionsChanged = new Signal<object, void>({});
+    let watchedProviders: IAgentSessionProvider[] = [];
+    const emitSessionsChanged = (): void => {
+      sessionsChanged.emit();
+    };
+    const watchSessionProviders = (): void => {
+      for (const provider of watchedProviders) {
+        provider.changed.disconnect(emitSessionsChanged);
+      }
+      watchedProviders = [];
+      for (const agent of agentRegistry?.agents ?? []) {
+        if (agent.sessions && !watchedProviders.includes(agent.sessions)) {
+          agent.sessions.changed.connect(emitSessionsChanged);
+          watchedProviders.push(agent.sessions);
+        }
+      }
+    };
+    agentRegistry?.changed.connect(watchSessionProviders);
+    watchSessionProviders();
 
     let popup: AskAgentPopup | null = null;
     let pill: HTMLButtonElement | null = null;
@@ -189,32 +287,56 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       }
     };
 
-    const openTerminal = (name: string): void => {
-      app.commands.execute('terminal:open', { name }).catch(reason => {
-        console.error('xtralab: failed to open the terminal', reason);
+    /**
+     * Reveal a running target: its terminal tab, or its agent session.
+     */
+    const openTarget = (target: RunningTarget): void => {
+      const opened =
+        target.kind === 'session'
+          ? app.commands.execute('terminal:open', { name: target.name })
+          : (agentById(target.agentId)?.sessions?.open(target.sessionId) ??
+            Promise.reject(new Error(`unknown agent ${target.agentId}`)));
+      opened.catch(reason => {
+        console.error('xtralab: failed to open the agent session', reason);
       });
     };
 
     /**
-     * Paste `prompt` into the running agent in session `name`, in the
-     * background. Failures are toasted but still reject, so callers can
-     * chain their own cleanup to success only.
+     * Send `prompt` as is into a running target: paste it into the agent of
+     * a terminal, or hand it to the session provider of the agent.
+     */
+    const sendToTarget = async (
+      target: RunningTarget,
+      prompt: string
+    ): Promise<void> => {
+      if (target.kind === 'session') {
+        if (agentTerminals === null) {
+          throw new Error('xtralab: agent terminals are unavailable');
+        }
+        await agentTerminals.sendPrompt(target.name, prompt);
+        return;
+      }
+      const provider = agentById(target.agentId)?.sessions;
+      if (provider === undefined) {
+        throw new Error(trans.__('The agent is no longer available.'));
+      }
+      await provider.sendPrompt(target.sessionId, prompt);
+    };
+
+    /**
+     * Send `prompt` into a running target, in the background. Failures are
+     * toasted but still reject, so callers can chain their own cleanup to
+     * success only.
      */
     const deliverToSession = async (
-      name: string,
+      target: RunningTarget,
       prompt: string,
       successMessage: string
     ): Promise<void> => {
-      if (agentTerminals === null) {
-        throw new Error('xtralab: agent terminals are unavailable');
-      }
       try {
-        await agentTerminals.sendPrompt(name, prompt);
+        await sendToTarget(target, prompt);
       } catch (error) {
-        console.error(
-          'xtralab: failed to send the prompt to the terminal',
-          error
-        );
+        console.error('xtralab: failed to send the prompt', error);
         const detail = error instanceof Error ? error.message : '';
         Notification.error(
           detail.length > 0
@@ -227,7 +349,7 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       Notification.success(successMessage, {
         autoClose: 3000,
         actions: [
-          { label: trans.__('Open'), callback: () => openTerminal(name) }
+          { label: trans.__('Open'), callback: () => openTarget(target) }
         ]
       });
     };
@@ -330,10 +452,7 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
             // races a target loss.
             continue;
           }
-          const key =
-            item.target.kind === 'session'
-              ? `session:${item.target.name}`
-              : `new:${item.target.agentId}`;
+          const key = targetKey(item.target);
           const group = groups.get(key) ?? { target: item.target, items: [] };
           group.items.push(item);
           groups.set(key, group);
@@ -352,13 +471,11 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
                 .map(item => item.id)
             );
           };
-          if (target.kind === 'session') {
-            const label =
-              sessionTargets().find(entry => entry.name === target.name)
-                ?.label ?? target.name;
+          if (target.kind !== 'new') {
+            const label = describeTarget(target);
             deliveries.push(
               deliverToSession(
-                target.name,
+                target,
                 buildBatchPrompt(items),
                 trans._n(
                   'Sent %1 prompt to %2',
@@ -443,6 +560,7 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
           created.title.closable = true;
           agentRegistry?.changed.connect(created.update, created);
           agentTerminals?.changed.connect(created.update, created);
+          sessionsChanged.connect(created.update, created);
           labShell.add(created, 'right', { rank: 900 });
           restorer?.add(created, QUEUE_PANEL_ID);
           created.disposed.connect(() => {
@@ -461,11 +579,11 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
 
       queuePrompt = (request, target, instruction) => {
         const wasEmpty = promptQueue.items.length === 0;
-        if (target.kind === 'session') {
-          rememberTarget(SESSION_TARGET_PREFIX + target.name);
-        } else {
+        if (target.kind === 'new') {
           rememberAgent(target.agentId);
           rememberTarget(NEW_TARGET_VALUE);
+        } else {
+          rememberTarget(targetKey(target));
         }
         promptQueue.add(request.context, instruction, target);
         app.shell.currentWidget?.activate();
@@ -525,20 +643,17 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
       const agents = promptAgents();
       const targets = sessionTargets();
       // Preselect: a live session wins (last-used if still running, else the
-      // first) unless a new terminal was last chosen and can still start.
+      // first) unless a new session was last chosen and can still start.
       const storedTarget = lastTarget;
-      let initialTargetName: string | null =
-        targets.length > 0 ? targets[0].name : null;
+      let initialTargetKey: string | null =
+        targets.length > 0 ? targets[0].key : null;
       if (storedTarget === NEW_TARGET_VALUE && agents.length > 0) {
-        initialTargetName = null;
+        initialTargetKey = null;
       } else if (
         storedTarget !== null &&
-        storedTarget.startsWith(SESSION_TARGET_PREFIX)
+        targets.some(target => target.key === storedTarget)
       ) {
-        const name = storedTarget.slice(SESSION_TARGET_PREFIX.length);
-        if (targets.some(target => target.name === name)) {
-          initialTargetName = name;
-        }
+        initialTargetKey = storedTarget;
       }
       const enqueue = queuePrompt;
       const widget = new AskAgentPopup({
@@ -547,7 +662,7 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
         agents,
         targets,
         initialAgentId: lastAgentId,
-        initialTargetName,
+        initialTargetKey,
         queueCount: queue?.items.length,
         trans,
         onCancel: restoreFocus => {
@@ -566,18 +681,15 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
         onSubmit: (target, instruction) => {
           closePopup();
           const prompt = buildPrompt(request.context, instruction);
-          if (target.kind === 'session') {
-            rememberTarget(SESSION_TARGET_PREFIX + target.name);
+          if (target.kind !== 'new') {
+            rememberTarget(targetKey(target));
             // The send is background: hand focus back to the widget the ask
             // came from — disposing the popup alone drops it on `document.body`.
             app.shell.currentWidget?.activate();
-            const label =
-              targets.find(entry => entry.name === target.name)?.label ??
-              target.name;
             deliverToSession(
-              target.name,
+              target,
               prompt,
-              trans.__('Prompt sent to %1', label)
+              trans.__('Prompt sent to %1', describeTarget(target))
             ).catch(() => {
               // Reported by the helper.
             });
@@ -675,10 +787,7 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
         hidePill();
         return;
       }
-      if (
-        promptAgents().length === 0 &&
-        (agentTerminals?.sessions() ?? []).length === 0
-      ) {
+      if (promptAgents().length === 0 && sessionTargets().length === 0) {
         hidePill();
         return;
       }
@@ -755,7 +864,7 @@ const plugin: JupyterFrontEndPlugin<IAskAgent> = {
     app.commands.addCommand(ASK_AGENT_COMMAND, {
       label: trans.__('Ask Agent About Selection…'),
       caption: trans.__(
-        'Prompt a coding agent about the selected code in a new or running terminal'
+        'Prompt a coding agent about the selected code, in a new or running session'
       ),
       icon: askAgentIcon,
       isEnabled: () => resolveEditorTarget(app.shell.currentWidget) !== null,

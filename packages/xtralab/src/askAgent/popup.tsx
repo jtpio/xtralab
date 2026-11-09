@@ -46,7 +46,7 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
     agents,
     targets,
     initialAgentId,
-    initialTargetName,
+    initialTargetKey,
     queueCount,
     trans,
     onSubmit,
@@ -58,8 +58,8 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
     const known = agents.find(agent => agent.id === initialAgentId);
     return (known ?? agents[0])?.id ?? '';
   });
-  const [targetName, setTargetName] = React.useState<string | null>(
-    initialTargetName
+  const [targetKey, setTargetKey] = React.useState<string | null>(
+    initialTargetKey
   );
   const [position, setPosition] = React.useState<{
     left: number;
@@ -138,22 +138,22 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
   }, [dismiss]);
 
   const selectedAgent = agents.find(agent => agent.id === agentId);
-  const selectedSession = targets.find(target => target.name === targetName);
+  const selectedSession = targets.find(target => target.key === targetKey);
   const canSubmit =
     instruction.trim().length > 0 &&
     (selectedSession !== undefined || selectedAgent !== undefined);
 
   const resolveTarget = React.useCallback((): AskAgentTarget | null => {
-    const session = targets.find(entry => entry.name === targetName);
+    const session = targets.find(entry => entry.key === targetKey);
     if (session !== undefined) {
-      return { kind: 'session', name: session.name };
+      return session.target;
     }
     const agent = agents.find(entry => entry.id === agentId);
     if (agent !== undefined) {
       return { kind: 'new', agentId: agent.id };
     }
     return null;
-  }, [agents, agentId, targets, targetName]);
+  }, [agents, agentId, targets, targetKey]);
 
   const submit = React.useCallback(() => {
     const trimmed = instruction.trim();
@@ -250,9 +250,10 @@ function AskAgentPopupComponent(props: AskAgentPopup.IOptions): JSX.Element {
           <TargetChips
             agents={agents}
             targets={targets}
-            targetName={targetName}
+            targetKey={targetKey}
+            newLabel={selectedAgent?.startLabel ?? trans.__('New terminal')}
             trans={trans}
-            onSelect={setTargetName}
+            onSelect={setTargetKey}
           />
           <div className="jp-xtralab-AskAgent-footer">
             {selectedSession === undefined && (
@@ -347,7 +348,8 @@ export namespace AskAgentPopup {
      */
     agents: IAgent[];
     /**
-     * Snapshot of the running agent terminals, taken when the popup opens.
+     * Snapshot of the running agent terminals and sessions, taken when the
+     * popup opens.
      */
     targets: ISessionTarget[];
     /**
@@ -355,10 +357,10 @@ export namespace AskAgentPopup {
      */
     initialAgentId: string | null;
     /**
-     * Session to preselect as the target, or `null` to preselect the new
-     * terminal. Must be `null` or the name of an entry in {@link targets}.
+     * Key of the session to preselect as the target, or `null` to preselect
+     * a new session. Must be `null` or the key of an entry in {@link targets}.
      */
-    initialTargetName: string | null;
+    initialTargetKey: string | null;
     /**
      * Number of prompts already queued, shown on the queue button.
      */

@@ -51,7 +51,13 @@ const plugins: JupyterFrontEndPlugin<unknown>[] = [
 export default plugins;
 
 export { IAgentSessions } from './agentSessions';
-export type { IAgent, IAgentStartOptions } from './launcher/agents';
+export type {
+  IAgent,
+  IAgentSession,
+  IAgentSessionProvider,
+  IAgentStartOptions
+} from './launcher/agents';
 export { agentCommandId, IAgentRegistry } from './launcher/tokens';
 export { IAgentTerminals } from './terminals/tokens';
+export type { AgentDetectionResult, IAgentDetector } from './terminals/tokens';
 export { hasGit, hasServerExtension } from './server';

@@ -73,13 +73,16 @@ export interface IAskAgentContext {
 }
 
 /**
- * Where a submitted prompt goes: a fresh terminal started with the chosen
- * agent's command, or an existing session whose running agent receives the
- * prompt in its input box (queued by the agent itself when busy).
+ * Where a submitted prompt goes: the chosen agent started fresh (in a new
+ * terminal, or where its `start` opens it), an existing terminal whose
+ * running agent receives the prompt in its input box (queued by the agent
+ * itself when busy), or a running session of an agent that does not run in
+ * a terminal, such as an open chat.
  */
 export type AskAgentTarget =
   | { kind: 'new'; agentId: string }
-  | { kind: 'session'; name: string };
+  | { kind: 'session'; name: string }
+  | { kind: 'agent-session'; agentId: string; sessionId: string };
 
 /**
  * A request to open the ask-agent popup: what code to prompt about and

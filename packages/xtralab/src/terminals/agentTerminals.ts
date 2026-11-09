@@ -1,11 +1,16 @@
 import type { Terminal } from '@jupyterlab/services';
 import type { ITerminalTracker } from '@jupyterlab/terminal';
 import type { TranslationBundle } from '@jupyterlab/translation';
+import type { IDisposable } from '@lumino/disposable';
 import { ISignal, Signal } from '@lumino/signaling';
 
-import { fetchRunningAgents } from './detection';
+import type { AgentDetection } from './detection';
 import type { SessionRegistry, TerminalWidget } from './model';
-import type { IAgentTerminalSession, IAgentTerminals } from './tokens';
+import type {
+  IAgentDetector,
+  IAgentTerminalSession,
+  IAgentTerminals
+} from './tokens';
 
 /**
  * Pause between pasting the prompt and pressing Enter so the server cannot
@@ -64,6 +69,7 @@ export class AgentTerminals implements IAgentTerminals {
     this._tracker = options.tracker;
     this._terminals = options.terminals;
     this._detectCommands = options.detectCommands;
+    this._detection = options.detection;
     this._isAgentCommand = options.isAgentCommand;
     this._trans = options.trans;
     this._registry.stateChanged.connect(this._onRegistryStateChanged, this);
@@ -97,12 +103,19 @@ export class AgentTerminals implements IAgentTerminals {
   }
 
   /**
+   * Add a running-agent detector next to the xtralab server.
+   */
+  addDetector(detector: IAgentDetector): IDisposable {
+    return this._detection.add(detector);
+  }
+
+  /**
    * Paste the prompt into the named session and press Enter, re-validating
-   * with the server first that an agent still runs there.
+   * first that an agent still runs there.
    */
   async sendPrompt(name: string, prompt: string): Promise<void> {
-    // Re-validate against the server: prose pasted into the shell prompt an
-    // exited agent left behind would be *executed* on the Enter below.
+    // Re-validate: prose pasted into the shell prompt an exited agent left
+    // behind would be *executed* on the Enter below.
     await this._terminals.refreshRunning();
     const alive = Array.from(this._terminals.running()).some(
       model => model.name === name
@@ -110,7 +123,7 @@ export class AgentTerminals implements IAgentTerminals {
     if (!alive) {
       throw new Error(this._trans.__('The terminal is no longer running.'));
     }
-    const detected = await fetchRunningAgents(this._detectCommands());
+    const detected = await this._detection.detect(this._detectCommands());
     if (detected === null) {
       // Detection unavailable (older server, transient failure) is not proof
       // the agent is gone; refuse the write and invite a retry.
@@ -173,6 +186,7 @@ export class AgentTerminals implements IAgentTerminals {
   private _tracker: ITerminalTracker;
   private _terminals: Terminal.IManager;
   private _detectCommands: () => string[];
+  private _detection: AgentDetection;
   private _isAgentCommand: (command: string) => boolean;
   private _trans: TranslationBundle;
   private _changed = new Signal<IAgentTerminals, void>(this);
@@ -202,6 +216,10 @@ export namespace AgentTerminals {
      * Names to detect — same list the registry polls with.
      */
     detectCommands: () => string[];
+    /**
+     * The running-agent detection shared with the registry.
+     */
+    detection: AgentDetection;
     /**
      * Whether a detected command belongs to a coding agent (not an editor).
      */

@@ -55,7 +55,7 @@ and the disabled extensions), then the changes of xtralite for the browser.
 | Feature                                               | JupyterLite                                                     |
 | ----------------------------------------------------- | --------------------------------------------------------------- |
 | [Agent launcher](../features/launcher/)               | Yes: Pi in a terminal, and Pi or Jupyternaut in a chat          |
-| [Ask an agent](../features/ask-agent/)                | Yes, in a new terminal or a new chat                            |
+| [Ask an agent](../features/ask-agent/)                | Yes, in a new terminal or chat, or in an open chat              |
 | [Omnibox](../features/omnibox/)                       | Yes. The file search reads the files of the site                |
 | [Terminals panel](../features/terminals/)             | Yes, for the agents that you start from xtralab                 |
 | File browser, editor breadcrumbs, themes and defaults | Yes                                                             |
@@ -73,7 +73,15 @@ The launcher shows:
 - **Pi chat** and **Jupyternaut chat**: open a new chat and send the prompt
   to the persona.
 
-The omnibox and the ask-agent prompt show the same agents.
+The omnibox and the ask-agent prompt show the same agents. The ask-agent
+prompt also lists:
+
+- The open chats where Pi or Jupyternaut takes part: the persona sent a
+  message in the chat, or you sent or mentioned a message to it. The prompt
+  goes to the chat as a message to that persona.
+- The terminals where Pi runs, when jupyter-ai-pi-lite reports them with its
+  `@jupyter-ai/pi-lite:list-terminals` command. jupyter-ai-pi-lite 0.1.2 does
+  not have this command.
 
 The agents call the model provider from the browser. Add a provider before
 you send a prompt:

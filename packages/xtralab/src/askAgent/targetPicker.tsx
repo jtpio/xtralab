@@ -3,22 +3,40 @@ import { addIcon, LabIcon } from '@jupyterlab/ui-components';
 import * as React from 'react';
 
 import type { IAgent } from '../launcher/agents';
+import type { AskAgentTarget } from './tokens';
 
 /**
- * A running agent terminal offered as a prompt target: the session data
- * from `IAgentTerminals` plus the matching agent's icon, resolved by the
- * plugin so these components stay presentation-only.
+ * A running agent offered as a prompt target: an agent terminal from
+ * `IAgentTerminals`, or a session of an agent that does not run in a
+ * terminal (such as an open chat). The plugin resolves the labels and icons
+ * so these components stay presentation-only.
  */
 export interface ISessionTarget {
   /**
-   * The terminal session name.
+   * Where a prompt to this target goes.
    */
-  name: string;
+  target: Exclude<AskAgentTarget, { kind: 'new' }>;
 
   /**
-   * The session's display label (usually the agent's name).
+   * The `targetKey` of {@link target}.
+   */
+  key: string;
+
+  /**
+   * The display label (usually the agent's name).
    */
   label: string;
+
+  /**
+   * Secondary text that tells sessions apart: the terminal name, or the
+   * session name.
+   */
+  detail: string;
+
+  /**
+   * What sending to the target does, for tooltips.
+   */
+  description: string;
 
   /**
    * The agent's latest activity line, when one is available.
@@ -64,21 +82,26 @@ function onRadioGroupKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
 }
 
 /**
- * The chip row picking where a prompt goes: "New terminal" plus one chip
- * per running agent session. Renders nothing while no session is running
- * (a new terminal is then the only possibility).
+ * The chip row picking where a prompt goes: a new session of the selected
+ * agent ("New terminal") plus one chip per running agent session. Renders
+ * nothing while no session is running (a new session is then the only
+ * possibility).
  */
 export function TargetChips(props: {
   agents: IAgent[];
   targets: ISessionTarget[];
   /**
-   * The selected session name, or `null` for a new terminal.
+   * The key of the selected session, or `null` for a new session.
    */
-  targetName: string | null;
+  targetKey: string | null;
+  /**
+   * The label of the new-session chip, for example "New terminal".
+   */
+  newLabel: string;
   trans: TranslationBundle;
-  onSelect: (targetName: string | null) => void;
+  onSelect: (targetKey: string | null) => void;
 }): JSX.Element | null {
-  const { agents, targets, targetName, trans, onSelect } = props;
+  const { agents, targets, targetKey, newLabel, trans, onSelect } = props;
   if (targets.length === 0) {
     return null;
   }
@@ -93,12 +116,12 @@ export function TargetChips(props: {
         <button
           type="button"
           role="radio"
-          aria-checked={targetName === null}
-          tabIndex={targetName === null ? 0 : -1}
-          title={trans.__('Start the agent in a new terminal or chat')}
+          aria-checked={targetKey === null}
+          tabIndex={targetKey === null ? 0 : -1}
+          title={trans.__('Start the selected agent')}
           className={
             'jp-xtralab-AskAgent-targetButton' +
-            (targetName === null ? ' jp-mod-selected' : '')
+            (targetKey === null ? ' jp-mod-selected' : '')
           }
           // Keep focus where the user is typing while picking a target.
           onMouseDown={event => event.preventDefault()}
@@ -108,34 +131,32 @@ export function TargetChips(props: {
             tag="span"
             className="jp-xtralab-AskAgent-targetIcon"
           />
-          <span className="jp-xtralab-AskAgent-targetLabel">
-            {trans.__('New terminal')}
-          </span>
+          <span className="jp-xtralab-AskAgent-targetLabel">{newLabel}</span>
         </button>
       )}
       {targets.map(target => (
         <button
-          key={target.name}
+          key={target.key}
           type="button"
           role="radio"
-          aria-checked={target.name === targetName}
-          tabIndex={target.name === targetName ? 0 : -1}
+          aria-checked={target.key === targetKey}
+          tabIndex={target.key === targetKey ? 0 : -1}
           title={
             target.activity
               ? trans.__(
                   '%1 · %2 — %3',
                   target.label,
-                  target.name,
+                  target.detail,
                   target.activity
                 )
-              : trans.__('%1 · %2', target.label, target.name)
+              : trans.__('%1 · %2', target.label, target.detail)
           }
           className={
             'jp-xtralab-AskAgent-targetButton' +
-            (target.name === targetName ? ' jp-mod-selected' : '')
+            (target.key === targetKey ? ' jp-mod-selected' : '')
           }
           onMouseDown={event => event.preventDefault()}
-          onClick={() => onSelect(target.name)}
+          onClick={() => onSelect(target.key)}
         >
           <target.icon.react
             tag="span"
@@ -144,7 +165,9 @@ export function TargetChips(props: {
           <span className="jp-xtralab-AskAgent-targetLabel">
             {target.label}
           </span>
-          <span className="jp-xtralab-AskAgent-targetName">{target.name}</span>
+          <span className="jp-xtralab-AskAgent-targetName">
+            {target.detail}
+          </span>
         </button>
       ))}
     </div>

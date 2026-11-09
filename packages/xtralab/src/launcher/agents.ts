@@ -1,4 +1,5 @@
 import { LabIcon, terminalIcon } from '@jupyterlab/ui-components';
+import type { ISignal } from '@lumino/signaling';
 import type { Widget } from '@lumino/widgets';
 
 import { BUILTIN_AGENT_ICONS } from './icons';
@@ -15,6 +16,45 @@ export interface IAgentStartOptions {
    * The folder to work in, relative to the root.
    */
   cwd?: string;
+}
+
+/**
+ * A running session of an agent that does not run in a terminal, for example
+ * an open chat with a persona.
+ */
+export interface IAgentSession {
+  /**
+   * Stable id, unique among the sessions of the agent.
+   */
+  id: string;
+  /**
+   * Short display name, for example the name of the chat.
+   */
+  label: string;
+}
+
+/**
+ * The running sessions of an agent, and a way to send a prompt into one. The
+ * ask-agent popup and its queue offer them next to the agent terminals.
+ */
+export interface IAgentSessionProvider {
+  /**
+   * Snapshot of the running sessions.
+   */
+  list(): IAgentSession[];
+  /**
+   * Emitted whenever the {@link list} snapshot may have changed.
+   */
+  readonly changed: ISignal<unknown, void>;
+  /**
+   * Send `prompt` into the session `id` without revealing it. Rejects when
+   * the session is gone.
+   */
+  sendPrompt(id: string, prompt: string): Promise<void>;
+  /**
+   * Reveal the session `id`.
+   */
+  open(id: string): Promise<void>;
 }
 
 /**
@@ -63,6 +103,16 @@ export interface IAgent {
    * `command` is then only an identifier. Resolves with the opened widget.
    */
   start?: (options: IAgentStartOptions) => Promise<Widget | undefined>;
+  /**
+   * What {@link start} opens, for the ask-agent popup and its queue, for
+   * example "New chat". Defaults to "New terminal".
+   */
+  startLabel?: string;
+  /**
+   * The running sessions of an agent with {@link start}. Agents that run in
+   * terminals do not need it: the terminals panel finds them.
+   */
+  sessions?: IAgentSessionProvider;
 }
 
 /**

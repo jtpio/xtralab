@@ -16,6 +16,7 @@ import type { IAgent } from '../launcher/agents';
 import { contextSummary } from './popup';
 import { serverPath } from './prompt';
 import type { IQueuedPrompt, PromptQueue } from './queue';
+import { parseTargetKey, targetKey } from './targets';
 import type { ISessionTarget } from './targetPicker';
 import type { AskAgentTarget } from './tokens';
 
@@ -29,25 +30,6 @@ function rowsFor(text: string): number {
   return Math.min(8, Math.max(2, text.split('\n').length));
 }
 
-function encodeTarget(target: AskAgentTarget | null): string {
-  if (target === null) {
-    return '';
-  }
-  return target.kind === 'session'
-    ? `session:${target.name}`
-    : `new:${target.agentId}`;
-}
-
-function decodeTarget(value: string): AskAgentTarget | null {
-  if (value.startsWith('session:')) {
-    return { kind: 'session', name: value.slice('session:'.length) };
-  }
-  if (value.startsWith('new:')) {
-    return { kind: 'new', agentId: value.slice('new:'.length) };
-  }
-  return null;
-}
-
 function targetIsLive(
   target: AskAgentTarget | null,
   agents: readonly IAgent[],
@@ -56,9 +38,11 @@ function targetIsLive(
   if (target === null) {
     return false;
   }
-  return target.kind === 'session'
-    ? targets.some(session => session.name === target.name)
-    : agents.some(agent => agent.id === target.agentId);
+  if (target.kind === 'new') {
+    return agents.some(agent => agent.id === target.agentId);
+  }
+  const key = targetKey(target);
+  return targets.some(session => session.key === key);
 }
 
 function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
@@ -135,14 +119,11 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
             'The destination picked for this prompt is gone — choose another'
           );
           if (live && target !== null) {
-            if (target.kind === 'session') {
-              icon =
-                targets.find(session => session.name === target.name)?.icon ??
-                null;
-              targetTitle = trans.__(
-                'Sends into the agent running in terminal %1',
-                target.name
-              );
+            if (target.kind !== 'new') {
+              const key = targetKey(target);
+              const session = targets.find(entry => entry.key === key);
+              icon = session?.icon ?? null;
+              targetTitle = session?.description ?? '';
             } else {
               const agent = agents.find(entry => entry.id === target.agentId);
               icon = agent?.icon ?? null;
@@ -212,9 +193,9 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
                   aria-invalid={!live}
                   aria-label={trans.__('Send to')}
                   title={targetTitle}
-                  value={live ? encodeTarget(target) : ''}
+                  value={live && target !== null ? targetKey(target) : ''}
                   onChange={event => {
-                    const picked = decodeTarget(event.target.value);
+                    const picked = parseTargetKey(event.target.value);
                     if (picked !== null) {
                       queue.updateTarget(item.id, picked);
                     }
@@ -228,24 +209,40 @@ function QueuePanelComponent(props: AskAgentQueuePanel.IOptions): JSX.Element {
                   {targets.length > 0 && (
                     <optgroup label={trans.__('Running agents')}>
                       {targets.map(session => (
-                        <option
-                          key={session.name}
-                          value={`session:${session.name}`}
-                        >
-                          {trans.__(
-                            'Terminal %1 · %2',
-                            session.name,
-                            session.label
-                          )}
+                        <option key={session.key} value={session.key}>
+                          {session.target.kind === 'session'
+                            ? trans.__(
+                                'Terminal %1 · %2',
+                                session.detail,
+                                session.label
+                              )
+                            : trans.__(
+                                '%1 · %2',
+                                session.label,
+                                session.detail
+                              )}
                         </option>
                       ))}
                     </optgroup>
                   )}
                   {agents.length > 0 && (
-                    <optgroup label={trans.__('New terminal')}>
+                    <optgroup
+                      label={
+                        agents.some(agent => agent.startLabel !== undefined)
+                          ? trans.__('New session')
+                          : trans.__('New terminal')
+                      }
+                    >
                       {agents.map(agent => (
-                        <option key={agent.id} value={`new:${agent.id}`}>
-                          {trans.__('New terminal · %1', agent.label)}
+                        <option
+                          key={agent.id}
+                          value={targetKey({ kind: 'new', agentId: agent.id })}
+                        >
+                          {trans.__(
+                            '%1 · %2',
+                            agent.startLabel ?? trans.__('New terminal'),
+                            agent.label
+                          )}
                         </option>
                       ))}
                     </optgroup>
@@ -366,7 +363,8 @@ export namespace AskAgentQueuePanel {
     agents: () => IAgent[];
 
     /**
-     * Live reader of the running agent terminals (called on every render).
+     * Live reader of the running agent terminals and sessions (called on
+     * every render).
      */
     targets: () => ISessionTarget[];
 

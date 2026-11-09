@@ -30,9 +30,11 @@ code.
 4. Select the destination:
 
    - **New terminal** and an agent icon: the agent starts in a new terminal.
-   - A running agent: the prompt goes to that terminal.
+     For a chat agent in [JupyterLite](../jupyterlite/), the button is
+     **New chat**.
+   - A running agent: the prompt goes to that terminal or chat.
 
-5. Press <kbd>Enter</kbd>, or select **Ask _agent_** (**Send to _terminal_**
+5. Press <kbd>Enter</kbd>, or select **Ask _agent_** (**Send to _agent_**
    for a running agent).
 
 </Steps>
@@ -46,8 +48,12 @@ The prompt box shows a button next to **New terminal** for each terminal that
 runs an agent. When you select one, the prompt goes into the input of that
 agent. If the agent is busy, the agent queues the prompt.
 
+In [JupyterLite](../jupyterlite/#agents), the prompt box also shows the open
+chats where Pi or Jupyternaut takes part. The prompt goes to that chat, as a
+message to the persona.
+
 The focus stays in your editor. A notification shows with an **Open** button
-that goes to the terminal.
+that goes to the terminal or the chat.
 
 ## Queue prompts
 

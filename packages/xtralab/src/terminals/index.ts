@@ -18,6 +18,7 @@ import type { IAgent } from '../launcher/agents';
 import { IEditorRegistry } from '../launcher/editorRegistry';
 import { agentCommandId, IAgentRegistry } from '../launcher/tokens';
 import { AgentTerminals } from './agentTerminals';
+import { AgentDetection } from './detection';
 import { SessionRegistry } from './model';
 import { IAgentTerminals } from './tokens';
 import { RunningTerminals } from './widget';
@@ -91,13 +92,15 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
     const isAgentCommand = (command: string): boolean =>
       terminalAgents().some(a => a.command === command || a.id === command);
 
+    const detection = new AgentDetection();
     const registry = new SessionRegistry({
       serviceManager: app.serviceManager,
       tracker,
       shell: app.shell,
       agentSessions,
       detectCommands,
-      isAgentCommand
+      isAgentCommand,
+      detection
     });
 
     // `Title.icon` ignores an unchanged assignment, so re-running per
@@ -228,6 +231,7 @@ const plugin: JupyterFrontEndPlugin<IAgentTerminals> = {
       tracker,
       terminals: app.serviceManager.terminals,
       detectCommands,
+      detection,
       isAgentCommand,
       trans
     });
