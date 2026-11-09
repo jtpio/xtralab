@@ -41,7 +41,7 @@
         "watch:labextension": "jupyter-builder watch ."
     },
     "dependencies": {
-        "@jupyter-ai/persona-manager": "^0.3.0-a0",
+        "@jupyter-ai/persona-manager": "^0.3.0",
         "@jupyter/chat": "^0.25.0",
         "@jupyterlab/application": "^4.6.0",
         "@jupyterlab/coreutils": "^6.6.0",
