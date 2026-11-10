@@ -13,6 +13,7 @@
       "@jupyter-lsp/theme-vscode",
       "@jupyter/docprovider-extension",
       "@jupyterlab/git",
+      "@jupyterlite/application-extension:logo",
       "jupyterlab-commands-toolkit",
       "jupyterlab-search-replace",
       "nbdime-jupyterlab",
