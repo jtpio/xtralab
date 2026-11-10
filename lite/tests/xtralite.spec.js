@@ -15,6 +15,7 @@ test('xtralite loads the xtralab launcher with the lite agents', async ({
   await expect(agents.filter({ hasText: 'Claude' })).toHaveCount(0);
 
   await expect(page.locator('.jp-xtralab-FileBrowserPanel')).toBeVisible();
+  await expect(page.locator('#jp-MainLogo')).toHaveCount(0);
 });
 
 /**
