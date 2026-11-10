@@ -1,4 +1,4 @@
-<h1><img src="./logo.svg" width="34" align="absmiddle" alt="" /> xtralab</h1>
+<h1><img src="./packages/xtralab/logo.svg" width="34" align="absmiddle" alt="" /> xtralab</h1>
 
 An opinionated JupyterLab meta-package for coding agents.
 
@@ -50,6 +50,17 @@ uvx xtralab
 The [installation docs](https://jtpio.github.io/xtralab/installation/) also
 show how to install xtralab as a uv tool, add it to a Pixi or uv project,
 and upgrade it.
+
+To run xtralab in the browser, with no server, build a
+[JupyterLite](https://jupyterlite.readthedocs.io) site with
+[`xtralite`](https://pypi.org/project/xtralite/):
+
+```bash
+pip install xtralite
+jupyter lite build
+```
+
+See the [JupyterLite docs](https://jtpio.github.io/xtralab/jupyterlite/).
 
 The desktop app (DMG on macOS, AppImage on Linux) is on the
 [releases page](https://github.com/jtpio/xtralab/releases/latest). It
@@ -124,10 +135,22 @@ Copilot, and other agents.
 [uv]: https://docs.astral.sh/uv/
 [mcp-spec]: https://modelcontextprotocol.io
 
+## JupyterLite
+
+[`xtralite`](./python/xtralite) brings the xtralab extensions and defaults to
+JupyterLite. The launcher, the omnibox, and the ask-agent prompt send a prompt
+to [Pi](https://github.com/jupyter-ai-contrib/jupyter-ai-pi-lite) in the
+JupyterLite terminal, or to the Pi and Jupyternaut personas of
+[Jupyter AI Lite](https://github.com/jupyterlite/ai) in a chat. The ask-agent
+prompt can also send to a chat that is open. The features that need a server
+(git, language servers, search and replace in files, MCP) are off.
+[Try it in your browser](https://jtpio.github.io/xtralab/lite/lab/index.html).
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for the development setup, the
-desktop app architecture, and the documentation sources in [`docs/`](./docs).
+layout of the repository, the desktop app architecture, and the documentation
+sources in [`docs/`](./docs).
 
 ## License
 

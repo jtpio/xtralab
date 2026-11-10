@@ -1,0 +1,11 @@
+{
+  "name": "xtralite-demo",
+  "private": true,
+  "description": "Smoke test of the xtralite JupyterLite site",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0"
+  }
+}

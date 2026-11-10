@@ -5,10 +5,16 @@ on:
     branches: main
     paths:
       - 'docs/**'
+      - 'lite/**'
+      - 'packages/**'
+      - 'python/**'
       - '.github/workflows/docs.yml'
   pull_request:
     paths:
       - 'docs/**'
+      - 'lite/**'
+      - 'packages/**'
+      - 'python/**'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -43,6 +49,40 @@ jobs:
       - name: Build the site
         working-directory: docs
         run: pnpm build
+
+      # The xtralite demo, served under /lite next to the docs.
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      # jupyterlite-terminal fetches the wasm shell commands with micromamba.
+      - name: Install micromamba
+        uses: mamba-org/setup-micromamba@v3
+        with:
+          init-shell: none
+
+      - name: Install xtralab and xtralite
+        run: |
+          set -eux
+          python -m pip install "jupyter-builder>=1.0.2,<2.0.0a0"
+          pnpm install --frozen-lockfile
+          python -m pip install ./python/xtralab ./python/xtralite
+
+      - name: Build the JupyterLite site
+        working-directory: lite
+        run: jupyter lite build
+
+      - name: Test the JupyterLite site
+        working-directory: lite
+        run: |
+          set -eux
+          npm install --no-package-lock
+          npx playwright install chromium --with-deps
+          npx playwright test
+
+      - name: Add the JupyterLite site to the docs
+        run: cp -r lite/dist docs/dist/lite
 
       - name: Upload the site
         uses: actions/upload-pages-artifact@v5

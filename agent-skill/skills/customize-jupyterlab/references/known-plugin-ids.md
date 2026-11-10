@@ -65,5 +65,5 @@ A JupyterLab plugin ID always has the form `<npm-package-name>:<plugin-key>`. Th
 
 1. In the running app: `Help → JupyterLab → About` lists every loaded plugin and its ID.
 2. `Settings → Settings Editor` shows one section per _settable_ plugin; the URL fragment is the ID.
-3. Source: each labextension's `schema/*.json` files declare the IDs and their settable properties. For xtralab the schemas are at `schema/{plugin,launcher,sidebar}.json` in the repo.
+3. Source: each labextension's `schema/*.json` files declare the IDs and their settable properties. For xtralab the schemas are at `packages/xtralab/schema/{plugin,launcher,sidebar}.json` in the repo.
 4. `jupyter labextension list --debug` prints package names; combine with the package's source to find plugin keys.

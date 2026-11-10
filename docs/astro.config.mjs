@@ -50,7 +50,8 @@ export default defineConfig({
           items: [
             { label: 'Installation', slug: 'installation' },
             { label: 'Getting started', slug: 'getting-started' },
-            { label: 'Desktop app', slug: 'desktop' }
+            { label: 'Desktop app', slug: 'desktop' },
+            { label: 'JupyterLite', slug: 'jupyterlite' }
           ]
         },
         {

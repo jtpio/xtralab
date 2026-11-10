@@ -1,5 +1,25 @@
 # Contributing
 
+## Repository layout
+
+The repository is a monorepo with two Python packages, released together with
+the same version:
+
+| Folder              | Content                                                                                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `packages/xtralab`  | The `xtralab` labextension (TypeScript), for JupyterLab and JupyterLite.                                                   |
+| `packages/xtralite` | The `xtralite` labextension: the chat personas as agents of the launcher.                                                  |
+| `python/xtralab`    | The `xtralab` Python package: the labextension, the server extension, the Jupyter configuration and the `xtralab` command. |
+| `python/xtralite`   | The `xtralite` Python package: the labextension, and the JupyterLite addon that configures `jupyter lite build`.           |
+| `lite`              | The JupyterLite demo site, built and deployed with the docs.                                                               |
+| `desktop`           | The Electron desktop app.                                                                                                  |
+| `docs`              | The documentation site.                                                                                                    |
+| `ui-tests`          | The Galata suite that makes the screenshots of the docs.                                                                   |
+
+`desktop`, `docs` and `ui-tests` are separate pnpm projects, with their own
+`pnpm-workspace.yaml` and lockfile. The pnpm workspace at the root has the
+packages under `packages/`.
+
 ## Development
 
 Local development requires Python (with [uv](https://docs.astral.sh/uv/)) and
@@ -9,12 +29,41 @@ pnpm is `corepack enable && corepack prepare --activate`, or install it
 manually with `npm install -g pnpm`.
 
 ```bash
-uv pip install -e .
+uv pip install -e python/xtralab -e python/xtralite
 pnpm install
 pnpm build
+jupyter labextension develop python/xtralab --overwrite
+jupyter labextension develop python/xtralite --overwrite
 ```
 
 Then start JupyterLab the usual way to pick up the dev build.
+
+### JupyterLite
+
+To build and serve the demo site with the dev build of the extensions:
+
+```bash
+cd lite
+jupyter lite build
+python -m http.server --directory dist
+```
+
+The JupyterLite terminal needs
+[micromamba](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html)
+on the `PATH` during the build. `npx playwright test` in `lite` runs the smoke
+test of the site.
+
+Without a server, the labextension must not call the xtralab or git server
+endpoints: check `hasServerExtension()` and `hasGit()` (in
+`packages/xtralab/src/server.ts`) first. The server extension sets
+`xtralabServer` in the page config.
+
+### Releases
+
+The [Jupyter Releaser](https://github.com/jupyter-server/jupyter_releaser)
+publishes both Python packages and both npm packages. The
+`scripts/bump_version.py` script bumps every version at once, including the
+exact pin of `xtralite` on `xtralab`.
 
 ## Electron desktop app
 

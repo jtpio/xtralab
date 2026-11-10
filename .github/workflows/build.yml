@@ -33,10 +33,10 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm run lint:check
 
-      - name: Build the extension
+      - name: Build the extensions
         run: |
           set -eux
-          python -m pip install .
+          python -m pip install ./python/xtralab ./python/xtralite
 
       - name: Validate metapackage
         run: |
@@ -49,15 +49,21 @@ jobs:
           jupyter labextension list 2>&1 | tee labextensions.txt
           for ext in \
             "xtralab" \
+            "xtralite" \
             "jupyterlab-day" \
             "jupyterlab-night" \
             "jupyterlab-cursor-light" \
             "jupyterlab-cursor-dark" \
             "jupyterlab-quickopen" \
-            "jupyterlab-search-replace" \
             "jupyterlab-commands-toolkit"; do
             grep -e "${ext}.*OK" labextensions.txt
           done
+
+          # jupyterlab-search-replace 1.1.3 requires @jupyter/react-components
+          # and @jupyter/web-components ~0.16, but JupyterLab 4.6.5 ships 0.17,
+          # so the list marks it X. It still works with 0.17. Require OK again
+          # once a release supports 0.17.
+          grep -e "jupyterlab-search-replace.*enabled" labextensions.txt
 
           # @jupyter/docprovider-extension comes from ajlab's jupyter-docprovider
           # (3.0.0), which targets @jupyter/ydoc ^4 to match JupyterLab 4.6, so
@@ -93,19 +99,25 @@ jobs:
             grep -e "${ext}.*OK" server-extensions.txt
           done
 
-      - name: Package the extension
+          # xtralite configures `jupyter lite build` with an addon.
+          python -c "from importlib.metadata import entry_points; assert 'xtralite' in entry_points(group='jupyterlite.addon.v0').names"
+
+      - name: Package the extensions
         run: |
           set -eux
 
           pip install build
-          python -m build
-          pip uninstall -y "xtralab" jupyterlab
+          python -m build python/xtralab --outdir dist
+          python -m build python/xtralite --outdir dist
+          pip uninstall -y xtralite xtralab jupyterlab
 
       - name: Upload extension packages
         uses: actions/upload-artifact@v7
         with:
           name: extension-artifacts
-          path: dist/xtralab*
+          path: |
+            dist/xtralab*
+            dist/xtralite*
           if-no-files-found: error
 
   test_isolated:
@@ -128,10 +140,11 @@ jobs:
           sudo rm -rf $(which node)
           sudo rm -rf $(which node)
 
-          pip install "jupyterlab>=4.6.0b0,<5" xtralab*.whl
+          pip install "jupyterlab>=4.6.0b0,<5" xtralab*.whl xtralite*.whl
 
           jupyter labextension list 2>&1 | tee labextensions.txt
           grep -e "xtralab.*OK" labextensions.txt
+          grep -e "xtralite.*OK" labextensions.txt
           grep -e "@jupyterlab/git v.*OK" labextensions.txt
 
   check_links:

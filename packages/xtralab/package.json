@@ -1,0 +1,124 @@
+{
+    "name": "xtralab",
+    "version": "0.16.0",
+    "description": "An opinionated JupyterLab meta-package that bundles a curated set of extensions, ships a path-first file browser, renders jupyterlab-git's text, notebook and image diffs with its own viewers, and applies a quieter default workspace configuration.",
+    "keywords": [
+        "jupyter",
+        "jupyterlab",
+        "jupyterlab-extension",
+        "meta-package",
+        "file-browser",
+        "git",
+        "diff"
+    ],
+    "homepage": "https://github.com/jtpio/xtralab",
+    "bugs": {
+        "url": "https://github.com/jtpio/xtralab/issues"
+    },
+    "license": "BSD-3-Clause",
+    "author": "Jeremy Tuloup",
+    "files": [
+        "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
+        "style/**/*.{css,js,eot,gif,html,jpg,json,png,svg,woff2,ttf}",
+        "src/**/*.{ts,tsx}",
+        "schema/*.json",
+        "logo.svg"
+    ],
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts",
+    "style": "style/index.css",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/jtpio/xtralab.git",
+        "directory": "packages/xtralab"
+    },
+    "scripts": {
+        "build": "pnpm build:lib && pnpm build:labextension:dev",
+        "build:prod": "pnpm clean && pnpm build:lib:prod && pnpm build:labextension",
+        "build:labextension": "jupyter-builder build .",
+        "build:labextension:dev": "jupyter-builder build --development True .",
+        "build:lib": "tsc --sourceMap",
+        "build:lib:prod": "tsc",
+        "clean": "pnpm clean:lib",
+        "clean:lib": "rimraf lib tsconfig.tsbuildinfo",
+        "clean:labextension": "rimraf ../../python/xtralab/xtralab/labextension",
+        "install:extension": "pnpm build",
+        "watch": "run-p watch:src watch:labextension",
+        "watch:src": "tsc -w --sourceMap",
+        "watch:labextension": "jupyter-builder watch ."
+    },
+    "dependencies": {
+        "@codemirror/language": "^6.12.3",
+        "@codemirror/state": "^6.7.0",
+        "@codemirror/view": "^6.43.2",
+        "@jupyterlab/application": "^4.6.0",
+        "@jupyterlab/apputils": "^4.7.0",
+        "@jupyterlab/codemirror": "^4.6.0",
+        "@jupyterlab/coreutils": "^6.6.0",
+        "@jupyterlab/docmanager": "^4.6.0",
+        "@jupyterlab/docregistry": "^4.6.0",
+        "@jupyterlab/fileeditor": "^4.6.0",
+        "@jupyterlab/git": "^0.54.0",
+        "@jupyterlab/mainmenu": "^4.6.0",
+        "@jupyterlab/nbformat": "^4.6.0",
+        "@jupyterlab/notebook": "^4.6.0",
+        "@jupyterlab/outputarea": "^4.6.0",
+        "@jupyterlab/rendermime": "^4.6.0",
+        "@jupyterlab/services": "^7.6.0",
+        "@jupyterlab/settingregistry": "^4.6.0",
+        "@jupyterlab/statedb": "^4.6.0",
+        "@jupyterlab/terminal": "^4.6.0",
+        "@jupyterlab/translation": "^4.6.0",
+        "@jupyterlab/ui-components": "^4.6.0",
+        "@lumino/algorithm": "^2.0.4",
+        "@lumino/commands": "^2.3.3",
+        "@lumino/coreutils": "^2.2.2",
+        "@lumino/disposable": "^2.1.5",
+        "@lumino/dragdrop": "^2.1.8",
+        "@lumino/messaging": "^2.0.4",
+        "@lumino/polling": "^2.1.5",
+        "@lumino/signaling": "^2.1.5",
+        "@lumino/widgets": "^2.8.0",
+        "@pierre/diffs": "^1.5.1",
+        "@pierre/icons": "^0.9.0",
+        "@pierre/trees": "1.0.0-beta.4",
+        "detect-indent": "^7.0.2",
+        "ignore": "^5.3.2",
+        "react": "^18.3.1"
+    },
+    "devDependencies": {
+        "@jupyter/builder": "^1.0.2",
+        "@types/react": "^18.3.31",
+        "npm-run-all2": "^7.0.2",
+        "rimraf": "^5.0.10",
+        "typescript": "~5.5.4",
+        "yjs": "^13.6.31"
+    },
+    "sideEffects": [
+        "style/*.css",
+        "style/index.js"
+    ],
+    "styleModule": "style/index.js",
+    "publishConfig": {
+        "access": "public"
+    },
+    "jupyterlab": {
+        "extension": true,
+        "outputDir": "../../python/xtralab/xtralab/labextension",
+        "schemaDir": "schema",
+        "sharedPackages": {
+            "@jupyterlab/git": {
+                "bundled": false,
+                "singleton": true
+            },
+            "@pierre/icons": false
+        },
+        "disabledExtensions": [
+            "@jupyterlab/git:notebook-diff",
+            "@jupyterlab/git:plain-text-diff",
+            "@jupyterlab/git:image-diff",
+            "@jupyterlab/help-extension:about",
+            "@jupyterlab/launcher-extension"
+        ]
+    }
+}

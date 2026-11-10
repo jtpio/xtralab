@@ -41,9 +41,14 @@ env/
 .mypy_cache/
 .ruff_cache/
 
-# Built labextension and generated version file
-xtralab/labextension/
-xtralab/_version.py
+# JupyterLite demo site
+lite/dist/
+lite/.jupyterlite.doit.db
+lite/.cockle_temp/
+lite/cockle_wasm_env/
+lite/cockle-config.json
+lite/test-results/
+lite/playwright-report/
 
 # Jupyter
 .ipynb_checkpoints/

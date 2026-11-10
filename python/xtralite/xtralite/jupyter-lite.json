@@ -1,0 +1,39 @@
+{
+  "jupyter-config-data": {
+    "appName": "xtralite",
+    "terminalsAvailable": true,
+    "jupyter_ai_default_persona": "pi-frontend",
+    "disabledExtensions": [
+      "@jupyter-ai/router",
+      "@jupyter-lsp/completion-manager",
+      "@jupyter-lsp/fileeditor-adapter",
+      "@jupyter-lsp/jupyterlab-lsp",
+      "@jupyter-lsp/notebook-adapter",
+      "@jupyter-lsp/theme-material",
+      "@jupyter-lsp/theme-vscode",
+      "@jupyter/docprovider-extension",
+      "@jupyterlab/git",
+      "jupyterlab-commands-toolkit",
+      "jupyterlab-search-replace",
+      "nbdime-jupyterlab",
+      "xtralab:git-diff-command",
+      "xtralab:git-diff-preferences",
+      "xtralab:git-diff-providers",
+      "xtralab:search-replace"
+    ],
+    "settingsOverrides": {
+      "jupyterlab-quickopen:plugin": {
+        "indexingMethod": "frontend"
+      },
+      "xtralab:launcher": {
+        "agents": [
+          {
+            "id": "pi",
+            "caption": "Start Pi in a new JupyterLite terminal.",
+            "requireAvailable": false
+          }
+        ]
+      }
+    }
+  }
+}

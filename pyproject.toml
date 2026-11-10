@@ -1,134 +1,48 @@
 [build-system]
-requires = [
-    "hatchling>=1.5.0",
-    "hatch-jupyter-builder>=0.5",
-    "jupyter-builder>=1.0.2,<2.0.0a0",
-    "hatch-nodejs-version>=0.3.2",
-]
+requires = ["hatchling", "hatch-nodejs-version>=0.3.2"]
 build-backend = "hatchling.build"
 
 [project]
-name = "xtralab"
+name = "xtralab-monorepo"
+description = "Monorepo root for xtralab and xtralite"
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.11"
-authors = [
-    { name = "Jeremy Tuloup" },
-]
-keywords = ["jupyter", "jupyterlab", "meta-package"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Framework :: Jupyter",
-    "Framework :: Jupyter :: JupyterLab",
-    "Framework :: Jupyter :: JupyterLab :: 4",
-    "Framework :: Jupyter :: JupyterLab :: Extensions",
-    "Framework :: Jupyter :: JupyterLab :: Extensions :: Prebuilt",
-    "Intended Audience :: Developers",
-    "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: BSD License",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
-]
-dependencies = [
-    "ajlab>=0.1.11",
-    "jupyter-server-mcp>=0.4.1",
-    "jupyterlab>=4.6.2",
-    "jupyterlab-commands-toolkit>=0.3.0",
-    "jupyterlab-cursor-light>=1.0.2",
-    "jupyterlab-cursor-dark>=1.0.2",
-    "jupyterlab-day>=0.2.0",
-    "jupyterlab-git>=0.54.0",
-    "jupyterlab-git-core>=0.54.0",
-    "jupyterlab-lsp>=5.3.0",
-    "jupyterlab-night>=0.5.2",
-    "jupyterlab-pierre-light>=0.1.1",
-    "jupyterlab-pierre-dark>=0.1.1",
-    "jupyterlab-quickopen>=2.3.0",
-    "jupyterlab-search-replace>=1.1.3",
-    "jupyterlab-vim>=4.1.4",
-    "platformdirs>=2.5",
-    "psutil>=5.9",
-    "ty>=0.0.65",
-]
-dynamic = ["version", "description", "urls"]
-
-[project.scripts]
-xtralab = "xtralab.cli:main"
+dynamic = ["version"]
 
 [tool.hatch.version]
 source = "nodejs"
 
-[tool.hatch.metadata.hooks.nodejs]
-fields = ["description", "urls"]
-
 [tool.hatch.build.targets.wheel]
-packages = ["xtralab"]
-
-[tool.hatch.build.targets.wheel.shared-data]
-"xtralab/labextension" = "share/jupyter/labextensions/xtralab"
-"jupyter-config/labconfig" = "etc/jupyter/labconfig"
-"jupyter-config/jupyter_server_config.d" = "etc/jupyter/jupyter_server_config.d"
-"jupyter-config/jupyter_jupyter_server_mcp_config.json" = "etc/jupyter/jupyter_jupyter_server_mcp_config.json"
+packages = []
 
 [tool.hatch.build.targets.sdist]
-artifacts = ["xtralab/labextension"]
-include = [
-    "/xtralab",
-    "/src",
-    "/style",
-    "/schema",
-    "/jupyter-config",
-    "/package.json",
-    "/tsconfig.json",
-    "/install.json",
-    "/LICENSE",
-    "/pyproject.toml",
-]
-exclude = [".github", "/desktop"]
-
-[tool.hatch.build.hooks.version]
-path = "xtralab/_version.py"
-
-[tool.hatch.build.hooks.jupyter-builder]
-dependencies = ["hatch-jupyter-builder>=0.5"]
-build-function = "hatch_jupyter_builder.npm_builder"
-ensured-targets = [
-    "xtralab/labextension/static/style.js",
-    "xtralab/labextension/package.json",
-]
-skip-if-exists = ["xtralab/labextension/static/style.js"]
-
-[tool.hatch.build.hooks.jupyter-builder.build-kwargs]
-build_cmd = "build:prod"
-npm = ["pnpm"]
-
-[tool.hatch.build.hooks.jupyter-builder.editable-build-kwargs]
-build_cmd = "install:extension"
-npm = ["pnpm"]
-source_dir = "src"
-build_dir = "xtralab/labextension"
+include = []
 
 [tool.jupyter-releaser]
 # Skip check-npm: it runs a fresh `npm install` on the built tarball (no
 # lockfile), so a floating transitive range can pull a mismatched or
 # yet-unpublished upstream release. Our builds are reproducible from
 # pnpm-lock.yaml, but a published package can't ship that lock. Revisit if
-# the npm package must install standalone.
+# the npm packages must install standalone.
 skip = ["check-npm"]
 
 [tool.jupyter-releaser.options]
-version_cmd = "hatch version"
+# The releaser runs this in each Python package folder; the script bumps every
+# package at once, and `--skip-if-dirty` makes the next runs no-ops.
+version_cmd = "cd ../.. && python scripts/bump_version.py --skip-if-dirty"
+# With the names, each package uploads only its own files to PyPI.
+python_packages = [
+    "python/xtralab:xtralab",
+    "python/xtralite:xtralite",
+]
 
 [tool.jupyter-releaser.hooks]
 after-bump-version = ["python scripts/sync-desktop-version.py"]
 before-build-npm = [
     "python -m pip install 'jupyter-builder>=1.0.2,<2.0.0a0'",
     "npm install -g pnpm@10.28.0",
-    "pnpm install",
+    # The version bump changes the range of `xtralab` in packages/xtralite.
+    "pnpm install --no-frozen-lockfile",
     "pnpm build:prod"
 ]
 before-build-python = ["pnpm clean:all"]

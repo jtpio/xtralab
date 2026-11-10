@@ -2911,7 +2911,7 @@ wheels = [
 
 [[package]]
 name = "xtralab"
-source = { directory = "../" }
+source = { directory = "../python/xtralab" }
 dependencies = [
     { name = "ajlab" },
     { name = "jupyter-server-mcp" },
@@ -2966,4 +2966,4 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "xtralab", directory = "../" }]
+requires-dist = [{ name = "xtralab", directory = "../python/xtralab" }]

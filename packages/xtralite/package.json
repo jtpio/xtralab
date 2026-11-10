@@ -1,0 +1,81 @@
+{
+    "name": "xtralite",
+    "version": "0.16.0",
+    "description": "The JupyterLite integration of xtralab: chat personas as agents next to the terminal agents.",
+    "keywords": [
+        "jupyter",
+        "jupyterlab",
+        "jupyterlite",
+        "jupyterlab-extension"
+    ],
+    "homepage": "https://github.com/jtpio/xtralab",
+    "bugs": {
+        "url": "https://github.com/jtpio/xtralab/issues"
+    },
+    "license": "BSD-3-Clause",
+    "author": "Jeremy Tuloup",
+    "files": [
+        "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
+        "src/**/*.{ts,tsx}"
+    ],
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/jtpio/xtralab.git",
+        "directory": "packages/xtralite"
+    },
+    "scripts": {
+        "build": "pnpm build:lib && pnpm build:labextension:dev",
+        "build:prod": "pnpm clean && pnpm build:lib:prod && pnpm build:labextension",
+        "build:labextension": "jupyter-builder build .",
+        "build:labextension:dev": "jupyter-builder build --development True .",
+        "build:lib": "tsc --sourceMap",
+        "build:lib:prod": "tsc",
+        "clean": "pnpm clean:lib",
+        "clean:lib": "rimraf lib tsconfig.tsbuildinfo",
+        "clean:labextension": "rimraf ../../python/xtralite/xtralite/labextension",
+        "install:extension": "pnpm build",
+        "watch": "run-p watch:src watch:labextension",
+        "watch:src": "tsc -w --sourceMap",
+        "watch:labextension": "jupyter-builder watch ."
+    },
+    "dependencies": {
+        "@jupyter-ai/persona-manager": "^0.3.0",
+        "@jupyter/chat": "^0.25.0",
+        "@jupyterlab/application": "^4.6.0",
+        "@jupyterlab/coreutils": "^6.6.0",
+        "@jupyterlab/translation": "^4.6.0",
+        "@jupyterlab/ui-components": "^4.6.0",
+        "@lumino/signaling": "^2.1.5",
+        "@lumino/widgets": "^2.8.0",
+        "xtralab": "^0.16.0"
+    },
+    "devDependencies": {
+        "@jupyter/builder": "^1.0.2",
+        "npm-run-all2": "^7.0.2",
+        "rimraf": "^5.0.10",
+        "typescript": "~5.5.4"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "jupyterlab": {
+        "extension": true,
+        "outputDir": "../../python/xtralite/xtralite/labextension",
+        "sharedPackages": {
+            "@jupyter-ai/persona-manager": {
+                "bundled": false,
+                "singleton": true
+            },
+            "@jupyter/chat": {
+                "bundled": false,
+                "singleton": true
+            },
+            "xtralab": {
+                "bundled": false,
+                "singleton": true
+            }
+        }
+    }
+}

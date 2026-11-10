@@ -1,0 +1,360 @@
+import { LabIcon, terminalIcon } from '@jupyterlab/ui-components';
+import type { ISignal } from '@lumino/signaling';
+import type { Widget } from '@lumino/widgets';
+
+import { BUILTIN_AGENT_ICONS } from './icons';
+
+/**
+ * What an agent receives when it starts.
+ */
+export interface IAgentStartOptions {
+  /**
+   * The first prompt, empty for none.
+   */
+  prompt: string;
+  /**
+   * The folder to work in, relative to the root.
+   */
+  cwd?: string;
+}
+
+/**
+ * A running session of an agent that does not run in a terminal, for example
+ * an open chat with a persona.
+ */
+export interface IAgentSession {
+  /**
+   * Stable id, unique among the sessions of the agent.
+   */
+  id: string;
+  /**
+   * Display name that tells the sessions of the agent apart, for example the
+   * name and the folder of the chat.
+   */
+  label: string;
+}
+
+/**
+ * The running sessions of an agent, and a way to send a prompt into one. The
+ * ask-agent popup and its queue offer them next to the agent terminals.
+ */
+export interface IAgentSessionProvider {
+  /**
+   * Snapshot of the running sessions.
+   */
+  list(): IAgentSession[];
+  /**
+   * Emitted whenever the {@link list} snapshot may have changed.
+   */
+  readonly changed: ISignal<IAgentSessionProvider, void>;
+  /**
+   * Send `prompt` into the session `id` without revealing it. Rejects when
+   * the session is gone.
+   */
+  sendPrompt(id: string, prompt: string): Promise<void>;
+  /**
+   * Reveal the session `id`.
+   */
+  open(id: string): Promise<void>;
+}
+
+/**
+ * An agent card on the launcher. `command` is the literal text typed into the
+ * new terminal, so interactive-shell aliases resolve.
+ */
+export interface IAgent {
+  /**
+   * Stable id; keys the settings merge and the per-agent launch command.
+   */
+  id: string;
+  /**
+   * Card label, e.g. "Claude".
+   */
+  label: string;
+  /**
+   * Card tooltip; also the palette command caption.
+   */
+  caption: string;
+  /**
+   * The literal command typed into the new terminal.
+   */
+  command: string;
+  /**
+   * Brand icon for the card.
+   */
+  icon: LabIcon;
+  /**
+   * Sort position among the launcher's agent cards.
+   */
+  rank: number;
+  /**
+   * When false, skip the `which`-based availability check — for aliases or
+   * shell functions not on PATH. Defaults to true.
+   */
+  requireAvailable: boolean;
+  /**
+   * Argv tokens spliced between `command` and the shell-quoted prompt:
+   * `[]` appends the prompt positionally, `['-i']` prefixes a flag, and
+   * `undefined` means no prompt support (the launcher dims the button).
+   * Agents with {@link start} use `[]` when they take a prompt.
+   */
+  promptArgs?: string[];
+  /**
+   * Start the agent elsewhere than in a new terminal, for example in a chat;
+   * `command` is then only an identifier. Resolves with the opened widget.
+   */
+  start?: (options: IAgentStartOptions) => Promise<Widget | undefined>;
+  /**
+   * What {@link start} opens, for the ask-agent popup and its queue, for
+   * example "New chat". Defaults to "New terminal".
+   */
+  startLabel?: string;
+  /**
+   * The running sessions of an agent with {@link start}. Agents that run in
+   * terminals do not need it: the terminals panel finds them.
+   */
+  sessions?: IAgentSessionProvider;
+}
+
+/**
+ * The settings-side shape: every field except `id` is optional so a user can
+ * override a single field on a default agent; new ids define new agent cards.
+ */
+export interface IAgentSettings {
+  /**
+   * Id of the agent to override; a new id defines a new card.
+   */
+  id: string;
+  /**
+   * See `IAgent.label`.
+   */
+  label?: string;
+  /**
+   * See `IAgent.caption`.
+   */
+  caption?: string;
+  /**
+   * See `IAgent.command`.
+   */
+  command?: string;
+  /**
+   * Inline SVG icon. Required for new ids; overrides the built-in when set on
+   * a default id.
+   */
+  iconSvg?: string;
+  /**
+   * See `IAgent.rank`.
+   */
+  rank?: number;
+  /**
+   * When false, hides the agent from the launcher and the command palette.
+   */
+  enabled?: boolean;
+  /**
+   * See `IAgent.requireAvailable`. Defaults to true, but flips to false once
+   * `command` is overridden (a user-chosen alias is trusted).
+   */
+  requireAvailable?: boolean;
+  /**
+   * See `IAgent.promptArgs`. `null` explicitly turns off an agent's default
+   * prompt support.
+   */
+  promptArgs?: string[] | null;
+}
+
+/**
+ * Default agent cards. Most mirror `jupyter-ai-contrib/jupyter-ai-acp-client`
+ * personas but use the bare CLI names a user would type, not the ACP wrappers.
+ * Anything not on `$PATH` is filtered out at activation, so the wide list is
+ * harmless.
+ */
+const DEFAULTS: IAgent[] = [
+  {
+    id: 'claude',
+    label: 'Claude',
+    caption: 'Start Claude Code in a new terminal.',
+    command: 'claude',
+    icon: BUILTIN_AGENT_ICONS.claude,
+    rank: 0,
+    requireAvailable: true,
+    promptArgs: []
+  },
+  {
+    id: 'codex',
+    label: 'Codex',
+    caption: 'Start the Codex CLI in a new terminal.',
+    command: 'codex',
+    icon: BUILTIN_AGENT_ICONS.codex,
+    rank: 1,
+    requireAvailable: true,
+    promptArgs: []
+  },
+  {
+    id: 'antigravity',
+    label: 'Antigravity',
+    caption: 'Open Google Antigravity from a new terminal.',
+    command: 'agy',
+    icon: BUILTIN_AGENT_ICONS.antigravity,
+    rank: 2,
+    requireAvailable: true
+    // `agy` opens the Antigravity editor; its positional args are paths, not
+    // prompts, and the bare binary keeps the server-side `which` check working.
+  },
+  {
+    id: 'copilot',
+    label: 'Copilot',
+    caption: 'Start the GitHub Copilot CLI in a new terminal.',
+    command: 'copilot',
+    icon: BUILTIN_AGENT_ICONS.copilot,
+    rank: 3,
+    requireAvailable: true,
+    // `-i` starts interactive mode with the prompt; `-p` exits after responding.
+    promptArgs: ['-i']
+  },
+  {
+    id: 'goose',
+    label: 'Goose',
+    caption: 'Start Goose in a new terminal.',
+    command: 'goose',
+    icon: BUILTIN_AGENT_ICONS.goose,
+    rank: 4,
+    requireAvailable: true
+    // `goose` takes no inline prompt; it must be typed after `goose session`.
+  },
+  {
+    id: 'opencode',
+    label: 'OpenCode',
+    caption: 'Start OpenCode in a new terminal.',
+    command: 'opencode',
+    icon: BUILTIN_AGENT_ICONS.opencode,
+    rank: 5,
+    requireAvailable: true,
+    promptArgs: ['--prompt']
+  },
+  {
+    id: 'kiro',
+    label: 'Kiro',
+    caption: 'Start the Kiro CLI in a new terminal.',
+    command: 'kiro',
+    icon: BUILTIN_AGENT_ICONS.kiro,
+    rank: 6,
+    requireAvailable: true
+    // Kiro only takes initial prompts via the in-session `/chat new` command.
+  },
+  {
+    id: 'mistral-vibe',
+    label: 'Mistral Vibe',
+    caption: 'Start Mistral Vibe in a new terminal.',
+    command: 'vibe',
+    icon: BUILTIN_AGENT_ICONS['mistral-vibe'],
+    rank: 7,
+    requireAvailable: true,
+    promptArgs: []
+  },
+  {
+    id: 'pi',
+    label: 'Pi',
+    caption: 'Start Pi in a new terminal.',
+    command: 'pi',
+    icon: BUILTIN_AGENT_ICONS.pi,
+    rank: 8,
+    requireAvailable: true,
+    promptArgs: []
+  }
+];
+
+/**
+ * The built-in agents projected into the settings shape (no runtime LabIcon),
+ * injected as the `agents` schema default so the Settings Editor shows them.
+ */
+export function defaultAgentSettings(): IAgentSettings[] {
+  return DEFAULTS.map(agent => {
+    const entry: IAgentSettings = {
+      id: agent.id,
+      label: agent.label,
+      caption: agent.caption,
+      command: agent.command,
+      rank: agent.rank,
+      requireAvailable: agent.requireAvailable
+    };
+    if (agent.promptArgs !== undefined) {
+      entry.promptArgs = agent.promptArgs;
+    }
+    return entry;
+  });
+}
+
+function resolveIcon(id: string, iconSvg: string | undefined): LabIcon {
+  if (iconSvg) {
+    return new LabIcon({ name: `xtralab:agent-custom-${id}`, svgstr: iconSvg });
+  }
+  return BUILTIN_AGENT_ICONS[id] ?? terminalIcon;
+}
+
+/**
+ * Merge xtralab's defaults with the user's settings: defaults keep their
+ * fields unless overridden, user-only ids are appended, and `enabled: false`
+ * removes an entry entirely. Overriding a built-in's `command` also turns
+ * `requireAvailable` off so an aliased command survives the `which` filter.
+ */
+export function mergeAgents(overrides: IAgentSettings[]): IAgent[] {
+  const overrideById = new Map(overrides.map(entry => [entry.id, entry]));
+  const merged: IAgent[] = [];
+
+  for (const base of DEFAULTS) {
+    const override = overrideById.get(base.id);
+    if (!override) {
+      merged.push({ ...base });
+      continue;
+    }
+    overrideById.delete(base.id);
+    if (override.enabled === false) {
+      continue;
+    }
+    const command = override.command ?? base.command;
+    merged.push({
+      id: base.id,
+      label: override.label ?? base.label,
+      caption: override.caption ?? base.caption,
+      command,
+      icon: override.iconSvg
+        ? resolveIcon(base.id, override.iconSvg)
+        : base.icon,
+      rank: override.rank ?? base.rank,
+      requireAvailable:
+        command === base.command
+          ? (override.requireAvailable ?? base.requireAvailable)
+          : false,
+      promptArgs:
+        override.promptArgs === null
+          ? undefined
+          : (override.promptArgs ?? base.promptArgs)
+    });
+  }
+
+  let nextRank =
+    merged.reduce((max, agent) => Math.max(max, agent.rank), -1) + 1;
+  for (const entry of overrideById.values()) {
+    if (entry.enabled === false) {
+      continue;
+    }
+    const label = entry.label ?? entry.id;
+    const command = entry.command ?? entry.id;
+    merged.push({
+      id: entry.id,
+      label,
+      caption: entry.caption ?? `Start ${label} in a new terminal.`,
+      command,
+      icon: resolveIcon(entry.id, entry.iconSvg),
+      rank: entry.rank ?? nextRank++,
+      requireAvailable: entry.requireAvailable ?? true,
+      promptArgs:
+        entry.promptArgs === null || entry.promptArgs === undefined
+          ? undefined
+          : entry.promptArgs
+    });
+  }
+
+  merged.sort((a, b) => a.rank - b.rank);
+  return merged;
+}

@@ -16,4 +16,4 @@ xtralab-desktop = "xtralab_desktop.app:main"
 packages = ["xtralab_desktop"]
 
 [tool.uv.sources]
-xtralab = { path = "..", editable = false }
+xtralab = { path = "../python/xtralab", editable = false }
