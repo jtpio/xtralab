@@ -8,7 +8,7 @@ import { ISignal, Signal } from '@lumino/signaling';
 import type { Title, Widget } from '@lumino/widgets';
 
 import type { IAgentSessions } from '../agentSessions';
-import { AgentDetection } from './detection';
+import { fetchRunningAgents } from './detection';
 
 export type TerminalWidget = MainAreaWidget<ITerminal.ITerminal>;
 
@@ -88,7 +88,6 @@ export class SessionRegistry implements IDisposable {
     this._agentSessions = options.agentSessions ?? null;
     this._detectCommands = options.detectCommands ?? (() => []);
     this._isAgentCommand = options.isAgentCommand ?? (() => true);
-    this._detection = options.detection ?? new AgentDetection();
     this._shell = options.shell ?? null;
 
     this._terminals.runningChanged.connect(this._onRunningChanged, this);
@@ -111,7 +110,6 @@ export class SessionRegistry implements IDisposable {
       },
       standby: 'when-hidden'
     });
-    this._detection.changed.connect(this._onDetectionChanged, this);
 
     // Separate from the detection poll so reading xterm buffers neither
     // delays nor is delayed by the server round-trip.
@@ -276,7 +274,6 @@ export class SessionRegistry implements IDisposable {
     this._isDisposed = true;
     this._poll.dispose();
     this._activityPoll.dispose();
-    this._detection.changed.disconnect(this._onDetectionChanged, this);
     this._terminals.runningChanged.disconnect(this._onRunningChanged, this);
     this._tracker.widgetAdded.disconnect(this._onWidgetAdded, this);
     this._agentSessions?.changed.disconnect(this._onTagChanged, this);
@@ -348,9 +345,8 @@ export class SessionRegistry implements IDisposable {
   }
 
   /**
-   * Poll body: update the detection map from the server and the added
-   * detectors. On failure the previous results are kept, so a transient error
-   * doesn't strip every badge.
+   * Poll body: update the detection map from the server. On failure the
+   * previous results are kept, so a transient error doesn't strip every badge.
    */
   private async _refreshDetection(): Promise<void> {
     const commands = this._detectCommands();
@@ -361,7 +357,7 @@ export class SessionRegistry implements IDisposable {
       }
       return;
     }
-    const result = await this._detection.detect(commands);
+    const result = await fetchRunningAgents(commands);
     if (result === null) {
       return;
     }
@@ -425,10 +421,6 @@ export class SessionRegistry implements IDisposable {
     if (changed) {
       this._stateChanged.emit();
     }
-  }
-
-  private _onDetectionChanged(): void {
-    void this._poll.refresh();
   }
 
   private _onTagChanged(): void {
@@ -517,7 +509,6 @@ export class SessionRegistry implements IDisposable {
   private _agentSessions: IAgentSessions | null;
   private _detectCommands: () => string[];
   private _isAgentCommand: (command: string) => boolean;
-  private _detection: AgentDetection;
   private _shell: JupyterFrontEnd.IShell | null;
   private _poll: Poll;
   private _activityPoll: Poll;
@@ -572,10 +563,6 @@ export namespace SessionRegistry {
      * Defaults to treating every detected command as an agent.
      */
     isAgentCommand?: (command: string) => boolean;
-    /**
-     * The running-agent detection; defaults to the xtralab server alone.
-     */
-    detection?: AgentDetection;
   }
 }
 

@@ -47,25 +47,7 @@ async function askAboutSelection(page) {
   await expect(page.locator('.jp-xtralab-AskAgent-popup')).toBeVisible();
 }
 
-/**
- * Expect `count` Pi terminal targets in the prompt box. The box lists the
- * targets when it opens, so reopen it until the detection catches up.
- */
-async function expectPiTerminalTarget(page, count) {
-  const piTerminal = page
-    .locator('.jp-xtralab-AskAgent-targetButton')
-    .filter({ hasText: /^Pi\s*1$/ });
-  await expect(async () => {
-    await askAboutSelection(page);
-    const found = await piTerminal.count();
-    await page.keyboard.press('Escape');
-    expect(found).toBe(count);
-  }).toPass({ timeout: 15_000 });
-}
-
-test('the ask-agent prompt box sends to open chats and Pi terminals', async ({
-  page
-}) => {
+test('the ask-agent prompt box sends to open chats', async ({ page }) => {
   // Expose `window.jupyterapp`, as Galata does.
   await page.route('**/jupyter-lite.json', async route => {
     const response = await route.fetch();
@@ -117,45 +99,4 @@ test('the ask-agent prompt box sends to open chats and Pi terminals', async ({
   );
   expect(sent).toBe(true);
   await closeProviderDialog(page);
-
-  // Pi in a terminal is a target when pi-lite reports where it runs. The
-  // test stands in for the `list-terminals` command of jupyter-ai-pi-lite.
-  await page.evaluate(async () => {
-    await window.jupyterapp.commands.execute('xtralab:start-agent:pi', {});
-  });
-  await expect(page.locator('.jp-Terminal')).toBeVisible({ timeout: 30_000 });
-  await askAboutSelection(page);
-  await expect(targets.filter({ hasText: /^Pi\s*1$/ })).toHaveCount(0);
-  await page.keyboard.press('Escape');
-  await page.evaluate(() => {
-    window.piTerminals = ['1'];
-    window.jupyterapp.commands.addCommand(
-      '@jupyter-ai/pi-lite:list-terminals',
-      {
-        label: 'List the terminals where pi runs',
-        execute: () => window.piTerminals
-      }
-    );
-  });
-  await expectPiTerminalTarget(page, 1);
-
-  // The detection must not run the command at each poll: each run closes the
-  // modal command palette.
-  await page.locator('.jp-FileEditor .cm-content').first().click();
-  await page.keyboard.press('Control+Shift+C');
-  const palette = page.locator(
-    '.jp-ModalCommandPalette:not(.lm-mod-hidden):not(:has(.jp-QuickOpen))'
-  );
-  await expect(palette).toBeVisible();
-  await page.waitForTimeout(7000);
-  await expect(palette).toBeVisible();
-  await page.keyboard.press('Escape');
-
-  await page.evaluate(() => {
-    window.piTerminals = [];
-    window.jupyterapp.commands.notifyCommandChanged(
-      '@jupyter-ai/pi-lite:list-terminals'
-    );
-  });
-  await expectPiTerminalTarget(page, 0);
 });

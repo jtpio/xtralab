@@ -59,5 +59,4 @@ export type {
 } from './launcher/agents';
 export { agentCommandId, IAgentRegistry } from './launcher/tokens';
 export { IAgentTerminals } from './terminals/tokens';
-export type { AgentDetectionResult, IAgentDetector } from './terminals/tokens';
 export { hasGit, hasServerExtension } from './server';

@@ -74,14 +74,12 @@ The launcher shows:
   to the persona.
 
 The omnibox and the ask-agent prompt show the same agents. The ask-agent
-prompt also lists:
+prompt also lists the open chats where Pi or Jupyternaut takes part: the
+persona sent a message in the chat, or you sent or mentioned a message to it.
+The prompt goes to the chat as a message to that persona.
 
-- The open chats where Pi or Jupyternaut takes part: the persona sent a
-  message in the chat, or you sent or mentioned a message to it. The prompt
-  goes to the chat as a message to that persona.
-- The terminals where Pi runs, when jupyter-ai-pi-lite reports them with its
-  `@jupyter-ai/pi-lite:list-terminals` command. jupyter-ai-pi-lite 0.1.2 does
-  not have this command.
+The ask-agent prompt does not list the terminals where Pi runs: without a
+server, xtralab cannot see which command runs in a terminal.
 
 The agents call the model provider from the browser. Add a provider before
 you send a prompt:

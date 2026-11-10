@@ -10,14 +10,9 @@ import type {
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { LabIcon } from '@jupyterlab/ui-components';
 import type { Widget } from '@lumino/widgets';
-import {
-  IAgentRegistry,
-  IAgentTerminals,
-  type IAgentStartOptions
-} from 'xtralab';
+import { IAgentRegistry, type IAgentStartOptions } from 'xtralab';
 
 import { ChatSessions } from './chatSessions';
-import { PiTerminalDetector } from './piTerminals';
 
 /**
  * A chat persona offered as an agent.
@@ -181,21 +176,4 @@ const chatAgentsPlugin: JupyterFrontEndPlugin<void> = {
   }
 };
 
-/**
- * Tell the xtralab terminals where pi runs: JupyterLite has no server to
- * inspect the processes of the terminals.
- */
-const piTerminalsPlugin: JupyterFrontEndPlugin<void> = {
-  id: 'xtralite:pi-terminals',
-  description: 'Detect pi in the JupyterLite terminals for xtralab.',
-  autoStart: true,
-  optional: [IAgentTerminals],
-  activate: (
-    app: JupyterFrontEnd,
-    agentTerminals: IAgentTerminals | null
-  ): void => {
-    agentTerminals?.addDetector(new PiTerminalDetector(app));
-  }
-};
-
-export default [chatAgentsPlugin, piTerminalsPlugin];
+export default chatAgentsPlugin;
