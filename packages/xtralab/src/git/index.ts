@@ -2,7 +2,11 @@ import {
   JupyterFrontEnd,
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
-import { IThemeManager, WidgetTracker } from '@jupyterlab/apputils';
+import {
+  ICommandPalette,
+  IThemeManager,
+  WidgetTracker
+} from '@jupyterlab/apputils';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { IStateDB } from '@jupyterlab/statedb';
@@ -77,7 +81,8 @@ const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
     IRenderMimeRegistry,
     ITranslator,
     IAskAgent,
-    IDiffPreferences
+    IDiffPreferences,
+    ICommandPalette
   ],
   activate: (
     app: JupyterFrontEnd,
@@ -85,7 +90,8 @@ const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
     rendermime: IRenderMimeRegistry | null,
     translator: ITranslator | null,
     askAgent: IAskAgent | null,
-    preferences: IDiffPreferences | null
+    preferences: IDiffPreferences | null,
+    palette: ICommandPalette | null
   ): void => {
     const trans = (translator ?? nullTranslator).load('jupyterlab');
     const tracker = new WidgetTracker<DiffMainAreaWidget>({
@@ -148,6 +154,10 @@ const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
         app.shell.activateById(current.id);
       },
       findDiff
+    });
+    palette?.addItem({
+      command: CommandIDs.pinDiff,
+      category: trans.__('Git Operations')
     });
   }
 };
