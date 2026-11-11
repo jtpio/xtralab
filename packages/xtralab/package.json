@@ -21,7 +21,6 @@
         "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
         "style/**/*.{css,js,eot,gif,html,jpg,json,png,svg,woff2,ttf}",
         "src/**/*.{ts,tsx}",
-        "webpack.config.js",
         "schema/*.json",
         "logo.svg"
     ],
@@ -80,7 +79,7 @@
         "@lumino/polling": "^2.1.5",
         "@lumino/signaling": "^2.1.5",
         "@lumino/widgets": "^2.8.0",
-        "@pierre/diffs": "^1.5.1",
+        "@pierre/diffs": "^1.6.4",
         "@pierre/icons": "^0.9.0",
         "@pierre/trees": "1.0.0-beta.4",
         "detect-indent": "^7.0.2",
@@ -105,7 +104,6 @@
     },
     "jupyterlab": {
         "extension": true,
-        "webpackConfig": "./webpack.config.js",
         "outputDir": "../../python/xtralab/xtralab/labextension",
         "schemaDir": "schema",
         "sharedPackages": {

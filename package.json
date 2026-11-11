@@ -54,7 +54,7 @@
             "@fortawesome/fontawesome-free"
         ],
         "patchedDependencies": {
-            "@pierre/diffs@1.5.1": "patches/@pierre__diffs@1.5.1.patch"
+            "@pierre/diffs@1.6.4": "patches/@pierre__diffs@1.6.4.patch"
         }
     },
     "eslintIgnore": [

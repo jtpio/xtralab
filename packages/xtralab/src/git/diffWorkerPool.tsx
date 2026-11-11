@@ -5,17 +5,6 @@ import { WorkerPoolContextProvider, useWorkerPool } from '@pierre/diffs/react';
 import { resolveDiffTheme } from './diffTheme';
 
 /**
- * URL of the syntax-highlighting worker, emitted as a raw asset via
- * `new URL(..., import.meta.url)` so it resolves under federated loading.
- * Addressed as a file path because the package's `worker` subpath export is
- * `import`-only, which rspack's URL resolver does not apply.
- */
-const WORKER_URL = new URL(
-  '../../node_modules/@pierre/diffs/dist/worker/worker-portable.js',
-  import.meta.url
-);
-
-/**
  * A diff tab highlights one file at a time, so a small pool suffices
  * (the library defaults to eight workers).
  */
@@ -35,7 +24,10 @@ export function DiffWorkerPoolProvider(props: {
   return (
     <WorkerPoolContextProvider
       poolOptions={{
-        workerFactory: () => new Worker(WORKER_URL),
+        workerFactory: () =>
+          new Worker(
+            new URL('@pierre/diffs/worker/worker-portable.js', import.meta.url)
+          ),
         poolSize: POOL_SIZE
       }}
       highlighterOptions={{ theme: resolveDiffTheme(dark, pierreTheme) }}
