@@ -272,6 +272,7 @@ body[data-jp-theme-light] .jp-xtralab-DiffWidget-scrollbarTrack {
   top: 0;
   z-index: 3;
   display: flex;
+  align-items: flex-start;
   justify-content: flex-end;
   height: 0;
   overflow: visible;
