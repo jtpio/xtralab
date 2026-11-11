@@ -137,9 +137,13 @@ export interface IDiffEdit {
    * Whether the new side maps to a savable working-tree text file.
    */
   canEdit: boolean;
-  /** Server-relative identity, including the repository path. */
+  /**
+   * Server-relative identity, including the repository path.
+   */
   filePath: string;
-  /** Keep selection requests in sync without feeding the draft back. */
+  /**
+   * Keep selection requests in sync without feeding the draft back.
+   */
   onDraftChange?: (fullText: string) => void;
   /**
    * Persist the full edited text to disk, without triggering a diff reload.
@@ -235,7 +239,9 @@ function minimalTextEdit(before: string, after: string): TextEdit | null {
   };
 }
 
-/** Convert a safe UTF-16 offset, recognizing LF, CRLF and CR line endings. */
+/**
+ * Convert a safe UTF-16 offset, recognizing LF, CRLF and CR line endings.
+ */
 function positionAtOffset(text: string, offset: number): Position {
   let line = 0;
   let lineStart = 0;
