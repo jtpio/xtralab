@@ -26,7 +26,8 @@ export function DiffWorkerPoolProvider(props: {
       poolOptions={{
         workerFactory: () =>
           new Worker(
-            new URL('@pierre/diffs/worker/worker-portable.js', import.meta.url)
+            new URL('@pierre/diffs/worker/worker.js', import.meta.url),
+            { type: 'module' }
           ),
         poolSize: POOL_SIZE
       }}
