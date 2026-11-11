@@ -1,0 +1,16 @@
+diff --git a/dist/highlighter/shiki-editor.js b/dist/highlighter/shiki-editor.js
+index c68b3c518ca88a589802b2d354ecb990577a1648..c0019b758f292ed2d3e278a4bc2742c4c26bea8f 100644
+--- a/dist/highlighter/shiki-editor.js
++++ b/dist/highlighter/shiki-editor.js
+@@ -90,8 +90,9 @@ var ShikiEditorTokenizer = class {
+ 	#ensureActiveTheme() {
+ 		if (this.#themeName === "") return;
+ 		this.backend?.getTheme(this.#themeName);
+-		const { colorMap } = this.#highlighter.setTheme(this.#themeName);
+-		this.#colorMap = colorMap;
++		const { theme, colorMap } = this.#highlighter.setTheme(this.#themeName);
++		// Resolve Shiki's synthetic colors before rendering CSS-variable themes.
++		this.#colorMap = colorMap.map(color => theme.colorReplacements?.[color?.toLowerCase()] ?? color);
+ 	}
+ 	dispose() {
+ 		this.#isCleanedUp = true;

@@ -1,15 +1,18 @@
 import {
-  createCSSVariablesTheme,
-  formatCSSVariablePrefix,
-  registerCustomTheme,
+  registerCustomCSSVariableTheme,
   type DiffsThemeNames
 } from '@pierre/diffs';
 
 /**
- * Token colors for the JupyterLab Shiki themes. The values are CSS
- * variables, so theme changes recolor the diff.
+ * Shiki CSS-variable theme used for non-Pierre JupyterLab themes.
  */
-const JUPYTERLAB_THEME_VARIABLES: Record<string, string> = {
+const JUPYTERLAB_DIFF_THEME: DiffsThemeNames = 'jupyterlab';
+
+/**
+ * Register a Shiki theme whose token colors read JupyterLab's editor
+ * variables. The values are CSS variables, so theme changes recolor the diff.
+ */
+registerCustomCSSVariableTheme(JUPYTERLAB_DIFF_THEME, {
   foreground: 'var(--jp-content-font-color1)',
   background: 'var(--jp-layout-color1)',
   'token-keyword': 'var(--jp-mirror-editor-keyword-color)',
@@ -21,29 +24,7 @@ const JUPYTERLAB_THEME_VARIABLES: Record<string, string> = {
   'token-parameter': 'var(--jp-mirror-editor-variable-color)',
   'token-punctuation': 'var(--jp-mirror-editor-punctuation-color)',
   'token-link': 'var(--jp-mirror-editor-link-color)'
-};
-
-/**
- * Register a Shiki theme whose token colors read JupyterLab's editor
- * variables. One theme per `type` (the library's own factory hardcodes
- * `type: 'dark'`): it must match the host's `themeType`, or `light-dark()`
- * reads an unset token variable and edited lines lose their colors.
- */
-function registerJupyterlabTheme(name: string, type: 'light' | 'dark'): void {
-  const theme = {
-    ...createCSSVariablesTheme({
-      name,
-      variablePrefix: formatCSSVariablePrefix('global'),
-      variableDefaults: JUPYTERLAB_THEME_VARIABLES,
-      fontStyle: false
-    }),
-    type
-  };
-  registerCustomTheme(name, () => Promise.resolve(theme));
-}
-
-registerJupyterlabTheme('jupyterlab-light', 'light');
-registerJupyterlabTheme('jupyterlab-dark', 'dark');
+});
 
 /**
  * `unsafeCSS` for a taller, always-visible horizontal scrollbar. The library
@@ -90,5 +71,5 @@ export function resolveDiffTheme(
   if (pierreTheme) {
     return dark ? 'pierre-dark' : 'pierre-light';
   }
-  return dark ? 'jupyterlab-dark' : 'jupyterlab-light';
+  return JUPYTERLAB_DIFF_THEME;
 }
