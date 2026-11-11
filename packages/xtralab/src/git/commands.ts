@@ -22,6 +22,7 @@ import { IFileChange } from './tokens';
  */
 export namespace CommandIDs {
   export const openDiff = 'xtralab:git:open-diff';
+  export const pinDiff = 'xtralab:git:pin-diff';
 }
 
 /**
@@ -313,6 +314,10 @@ export function registerGitCommands(
   } = options;
   const { commands } = app;
 
+  const notifyPinChanged = (): void => {
+    commands.notifyCommandChanged(CommandIDs.pinDiff);
+  };
+
   commands.addCommand(CommandIDs.openDiff, {
     label: trans.__('Open Git Diff'),
     caption: trans.__('Open a side-by-side diff for a changed file'),
@@ -347,11 +352,31 @@ export function registerGitCommands(
         preferences,
         trans,
         pinned: pin,
-        onPinned
+        onPinned: current => {
+          onPinned(current);
+          notifyPinChanged();
+        }
       });
       await trackDiff(widget);
       app.shell.add(widget, 'main', { mode: 'tab-after' });
       app.shell.activateById(widget.id);
     }
   });
+
+  // The keyboard path to pin: a click on the tab label needs a pointer.
+  const currentPreview = (): DiffMainAreaWidget | null => {
+    const widget = app.shell.currentWidget;
+    return widget instanceof DiffMainAreaWidget && !widget.pinned
+      ? widget
+      : null;
+  };
+  commands.addCommand(CommandIDs.pinDiff, {
+    label: trans.__('Pin Diff Tab'),
+    caption: trans.__('Keep the preview diff open in its own tab'),
+    isEnabled: () => currentPreview() !== null,
+    execute: () => {
+      currentPreview()?.pin();
+    }
+  });
+  app.shell.currentChanged?.connect(notifyPinChanged);
 }
