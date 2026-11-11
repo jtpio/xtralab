@@ -312,6 +312,24 @@ async function launcherReady(page: IJupyterLabPageFixture): Promise<void> {
 }
 
 /**
+ * Open the diff of a changed file from the launcher.
+ */
+async function openDiff(
+  page: IJupyterLabPageFixture,
+  filePath: string
+): Promise<void> {
+  await ready(page);
+  await launcherReady(page);
+  await collapseLeft(page);
+  await page
+    .locator('.jp-xtralab-Launcher-change', { hasText: filePath })
+    .click();
+  await page.locator('.jp-git-diff-root').waitFor();
+  // Give the diff worker time to tokenize both sides.
+  await page.waitForTimeout(2000);
+}
+
+/**
  * Open a file in the editor and wait for its collaborative document, which
  * streams in after the editor mounts.
  */
@@ -385,30 +403,27 @@ test('launcher mcp', async ({ page }) => {
 
 test('git diff', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 530 });
-  await ready(page);
-  await launcherReady(page);
-  await collapseLeft(page);
-  await page
-    .locator('.jp-xtralab-Launcher-change', { hasText: 'src/acme/metrics.py' })
-    .click();
-  await page.locator('.jp-git-diff-root').waitFor();
-  // Give the diff worker time to tokenize both sides.
-  await page.waitForTimeout(2000);
+  await openDiff(page, 'src/acme/metrics.py');
   await shotAround(page, 'diff.png', [page.locator('#jp-main-dock-panel')], 0);
+});
+
+test('diff toolbar buttons', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 530 });
+  await openDiff(page, 'src/acme/metrics.py');
+  const split = page.getByRole('tab', { name: 'Split view' });
+  const unified = page.getByRole('tab', { name: 'Unified view' });
+  const wrap = page.getByRole('button', { name: 'Wrap lines' });
+  // Each capture shows its button in the selected state.
+  await shotAround(page, 'diff-split-view.png', [split], 0);
+  await unified.click();
+  await shotAround(page, 'diff-unified-view.png', [unified], 0);
+  await wrap.click();
+  await shotAround(page, 'diff-wrap-lines.png', [wrap], 0);
 });
 
 test('notebook diff', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 935 });
-  await ready(page);
-  await launcherReady(page);
-  await collapseLeft(page);
-  await page
-    .locator('.jp-xtralab-Launcher-change', {
-      hasText: 'notebooks/exploration.ipynb'
-    })
-    .click();
-  await page.locator('.jp-git-diff-root').waitFor();
-  await page.waitForTimeout(2000);
+  await openDiff(page, 'notebooks/exploration.ipynb');
   await shotAround(
     page,
     'notebook-diff.png',

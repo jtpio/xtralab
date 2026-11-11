@@ -16,3 +16,11 @@
   border: 1px solid var(--sl-color-hairline);
   border-radius: 0.5rem;
 }
+
+/*
+ * A capture in a table cell keeps its size: its column has no minimum width.
+ */
+.sl-markdown-content td img {
+  box-sizing: content-box;
+  max-width: none;
+}
