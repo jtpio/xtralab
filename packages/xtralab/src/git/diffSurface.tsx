@@ -11,7 +11,7 @@ import {
   type EditorFactory,
   type EditorChangeEvent,
   type FileDiffEditCompleteEvent,
-  type Position,
+  type TextDocument,
   type TextEdit
 } from '@pierre/diffs/edit';
 import { IconDiffSplit, IconDiffUnified, IconWordWrap } from '@pierre/icons';
@@ -188,10 +188,14 @@ const createEditor: EditorFactory<IHunkActionAnnotation, undefined> = (
 ) => new Editor(type, options, editStateKey);
 
 /**
- * Smallest single edit turning `before` into `after` (null when equal), with
- * boundaries that preserve surrogate pairs and complete line endings.
+ * Smallest single edit turning the document into `after` (null when equal),
+ * with boundaries that preserve surrogate pairs and complete line endings.
  */
-function minimalTextEdit(before: string, after: string): TextEdit | null {
+function minimalTextEdit(
+  document: TextDocument<'file-diff', IHunkActionAnnotation>,
+  after: string
+): TextEdit | null {
+  const before = document.getText();
   if (before === after) {
     return null;
   }
@@ -232,30 +236,11 @@ function minimalTextEdit(before: string, after: string): TextEdit | null {
   }
   return {
     range: {
-      start: positionAtOffset(before, start),
-      end: positionAtOffset(before, beforeEnd)
+      start: document.positionAt(start),
+      end: document.positionAt(beforeEnd)
     },
     newText: after.slice(start, afterEnd)
   };
-}
-
-/**
- * Convert a safe UTF-16 offset, recognizing LF, CRLF and CR line endings.
- */
-function positionAtOffset(text: string, offset: number): Position {
-  let line = 0;
-  let lineStart = 0;
-  for (let i = 0; i < offset; i++) {
-    const character = text.charCodeAt(i);
-    if (character === 13 || character === 10) {
-      if (character === 13 && text.charCodeAt(i + 1) === 10) {
-        i++;
-      }
-      line++;
-      lineStart = i + 1;
-    }
-  }
-  return { line, character: offset - lineStart };
 }
 
 /**
@@ -1163,10 +1148,11 @@ function EditableFileDiff(props: {
           type: 'reject',
           changeIndex
         });
-        const change = minimalTextEdit(
-          editor.getText(),
-          reverted.additionLines.join('')
-        );
+        const document = editor.getEditState()?.document;
+        const change =
+          document === undefined
+            ? null
+            : minimalTextEdit(document, reverted.additionLines.join(''));
         if (change !== null) {
           editor.applyEdits([change]);
         }
