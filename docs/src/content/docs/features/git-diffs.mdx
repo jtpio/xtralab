@@ -5,6 +5,9 @@ description: Side-by-side diffs for text files and notebooks, with an editable w
 
 import Screenshot from '../../../components/Screenshot.astro';
 import diff from '../../../assets/screenshots/diff.png';
+import splitView from '../../../assets/screenshots/diff-split-view.png';
+import unifiedView from '../../../assets/screenshots/diff-unified-view.png';
+import wrapLines from '../../../assets/screenshots/diff-wrap-lines.png';
 import notebookDiff from '../../../assets/screenshots/notebook-diff.png';
 
 xtralab shows Git diffs with
@@ -25,11 +28,11 @@ and notebooks have side-by-side diffs.
 
 ## Change the layout
 
-| Toolbar button | Layout                                                            |
-| -------------- | ----------------------------------------------------------------- |
-| Split view     | The old and the new version side by side. This is the default.    |
-| Unified view   | The changes in one column.                                        |
-| Wrap lines     | Long lines wrap to the width of the view. This is off by default. |
+| Icon                                                           | Button            | Layout                                                            |
+| -------------------------------------------------------------- | ----------------- | ----------------------------------------------------------------- |
+| <Screenshot src={splitView} alt="The Split view button" />     | Split&nbsp;view   | The old and the new version side by side. This is the default.    |
+| <Screenshot src={unifiedView} alt="The Unified view button" /> | Unified&nbsp;view | The changes in one column.                                        |
+| <Screenshot src={wrapLines} alt="The Wrap lines button" />     | Wrap&nbsp;lines   | Long lines wrap to the width of the view. This is off by default. |
 
 In split view, drag the line between the two sides to change their widths.
 Double-click the line to reset the widths. When lines wrap, the two sides
