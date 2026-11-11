@@ -133,9 +133,18 @@ body[data-jp-theme-light] .jp-xtralab-DiffWidget-scrollbarTrack {
 }
 
 .jp-xtralab-DiffWidget-diffStyleToolbarItem,
-.jp-xtralab-DiffWidget-lineWrapToolbarItem,
-.jp-xtralab-DiffWidget-saveStatusToolbarItem {
+.jp-xtralab-DiffWidget-lineWrapToolbarItem {
   margin-left: 4px;
+}
+
+/*
+ * Right-aligned in both hosts. jupyterlab-git appends a spacer and its
+ * buttons after these items, so `order` moves the status past them.
+ */
+.jp-xtralab-DiffWidget-saveStatusToolbarItem {
+  order: 1;
+  margin-left: auto;
+  margin-right: 4px;
 }
 
 .jp-xtralab-DiffWidget-segmented {
