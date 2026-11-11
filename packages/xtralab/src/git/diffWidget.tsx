@@ -24,10 +24,12 @@ import {
   DIFF_WIDGET_CSS_CLASS,
   DiffStyleControl,
   DiffSurface,
+  EditSaveStatus,
   LineWrapControl,
   NotebookViewModeControl,
   isDarkTheme,
   isPierreTheme,
+  type EditSaveState,
   type IDiffEdit
 } from './diffSurface';
 import { imageDataType } from './imageDiff';
@@ -203,6 +205,31 @@ export class XtralabDiffWidget
   }
 
   /**
+   * The save state of the editable diff, `'idle'` when nothing is in edit.
+   */
+  get saveState(): EditSaveState {
+    return this._saveState;
+  }
+
+  /**
+   * Set the save state of the editable diff.
+   */
+  setSaveState(value: EditSaveState): void {
+    if (value === this._saveState) {
+      return;
+    }
+    this._saveState = value;
+    this._saveStateChanged.emit(value);
+  }
+
+  /**
+   * A signal emitted when {@link saveState} changes.
+   */
+  get saveStateChanged(): ISignal<this, EditSaveState> {
+    return this._saveStateChanged;
+  }
+
+  /**
    * Emitted when a post-discard reload leaves the diff with no hunks.
    */
   get emptied(): ISignal<this, void> {
@@ -264,6 +291,8 @@ export class XtralabDiffWidget
   private _hasNotebookViewChanged = new Signal<this, boolean>(this);
   private _fileDiffActive = false;
   private _fileDiffActiveChanged = new Signal<this, boolean>(this);
+  private _saveState: EditSaveState = 'idle';
+  private _saveStateChanged = new Signal<this, EditSaveState>(this);
   private _emptied = new Signal<this, void>(this);
 }
 
@@ -587,6 +616,7 @@ function ModelDiffView(props: {
         );
       },
       readDiskText,
+      onSaveStateChange: state => widget.setSaveState(state),
       onConflictDiscard: async () => {
         // A closed preview must not refresh the next file in the reused tab.
         if (widget.isDisposed || widget.model !== model) {
@@ -754,6 +784,46 @@ function LineWrapToolbarControl(props: {
 }
 
 /**
+ * Save-state indicator mounted into a host-owned toolbar.
+ */
+class SaveStatusToolbarItem extends ReactWidget {
+  constructor(widget: XtralabDiffWidget) {
+    super();
+    this._widget = widget;
+    this.addClass('jp-xtralab-DiffWidget-saveStatusToolbarItem');
+  }
+
+  /**
+   * Render the save-state indicator.
+   */
+  protected render(): React.ReactElement {
+    return <SaveStatusToolbarControl widget={this._widget} />;
+  }
+
+  private _widget: XtralabDiffWidget;
+}
+
+function SaveStatusToolbarControl(props: {
+  widget: XtralabDiffWidget;
+}): React.ReactElement {
+  const { widget } = props;
+  const [state, setState] = React.useState<EditSaveState>(
+    () => widget.saveState
+  );
+  React.useEffect(() => {
+    const onState = (sender: XtralabDiffWidget, next: EditSaveState): void => {
+      setState(next);
+    };
+    widget.saveStateChanged.connect(onState);
+    setState(widget.saveState);
+    return () => {
+      widget.saveStateChanged.disconnect(onState);
+    };
+  }, [widget]);
+  return <EditSaveStatus state={state} trans={widget.context.trans} />;
+}
+
+/**
  * Track {@link XtralabDiffWidget.fileDiffActive} for the split/unified and
  * line-wrap controls.
  */
@@ -799,4 +869,8 @@ export function addDiffToolbarItems(
   );
   toolbar.addItem('xtralab-diff-style', new DiffStyleToolbarItem(widget));
   toolbar.addItem('xtralab-diff-line-wrap', new LineWrapToolbarItem(widget));
+  toolbar.addItem(
+    'xtralab-diff-save-status',
+    new SaveStatusToolbarItem(widget)
+  );
 }

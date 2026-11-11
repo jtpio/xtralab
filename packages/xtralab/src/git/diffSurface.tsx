@@ -165,13 +165,17 @@ export interface IDiffEdit {
    * disk; the host ends the session and reloads the diff.
    */
   onConflictDiscard?: () => Promise<void>;
+  /**
+   * Called when the save state changes; the host shows it in its toolbar.
+   */
+  onSaveStateChange?: (state: EditSaveState) => void;
 }
 
 /**
  * Save state surfaced while editing. `conflict` pauses autosaving until the
  * user resolves it through the notification.
  */
-type EditSaveState = 'idle' | 'saving' | 'saved' | 'error' | 'conflict';
+export type EditSaveState = 'idle' | 'saving' | 'saved' | 'error' | 'conflict';
 
 /**
  * Quiet period after the last keystroke before an edit session autosaves.
@@ -1202,6 +1206,15 @@ function EditableFileDiff(props: {
     const timer = setTimeout(() => setSaveState('idle'), 1500);
     return () => clearTimeout(timer);
   }, [saveState]);
+  React.useEffect(() => {
+    editRef.current.onSaveStateChange?.(saveState);
+  }, [saveState]);
+  React.useEffect(
+    () => () => {
+      editRef.current.onSaveStateChange?.('idle');
+    },
+    []
+  );
 
   return (
     <div
@@ -1219,9 +1232,6 @@ function EditableFileDiff(props: {
         }
       }}
     >
-      <div className="jp-xtralab-DiffWidget-saveStatusBar">
-        <EditSaveStatus state={saveState} trans={trans} />
-      </div>
       <EditProvider createEditor={createEditor}>
         <FileDiff<IHunkActionAnnotation>
           fileDiff={externalDiff}
@@ -1241,9 +1251,9 @@ function EditableFileDiff(props: {
 }
 
 /**
- * Save-state indicator shown while editing; renders nothing when idle.
+ * Save-state indicator for the host toolbar; renders nothing when idle.
  */
-function EditSaveStatus(props: {
+export function EditSaveStatus(props: {
   state: EditSaveState;
   trans: TranslationBundle;
 }): React.ReactElement | null {

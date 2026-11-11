@@ -125,14 +125,16 @@ body[data-jp-theme-light] .jp-xtralab-DiffWidget-scrollbarTrack {
 
 .jp-xtralab-DiffWidget-viewModeToolbarItem,
 .jp-xtralab-DiffWidget-diffStyleToolbarItem,
-.jp-xtralab-DiffWidget-lineWrapToolbarItem {
+.jp-xtralab-DiffWidget-lineWrapToolbarItem,
+.jp-xtralab-DiffWidget-saveStatusToolbarItem {
   display: flex;
   align-items: center;
   font-size: var(--jp-ui-font-size0);
 }
 
 .jp-xtralab-DiffWidget-diffStyleToolbarItem,
-.jp-xtralab-DiffWidget-lineWrapToolbarItem {
+.jp-xtralab-DiffWidget-lineWrapToolbarItem,
+.jp-xtralab-DiffWidget-saveStatusToolbarItem {
   margin-left: 4px;
 }
 
@@ -257,30 +259,7 @@ body[data-jp-theme-light] .jp-xtralab-DiffWidget-scrollbarTrack {
   height: 14px;
 }
 
-/* Position the save indicator above the diff's shadow root. */
-.jp-xtralab-DiffWidget-editRegion {
-  position: relative;
-  min-height: 100%;
-}
-
-/*
- * Zero-height sticky bar pinning the autosave indicator to the viewport top;
- * `pointer-events: none` lets clicks fall through to the editor.
- */
-.jp-xtralab-DiffWidget-saveStatusBar {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  height: 0;
-  overflow: visible;
-  pointer-events: none;
-}
-
 .jp-xtralab-DiffWidget-saveStatus {
-  margin: 6px 12px 0 0;
   padding: 1px 8px;
   border-radius: 10px;
   background-color: var(--jp-layout-color3);
