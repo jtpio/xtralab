@@ -109,9 +109,8 @@ const diffCommandPlugin: JupyterFrontEndPlugin<void> = {
       return existing ?? undefined;
     };
 
-    // Clicking the preview tab's label pins it, as in jupyterlab-git.
-    // Delegated in capture phase so it survives Lumino tab re-renders;
-    // `jp-mod-preview` is only ever set by the launcher's preview diff.
+    // A click on the preview tab's label pins it, as in jupyterlab-git.
+    // Delegated in capture phase so it survives Lumino tab re-renders.
     document.addEventListener(
       'click',
       event => {
