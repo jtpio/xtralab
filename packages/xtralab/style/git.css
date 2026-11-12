@@ -12,7 +12,9 @@
   font-style: italic;
 }
 
-/* xtralab's diff provider re-pulls automatically (see diffProvider.tsx). */
+/*
+ * xtralab's diff provider re-pulls automatically (see diffProvider.tsx).
+ */
 .jp-git-diff-parent-widget .jp-git-diff-refresh {
   display: none;
 }
@@ -228,7 +230,9 @@ body[data-jp-theme-light] .jp-xtralab-DiffWidget-scrollbarTrack {
   color: var(--jp-ui-font-color1);
 }
 
-/* Collapse the annotation row and overlay the button on its anchor line. */
+/*
+ * Collapse the annotation row and overlay the button on its anchor line.
+ */
 .jp-xtralab-DiffWidget-hunkAnnotation {
   display: flex;
   justify-content: flex-end;
