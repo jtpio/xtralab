@@ -192,6 +192,17 @@ const createEditor: EditorFactory<IHunkActionAnnotation, undefined> = (
 ) => new Editor(type, options, editStateKey);
 
 /**
+ * Show an edit error. An error that is still open gets the new text, so
+ * repeated autosave failures do not stack notifications.
+ */
+export function reportEditError(id: string | null, message: string): string {
+  if (id !== null && Notification.update({ id, message, type: 'error' })) {
+    return id;
+  }
+  return Notification.error(message);
+}
+
+/**
  * Smallest single edit turning the document into `after` (null when equal),
  * with boundaries that preserve surrogate pairs and complete line endings.
  */
@@ -698,10 +709,8 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
     [leftPercent]
   );
 
-  // Shared by the read-only and editable renders; a stable identity lets the
-  // library skip its option-equality check on unrelated re-renders. Line
-  // selection + the ask-agent gutter button ride along when the host wired a
-  // handler, in both renders.
+  // Shared by the read-only and editable renders. A stable identity lets the
+  // library skip its option-equality check on unrelated re-renders.
   const fileDiffOptions = React.useMemo<
     FileDiffOptions<IHunkActionAnnotation, undefined>
   >(
@@ -907,6 +916,7 @@ function EditableFileDiff(props: {
   editRef.current = edit;
   const [saveState, setSaveState] = React.useState<EditSaveState>('idle');
   const conflictToastRef = React.useRef<string | null>(null);
+  const readErrorRef = React.useRef<string | null>(null);
   const overwriteRef = React.useRef(false);
   const saveTimerRef = React.useRef<number | null>(null);
   const [lineAnnotations, setLineAnnotations] = React.useState(() =>
@@ -965,7 +975,8 @@ function EditableFileDiff(props: {
             diskText = await editRef.current.readDiskText();
           } catch (err) {
             setSaveState('error');
-            Notification.error(
+            readErrorRef.current = reportEditError(
+              readErrorRef.current,
               trans.__(
                 'Failed to read %1 before saving: %2',
                 props.fileName,
@@ -1209,6 +1220,22 @@ function EditableFileDiff(props: {
   React.useEffect(() => {
     editRef.current.onSaveStateChange?.(saveState);
   }, [saveState]);
+  React.useEffect(() => {
+    // A dismissed conflict has no answer: ask again on the next save, or
+    // autosave stays paused for the rest of the session.
+    const onChanged = (sender: unknown, change: Notification.IChange): void => {
+      if (
+        change.type === 'removed' &&
+        change.notification.id === conflictToastRef.current
+      ) {
+        conflictToastRef.current = null;
+      }
+    };
+    Notification.manager.changed.connect(onChanged);
+    return () => {
+      Notification.manager.changed.disconnect(onChanged);
+    };
+  }, []);
   React.useEffect(
     () => () => {
       editRef.current.onSaveStateChange?.('idle');

@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { IThemeManager, Notification } from '@jupyterlab/apputils';
+import { IThemeManager } from '@jupyterlab/apputils';
 import { PathExt } from '@jupyterlab/coreutils';
 import { Git } from '@jupyterlab/git';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
@@ -29,6 +29,7 @@ import {
   NotebookViewModeControl,
   isDarkTheme,
   isPierreTheme,
+  reportEditError,
   type EditSaveState,
   type IDiffEdit
 } from './diffSurface';
@@ -316,6 +317,19 @@ interface IModelDiffState {
    * The fetch error message, or `null` if none.
    */
   error: string | null;
+  /**
+   * Whether the working-tree file of the challenger side does not exist.
+   */
+  workingMissing: boolean;
+}
+
+/**
+ * Whether a contents API error is "not found".
+ */
+function isNotFound(err: unknown): boolean {
+  return (
+    err instanceof ServerConnection.ResponseError && err.response.status === 404
+  );
 }
 
 function ModelDiffView(props: {
@@ -338,8 +352,14 @@ function ModelDiffView(props: {
     loading: true,
     oldText: '',
     newText: '',
-    error: null
+    error: null,
+    workingMissing: false
   });
+
+  const serverPath = React.useMemo(
+    () => PathExt.join(model.repositoryPath ?? '', model.filename),
+    [model.repositoryPath, model.filename]
+  );
 
   const handleNotebookAvailabilityChange = React.useCallback(
     (available: boolean) => {
@@ -419,7 +439,13 @@ function ModelDiffView(props: {
     let cancelled = false;
     if (isBinary) {
       loadedModelRef.current = model;
-      setState({ loading: false, oldText: '', newText: '', error: null });
+      setState({
+        loading: false,
+        oldText: '',
+        newText: '',
+        error: null,
+        workingMissing: false
+      });
       // An in-flight `refresh()` still has to resolve.
       widget.settleRefresh();
       return () => {
@@ -427,14 +453,34 @@ function ModelDiffView(props: {
       };
     }
     if (loadedModelRef.current !== model) {
-      setState({ loading: true, oldText: '', newText: '', error: null });
+      setState({
+        loading: true,
+        oldText: '',
+        newText: '',
+        error: null,
+        workingMissing: false
+      });
     }
     const saveRevision = saveRevisionRef.current;
+    // A deleted file reads as '' on the working side, the same as an empty
+    // file; only the contents API tells the two apart.
+    const workingFileMissing = async (): Promise<boolean> => {
+      if (model.challenger.source !== Git.Diff.SpecialRef.WORKING) {
+        return false;
+      }
+      try {
+        await contentsManager.get(serverPath, { content: false });
+        return false;
+      } catch (err) {
+        return isNotFound(err);
+      }
+    };
     void (async () => {
       try {
-        const [oldText, newText] = await Promise.all([
+        const [oldText, newText, workingMissing] = await Promise.all([
           model.reference.content(),
-          model.challenger.content()
+          model.challenger.content(),
+          workingFileMissing()
         ]);
         if (cancelled) {
           return;
@@ -448,7 +494,8 @@ function ModelDiffView(props: {
             saveRevision === saveRevisionRef.current
               ? (newText ?? '')
               : prev.newText,
-          error: null
+          error: null,
+          workingMissing
         }));
       } catch (err) {
         if (cancelled) {
@@ -459,7 +506,8 @@ function ModelDiffView(props: {
           loading: false,
           oldText: '',
           newText: saveRevision === saveRevisionRef.current ? '' : prev.newText,
-          error: err instanceof Error ? err.message : String(err)
+          error: err instanceof Error ? err.message : String(err),
+          workingMissing: false
         }));
       } finally {
         if (!cancelled) {
@@ -470,20 +518,20 @@ function ModelDiffView(props: {
     return () => {
       cancelled = true;
     };
-  }, [widget, model, nonce, isBinary]);
+  }, [widget, model, nonce, isBinary, contentsManager, serverPath]);
 
   // Editing writes the working-tree file, so it only applies when the new side
-  // is the working copy (unstaged or untracked) and the diff is plain text.
+  // is an existing working copy and the diff is plain text.
   const canEdit =
     model.challenger.source === Git.Diff.SpecialRef.WORKING &&
     model.hasConflict !== true &&
+    !state.workingMissing &&
     !isImage &&
     !isBinary &&
     !model.filename.toLowerCase().endsWith('.ipynb');
 
   // Only close after a reload, not for a file that opens already empty, and
-  // never for an editable diff (editing a file down to an empty diff must
-  // not close it under the user).
+  // never for an editable diff: the tab must not close under the user.
   React.useEffect(() => {
     if (
       !state.loading &&
@@ -502,11 +550,6 @@ function ModelDiffView(props: {
     (model.challenger.source === Git.Diff.SpecialRef.WORKING &&
       model.hasConflict !== true);
 
-  const serverPath = React.useMemo(
-    () => PathExt.join(model.repositoryPath ?? '', model.filename),
-    [model.repositoryPath, model.filename]
-  );
-
   // Both hunk discard and direct editing persist by rewriting the whole
   // working-tree file through the contents API.
   const saveWorkingFile = React.useCallback(
@@ -520,9 +563,8 @@ function ModelDiffView(props: {
     [contentsManager, serverPath]
   );
 
-  // Pre-write staleness check for both write paths. `type: 'file'` matches
-  // how the git API reads the working tree, so an unchanged file compares
-  // byte-equal to the loaded diff text; a missing file reads as '' to match.
+  // Pre-write staleness check. `type: 'file'` reads the bytes as the git API
+  // does, so an unchanged file is equal to the diff text; missing reads as ''.
   const readDiskText = React.useCallback(async (): Promise<string> => {
     try {
       const current = await contentsManager.get(serverPath, {
@@ -532,10 +574,7 @@ function ModelDiffView(props: {
       });
       return typeof current.content === 'string' ? current.content : '';
     } catch (err) {
-      if (
-        err instanceof ServerConnection.ResponseError &&
-        err.response.status === 404
-      ) {
+      if (isNotFound(err)) {
         return '';
       }
       throw err;
@@ -555,6 +594,7 @@ function ModelDiffView(props: {
   );
 
   const draftTextRef = React.useRef<string | null>(null);
+  const saveErrorRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     draftTextRef.current = null;
   }, [model]);
@@ -594,7 +634,8 @@ function ModelDiffView(props: {
         } catch (err) {
           // Surface failures even for tail saves after the session ended;
           // rethrow so an in-session save still shows "Save failed".
-          Notification.error(
+          saveErrorRef.current = reportEditError(
+            saveErrorRef.current,
             trans.__(
               'Failed to save edits to %1: %2',
               model.filename,

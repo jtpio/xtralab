@@ -332,12 +332,20 @@ export function registerGitCommands(
       const pinned = findDiff(typed.change, true);
       if (pinned !== undefined && !pinned.isDisposed) {
         app.shell.activateById(pinned.id);
+        void pinned.content.refresh();
         return;
       }
       if (!pin) {
         const preview = findDiff(typed.change);
         if (preview !== undefined && !preview.isDisposed) {
-          preview.setChange(typed.repoPath, typed.change);
+          const { path, group } = preview.change;
+          if (path === typed.change.path && group === typed.change.group) {
+            // A new model would end the edit session; its last save then
+            // races the load of the same file.
+            void preview.content.refresh();
+          } else {
+            preview.setChange(typed.repoPath, typed.change);
+          }
           app.shell.activateById(preview.id);
           return;
         }
