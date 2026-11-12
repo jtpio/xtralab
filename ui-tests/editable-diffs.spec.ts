@@ -2,7 +2,7 @@
 import { test as baseTest, expect } from '@jupyterlab/galata';
 import type { IJupyterLabPageFixture } from '@jupyterlab/galata';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import * as assert from 'node:assert/strict';
 
@@ -517,6 +517,79 @@ const scenarios: Array<
       await expect(editor(page)).toBeVisible();
       await append(page, '\n# editing restored\n');
       await diskEquals(baseline + '\n# editing restored\n');
+    }
+  ],
+  [
+    'reopen-same-file-before-debounce',
+    async page => {
+      await open(page);
+      const first = '\n# reopened before debounce\n';
+      const second = '\n# edit after reopen\n';
+      await append(page, first);
+      await open(page);
+      await diskEquals(base + first);
+      await expect(editor(page)).toContainText('reopened before debounce');
+      await append(page, second);
+      await diskEquals(base + first + second);
+      await expect(
+        page.getByRole('button', { name: 'Overwrite', exact: true })
+      ).toHaveCount(0);
+    }
+  ],
+  [
+    'conflict-dismissed-asks-again',
+    async page => {
+      await open(page);
+      const external = base + '\n# external before dismissal\n';
+      const first = '\n# local draft\n';
+      const second = '\n# more local draft\n';
+      const overwrite = page.getByRole('button', {
+        name: 'Overwrite',
+        exact: true
+      });
+      write(external);
+      await append(page, first);
+      await expect(overwrite).toBeVisible();
+      await page.locator('.jp-Notification-Status').click();
+      await page.getByRole('button', { name: /dismiss all/i }).click();
+      await expect(overwrite).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      await append(page, second);
+      await expect(overwrite).toBeVisible();
+      assert.equal(read(), external);
+      await overwrite.click();
+      await diskEquals(base + first + second);
+    }
+  ],
+  [
+    'deleted-file-stays-read-only',
+    async page => {
+      const file = 'pyproject.toml';
+      const original = read(file);
+      unlinkSync(path.join(project, file));
+      try {
+        // Reload so that the changes list has the deletion.
+        await page.goto();
+        await page.activity.activateTab('Launcher');
+        await page
+          .locator('.jp-xtralab-Launcher-changes')
+          .getByRole('button', { name: file, exact: true })
+          .click();
+        await expect(
+          page.locator('.jp-xtralab-DiffWidget-content diffs-container')
+        ).toBeVisible({ timeout: 20000 });
+        await expect(
+          page.locator('.jp-xtralab-DiffWidget-editRegion')
+        ).toHaveCount(0);
+        await page.keyboard.insertText('x');
+        await page.waitForTimeout(1500);
+        assert.ok(
+          !existsSync(path.join(project, file)),
+          'a keystroke must not create the deleted file again'
+        );
+      } finally {
+        write(original, file);
+      }
     }
   ],
   [
