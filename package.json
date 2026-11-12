@@ -52,7 +52,10 @@
     "pnpm": {
         "ignoredBuiltDependencies": [
             "@fortawesome/fontawesome-free"
-        ]
+        ],
+        "patchedDependencies": {
+            "@pierre/diffs@1.6.4": "patches/@pierre__diffs@1.6.4.patch"
+        }
     },
     "eslintIgnore": [
         "node_modules",

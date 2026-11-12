@@ -12,6 +12,13 @@
   font-style: italic;
 }
 
+/*
+ * xtralab's diff provider re-pulls automatically (see diffProvider.tsx).
+ */
+.jp-git-diff-parent-widget .jp-git-diff-refresh {
+  display: none;
+}
+
 .jp-xtralab-DiffWidget-content {
   display: flex;
   flex-direction: column;
@@ -120,7 +127,8 @@ body[data-jp-theme-light] .jp-xtralab-DiffWidget-scrollbarTrack {
 
 .jp-xtralab-DiffWidget-viewModeToolbarItem,
 .jp-xtralab-DiffWidget-diffStyleToolbarItem,
-.jp-xtralab-DiffWidget-lineWrapToolbarItem {
+.jp-xtralab-DiffWidget-lineWrapToolbarItem,
+.jp-xtralab-DiffWidget-saveStatusToolbarItem {
   display: flex;
   align-items: center;
   font-size: var(--jp-ui-font-size0);
@@ -129,6 +137,16 @@ body[data-jp-theme-light] .jp-xtralab-DiffWidget-scrollbarTrack {
 .jp-xtralab-DiffWidget-diffStyleToolbarItem,
 .jp-xtralab-DiffWidget-lineWrapToolbarItem {
   margin-left: 4px;
+}
+
+/*
+ * Right-aligned in both hosts. jupyterlab-git appends a spacer and its
+ * buttons after these items, so `order` moves the status past them.
+ */
+.jp-xtralab-DiffWidget-saveStatusToolbarItem {
+  order: 1;
+  margin-left: auto;
+  margin-right: 4px;
 }
 
 .jp-xtralab-DiffWidget-segmented {
@@ -212,10 +230,14 @@ body[data-jp-theme-light] .jp-xtralab-DiffWidget-scrollbarTrack {
   color: var(--jp-ui-font-color1);
 }
 
-/* The diff library injects this per-hunk row at the anchor line. */
+/*
+ * Collapse the annotation row and overlay the button on its anchor line.
+ */
 .jp-xtralab-DiffWidget-hunkAnnotation {
   display: flex;
   justify-content: flex-end;
+  height: 0;
+  overflow: visible;
   padding: 0 8px;
   opacity: 0.4;
   transition: opacity 0.1s ease;
@@ -237,6 +259,7 @@ body[data-jp-theme-light] .jp-xtralab-DiffWidget-scrollbarTrack {
   background: transparent;
   color: var(--jp-ui-font-color1);
   cursor: pointer;
+  transform: translateY(-100%);
 }
 
 .jp-xtralab-DiffWidget-hunkButton:hover {
@@ -247,6 +270,26 @@ body[data-jp-theme-light] .jp-xtralab-DiffWidget-scrollbarTrack {
   display: inline-flex;
   width: 14px;
   height: 14px;
+}
+
+.jp-xtralab-DiffWidget-saveStatus {
+  padding: 1px 8px;
+  border-radius: 10px;
+  background-color: var(--jp-layout-color3);
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size0);
+  line-height: 1.6;
+  user-select: none;
+}
+
+.jp-xtralab-DiffWidget-saveStatus[data-state='error'] {
+  background-color: var(--jp-error-color1);
+  color: var(--jp-ui-inverse-font-color1);
+}
+
+.jp-xtralab-DiffWidget-saveStatus[data-state='conflict'] {
+  background-color: var(--jp-warn-color1);
+  color: var(--jp-ui-inverse-font-color1);
 }
 
 /* Notebook diff: one block per cell plus an optional notebook-level
