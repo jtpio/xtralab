@@ -21,8 +21,6 @@ classifiers = [
     "Framework :: Jupyter",
     "Framework :: Jupyter :: JupyterLab",
     "Framework :: Jupyter :: JupyterLab :: 4",
-    "Framework :: Jupyter :: JupyterLab :: Extensions",
-    "Framework :: Jupyter :: JupyterLab :: Extensions :: Prebuilt",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
@@ -71,25 +69,20 @@ path = "xtralab/_version.py"
 [tool.hatch.build.targets.wheel]
 packages = ["xtralab"]
 
-[tool.hatch.build.targets.wheel.shared-data]
-"xtralab/labextension" = "share/jupyter/labextensions/xtralab"
-"install.json" = "share/jupyter/labextensions/xtralab/install.json"
-"jupyter-config/labconfig" = "etc/jupyter/labconfig"
-"jupyter-config/jupyter_server_config.d" = "etc/jupyter/jupyter_server_config.d"
-"jupyter-config/jupyter_jupyter_server_mcp_config.json" = "etc/jupyter/jupyter_jupyter_server_mcp_config.json"
+[tool.hatch.build]
+artifacts = ["xtralab/labextensions"]
 
 [tool.hatch.build.targets.sdist]
-artifacts = ["xtralab/labextension"]
 exclude = [".github"]
 
 [tool.hatch.build.hooks.jupyter-builder]
 dependencies = ["hatch-jupyter-builder>=0.5"]
 build-function = "hatch_jupyter_builder.npm_builder"
 ensured-targets = [
-    "xtralab/labextension/static/style.js",
-    "xtralab/labextension/package.json",
+    "xtralab/labextensions/xtralab/static/style.js",
+    "xtralab/labextensions/xtralab/package.json",
 ]
-skip-if-exists = ["xtralab/labextension/static/style.js"]
+skip-if-exists = ["xtralab/labextensions/xtralab/static/style.js"]
 
 [tool.hatch.build.hooks.jupyter-builder.build-kwargs]
 build_cmd = "build:prod"
@@ -101,7 +94,7 @@ build_cmd = "install:extension"
 npm = ["pnpm"]
 path = "../.."
 source_dir = "../../packages/xtralab/src"
-build_dir = "xtralab/labextension"
+build_dir = "xtralab/labextensions/xtralab"
 
 [tool.check-wheel-contents]
 ignore = ["W002"]

@@ -48,8 +48,6 @@ jobs:
           # matches against words like "took".
           jupyter labextension list 2>&1 | tee labextensions.txt
           for ext in \
-            "xtralab" \
-            "xtralite" \
             "jupyterlab-day" \
             "jupyterlab-night" \
             "jupyterlab-cursor-light" \
@@ -70,24 +68,33 @@ jobs:
           # it resolves cleanly against the host. Require the strict OK.
           grep -e "@jupyter/docprovider-extension.*OK" labextensions.txt
 
-          # xtralab keeps the @jupyterlab/git frontend enabled and only
-          # disables its diff plugins (xtralab registers its own diff
-          # providers in their place). The extension itself should be
-          # enabled + OK, and the three upstream diff plugins should be
-          # listed under "Disabled extensions:".
           grep -e "@jupyterlab/git v.*OK" labextensions.txt
-          for plugin in \
-            "@jupyterlab/git:notebook-diff" \
-            "@jupyterlab/git:plain-text-diff" \
-            "@jupyterlab/git:image-diff"; do
-            grep -e "${plugin}" labextensions.txt
-          done
 
-          # xtralab ships a labconfig fragment that disables the
-          # announcements plugin and a few other panels. Verify it lands
-          # at the install prefix.
+          # xtralab is an application apart from JupyterLab: it installs no
+          # extension, settings or server configuration for JupyterLab.
           PREFIX=$(python -c 'import sysconfig; print(sysconfig.get_paths()["data"])')
-          test -f "$PREFIX/etc/jupyter/labconfig/page_config.d/00-xtralab.json"
+          test ! -e "$PREFIX/share/jupyter/labextensions/xtralab"
+          test ! -e "$PREFIX/share/jupyter/labextensions/xtralite"
+          test ! -e "$PREFIX/etc/jupyter/labconfig/page_config.d/00-xtralab.json"
+          test ! -e "$PREFIX/etc/jupyter/jupyter_server_config.d/xtralab.json"
+
+          # The xtralab application loads its own extension and keeps the
+          # @jupyterlab/git frontend, without the diff plugins that it replaces.
+          xtralab --version
+          python - <<'EOF'
+          from jupyterlab_server.config import get_page_config
+          from xtralab import CONFIG_DIR, LABEXTENSIONS_DIR
+
+          config = get_page_config([str(LABEXTENSIONS_DIR)], str(CONFIG_DIR))
+          assert [e["name"] for e in config["federated_extensions"]] == ["xtralab"]
+          for plugin in (
+              "@jupyterlab/git:notebook-diff",
+              "@jupyterlab/git:plain-text-diff",
+              "@jupyterlab/git:image-diff",
+              "@jupyterlab/apputils-extension:announcements",
+          ):
+              assert plugin in config["disabledExtensions"], plugin
+          EOF
 
           # Server extensions: jupyterlab-git for the changes panel, plus
           # ajlab's docprovider/MCP stack for collaboration.
@@ -99,7 +106,7 @@ jobs:
             grep -e "${ext}.*OK" server-extensions.txt
           done
 
-          # xtralite configures `jupyter lite build` with an addon.
+          # xtralite adds its application to `jupyter lite build` with an addon.
           python -c "from importlib.metadata import entry_points; assert 'xtralite' in entry_points(group='jupyterlite.addon.v0').names"
 
       - name: Package the extensions
@@ -143,9 +150,12 @@ jobs:
           pip install "jupyterlab>=4.6.0b0,<5" xtralab*.whl xtralite*.whl
 
           jupyter labextension list 2>&1 | tee labextensions.txt
-          grep -e "xtralab.*OK" labextensions.txt
-          grep -e "xtralite.*OK" labextensions.txt
           grep -e "@jupyterlab/git v.*OK" labextensions.txt
+
+          # The applications have their extensions in the Python packages.
+          xtralab --version
+          python -c "from xtralab import LABEXTENSIONS_DIR; assert (LABEXTENSIONS_DIR / 'xtralab' / 'package.json').is_file()"
+          python -c "from xtralite.addon import EXTENSIONS; assert all((e / 'package.json').is_file() for e in EXTENSIONS)"
 
   check_links:
     name: Check Links

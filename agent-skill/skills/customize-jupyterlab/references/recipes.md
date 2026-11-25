@@ -290,7 +290,7 @@ See [known-plugin-ids.md](known-plugin-ids.md) for a list of common targets (ann
 { "disabledExtensions": { "<plugin-id>": false } }
 ```
 
-The numeric prefix matters: name your file `99-user.json` so it loads after `00-xtralab.json`.
+The numeric prefix matters: name your file `99-user.json` so it loads after `00-ajlab.json`. The defaults of xtralab are in its Python package, below all the `labconfig` files.
 
 ### List currently disabled extensions
 
@@ -389,7 +389,7 @@ Add an entry with `"disabled": true`:
 
 ## Quiet-launch / "make it minimal"
 
-xtralab already disables noisy plugins (announcements, extension manager, ToC, notebook tools, debugger, property inspector — see xtralab's `page_config.d/00-xtralab.json`). For vanilla JupyterLab, this snippet matches xtralab's quiet defaults:
+xtralab already disables noisy plugins (announcements, extension manager, ToC, notebook tools, debugger, property inspector — see `config/page_config.json` in the `xtralab` Python package). For vanilla JupyterLab, this snippet matches xtralab's quiet defaults:
 
 **File:** `labconfig/page_config.d/99-quiet.json`
 
@@ -466,7 +466,7 @@ The launcher shows one editor tile: the first available by `rank`.
 
 ## After making changes
 
-- **Pip install:** restart `jupyter lab` (Ctrl-C in the terminal, run again).
+- **Pip install:** restart `xtralab` or `jupyter lab` (Ctrl-C in the terminal, run again).
 - **xtralab desktop app:** quit (Cmd-Q / Alt-F4) and relaunch. The page-config and overrides are read at server start.
 - **Verify:** open the in-app Settings Editor. Defaults you set via `default_setting_overrides.d/` show with a tooltip noting "system default"; user-settings show with the change indicator.
 - **Diff after vs. before:** `git diff` your config dir if you keep it in source control.

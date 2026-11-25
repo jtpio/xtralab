@@ -1,4 +1,7 @@
 {
+  "MCPExtensionApp": {
+    "mcp_port": 0
+  },
   "LanguageServerManager": {
     "language_servers": {
       "ty": {

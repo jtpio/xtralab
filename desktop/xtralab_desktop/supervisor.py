@@ -175,8 +175,7 @@ class JupyterLabSupervisor:
         command = [
             self.python,
             "-m",
-            "jupyter",
-            "lab",
+            "xtralab",
             "--no-browser",
             "--ServerApp.ip=127.0.0.1",
             f"--ServerApp.port={self.port}",

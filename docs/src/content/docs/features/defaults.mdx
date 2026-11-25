@@ -9,7 +9,7 @@ import mainMenu from '../../../assets/screenshots/main-menu.png';
 xtralab changes some JupyterLab defaults. They are settings like all other
 JupyterLab settings: change them in the Settings Editor. Your user settings
 override the xtralab defaults. The full list is in the
-[bundled configuration](https://github.com/jtpio/xtralab/tree/main/jupyter-config/labconfig).
+[bundled configuration](https://github.com/jtpio/xtralab/tree/main/python/xtralab/xtralab/config).
 
 ## Menu bar
 
@@ -95,11 +95,21 @@ xtralab disables these JupyterLab plugins:
 | `@axlair/jupyterlab_vim`                                 | Vim key bindings                        |
 | `@jupyter/docprovider-extension:statusBarTimeline`       | Collaboration timeline slider           |
 
-To turn a plugin on again:
+To turn a plugin on again, set it to `false` in the
+`labconfig/page_config.json` file of the
+[settings folder](../../installation/#settings-folder), then start xtralab
+again:
 
-```bash
-jupyter labextension enable <plugin>
+```json
+{
+  "disabledExtensions": {
+    "@jupyterlab/toc-extension:tracker": false
+  }
+}
 ```
+
+`jupyter labextension enable` and the plugin manager do not turn these plugins
+on: they read the configuration of JupyterLab, not the defaults of xtralab.
 
 ## Themes
 

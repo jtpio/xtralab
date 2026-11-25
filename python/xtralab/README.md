@@ -2,10 +2,11 @@
 
 An opinionated JupyterLab meta-package for coding agents.
 
-xtralab installs JupyterLab with a set of extensions and defaults for work
-with terminal coding agents: an agent launcher, side-by-side git diffs for
-text files and notebooks, prompts about selected code, and a Model Context
-Protocol server that lets agents drive the app.
+xtralab is an application built on JupyterLab, with a set of extensions and
+defaults for work with terminal coding agents: an agent launcher, side-by-side
+git diffs for text files and notebooks, prompts about selected code, and a
+Model Context Protocol server that lets agents drive the app. The JupyterLab
+of the same environment stays as it is.
 
 ```bash
 pip install xtralab

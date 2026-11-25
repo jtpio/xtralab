@@ -5,16 +5,16 @@
 The repository is a monorepo with two Python packages, released together with
 the same version:
 
-| Folder              | Content                                                                                                                    |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `packages/xtralab`  | The `xtralab` labextension (TypeScript), for JupyterLab and JupyterLite.                                                   |
-| `packages/xtralite` | The `xtralite` labextension: the chat personas as agents of the launcher.                                                  |
-| `python/xtralab`    | The `xtralab` Python package: the labextension, the server extension, the Jupyter configuration and the `xtralab` command. |
-| `python/xtralite`   | The `xtralite` Python package: the labextension, and the JupyterLite addon that configures `jupyter lite build`.           |
-| `lite`              | The JupyterLite demo site, built and deployed with the docs.                                                               |
-| `desktop`           | The Electron desktop app.                                                                                                  |
-| `docs`              | The documentation site.                                                                                                    |
-| `ui-tests`          | The Galata suite that makes the screenshots of the docs.                                                                   |
+| Folder              | Content                                                                                                               |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `packages/xtralab`  | The `xtralab` labextension (TypeScript), for the xtralab and xtralite applications.                                   |
+| `packages/xtralite` | The `xtralite` labextension: the chat personas as agents of the launcher.                                             |
+| `python/xtralab`    | The `xtralab` Python package: the application, its labextension and default configuration, and the `xtralab` command. |
+| `python/xtralite`   | The `xtralite` Python package: the labextension, and the JupyterLite addon that adds the application to a site.       |
+| `lite`              | The JupyterLite demo site, built and deployed with the docs.                                                          |
+| `desktop`           | The Electron desktop app.                                                                                             |
+| `docs`              | The documentation site.                                                                                               |
+| `ui-tests`          | The Galata suite that makes the screenshots of the docs.                                                              |
 
 `desktop`, `docs` and `ui-tests` are separate pnpm projects, with their own
 `pnpm-workspace.yaml` and lockfile. The pnpm workspace at the root has the
@@ -32,11 +32,32 @@ manually with `npm install -g pnpm`.
 uv pip install -e python/xtralab -e python/xtralite
 pnpm install
 pnpm build
-jupyter labextension develop python/xtralab --overwrite
-jupyter labextension develop python/xtralite --overwrite
 ```
 
-Then start JupyterLab the usual way to pick up the dev build.
+Then start `xtralab` to use the dev build. `pnpm build` writes each
+labextension in its Python package (`python/<name>/<name>/labextensions`), and
+the applications load it from there, so `jupyter labextension develop` is not
+necessary.
+
+### Applications
+
+xtralab and xtralite are applications apart from JupyterLab. They use the
+frontend files of JupyterLab and add their own labextension and defaults,
+which are in the Python packages and not in the Jupyter folders of the
+environment (`share/jupyter`, `etc/jupyter`):
+
+- `XtralabApp` (`python/xtralab/xtralab/app.py`) is a subclass of the
+  JupyterLab server application. It adds the `labextensions` folder of the
+  package to the labextension path, and uses the `config` folder of the
+  package for the page config (`page_config.json`), the setting overrides
+  (`overrides.json`) and the server defaults (`server_config.json`).
+- The JupyterLab frontend only routes the `/lab` and `/doc` URLs, so
+  `XtralabApp` uses `/lab` and its server does not load the JupyterLab
+  application.
+- The JupyterLite addon (`python/xtralite/xtralite/addon.py`) makes the
+  `xtralite` folder of the site from the `lab` application. Its
+  `jupyter-lite.json` has the same defaults, the two labextensions, and the
+  configuration that the site has in its `xtralite` folder.
 
 ### JupyterLite
 
@@ -47,6 +68,9 @@ cd lite
 jupyter lite build
 python -m http.server --directory dist
 ```
+
+The site opens the xtralite application (`xtralite/index.html`). The
+`lab/index.html` page is the JupyterLab application of JupyterLite.
 
 The JupyterLite terminal needs
 [micromamba](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html)
@@ -68,7 +92,7 @@ exact pin of `xtralite` on `xtralab`.
 ## Electron desktop app
 
 The Electron app lives in `desktop/`. It opens a lightweight launcher window,
-lets you pick a local folder, starts a JupyterLab server for that folder from
+lets you pick a local folder, starts an xtralab server for that folder from
 an app-managed Python environment, waits for the ready URL, and loads it into
 a hardened Electron `BrowserWindow`. Each opened folder gets its own Jupyter
 server and window, and loads its own named JupyterLab workspace

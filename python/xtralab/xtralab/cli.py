@@ -1,4 +1,4 @@
-"""The `xtralab` command: JupyterLab with the xtralab configuration folder."""
+"""The `xtralab` command: the xtralab application with its configuration folder."""
 
 import os
 import sys
@@ -13,7 +13,7 @@ def config_dir() -> str:
 
 
 def main() -> None:
-    """Run `jupyter lab` with xtralab's config folder, or the `open` subcommand."""
+    """Run the xtralab application with its config folder, or a server subcommand."""
     # The default of LabApp.user_settings_dir is read at import time, so the
     # environment must be set before jupyterlab is imported.
     os.environ.setdefault("JUPYTER_CONFIG_DIR", config_dir())
@@ -32,6 +32,6 @@ def main() -> None:
         from .servers import list_main
 
         sys.exit(list_main(args))
-    from jupyterlab.labapp import main as lab_main
+    from .app import main as app_main
 
-    lab_main()
+    app_main()

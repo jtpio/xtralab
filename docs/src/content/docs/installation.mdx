@@ -14,9 +14,10 @@ the installation methods on this page.
 To make a [JupyterLite](../jupyterlite/) site that runs in the browser,
 install `xtralite` instead.
 
-The `xtralab` command starts JupyterLab with the
-[settings folder of xtralab](#settings-folder). `jupyter lab` also works, with
-the default Jupyter settings folder.
+xtralab is an application apart from JupyterLab. The `xtralab` command starts
+it, with the [settings folder of xtralab](#settings-folder). See
+[xtralab and JupyterLab](#xtralab-and-jupyterlab) for the `jupyter lab` command
+of the same environment.
 
 ## Install with pip
 
@@ -148,7 +149,7 @@ uv run xtralab
 
 <Steps>
 
-1. Start JupyterLab.
+1. Start xtralab.
 
 2. Select the menu button (☰) at the left of the top bar, then
    **Help → About xtralab**.
@@ -169,6 +170,28 @@ uv run xtralab
 | `uv tool install`                   | `uv tool upgrade xtralab`                                   |
 | `uv add`                            | `uv sync --upgrade-package xtralab`                         |
 
+## xtralab and JupyterLab
+
+xtralab uses the JupyterLab frontend, but it is a different application. Its
+extension, its default settings, and its server defaults are in the `xtralab`
+Python package. They are not in the Jupyter folders of the environment
+(`share/jupyter` and `etc/jupyter`).
+
+| Command       | Starts                                                             |
+| ------------- | ------------------------------------------------------------------ |
+| `xtralab`     | xtralab, at the `/lab` URL of its server                           |
+| `jupyter lab` | JupyterLab, without the xtralab extension and the xtralab defaults |
+
+Each command starts its own server. The xtralab server does not have the
+JupyterLab application, because the two applications use the same `/lab` URL.
+
+The [included packages](#included-packages) are JupyterLab extensions. They
+install in the environment, so JupyterLab also loads them, with their own
+defaults. For example, `jupyterlab-vim` is off in xtralab and on in
+JupyterLab. To keep a JupyterLab without these extensions, install xtralab in
+a different environment (`uvx`, `uv tool install`, `pixi exec`, or the desktop
+app do this).
+
 ## Settings folder
 
 The `xtralab` command stores the JupyterLab settings, the workspaces, and the
@@ -187,9 +210,8 @@ Jupyter data stay in the default Jupyter folders.
 
 ## Included packages
 
-xtralab is a meta-package. It installs these packages and adds its own
-JupyterLab extension. See
-[`pyproject.toml`](https://github.com/jtpio/xtralab/blob/main/pyproject.toml)
+xtralab installs these packages and loads them with its own extension. See
+[`pyproject.toml`](https://github.com/jtpio/xtralab/blob/main/python/xtralab/pyproject.toml)
 for the versions.
 
 | Package                                             | Provides                                              |

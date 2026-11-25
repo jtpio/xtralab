@@ -2,7 +2,7 @@
 
 The frontend calls the checkpoint endpoints after every save, so the methods
 stay live but do nothing (``AsyncCheckpoints`` because the contents manager
-awaits them). Swapped in at extension load by :mod:`xtralab.server`.
+awaits them). Swapped in by the xtralab application.
 """
 
 from __future__ import annotations

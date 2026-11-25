@@ -21,8 +21,6 @@ classifiers = [
     "Framework :: Jupyter",
     "Framework :: Jupyter :: JupyterLab",
     "Framework :: Jupyter :: JupyterLab :: 4",
-    "Framework :: Jupyter :: JupyterLab :: Extensions",
-    "Framework :: Jupyter :: JupyterLab :: Extensions :: Prebuilt",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
@@ -59,21 +57,19 @@ path = "xtralite/_version.py"
 [tool.hatch.build.targets.wheel]
 packages = ["xtralite"]
 
-[tool.hatch.build.targets.wheel.shared-data]
-"xtralite/labextension" = "share/jupyter/labextensions/xtralite"
-"install.json" = "share/jupyter/labextensions/xtralite/install.json"
+[tool.hatch.build]
+artifacts = ["xtralite/labextensions"]
 
 [tool.hatch.build.targets.sdist]
-artifacts = ["xtralite/labextension"]
 exclude = [".github"]
 
 [tool.hatch.build.hooks.jupyter-builder]
 dependencies = ["hatch-jupyter-builder>=0.5"]
 build-function = "hatch_jupyter_builder.npm_builder"
 ensured-targets = [
-    "xtralite/labextension/package.json",
+    "xtralite/labextensions/xtralite/package.json",
 ]
-skip-if-exists = ["xtralite/labextension/package.json"]
+skip-if-exists = ["xtralite/labextensions/xtralite/package.json"]
 
 [tool.hatch.build.hooks.jupyter-builder.build-kwargs]
 build_cmd = "build:prod"
@@ -85,7 +81,7 @@ build_cmd = "install:extension"
 npm = ["pnpm"]
 path = "../.."
 source_dir = "../../packages/xtralite/src"
-build_dir = "xtralite/labextension"
+build_dir = "xtralite/labextensions/xtralite"
 
 [tool.check-wheel-contents]
 ignore = ["W002"]

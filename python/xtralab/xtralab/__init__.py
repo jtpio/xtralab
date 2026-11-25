@@ -1,3 +1,5 @@
+from pathlib import Path
+
 try:
     from ._version import __version__
 except ImportError:
@@ -5,18 +7,16 @@ except ImportError:
     warnings.warn("Importing 'xtralab' outside a proper installation.")
     __version__ = "dev"
 
+HERE = Path(__file__).parent
 
-def _jupyter_labextension_paths():
-    return [{
-        "src": "labextension",
-        "dest": "xtralab"
-    }]
+#: The defaults of the application: page config, setting overrides, server config.
+CONFIG_DIR = HERE / "config"
+
+#: The labextension of xtralab. Only the xtralab applications load it.
+LABEXTENSIONS_DIR = HERE / "labextensions"
 
 
 def _jupyter_server_extension_points():
-    return [{"module": "xtralab.server"}]
+    from .app import XtralabApp
 
-
-def _load_jupyter_server_extension(server_app):
-    from .server import _load_jupyter_server_extension as _load
-    _load(server_app)
+    return [{"module": "xtralab", "app": XtralabApp}]

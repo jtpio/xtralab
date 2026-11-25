@@ -145,8 +145,9 @@ Path: `<plugin-id>` is split on `:` into directory + filename. For `@jupyterlab/
 
 1. `<user-config>/lab/user-settings/...` — written via the in-app Settings Editor
 2. `default_setting_overrides.d/*.json` from any visible config dir (lexical: `99-*` beats `00-*`)
-3. The plugin's own schema default
-4. `page_config.d/*.json` is _not_ a settings layer — it controls whether the plugin loads at all
+3. In xtralab only: the defaults of the application, `config/overrides.json` and `config/page_config.json` in the `xtralab` Python package. Never edit them.
+4. The plugin's own schema default
+5. `page_config.d/*.json` is _not_ a settings layer — it controls whether the plugin loads at all
 
 ## xtralab desktop app
 

@@ -34,7 +34,7 @@
         "build:lib:prod": "tsc",
         "clean": "pnpm clean:lib",
         "clean:lib": "rimraf lib tsconfig.tsbuildinfo",
-        "clean:labextension": "rimraf ../../python/xtralite/xtralite/labextension",
+        "clean:labextension": "rimraf ../../python/xtralite/xtralite/labextensions/xtralite",
         "install:extension": "pnpm build",
         "watch": "run-p watch:src watch:labextension",
         "watch:src": "tsc -w --sourceMap",
@@ -62,7 +62,7 @@
     },
     "jupyterlab": {
         "extension": true,
-        "outputDir": "../../python/xtralite/xtralite/labextension",
+        "outputDir": "../../python/xtralite/xtralite/labextensions/xtralite",
         "sharedPackages": {
             "@jupyter-ai/persona-manager": {
                 "bundled": false,

@@ -18,7 +18,7 @@ JupyterLab does not have one settings file — it has four layered config surfac
 
    If you are unsure which of (1) and (2) the user wants, default to the env path when a normal project env is active and mention the trade-off in your reply. For the xtralab desktop app, write to its `JUPYTER_CONFIG_DIR` path, not the bundled runtime's `etc/jupyter/`.
 
-3. **One concern per snippet file.** Prefer creating a new file like `99-user-theme.json` next to existing files rather than editing a shipped `00-xtralab.json` or `00-ajlab.json`. JupyterLab merges all `*.json` files in a `*.d/` directory; lexical order breaks ties, so `99-` wins.
+3. **One concern per snippet file.** Prefer creating a new file like `99-user-theme.json` next to existing files rather than editing a shipped `00-ajlab.json`. JupyterLab merges all `*.json` files in a `*.d/` directory; lexical order breaks ties, so `99-` wins. The defaults of xtralab are not in a config dir: they are in the `config` folder of the `xtralab` Python package, and every `labconfig` file overrides them.
 4. **Validate JSON before saving.** A malformed file silently disables every snippet in the directory.
 5. **Restart JupyterLab** after writing. The browser-side `Settings → Settings Editor` UI shows user-settings live; `page_config.d/` and `default_setting_overrides.d/` need a server restart. For the xtralab desktop app: quit and relaunch.
 
@@ -71,10 +71,10 @@ Write xtralab-specific overrides to the _same_ user config dir, as `default_sett
 
 These are JupyterLab-specific traps that an agent will fall into without warning:
 
-- **`page_config.d/` and `default_setting_overrides.d/` are read at server start, not at page reload.** A browser refresh will not pick up the change. The user has to restart `jupyter lab` (or quit and relaunch the xtralab desktop app).
+- **`page_config.d/` and `default_setting_overrides.d/` are read at server start, not at page reload.** A browser refresh will not pick up the change. The user has to restart `xtralab` or `jupyter lab` (or quit and relaunch the xtralab desktop app).
 - **The xtralab desktop app and the `xtralab` command do not read `~/.jupyter/`.** Both set `JUPYTER_CONFIG_DIR` to the xtralab directory (`~/Library/Application Support/xtralab/jupyter/config/` on macOS, `~/.config/xtralab/jupyter/config/` on Linux). Writing to `~/.jupyter/` has no effect on them — always confirm with `jupyter --paths` from inside the running environment, or with `xtralab paths`.
 - **User-settings filenames split the plugin ID on `:`.** Plugin ID `xtralab:launcher` lives at `lab/user-settings/xtralab/launcher.jupyterlab-settings`, _not_ `lab/user-settings/xtralab:launcher.jupyterlab-settings`. The directory is the part before the colon; the filename is the part after, with extension `.jupyterlab-settings`.
-- **`disabledExtensions: { "<id>": false }` re-enables a plugin that a lower-priority file disabled.** Omitting the entry is not the same as setting it to `false` — to revert xtralab's `00-xtralab.json` disabling the debugger, write a `99-user.json` with `false` explicitly.
+- **`disabledExtensions: { "<id>": false }` re-enables a plugin that a lower-priority file disabled.** Omitting the entry is not the same as setting it to `false` — to revert xtralab's default that disables the debugger, write a `99-user.json` with `false` explicitly. `jupyter labextension enable` does not do this: it does not read the defaults of xtralab.
 - **Three priority layers can silently hide your change.** From highest to lowest: a `lab/user-settings/...jupyterlab-settings` file, then `default_setting_overrides.d/*.json` (lexically last wins), then the plugin's schema default. And `page_config.d/`'s `disabledExtensions` short-circuits all of this — a disabled plugin ignores every setting. If a change "doesn't apply", check each layer in that order.
 - **`jupyter.lab.menus` and `jupyter.lab.shortcuts` overrides merge with shipped items, they don't replace them.** To remove a menu entry, use `{ "id": "...", "disabled": true }`, not omission.
 - **LSP servers must be on `$PATH` for the Jupyter Server process.** Registering a server in `jupyter_server_config.d/` only tells `jupyterlab-lsp` how to spawn it; the binary itself must already be installed and resolvable from the Jupyter server's environment (not just the user's shell — these differ for the desktop app and for some launcher setups).
@@ -85,7 +85,7 @@ These are JupyterLab-specific traps that an agent will fall into without warning
 
 After every change, tell the user to:
 
-1. Restart JupyterLab (`Ctrl-C` and rerun `jupyter lab`) or quit + relaunch the desktop app.
+1. Restart JupyterLab (`Ctrl-C` and rerun `xtralab` or `jupyter lab`) or quit + relaunch the desktop app.
 2. Open `Help → JupyterLab → About` to confirm the expected plugin appears disabled / enabled.
 3. For settings changes: open `Settings → Settings Editor → <plugin name>` — defaults set via `default_setting_overrides.d/` show with a tooltip noting "system default".
 4. For LSP changes: open a file matching the registered language and confirm `Settings → LSP` shows the server as connected.

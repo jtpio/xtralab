@@ -13,7 +13,6 @@ from shutil import which
 
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.serverapp import ServerApp
-from jupyter_server.utils import url_path_join
 from tornado.web import authenticated
 
 from .checkpoints import NullCheckpoints
@@ -143,22 +142,13 @@ class RunningAgentsHandler(APIHandler):
         self.finish(json.dumps(self._detect(commands)))
 
 
-def _setup_handlers(server_app: ServerApp) -> None:
-    base_url = server_app.web_app.settings["base_url"]
-    handlers = [
-        (
-            url_path_join(base_url, "xtralab", "agents", "availability"),
-            AgentAvailabilityHandler,
-        ),
-        (
-            url_path_join(base_url, "xtralab", "terminals", "agents"),
-            RunningAgentsHandler,
-        ),
-    ]
-    server_app.web_app.add_handlers(".*$", handlers)
+handlers = [
+    ("/xtralab/agents/availability", AgentAvailabilityHandler),
+    ("/xtralab/terminals/agents", RunningAgentsHandler),
+]
 
 
-def _disable_checkpoints(server_app: ServerApp) -> None:
+def disable_checkpoints(server_app: ServerApp) -> None:
     """Replace the contents manager's checkpoints with a no-op manager.
 
     The contents manager is built before server extensions load, so both the
@@ -173,7 +163,7 @@ def _disable_checkpoints(server_app: ServerApp) -> None:
     )
 
 
-def _advertise_terminal(server_app: ServerApp) -> None:
+def advertise_terminal(server_app: ServerApp) -> None:
     """Set ``TERM_PROGRAM`` to iTerm2 in the environment of new terminals.
 
     Coding agents choose their notification sequence from this variable and
@@ -184,35 +174,3 @@ def _advertise_terminal(server_app: ServerApp) -> None:
     if manager is None:
         return
     manager.extra_env = {**(manager.extra_env or {}), **_TERMINAL_ENV}
-
-
-def _name_app_after_root(server_app: ServerApp) -> None:
-    """Show the project folder in the browser tab title.
-
-    JupyterLab builds the tab title from the ``appName`` page config, which
-    the lab page handler reads from ``LabApp.app_name``. That is a plain class
-    attribute, not a trait, so no config file can set it.
-    """
-    from jupyterlab.labapp import LabApp
-
-    root = os.path.normpath(server_app.root_dir)
-    LabApp.app_name = os.path.basename(root) or root
-
-
-def _advertise_server(server_app: ServerApp) -> None:
-    """Tell the labextension that this server extension runs.
-
-    The labextension reads ``xtralabServer`` from the page config. Without it,
-    as in JupyterLite, it makes no requests to this extension or to git.
-    """
-    page_config = server_app.web_app.settings.setdefault("page_config_data", {})
-    page_config["xtralabServer"] = True
-
-
-def _load_jupyter_server_extension(server_app: ServerApp) -> None:
-    _setup_handlers(server_app)
-    _advertise_server(server_app)
-    _disable_checkpoints(server_app)
-    _advertise_terminal(server_app)
-    _name_app_after_root(server_app)
-    server_app.log.info("Registered xtralab server extension")

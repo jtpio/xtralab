@@ -3,10 +3,12 @@ import {
   type PersonaSessionRegistry
 } from '@jupyter-ai/persona-manager';
 import { IChatTracker, type IChatPanel } from '@jupyter/chat';
-import type {
-  JupyterFrontEnd,
-  JupyterFrontEndPlugin
+import {
+  IRouter,
+  type JupyterFrontEnd,
+  type JupyterFrontEndPlugin
 } from '@jupyterlab/application';
+import { PageConfig } from '@jupyterlab/coreutils';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { LabIcon } from '@jupyterlab/ui-components';
 import type { Widget } from '@lumino/widgets';
@@ -176,4 +178,22 @@ const chatAgentsPlugin: JupyterFrontEndPlugin<void> = {
   }
 };
 
-export default chatAgentsPlugin;
+/**
+ * Open the files that the `path` parameters of the URL give. JupyterLite
+ * routes its own command only for the URLs of its own applications.
+ */
+const openerPlugin: JupyterFrontEndPlugin<void> = {
+  id: 'xtralite:opener',
+  description: 'Open the files of the URL in the xtralite application.',
+  autoStart: true,
+  requires: [IRouter],
+  activate: (app: JupyterFrontEnd, router: IRouter): void => {
+    const appUrl = PageConfig.getOption('appUrl');
+    router.register({
+      command: 'router:tree',
+      pattern: new RegExp(`${appUrl}/?`)
+    });
+  }
+};
+
+export default [chatAgentsPlugin, openerPlugin];

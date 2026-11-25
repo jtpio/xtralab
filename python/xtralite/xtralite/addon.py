@@ -1,111 +1,189 @@
-"""A JupyterLite addon that configures ``jupyter lite build`` for xtralite.
+"""A JupyterLite addon that adds the xtralite application to a site.
 
-The site gets the defaults that xtralab installs for JupyterLab (read from the
-installed ``xtralab`` package), then the changes of xtralite for the browser
-(``jupyter-lite.json`` next to this module). The ``jupyter-lite.json`` and
-``overrides.json`` of the site folder win over both.
+The application is the ``xtralite`` folder of the site, next to the JupyterLab
+application (``lab``), and it uses the same JavaScript files. Its configuration
+has the defaults that xtralab has for JupyterLab (read from the ``xtralab``
+package), then the changes of xtralite for the browser (``jupyter-lite.json``
+next to this module). Only this application loads the xtralab and xtralite
+extensions, so the other applications of the site do not get them.
 """
 
 from __future__ import annotations
 
 import json
-from importlib.metadata import PackageNotFoundError, distribution
+import tarfile
 from pathlib import Path
 from typing import Any
 
-from jupyterlite_core.addons.base import BaseAddon
+from jupyterlite_core.addons.federated_extensions import FederatedExtensionAddon
 from jupyterlite_core.constants import (
+    ALL_FEDERATED_JSON,
     DISABLED_EXTENSIONS,
+    FEDERATED_EXTENSIONS,
+    INDEX_HTML,
     JSON_FMT,
     JUPYTER_CONFIG_DATA,
+    JUPYTERLITE_IPYNB,
     JUPYTERLITE_JSON,
     OVERRIDES_JSON,
+    PACKAGE_JSON,
     SETTINGS_OVERRIDES,
     UTF8,
 )
+from xtralab import CONFIG_DIR as XTRALAB_CONFIG_DIR
+from xtralab import LABEXTENSIONS_DIR as XTRALAB_LABEXTENSIONS_DIR
 
 HERE = Path(__file__).parent
 
-PAGE_CONFIG = "labconfig/page_config.d/00-xtralab.json"
-SETTINGS = "labconfig/default_setting_overrides.d/00-xtralab.json"
+#: The folder of the application in the site.
+APP = "xtralite"
+
+#: The application whose files xtralite uses.
+LAB = "lab"
+
+#: The extensions that only the xtralite application loads.
+EXTENSIONS = [XTRALAB_LABEXTENSIONS_DIR / "xtralab", HERE / "labextensions" / "xtralite"]
+
+#: The extensions that come with xtralab and need a server. They are in the
+#: environment, so JupyterLite adds them to all the applications of the site.
+SERVER_EXTENSIONS = [
+    "@jupyter-ai/router",
+    "@jupyter-lsp/completion-manager",
+    "@jupyter-lsp/fileeditor-adapter",
+    "@jupyter-lsp/jupyterlab-lsp",
+    "@jupyter-lsp/notebook-adapter",
+    "@jupyter-lsp/theme-material",
+    "@jupyter-lsp/theme-vscode",
+    "@jupyter/docprovider-extension",
+    "@jupyterlab/git",
+    "jupyterlab-commands-toolkit",
+    "jupyterlab-search-replace",
+    "nbdime-jupyterlab",
+]
 
 
 def xtralab_config() -> dict[str, Any]:
-    """The page config and setting overrides that xtralab installs, as lite config."""
-    try:
-        files = distribution("xtralab").files or []
-    except PackageNotFoundError:
-        return {}
-    config: dict[str, Any] = {}
-    for file in files:
-        path = file.as_posix()
-        if path.endswith(PAGE_CONFIG):
-            page_config = json.loads(file.read_text(encoding="utf-8"))
-            # JupyterLab maps the disabled plugins to booleans; JupyterLite lists them.
-            disabled = page_config.pop(DISABLED_EXTENSIONS, {})
-            config.update(page_config)
-            config[DISABLED_EXTENSIONS] = [name for name, off in disabled.items() if off]
-        elif path.endswith(SETTINGS):
-            config[SETTINGS_OVERRIDES] = json.loads(file.read_text(encoding="utf-8"))
+    """The page config and setting overrides of xtralab, as lite config."""
+    config = json.loads((XTRALAB_CONFIG_DIR / "page_config.json").read_text(**UTF8))
+    # JupyterLab maps the disabled plugins to booleans; JupyterLite lists them.
+    disabled = config.get(DISABLED_EXTENSIONS, {})
+    config[DISABLED_EXTENSIONS] = [name for name, off in disabled.items() if off]
+    overrides = (XTRALAB_CONFIG_DIR / "overrides.json").read_text(**UTF8)
+    config[SETTINGS_OVERRIDES] = json.loads(overrides)
     return config
 
 
-def merge_config(base: dict[str, Any], top: dict[str, Any]) -> dict[str, Any]:
-    """Merge two ``jupyter-config-data`` objects as JupyterLite does at runtime.
+class XtraliteAddon(FederatedExtensionAddon):
+    """Add the xtralite application to the site."""
 
-    The disabled extensions are added, the setting overrides merge per plugin,
-    and the other values of ``top`` replace those of ``base``.
-    """
-    merged = dict(base)
-    for key, value in top.items():
-        if key == DISABLED_EXTENSIONS:
-            current = merged.get(key, [])
-            merged[key] = current + [name for name in value if name not in current]
-        elif key == SETTINGS_OVERRIDES:
-            overrides = dict(merged.get(key, {}))
-            for plugin, defaults in value.items():
-                overrides[plugin] = {**overrides.get(plugin, {}), **defaults}
-            merged[key] = overrides
-        else:
-            merged[key] = value
-    return merged
+    __all__ = ["post_init", "pre_build", "post_build"]
 
+    @property
+    def app_dir(self) -> Path:
+        return self.manager.output_dir / APP
 
-def read_config_data(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        return {}
-    return json.loads(path.read_text(**UTF8)).get(JUPYTER_CONFIG_DATA, {})
+    @property
+    def has_lab(self) -> bool:
+        """Whether the site has the application that xtralite takes its files from."""
+        return not self.manager.apps or LAB in self.manager.apps
 
-
-class XtraliteAddon(BaseAddon):
-    """Add the xtralab defaults and the xtralite configuration to the site."""
-
-    __all__ = ["post_build"]
-
-    def post_build(self, manager):
-        jupyterlite_json = manager.output_dir / JUPYTERLITE_JSON
+    def post_init(self, manager):
+        """Make the application folder, so that JupyterLite accepts the site config for it."""
+        if not self.has_lab:
+            self.log.warning(f"[lite] [xtralite] no '{APP}' app: it needs the '{LAB}' app")
+            return
         yield self.task(
-            name="patch",
-            doc=f"add the xtralab and xtralite configuration to {JUPYTERLITE_JSON}",
-            file_dep=[jupyterlite_json],
-            actions=[(self.patch_jupyterlite_json, [manager, jupyterlite_json])],
+            name="app",
+            doc=f"make the {APP} application from the {LAB} application",
+            file_dep=[manager.app_archive],
+            targets=[self.app_dir / INDEX_HTML, self.app_dir / JUPYTERLITE_IPYNB],
+            actions=[self.make_app],
         )
 
-    def patch_jupyterlite_json(self, manager, jupyterlite_json: Path) -> None:
+    def pre_build(self, manager):
+        """Remove the extensions of an earlier build, so that the site does not list them."""
+        yield self.task(
+            name="clean",
+            actions=[(self.delete_one, [self.output_extensions / p.name for p in EXTENSIONS])],
+        )
+
+    def post_build(self, manager):
+        """Add the extensions and the configuration, after the site has its own extensions."""
+        actions = [self.disable_server_extensions]
+        if self.has_lab:
+            actions.append(self.add_extensions)
+        yield self.task(
+            name="extensions",
+            doc=f"add the extensions and the configuration of the {APP} application",
+            task_dep=[f"{manager.task_prefix}post_build:federated_extensions:patch"],
+            actions=actions,
+        )
+
+    def lab_file(self, name: str) -> str:
+        """A file of the lab application from the archive, without the site config."""
+        with tarfile.open(self.manager.app_archive) as archive:
+            return archive.extractfile(f"package/{LAB}/{name}").read().decode("utf-8")
+
+    def make_app(self) -> None:
+        self.app_dir.mkdir(parents=True, exist_ok=True)
+        index = self.lab_file(INDEX_HTML).replace("JupyterLite", APP)
+        (self.app_dir / INDEX_HTML).write_text(index, **UTF8)
+        (self.app_dir / JUPYTERLITE_IPYNB).write_text(self.lab_file(JUPYTERLITE_IPYNB), **UTF8)
+        self.maybe_timestamp(self.app_dir)
+
+    def app_config(self) -> dict[str, Any]:
+        """The configuration of lab, xtralab and xtralite, then of the site for xtralite."""
+        config = json.loads(self.lab_file(JUPYTERLITE_JSON))
+        xtralite = json.loads((HERE / JUPYTERLITE_JSON).read_text(**UTF8))
+        layers = [xtralab_config(), xtralite[JUPYTER_CONFIG_DATA]]
+        site_dir = self.manager.lite_dir / APP
+        if (site_dir / JUPYTERLITE_JSON).exists():
+            site = json.loads((site_dir / JUPYTERLITE_JSON).read_text(**UTF8))
+            layers.append(site.get(JUPYTER_CONFIG_DATA, {}))
+        if (site_dir / OVERRIDES_JSON).exists():
+            overrides = json.loads((site_dir / OVERRIDES_JSON).read_text(**UTF8))
+            layers.append({SETTINGS_OVERRIDES: overrides})
+        for layer in layers:
+            config[JUPYTER_CONFIG_DATA] = self.merge_jupyter_config_data(
+                config[JUPYTER_CONFIG_DATA], layer
+            )
+        return config
+
+    def add_extensions(self) -> None:
+        for extension in EXTENSIONS:
+            self.copy_one(extension, self.output_extensions / extension.name)
+
+        # The settings service reads all the schemas from one folder.
+        schemas = self.manager.output_dir / "build" / "schemas"
+        self.copy_one(schemas / "all.json", self.app_dir / "schemas" / "all.json")
+        self.ensure_federated_settings(
+            self.manager,
+            self.env_extensions(self.output_extensions),
+            self.app_dir / "schemas" / ALL_FEDERATED_JSON,
+        )
+
+        # Each build writes the full configuration, so it does not depend on earlier builds.
+        config = self.app_config()
+        extensions = config[JUPYTER_CONFIG_DATA].setdefault(FEDERATED_EXTENSIONS, [])
+        for extension in EXTENSIONS:
+            package = json.loads((extension / PACKAGE_JSON).read_text(**UTF8))
+            entry = {"name": package["name"], **package["jupyterlab"]["_build"]}
+            if DISABLED_EXTENSIONS in package["jupyterlab"]:
+                entry[DISABLED_EXTENSIONS] = package["jupyterlab"][DISABLED_EXTENSIONS]
+            extensions.append(entry)
+        self.write_json(self.app_dir / JUPYTERLITE_JSON, config)
+
+    def disable_server_extensions(self) -> None:
+        jupyterlite_json = self.manager.output_dir / JUPYTERLITE_JSON
         config = json.loads(jupyterlite_json.read_text(**UTF8))
-        data = config.setdefault(JUPYTER_CONFIG_DATA, {})
-        # The output already holds the site config, which must stay on top.
-        site = read_config_data(manager.lite_dir / JUPYTERLITE_JSON)
-        overrides_json = manager.lite_dir / OVERRIDES_JSON
-        if overrides_json.exists():
-            site_overrides = json.loads(overrides_json.read_text(**UTF8))
-            site = merge_config(site, {SETTINGS_OVERRIDES: site_overrides})
-        defaults = merge_config(xtralab_config(), read_config_data(HERE / JUPYTERLITE_JSON))
-        # Put back only the site values that the defaults replace: the other
-        # addons also change the output, for example `litePluginSettings`.
-        site = {key: value for key, value in site.items() if key in defaults}
-        for layer in (defaults, site):
-            data = merge_config(data, layer)
-        config[JUPYTER_CONFIG_DATA] = data
-        jupyterlite_json.write_text(json.dumps(config, **JSON_FMT), **UTF8)
-        self.maybe_timestamp(jupyterlite_json)
+        data = config[JUPYTER_CONFIG_DATA]
+        disabled = data.get(DISABLED_EXTENSIONS, [])
+        data[DISABLED_EXTENSIONS] = [
+            *disabled,
+            *(name for name in SERVER_EXTENSIONS if name not in disabled),
+        ]
+        self.write_json(jupyterlite_json, config)
+
+    def write_json(self, path: Path, config: dict[str, Any]) -> None:
+        path.write_text(json.dumps(config, **JSON_FMT), **UTF8)
+        self.maybe_timestamp(path)

@@ -24,7 +24,7 @@ The list below is curated for "things a user might want to toggle off" — not e
 | Running terminals and kernels tab                      | `@jupyterlab/running-extension:plugin`                   |
 | Main menu bar (use carefully — disables menu entirely) | `@jupyterlab/mainmenu-extension:plugin`                  |
 
-xtralab already disables many of these via its shipped `00-xtralab.json` page-config — confirm before duplicating an entry.
+xtralab already disables many of these in the `config/page_config.json` of its Python package — confirm before duplicating an entry.
 
 ## Settings-rich plugins (configure, not disable)
 

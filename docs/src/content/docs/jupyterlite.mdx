@@ -1,22 +1,22 @@
 ---
 title: JupyterLite
-description: Run the xtralab extensions and defaults in the browser with xtralite and JupyterLite.
+description: Add xtralite to a JupyterLite site to run the xtralab extensions and defaults in the browser.
 ---
 
 import { Steps } from '@astrojs/starlight/components';
 
 [JupyterLite](https://jupyterlite.readthedocs.io) runs JupyterLab in the
-browser, with no server. The `xtralite` package makes a JupyterLite site with
-the extensions and defaults of xtralab, and with coding agents that run in
-the browser:
+browser, with no server. The `xtralite` package adds the xtralite application
+to a JupyterLite site. xtralite has the extensions and defaults of xtralab,
+and coding agents that run in the browser:
 
 - [Pi](https://github.com/jupyter-ai-contrib/jupyter-ai-pi-lite), the pi
   coding agent, in the JupyterLite terminal.
 - Pi and Jupyternaut, the personas of
   [Jupyter AI Lite](https://github.com/jupyterlite/ai), in a chat.
 
-[Try xtralite](https://jtpio.github.io/xtralab/lite/lab/index.html) in your
-browser.
+[Try xtralite](https://jtpio.github.io/xtralab/lite/xtralite/index.html) in
+your browser.
 
 ## Build a site
 
@@ -41,14 +41,47 @@ browser.
    python -m http.server --directory dist
    ```
 
+4. Open `xtralite/index.html`, for example
+   `http://localhost:8000/xtralite/index.html`.
+
 </Steps>
 
 The JupyterLite terminal downloads its shell commands (WebAssembly) with
 [micromamba](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html)
 during the build. Install micromamba before you build the site.
 
-`jupyter lite build` applies the xtralab defaults (the layout, the settings,
-and the disabled extensions), then the changes of xtralite for the browser.
+## xtralite and JupyterLab
+
+`jupyter lite build` adds xtralite in the `xtralite` folder of the site, next
+to the applications of JupyterLite. xtralite has the xtralab defaults (the
+layout, the settings, and the disabled extensions), then the changes of
+xtralite for the browser.
+
+| URL                   | Application                                                        |
+| --------------------- | ------------------------------------------------------------------ |
+| `xtralite/index.html` | xtralite                                                           |
+| `lab/index.html`      | JupyterLab, without the xtralab extension and the xtralab defaults |
+
+xtralite uses the JavaScript files of the `lab` application. If you select
+the applications of the site with `--apps`, include `lab`.
+
+To open xtralite from the root URL of the site, add this `jupyter-lite.json`
+file to the folder of the site:
+
+```json
+{
+  "jupyter-lite-schema-version": 0,
+  "jupyter-config-data": {
+    "appUrl": "./xtralite"
+  }
+}
+```
+
+xtralite installs other JupyterLab extensions, such as the themes and the
+Vim key bindings. JupyterLite adds the extensions of the environment to all
+the applications of the site, so the `lab` application also loads them.
+xtralite turns off, for all the applications, the extensions that need a
+server (git, language servers, search and replace).
 
 ## Features in the browser
 
@@ -93,14 +126,20 @@ The provider must accept requests from a web page (CORS). See the
 [pi documentation](https://github.com/jupyter-ai-contrib/jupyter-ai-pi-lite)
 for the providers that do.
 
-## Configure the site
+## Configure xtralite
 
-Put a `jupyter-lite.json` file or an `overrides.json` file in the folder of
-the site to change the configuration. Their values replace the values of
-xtralab and xtralite.
+To change the configuration of xtralite, put a `jupyter-lite.json` file or an
+`overrides.json` file in an `xtralite` folder in the folder of the site. Their
+values replace the values of xtralab and xtralite. The extensions in
+`disabledExtensions` are added to the extensions that xtralab and xtralite
+disable.
+
+The `jupyter-lite.json` and `overrides.json` files at the root of the folder
+of the site apply to all the applications. If xtralite sets a value that is
+also in these files, xtralite uses its own value.
 
 For example, to make Jupyternaut the default persona of the chats, add this
-`jupyter-lite.json`:
+`xtralite/jupyter-lite.json`:
 
 ```json
 {
@@ -110,6 +149,8 @@ For example, to make Jupyternaut the default persona of the chats, add this
   }
 }
 ```
+
+To change the default of a setting, add it to `xtralite/overrides.json`.
 
 The launcher shows a terminal agent only when the command exists in the
 JupyterLite terminal. Without a server, xtralab cannot check the commands:

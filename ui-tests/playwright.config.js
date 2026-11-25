@@ -18,7 +18,7 @@ module.exports = {
   },
   webServer: {
     command:
-      'node seed-workspace.mjs && uv run --no-sync jupyter lab --config jupyter_server_test_config.py',
+      'node seed-workspace.mjs && uv run --no-sync xtralab --config jupyter_server_test_config.py',
     url: 'http://localhost:8899/lab',
     timeout: 240 * 1000,
     reuseExistingServer: false,

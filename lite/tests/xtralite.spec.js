@@ -3,7 +3,7 @@ const { expect, test } = require('@playwright/test');
 test('xtralite loads the xtralab launcher with the lite agents', async ({
   page
 }) => {
-  await page.goto('lab/index.html');
+  await page.goto('xtralite/index.html');
 
   const launcher = page.locator('.jp-xtralab-Launcher');
   await expect(launcher).toBeVisible({ timeout: 60_000 });
@@ -16,6 +16,34 @@ test('xtralite loads the xtralab launcher with the lite agents', async ({
 
   await expect(page.locator('.jp-xtralab-FileBrowserPanel')).toBeVisible();
   await expect(page.locator('#jp-MainLogo')).toHaveCount(0);
+});
+
+test('the site opens xtralite by default', async ({ page }) => {
+  await page.goto('');
+  await expect(page).toHaveURL(/\/xtralite\/index\.html$/);
+});
+
+test('the lab application does not load xtralab', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', error => errors.push(error));
+  await page.goto('lab/index.html');
+
+  await expect(page.locator('.jp-Launcher')).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('#jp-MainLogo')).toBeVisible();
+  await expect(page.locator('.jp-xtralab-Launcher')).toHaveCount(0);
+  await expect(page.locator('.jp-xtralab-FileBrowserPanel')).toHaveCount(0);
+  await expect(page.locator('dialog.jp-Dialog')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('a path in the URL opens the file in xtralite', async ({ page }) => {
+  await page.goto('xtralite/index.html?path=README.md');
+  await expect(
+    page.locator('.lm-DockPanel-tabBar .lm-TabBar-tab', {
+      hasText: 'README.md'
+    })
+  ).toBeVisible({ timeout: 60_000 });
+  await expect(page).toHaveURL(/\/xtralite\/index\.html$/);
 });
 
 /**
@@ -59,7 +87,7 @@ test('the ask-agent prompt box sends to open chats', async ({ page }) => {
     };
     await route.fulfill({ response, json });
   });
-  await page.goto('lab/index.html');
+  await page.goto('xtralite/index.html');
   const launcher = page.locator('.jp-xtralab-Launcher');
   await expect(launcher).toBeVisible({ timeout: 60_000 });
 

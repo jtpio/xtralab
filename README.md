@@ -2,11 +2,13 @@
 
 An opinionated JupyterLab meta-package for coding agents.
 
-xtralab installs JupyterLab with a set of extensions and defaults for work
-with terminal coding agents: an agent launcher, side-by-side git diffs for
-text files and notebooks, prompts about selected code, and a Model Context
-Protocol server that lets agents drive the app. It builds on
+xtralab is an application built on JupyterLab, with a set of extensions and
+defaults for work with terminal coding agents: an agent launcher, side-by-side
+git diffs for text files and notebooks, prompts about selected code, and a
+Model Context Protocol server that lets agents drive the app. It builds on
 [`ajlab`](https://github.com/jtpio/ajlab), the agent-ready JupyterLab base.
+The JupyterLab of the same environment stays as it is: `xtralab` and
+`jupyter lab` are two different commands.
 
 ![The xtralab workspace: file browser, agent launcher, a side-by-side git diff, and a running Claude Code session](./images/hero.webp)
 
@@ -53,7 +55,8 @@ and upgrade it.
 
 To run xtralab in the browser, with no server, build a
 [JupyterLite](https://jupyterlite.readthedocs.io) site with
-[`xtralite`](https://pypi.org/project/xtralite/):
+[`xtralite`](https://pypi.org/project/xtralite/), then open the
+`xtralite/index.html` page of the site:
 
 ```bash
 pip install xtralite
@@ -137,14 +140,14 @@ Copilot, and other agents.
 
 ## JupyterLite
 
-[`xtralite`](./python/xtralite) brings the xtralab extensions and defaults to
-JupyterLite. The launcher, the omnibox, and the ask-agent prompt send a prompt
+[`xtralite`](./python/xtralite) adds an application with the xtralab
+extensions and defaults to a JupyterLite site. The launcher, the omnibox, and the ask-agent prompt send a prompt
 to [Pi](https://github.com/jupyter-ai-contrib/jupyter-ai-pi-lite) in the
 JupyterLite terminal, or to the Pi and Jupyternaut personas of
 [Jupyter AI Lite](https://github.com/jupyterlite/ai) in a chat. The ask-agent
 prompt can also send to a chat that is open. The features that need a server
 (git, language servers, search and replace in files, MCP) are off.
-[Try it in your browser](https://jtpio.github.io/xtralab/lite/lab/index.html).
+[Try it in your browser](https://jtpio.github.io/xtralab/lite/xtralite/index.html).
 
 ## Contributing
 
