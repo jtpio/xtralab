@@ -81,12 +81,13 @@ windows that can still be combined from the Window menu (Merge All Windows) or
 split back out with Move Tab to New Window. On Linux each folder stays a
 separate window.
 
-The launcher also detects common project Python environments such as `.venv`,
-`venv`, `env`, `.conda`, and pixi environments. Selecting one creates a
-folder-local `python3` kernelspec under xtralab's app data so notebooks execute
-with the project interpreter while the JupyterLab server continues to run from
-the isolated xtralab environment. If the selected interpreter is missing
-`ipykernel`, xtralab leaves it alone and does not expose it as a kernel.
+The server finds the project environments (`.venv`, `venv`, `env`, `.conda`,
+and pixi environments), for the desktop app and for the `xtralab` command.
+`xtralab/kernelspecs.py` adds the kernel folder (`share/jupyter/kernels`) of
+each environment to the kernel search path, so their kernels of all languages
+are available, with no file on disk. The JupyterLab server continues to run
+from the isolated xtralab environment. The desktop app only points the `ty`
+language server at the environment of the Python 3 kernel.
 
 The companion `xtralab-desktop` package (under `desktop/`, not published to
 PyPI) exposes `xtralab serve` as the small server helper used by Electron. It

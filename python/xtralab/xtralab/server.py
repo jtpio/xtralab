@@ -12,11 +12,13 @@ import os
 from shutil import which
 
 from jupyter_server.base.handlers import APIHandler
+from jupyter_server.gateway.gateway_client import GatewayClient
 from jupyter_server.serverapp import ServerApp
 from jupyter_server.utils import url_path_join
 from tornado.web import authenticated
 
 from .checkpoints import NullCheckpoints
+from .kernelspecs import ProjectKernelSpecManager
 
 try:
     import psutil
@@ -207,6 +209,21 @@ def _advertise_server(server_app: ServerApp) -> None:
     """
     page_config = server_app.web_app.settings.setdefault("page_config_data", {})
     page_config["xtralabServer"] = True
+
+
+def _link_jupyter_server_extension(server_app: ServerApp) -> None:
+    """
+    Use the kernel spec manager of xtralab, unless the configuration names one.
+
+    The files in `jupyter_server_config.d` only enable extensions, and the
+    server builds the manager right after it links the extensions.
+    """
+    if (
+        "kernel_spec_manager_class" in server_app.config.ServerApp
+        or GatewayClient.instance(parent=server_app).gateway_enabled
+    ):
+        return
+    server_app.kernel_spec_manager_class = ProjectKernelSpecManager
 
 
 def _load_jupyter_server_extension(server_app: ServerApp) -> None:

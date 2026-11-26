@@ -105,99 +105,9 @@ interface ManagedEnvironment {
    */
   binDir: string;
   /**
-   * The absolute path of the runtime Python interpreter.
-   */
-  pythonPath: string;
-  /**
    * The absolute path of the bundled xtralab CLI.
    */
   xtralabPath: string;
-}
-
-/**
- * A Python environment offered in the interpreter picker.
- */
-interface PythonEnvironmentOption {
-  /**
-   * The short environment name shown in the picker and kernel names.
-   */
-  label: string;
-  /**
-   * The descriptive subtitle shown under the label, such as the
-   * Python version and interpreter path.
-   */
-  detail: string;
-  /**
-   * The origin of the environment: the bundled runtime, the project
-   * folder, or a user-picked interpreter.
-   */
-  kind: 'managed' | 'project' | 'custom';
-  /**
-   * The absolute interpreter path, or null for the managed runtime.
-   */
-  pythonPath: string | null;
-  /**
-   * The environment root (sys.prefix), or null when unknown.
-   */
-  environmentRoot: string | null;
-  /**
-   * Whether ipykernel is importable in the environment.
-   */
-  hasIpykernel: boolean;
-}
-
-/**
- * The outcome of resolving a folder and its Python environments.
- */
-interface FolderEnvironmentResult {
-  /**
-   * Whether the folder resolved and its environments were inspected.
-   */
-  ok: boolean;
-  /**
-   * The normalized folder path, once resolved.
-   */
-  folderPath?: string;
-  /**
-   * The Python environments discovered for the folder.
-   */
-  environments?: PythonEnvironmentOption[];
-  /**
-   * The preselected interpreter path; null selects the managed runtime.
-   */
-  selectedPythonPath?: string | null;
-  /**
-   * The failure message, when the preparation failed.
-   */
-  error?: string;
-}
-
-/**
- * A project Python environment prepared for running kernels.
- */
-interface ProjectRuntimeEnvironment {
-  /**
-   * The inspected environment kernels run in.
-   */
-  option: PythonEnvironmentOption;
-  /**
-   * The Jupyter data path holding the generated project kernelspec.
-   */
-  kernelDataPath: string;
-}
-
-/**
- * The remembered interpreter choice for a folder.
- */
-interface FolderEnvironmentPreference {
-  /**
-   * The chosen interpreter path; null means the managed runtime.
-   */
-  pythonPath: string | null;
-  /**
-   * The ISO timestamp of the last choice.
-   */
-  updatedAt: string;
 }
 
 /**
@@ -208,11 +118,6 @@ interface LabSession {
    * The project folder the session serves.
    */
   folderPath: string;
-  /**
-   * The project kernel environment; null means kernels use the
-   * managed runtime.
-   */
-  projectEnvironment: ProjectRuntimeEnvironment | null;
   /**
    * The supervisor running the project's Jupyter server.
    */
@@ -420,11 +325,6 @@ interface ProjectSession {
    * The supervisor running the project's Jupyter server.
    */
   supervisor: SupervisorHandle;
-  /**
-   * The project kernel environment; null means kernels use the
-   * managed runtime.
-   */
-  projectEnvironment: ProjectRuntimeEnvironment | null;
 }
 
 const recentFoldersLimit = 8;
@@ -442,8 +342,6 @@ let launcherWindow: BrowserWindow | null = null;
 let launcherTabGroupId: string | null = null;
 let logStream: WriteStream | null = null;
 let recentFolders: string[] = [];
-let folderEnvironmentPreferences: Record<string, FolderEnvironmentPreference> =
-  {};
 let quitInProgress = false;
 let ipcRegistered = false;
 
@@ -519,7 +417,6 @@ function startApplication(): void {
   setApplicationIcon();
   cleanupStaleJupyterServers();
   loadRecentFolders();
-  loadFolderEnvironmentPreferences();
   registerIpcHandlers();
   setUpAutoUpdates();
   const previousSession = loadSessionWindowStates();
@@ -1110,67 +1007,20 @@ function registerIpcHandlers(): void {
     }
   );
   ipcMain.handle('xtralab:open-folder-dialog', async event => {
-    return prepareFolderFromDialog(BrowserWindow.fromWebContents(event.sender));
+    return selectFolderFromDialog(BrowserWindow.fromWebContents(event.sender));
   });
   ipcMain.handle(
-    'xtralab:prepare-folder',
-    async (_event: IpcMainInvokeEvent, folderPath: unknown) => {
-      if (typeof folderPath !== 'string') {
-        return {
-          ok: false,
-          error: 'Invalid folder path'
-        } satisfies FolderEnvironmentResult;
-      }
-      return prepareFolder(folderPath);
-    }
-  );
-  ipcMain.handle(
-    'xtralab:select-python-interpreter',
-    async (event: IpcMainInvokeEvent, folderPath: unknown) => {
-      if (typeof folderPath !== 'string') {
-        return {
-          ok: false,
-          error: 'Invalid folder path'
-        } satisfies FolderEnvironmentResult;
-      }
-      return selectPythonInterpreter(
-        folderPath,
-        BrowserWindow.fromWebContents(event.sender)
-      );
-    }
-  );
-  ipcMain.handle(
-    'xtralab:open-recent-folder',
-    async (event: IpcMainInvokeEvent, folderPath: unknown) => {
-      if (typeof folderPath !== 'string') {
-        return {
-          ok: false,
-          error: 'Invalid folder path'
-        } satisfies OpenFolderResult;
-      }
-      return prepareFolder(folderPath);
-    }
-  );
-  ipcMain.handle(
     'xtralab:open-folder',
-    async (
-      event: IpcMainInvokeEvent,
-      folderPath: unknown,
-      pythonPath: unknown
-    ) => {
-      if (
-        typeof folderPath !== 'string' ||
-        (typeof pythonPath !== 'string' && pythonPath !== null)
-      ) {
+    async (event: IpcMainInvokeEvent, folderPath: unknown) => {
+      if (typeof folderPath !== 'string') {
         return {
           ok: false,
-          error: 'Invalid folder environment'
+          error: 'Invalid folder path'
         } satisfies OpenFolderResult;
       }
       return openFolder(
         folderPath,
-        BrowserWindow.fromWebContents(event.sender),
-        pythonPath
+        BrowserWindow.fromWebContents(event.sender)
       );
     }
   );
@@ -1509,9 +1359,9 @@ function createLauncherWindow(tabHost: BrowserWindow | null): BrowserWindow {
   return window;
 }
 
-async function prepareFolderFromDialog(
+async function selectFolderFromDialog(
   parentWindow: BrowserWindow | null = launcherWindow
-): Promise<FolderEnvironmentResult> {
+): Promise<string | null> {
   const dialogOptions: Electron.OpenDialogOptions = {
     title: 'Open Folder',
     properties: ['openDirectory', 'createDirectory']
@@ -1521,45 +1371,12 @@ async function prepareFolderFromDialog(
       ? await dialog.showOpenDialog(dialogOptions)
       : await dialog.showOpenDialog(parentWindow, dialogOptions);
 
-  if (result.canceled || result.filePaths.length === 0) {
-    return { ok: false };
-  }
-
-  return prepareFolder(result.filePaths[0]);
-}
-
-async function prepareFolder(
-  folderPath: string
-): Promise<FolderEnvironmentResult> {
-  let resolvedFolder: string;
-  try {
-    resolvedFolder = normalizeFolderPath(folderPath);
-  } catch (error) {
-    return { ok: false, error: formatError(error) };
-  }
-
-  try {
-    const environments = discoverFolderPythonEnvironments(resolvedFolder);
-    const selectedPythonPath = choosePreferredPythonPath(
-      resolvedFolder,
-      environments
-    );
-    return {
-      ok: true,
-      folderPath: resolvedFolder,
-      environments,
-      selectedPythonPath
-    };
-  } catch (error) {
-    log(`Unable to inspect ${resolvedFolder}: ${formatError(error)}`);
-    return { ok: false, folderPath: resolvedFolder, error: formatError(error) };
-  }
+  return result.canceled ? null : (result.filePaths[0] ?? null);
 }
 
 async function openFolder(
   folderPath: string,
-  sourceWindow: BrowserWindow | null = launcherWindow,
-  pythonPath: string | null | undefined
+  sourceWindow: BrowserWindow | null = launcherWindow
 ): Promise<OpenFolderResult> {
   let resolvedFolder: string;
   try {
@@ -1580,13 +1397,7 @@ async function openFolder(
       : null;
 
   try {
-    await createLabSession(
-      resolvedFolder,
-      pythonPath,
-      sourceLauncher,
-      attachGroupId
-    );
-    rememberFolderEnvironmentPreference(resolvedFolder, pythonPath ?? null);
+    await createLabSession(resolvedFolder, sourceLauncher, attachGroupId);
     rememberRecentFolder(resolvedFolder);
     return { ok: true, folderPath: resolvedFolder };
   } catch (error) {
@@ -1597,37 +1408,24 @@ async function openFolder(
 
 async function createLabSession(
   folderPath: string,
-  pythonPath: string | null | undefined,
   sourceLauncher: BrowserWindow | null,
   attachGroupId: string | null
 ): Promise<void> {
-  const { serverInfo, supervisor, projectEnvironment } =
-    await startProjectSession(folderPath, pythonPath);
+  const { serverInfo, supervisor } = await startProjectSession(folderPath);
   createLabWindow(
     serverInfo,
     folderPath,
     supervisor,
-    projectEnvironment,
     sourceLauncher,
     attachGroupId
   );
 }
 
 async function startProjectSession(
-  folderPath: string,
-  pythonPath: string | null | undefined
+  folderPath: string
 ): Promise<ProjectSession> {
   const managedEnvironment = getManagedEnvironment();
-  const projectEnvironment = prepareProjectRuntimeEnvironment(
-    folderPath,
-    pythonPath,
-    managedEnvironment
-  );
-  const supervisor = startSupervisor(
-    folderPath,
-    managedEnvironment,
-    projectEnvironment
-  );
+  const supervisor = startSupervisor(folderPath, managedEnvironment);
   pendingSupervisors.add(supervisor);
 
   let serverInfo: ServerInfo;
@@ -1640,342 +1438,12 @@ async function startProjectSession(
   }
 
   pendingSupervisors.delete(supervisor);
-  return { serverInfo, supervisor, projectEnvironment };
-}
-
-function discoverFolderPythonEnvironments(
-  folderPath: string
-): PythonEnvironmentOption[] {
-  const options: PythonEnvironmentOption[] = [createManagedEnvironmentOption()];
-  const candidates = new Map<string, 'project' | 'custom'>();
-
-  for (const candidatePath of getProjectPythonCandidatePaths(folderPath)) {
-    candidates.set(path.resolve(candidatePath), 'project');
-  }
-
-  const preference = folderEnvironmentPreferences[folderPath];
-  if (preference?.pythonPath !== null && preference?.pythonPath !== undefined) {
-    candidates.set(path.resolve(preference.pythonPath), 'custom');
-  }
-
-  for (const [candidatePath, kind] of candidates.entries()) {
-    if (!existsSync(candidatePath)) {
-      continue;
-    }
-
-    try {
-      options.push(inspectPythonEnvironment(folderPath, candidatePath, kind));
-    } catch (error) {
-      log(
-        `Skipping Python interpreter ${candidatePath}: ${formatError(error)}`
-      );
-    }
-  }
-
-  return options;
-}
-
-function createManagedEnvironmentOption(): PythonEnvironmentOption {
-  return {
-    label: 'xtralab managed Python',
-    detail: 'Bundled JupyterLab runtime',
-    kind: 'managed',
-    pythonPath: null,
-    environmentRoot: getManagedEnvironmentDir(),
-    hasIpykernel: true
-  };
-}
-
-function getProjectPythonCandidatePaths(folderPath: string): string[] {
-  const candidates: string[] = [];
-  for (const environmentName of ['.venv', 'venv', 'env', '.conda']) {
-    candidates.push(
-      getPythonExecutablePath(path.join(folderPath, environmentName))
-    );
-  }
-
-  const pixiEnvironmentsDir = path.join(folderPath, '.pixi', 'envs');
-  try {
-    for (const environmentName of readdirSync(pixiEnvironmentsDir)) {
-      candidates.push(
-        getPythonExecutablePath(path.join(pixiEnvironmentsDir, environmentName))
-      );
-    }
-  } catch {
-    // Projects without pixi environments are expected.
-  }
-
-  return candidates;
-}
-
-function getPythonExecutablePath(environmentRoot: string): string {
-  return path.join(
-    environmentRoot,
-    process.platform === 'win32' ? 'Scripts' : 'bin',
-    process.platform === 'win32' ? 'python.exe' : 'python'
-  );
-}
-
-function inspectPythonEnvironment(
-  folderPath: string,
-  pythonPath: string,
-  kind: 'project' | 'custom'
-): PythonEnvironmentOption {
-  const script = [
-    'import importlib.util, json, os, sys',
-    'print(json.dumps({',
-    '"executable": sys.executable,',
-    '"prefix": sys.prefix,',
-    '"version": ".".join(str(part) for part in sys.version_info[:3]),',
-    '"hasIpykernel": importlib.util.find_spec("ipykernel") is not None,',
-    '}))'
-  ].join('\n');
-  const result = spawnSync(pythonPath, ['-I', '-c', script], {
-    cwd: folderPath,
-    encoding: 'utf8',
-    env: getPythonInspectionEnvironment(pythonPath),
-    timeout: 5000,
-    maxBuffer: 1024 * 1024
-  });
-
-  if (result.error !== undefined) {
-    throw result.error;
-  }
-  if (result.status !== 0) {
-    throw new Error(result.stderr.trim() || 'Python inspection failed');
-  }
-
-  let inspection: {
-    executable: string;
-    prefix: string;
-    version: string;
-    hasIpykernel: boolean;
-  };
-  try {
-    inspection = JSON.parse(result.stdout.trim());
-  } catch (error) {
-    throw new Error(
-      `Python inspection returned invalid JSON: ${formatError(error)}`
-    );
-  }
-
-  const resolvedPythonPath = path.resolve(inspection.executable || pythonPath);
-  const environmentRoot = path.resolve(inspection.prefix);
-  return {
-    label: getPythonEnvironmentLabel(folderPath, environmentRoot, kind),
-    detail: `Python ${inspection.version} - ${resolvedPythonPath}`,
-    kind,
-    pythonPath: resolvedPythonPath,
-    environmentRoot,
-    hasIpykernel: inspection.hasIpykernel
-  };
-}
-
-function getPythonInspectionEnvironment(pythonPath: string): NodeJS.ProcessEnv {
-  const environment: NodeJS.ProcessEnv = {
-    ...process.env,
-    PATH: composeRuntimePath(path.dirname(pythonPath)),
-    PYTHONNOUSERSITE: '1'
-  };
-  clearInheritedPythonEnvironment(environment);
-  return environment;
-}
-
-function getPythonEnvironmentLabel(
-  folderPath: string,
-  environmentRoot: string,
-  kind: 'project' | 'custom'
-): string {
-  if (isPathInside(folderPath, environmentRoot)) {
-    return (
-      path.relative(folderPath, environmentRoot) || path.basename(folderPath)
-    );
-  }
-
-  const baseName = path.basename(environmentRoot);
-  return kind === 'custom' ? `Custom: ${baseName}` : baseName;
-}
-
-function choosePreferredPythonPath(
-  folderPath: string,
-  environments: PythonEnvironmentOption[]
-): string | null {
-  const preference = folderEnvironmentPreferences[folderPath];
-  if (
-    preference !== undefined &&
-    environments.some(
-      option =>
-        option.pythonPath === preference.pythonPath &&
-        (option.pythonPath === null || option.hasIpykernel)
-    )
-  ) {
-    return preference.pythonPath;
-  }
-
-  const readyProjectEnvironment = environments.find(
-    option => option.pythonPath !== null && option.hasIpykernel
-  );
-  if (readyProjectEnvironment !== undefined) {
-    return readyProjectEnvironment.pythonPath;
-  }
-
-  return null;
-}
-
-function prepareProjectRuntimeEnvironment(
-  folderPath: string,
-  pythonPath: string | null | undefined,
-  managedEnvironment: ManagedEnvironment
-): ProjectRuntimeEnvironment | null {
-  let selectedPythonPath: string | null;
-  if (pythonPath === undefined) {
-    const environments = discoverFolderPythonEnvironments(folderPath);
-    selectedPythonPath = choosePreferredPythonPath(folderPath, environments);
-  } else {
-    selectedPythonPath = pythonPath;
-  }
-
-  if (selectedPythonPath === null) {
-    return null;
-  }
-
-  if (
-    path.resolve(selectedPythonPath) ===
-    path.resolve(managedEnvironment.pythonPath)
-  ) {
-    return null;
-  }
-
-  const option = inspectPythonEnvironment(
-    folderPath,
-    selectedPythonPath,
-    'custom'
-  );
-  if (!option.hasIpykernel) {
-    log(`Project Python environment ${option.pythonPath} has no ipykernel`);
-    return null;
-  }
-
-  const kernelDataPath = writeProjectKernelSpec(folderPath, option);
-  log(
-    `Using project Python environment ${option.pythonPath} for ${folderPath}`
-  );
-
-  return {
-    option,
-    kernelDataPath
-  };
-}
-
-function writeProjectKernelSpec(
-  folderPath: string,
-  option: PythonEnvironmentOption
-): string {
-  if (option.pythonPath === null) {
-    throw new Error('Cannot create a project kernelspec without a Python path');
-  }
-
-  const dataPath = getProjectKernelDataPath(folderPath);
-  const kernelPath = path.join(dataPath, 'kernels', 'python3');
-  mkdirSync(kernelPath, { recursive: true });
-  writeFileSync(
-    path.join(kernelPath, 'kernel.json'),
-    `${JSON.stringify(
-      {
-        argv: [
-          option.pythonPath,
-          '-m',
-          'ipykernel_launcher',
-          '-f',
-          '{connection_file}'
-        ],
-        display_name: getProjectKernelDisplayName(option),
-        language: 'python',
-        env: {
-          PYTHONNOUSERSITE: '1'
-        },
-        metadata: {
-          debugger: true,
-          xtralab: {
-            folderPath,
-            environmentRoot: option.environmentRoot
-          }
-        }
-      },
-      null,
-      2
-    )}\n`,
-    'utf8'
-  );
-  return dataPath;
-}
-
-function getProjectKernelDisplayName(option: PythonEnvironmentOption): string {
-  return `Python 3 (${option.label})`;
-}
-
-async function selectPythonInterpreter(
-  folderPath: string,
-  parentWindow: BrowserWindow | null
-): Promise<FolderEnvironmentResult> {
-  let resolvedFolder: string;
-  try {
-    resolvedFolder = normalizeFolderPath(folderPath);
-  } catch (error) {
-    return { ok: false, error: formatError(error) };
-  }
-
-  const dialogOptions: Electron.OpenDialogOptions = {
-    title: 'Select Python Interpreter',
-    defaultPath: resolvedFolder,
-    properties: ['openFile']
-  };
-  const result =
-    parentWindow === null
-      ? await dialog.showOpenDialog(dialogOptions)
-      : await dialog.showOpenDialog(parentWindow, dialogOptions);
-
-  if (result.canceled || result.filePaths.length === 0) {
-    return prepareFolder(resolvedFolder);
-  }
-
-  try {
-    const pythonPath = path.resolve(result.filePaths[0]);
-    const inspectedOption = inspectPythonEnvironment(
-      resolvedFolder,
-      pythonPath,
-      'custom'
-    );
-    const discoveredEnvironments =
-      discoverFolderPythonEnvironments(resolvedFolder);
-    const selectedOption =
-      discoveredEnvironments.find(
-        option => option.pythonPath === inspectedOption.pythonPath
-      ) ?? inspectedOption;
-    const environments =
-      selectedOption === inspectedOption
-        ? [...discoveredEnvironments, inspectedOption]
-        : discoveredEnvironments;
-
-    return {
-      ok: true,
-      folderPath: resolvedFolder,
-      environments,
-      selectedPythonPath: selectedOption.pythonPath
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      folderPath: resolvedFolder,
-      error: formatError(error)
-    };
-  }
+  return { serverInfo, supervisor };
 }
 
 function getManagedEnvironment(): ManagedEnvironment {
   const envDir = getManagedEnvironmentDir();
   const binDir = getManagedEnvironmentBinDir(envDir);
-  const pythonPath = getManagedEnvironmentExecutablePath(envDir, 'python');
   const xtralabPath = getManagedEnvironmentExecutablePath(
     envDir,
     'xtralab-desktop'
@@ -1989,7 +1457,7 @@ function getManagedEnvironment(): ManagedEnvironment {
 
   ensureRuntimePyvenvCfg(envDir, binDir);
 
-  return { envDir, binDir, pythonPath, xtralabPath };
+  return { envDir, binDir, xtralabPath };
 }
 
 function ensureRuntimePyvenvCfg(envDir: string, binDir: string): void {
@@ -2033,7 +1501,7 @@ function ensureRuntimePyvenvCfg(envDir: string, binDir: string): void {
 
 function getSupervisorEnvironment(
   managedEnvironment: ManagedEnvironment,
-  projectEnvironment: ProjectRuntimeEnvironment | null
+  folderPath: string
 ): NodeJS.ProcessEnv {
   const environment: NodeJS.ProcessEnv = {
     ...process.env,
@@ -2041,7 +1509,7 @@ function getSupervisorEnvironment(
     PYTHONNOUSERSITE: '1'
   };
   clearInheritedPythonEnvironment(environment);
-  exportPythonEnvironmentRoot(environment, projectEnvironment);
+  exportPythonEnvironmentRoot(environment, folderPath);
 
   const jupyterStateRoot = path.join(app.getPath('userData'), 'jupyter');
   const jupyterDataDir = path.join(jupyterStateRoot, 'data');
@@ -2055,21 +1523,38 @@ function getSupervisorEnvironment(
   environment.JUPYTER_RUNTIME_DIR = jupyterRuntimeDir;
 
   delete environment.JUPYTER_PATH;
-  if (projectEnvironment !== null) {
-    environment.JUPYTER_PATH = projectEnvironment.kernelDataPath;
-  }
 
   return environment;
 }
 
 function exportPythonEnvironmentRoot(
   environment: NodeJS.ProcessEnv,
-  projectEnvironment: ProjectRuntimeEnvironment | null
+  folderPath: string
 ): void {
-  // Point ty at the kernel's environment: VIRTUAL_ENV or CONDA_PREFIX beats
-  // ty's own `.venv` discovery, and VIRTUAL_ENV without a pyvenv.cfg breaks ty.
-  const environmentRoot = projectEnvironment?.option.environmentRoot ?? null;
-  if (environmentRoot !== null) {
+  // Point ty at the environment of the Python 3 kernel, which the server
+  // finds in the same order (xtralab/kernelspecs.py). VIRTUAL_ENV or
+  // CONDA_PREFIX beats ty's own `.venv` discovery, and VIRTUAL_ENV without a
+  // pyvenv.cfg breaks ty.
+  const environmentRoots = ['.venv', 'venv', 'env', '.conda'].map(name =>
+    path.join(folderPath, name)
+  );
+  const pixiEnvironmentsDir = path.join(folderPath, '.pixi', 'envs');
+  try {
+    for (const name of readdirSync(pixiEnvironmentsDir).sort()) {
+      environmentRoots.push(path.join(pixiEnvironmentsDir, name));
+    }
+  } catch {
+    // Projects without pixi environments are expected.
+  }
+
+  for (const environmentRoot of environmentRoots) {
+    if (
+      !existsSync(
+        path.join(environmentRoot, 'share', 'jupyter', 'kernels', 'python3')
+      )
+    ) {
+      continue;
+    }
     if (existsSync(path.join(environmentRoot, 'pyvenv.cfg'))) {
       environment.VIRTUAL_ENV = environmentRoot;
       return;
@@ -2083,8 +1568,7 @@ function exportPythonEnvironmentRoot(
 
 function startSupervisor(
   folderPath: string,
-  managedEnvironment: ManagedEnvironment,
-  projectEnvironment: ProjectRuntimeEnvironment | null
+  managedEnvironment: ManagedEnvironment
 ): SupervisorHandle {
   const command = managedEnvironment.xtralabPath;
   const args = [
@@ -2104,13 +1588,10 @@ function startSupervisor(
   log(`Starting supervisor: ${command} ${args.join(' ')}`);
   log(`Supervisor cwd: ${folderPath}`);
   log(`Supervisor Python environment: ${managedEnvironment.envDir}`);
-  if (projectEnvironment !== null) {
-    log(`Project Python environment: ${projectEnvironment.option.pythonPath}`);
-  }
 
   const child = spawn(command, args, {
     cwd: folderPath,
-    env: getSupervisorEnvironment(managedEnvironment, projectEnvironment),
+    env: getSupervisorEnvironment(managedEnvironment, folderPath),
     stdio: ['pipe', 'pipe', 'pipe']
   });
 
@@ -2215,7 +1696,6 @@ function createLabWindow(
   serverInfo: ServerInfo,
   folderPath: string,
   supervisor: SupervisorHandle,
-  projectEnvironment: ProjectRuntimeEnvironment | null,
   sourceLauncher: BrowserWindow | null,
   attachGroupId: string | null,
   restore?: SessionRestoreRequest
@@ -2247,7 +1727,6 @@ function createLabWindow(
 
   labSessions.set(window.id, {
     folderPath,
-    projectEnvironment,
     supervisor,
     window
   });
@@ -2640,69 +2119,6 @@ function clearRecentFolders(): string[] {
   recentFolders = [];
   saveRecentFolders();
   return recentFolders;
-}
-
-function loadFolderEnvironmentPreferences(): void {
-  try {
-    const raw = readFileSync(getFolderEnvironmentPreferencesPath(), 'utf8');
-    const parsed = JSON.parse(raw);
-    if (
-      typeof parsed !== 'object' ||
-      parsed === null ||
-      Array.isArray(parsed)
-    ) {
-      folderEnvironmentPreferences = {};
-      return;
-    }
-
-    folderEnvironmentPreferences = {};
-    for (const [folderPath, preference] of Object.entries(parsed)) {
-      if (
-        typeof folderPath !== 'string' ||
-        typeof preference !== 'object' ||
-        preference === null
-      ) {
-        continue;
-      }
-
-      const candidate = preference as Partial<FolderEnvironmentPreference>;
-      if (
-        (typeof candidate.pythonPath === 'string' ||
-          candidate.pythonPath === null) &&
-        typeof candidate.updatedAt === 'string'
-      ) {
-        folderEnvironmentPreferences[folderPath] = {
-          pythonPath: candidate.pythonPath,
-          updatedAt: candidate.updatedAt
-        };
-      }
-    }
-  } catch {
-    folderEnvironmentPreferences = {};
-  }
-}
-
-function saveFolderEnvironmentPreferences(): void {
-  try {
-    writeFileSync(
-      getFolderEnvironmentPreferencesPath(),
-      `${JSON.stringify(folderEnvironmentPreferences, null, 2)}\n`,
-      'utf8'
-    );
-  } catch (error) {
-    log(`Unable to save folder environment preferences: ${formatError(error)}`);
-  }
-}
-
-function rememberFolderEnvironmentPreference(
-  folderPath: string,
-  pythonPath: string | null
-): void {
-  folderEnvironmentPreferences[folderPath] = {
-    pythonPath,
-    updatedAt: new Date().toISOString()
-  };
-  saveFolderEnvironmentPreferences();
 }
 
 function sessionWindowGroupId(windowId: number): string | null {
@@ -3101,7 +2517,7 @@ async function restoreSessionGroup(
   const sessions = await Promise.all(
     members.map(async state => {
       try {
-        const session = await startProjectSession(state.folderPath, undefined);
+        const session = await startProjectSession(state.folderPath);
         updateProgress(state, 'ready');
         return { state, session };
       } catch (error) {
@@ -3141,7 +2557,6 @@ async function restoreSessionGroup(
       session.serverInfo,
       state.folderPath,
       session.supervisor,
-      session.projectEnvironment,
       null,
       null,
       {
@@ -3256,14 +2671,6 @@ function getProjectHash(folderPath: string): string {
   return createHash('sha256').update(folderPath).digest('hex').slice(0, 16);
 }
 
-function getProjectKernelDataPath(folderPath: string): string {
-  return path.join(
-    app.getPath('userData'),
-    'project-kernels',
-    getProjectHash(folderPath)
-  );
-}
-
 // Per-folder JupyterLab workspace name, so each folder keeps its own tab
 // layout instead of the shared `default` workspace (where one folder restores
 // another's tabs). The hash keeps it unique and stable; the slug only aids
@@ -3276,17 +2683,6 @@ function getProjectWorkspaceName(folderPath: string): string {
     .replace(/^-+|-+$/g, '');
   const hash = getProjectHash(folderPath);
   return slug ? `${slug}-${hash}` : hash;
-}
-
-function isPathInside(parentPath: string, childPath: string): boolean {
-  const relativePath = path.relative(
-    path.resolve(parentPath),
-    path.resolve(childPath)
-  );
-  return (
-    relativePath.length === 0 ||
-    (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
-  );
 }
 
 function getDesktopRoot(): string {
@@ -3387,10 +2783,6 @@ function looksLikeOurJupyterProcess(pid: number): boolean {
 
 function getRecentFoldersPath(): string {
   return path.join(app.getPath('userData'), 'recent-folders.json');
-}
-
-function getFolderEnvironmentPreferencesPath(): string {
-  return path.join(app.getPath('userData'), 'folder-environments.json');
 }
 
 function getSessionStatePath(): string {

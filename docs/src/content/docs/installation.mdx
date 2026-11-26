@@ -169,6 +169,28 @@ uv run xtralab
 | `uv tool install`                   | `uv tool upgrade xtralab`                                   |
 | `uv add`                            | `uv sync --upgrade-package xtralab`                         |
 
+## Notebook kernels
+
+xtralab adds the kernels of the environments in the folder where you start it:
+`.venv`, `venv`, `env`, `.conda`, and `.pixi/envs/<name>`.
+
+- A kernel is available when its package is installed in the environment, for
+  example `ipykernel` for Python, `r-irkernel` for R, or `xeus-cpp` for C++.
+- The name of the kernel shows the environment, for example
+  **Python 3 (ipykernel) [.venv]**.
+- A kernel of the folder replaces a kernel with the same name from a different
+  location. Thus the Python 3 kernel of a notebook starts in the environment
+  of the folder.
+
+The other kernels show as in JupyterLab: the kernels of the environment that
+xtralab runs in, and the kernels in the user and system Jupyter folders.
+
+To turn off the kernels of the folder, add this option to the command:
+
+```bash
+xtralab --ProjectKernelSpecManager.project_environments=False
+```
+
 ## Settings folder
 
 The `xtralab` command stores the JupyterLab settings, the workspaces, and the

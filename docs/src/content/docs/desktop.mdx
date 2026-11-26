@@ -43,11 +43,7 @@ signed and notarized.
 
 2. Select **Open folder...**, or select a folder in **Recent folders**.
 
-3. In **Python environment**, select the environment for notebook kernels. To
-   use an interpreter that is not in the list, select
-   **Choose interpreter...**.
-
-4. Select **Open in xtralab**.
+   The project opens in a new window.
 
 </Steps>
 
@@ -56,7 +52,7 @@ tabs and the panel layout are saved for each project.
 
 ## Project environments
 
-The launcher finds these Python environments in the project folder:
+xtralab finds these environments in the project folder:
 
 | Folder                 | Environment type    |
 | ---------------------- | ------------------- |
@@ -64,13 +60,15 @@ The launcher finds these Python environments in the project folder:
 | `.conda`               | Conda environment   |
 | `.pixi/envs/<name>`    | Pixi environment    |
 
-When you select an environment, xtralab registers a kernel for the project
-that uses its interpreter. The JupyterLab server continues to run from the
-bundled runtime. An environment is available as a kernel only when `ipykernel`
-is installed in it.
+The kernels of these environments show in the kernel list, for all languages,
+as with the [`xtralab` command](../installation/#notebook-kernels). For
+example, an environment with `ipykernel` gives
+**Python 3 (ipykernel) [.venv]**. The JupyterLab server continues to run from
+the bundled runtime. Without an environment in the folder, the Python 3 kernel
+is the one of the bundled runtime.
 
-The bundled `ty` language server uses the same environment. See
-[Language servers](../customize/language-servers/).
+The bundled `ty` language server uses the environment of the Python 3 kernel.
+See [Language servers](../customize/language-servers/).
 
 ## Tabs and windows on macOS
 
