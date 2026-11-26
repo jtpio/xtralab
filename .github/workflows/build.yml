@@ -194,4 +194,5 @@ jobs:
         with:
           # The docs site only exists once the docs workflow has deployed
           # from main, so the link is dead on the PR that introduces it.
-          ignore_links: 'https://jtpio.github.io/xtralab.*'
+          # claude.ai answers 403 to the link checker.
+          ignore_links: 'https://jtpio.github.io/xtralab.* https://claude.ai/settings/plugins/submit'
