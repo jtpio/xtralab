@@ -14,7 +14,7 @@ the same version:
 | `lite`              | The JupyterLite demo site, built and deployed with the docs.                                                               |
 | `desktop`           | The Electron desktop app.                                                                                                  |
 | `docs`              | The documentation site.                                                                                                    |
-| `ui-tests`          | The Galata suite that makes the screenshots of the docs.                                                                   |
+| `ui-tests`          | The Galata suite: the screenshots of the docs, and the UI tests.                                                           |
 
 `desktop`, `docs` and `ui-tests` are separate pnpm projects, with their own
 `pnpm-workspace.yaml` and lockfile. The pnpm workspace at the root has the
