@@ -18,12 +18,6 @@ const OPEN_COMMAND = 'xtralab:open-main-menu';
 const TOGGLE_COMMAND = 'xtralab:toggle-menu-bar';
 
 /**
- * Guard after the popup closes: Lumino menus close on a capture-phase document
- * pointerdown, before the button's mousedown, which would instantly reopen.
- */
-const REOPEN_GUARD_MS = 250;
-
-/**
  * Collapse the main menu bar into a hamburger button whose popup reuses the
  * live `RankedMenu` instances owned by `MainMenu`. Hiding covers the
  * `jp-menu-panel` container too — its `min-height` would leave an empty strip.
@@ -70,7 +64,19 @@ const plugin: JupyterFrontEndPlugin<void> = {
     menuPanel()?.hide();
 
     let popup: Menu | null = null;
-    let popupClosedAt = 0;
+    let pressedWhileOpen = false;
+
+    // Lumino closes the popup on this event, before the button opens it on
+    // mousedown: a press on the button must then not open it again. This
+    // listener runs first, because the popup adds its own on each open.
+    document.addEventListener(
+      'pointerdown',
+      event => {
+        pressedWhileOpen =
+          !!popup?.isAttached && !!button?.node.contains(event.target as Node);
+      },
+      true
+    );
 
     const openMenu = (): void => {
       if (visible) {
@@ -80,7 +86,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
         mainMenu.openActiveMenu();
         return;
       }
-      if (Date.now() - popupClosedAt < REOPEN_GUARD_MS) {
+      if (pressedWhileOpen) {
+        pressedWhileOpen = false;
         return;
       }
 
@@ -90,9 +97,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
         popup = new Menu({ commands, renderer: MenuSvg.defaultRenderer });
         popup.addClass('jp-ThemedContainer');
         popup.addClass('jp-xtralab-MainMenuPopup');
-        popup.aboutToClose.connect(() => {
-          popupClosedAt = Date.now();
-        });
       } else {
         popup.clearItems();
       }
