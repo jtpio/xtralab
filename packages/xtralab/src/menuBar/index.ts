@@ -11,7 +11,6 @@ import { CommandToolbarButton, MenuSvg } from '@jupyterlab/ui-components';
 import { Menu, Widget } from '@lumino/widgets';
 
 import { mainMenuIcon } from './icons';
-import { enableMenuTouch } from './touch';
 
 const PLUGIN_ID = 'xtralab:menu-bar';
 
@@ -39,8 +38,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
   ): void => {
     const { commands } = app;
     const trans = (translator ?? nullTranslator).load('jupyterlab');
-
-    enableMenuTouch();
 
     if (!(mainMenu instanceof MainMenu)) {
       return;
