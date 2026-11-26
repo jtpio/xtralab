@@ -147,6 +147,42 @@ jobs:
           grep -e "xtralite.*OK" labextensions.txt
           grep -e "@jupyterlab/git v.*OK" labextensions.txt
 
+  ui_tests:
+    name: UI Tests
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: extension-artifacts
+
+      # The suite starts the server with `uv run`, from the `.venv` folder.
+      - name: Install xtralab
+        run: |
+          set -eux
+          python -m pip install uv
+          uv venv
+          uv pip install "jupyterlab>=4.7.0b0,<5" xtralab*.whl
+
+      - name: Run the UI tests
+        working-directory: ui-tests
+        run: |
+          set -eux
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install chromium --with-deps
+          pnpm test
+
   check_links:
     name: Check Links
     runs-on: ubuntu-latest

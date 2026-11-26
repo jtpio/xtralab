@@ -68,6 +68,17 @@ screenshots the launcher while the first project window is open and the other
 two are still starting, then quits the app. The app's windows briefly appear
 on screen while it runs.
 
+## UI tests
+
+`menu.spec.ts` tests the main menu with touch input. It uses the same server
+and demo workspace as the screenshots:
+
+```bash
+pnpm test
+```
+
+The `Build` workflow runs these tests on each pull request.
+
 ## README images
 
 The images referenced by the repository README are lossless WebP copies of

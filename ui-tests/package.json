@@ -5,8 +5,9 @@
   "description": "Galata screenshot generation for the documentation",
   "scripts": {
     "install:browsers": "playwright install chromium",
-    "screenshots": "playwright test",
-    "screenshots:restore": "node desktop-restore.mjs"
+    "screenshots": "playwright test screenshots.spec.ts",
+    "screenshots:restore": "node desktop-restore.mjs",
+    "test": "playwright test menu.spec.ts"
   },
   "devDependencies": {
     "@jupyterlab/galata": "^5.6.1",
