@@ -140,7 +140,7 @@ jobs:
           sudo rm -rf $(which node)
           sudo rm -rf $(which node)
 
-          pip install "jupyterlab>=4.6.0b0,<5" xtralab*.whl xtralite*.whl
+          pip install "jupyterlab>=4.7.0b0,<5" xtralab*.whl xtralite*.whl
 
           jupyter labextension list 2>&1 | tee labextensions.txt
           grep -e "xtralab.*OK" labextensions.txt
