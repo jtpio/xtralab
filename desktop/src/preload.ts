@@ -18,64 +18,6 @@ interface OpenFolderResult {
   error?: string;
 }
 
-/**
- * A Python interpreter choice offered for a project folder.
- */
-interface PythonEnvironmentOption {
-  /**
-   * The display name shown in the interpreter picker.
-   */
-  label: string;
-  /**
-   * The descriptive subtitle shown under the label, such as the
-   * Python version and executable path.
-   */
-  detail: string;
-  /**
-   * The origin of the option: the bundled managed runtime, an
-   * environment found in the project folder, or a user-picked interpreter.
-   */
-  kind: 'managed' | 'project' | 'custom';
-  /**
-   * The interpreter executable path, or null for the managed environment.
-   */
-  pythonPath: string | null;
-  /**
-   * The root directory of the Python environment, or null when unknown.
-   */
-  environmentRoot: string | null;
-  /**
-   * Whether ipykernel is importable in the environment.
-   */
-  hasIpykernel: boolean;
-}
-
-/**
- * The result of inspecting a folder's Python environments before opening it.
- */
-interface FolderEnvironmentResult {
-  /**
-   * Whether the inspection succeeded.
-   */
-  ok: boolean;
-  /**
-   * The resolved absolute path of the folder, when available.
-   */
-  folderPath?: string;
-  /**
-   * The interpreter options discovered for the folder.
-   */
-  environments?: PythonEnvironmentOption[];
-  /**
-   * The interpreter to preselect; null selects the managed environment.
-   */
-  selectedPythonPath?: string | null;
-  /**
-   * A description of the failure, if any.
-   */
-  error?: string;
-}
-
 type UpdateStatus =
   | 'unsupported'
   | 'idle'
@@ -150,21 +92,10 @@ contextBridge.exposeInMainWorld('xtralab', {
     ipcRenderer.invoke('xtralab:forget-recent-folder', folderPath),
   clearRecentFolders: (): Promise<string[]> =>
     ipcRenderer.invoke('xtralab:clear-recent-folders'),
-  openFolderDialog: (): Promise<FolderEnvironmentResult> =>
+  openFolderDialog: (): Promise<string | null> =>
     ipcRenderer.invoke('xtralab:open-folder-dialog'),
-  prepareFolder: (folderPath: string): Promise<FolderEnvironmentResult> =>
-    ipcRenderer.invoke('xtralab:prepare-folder', folderPath),
-  openRecentFolder: (folderPath: string): Promise<FolderEnvironmentResult> =>
-    ipcRenderer.invoke('xtralab:open-recent-folder', folderPath),
-  selectPythonInterpreter: (
-    folderPath: string
-  ): Promise<FolderEnvironmentResult> =>
-    ipcRenderer.invoke('xtralab:select-python-interpreter', folderPath),
-  openFolder: (
-    folderPath: string,
-    pythonPath: string | null
-  ): Promise<OpenFolderResult> =>
-    ipcRenderer.invoke('xtralab:open-folder', folderPath, pythonPath),
+  openFolder: (folderPath: string): Promise<OpenFolderResult> =>
+    ipcRenderer.invoke('xtralab:open-folder', folderPath),
   showLogs: (): Promise<void> => ipcRenderer.invoke('xtralab:show-logs'),
   getUpdateState: (): Promise<UpdateState> =>
     ipcRenderer.invoke('xtralab:get-update-state'),

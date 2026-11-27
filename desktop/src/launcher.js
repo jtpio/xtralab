@@ -39,7 +39,6 @@ themeToggle.addEventListener('click', () => {
 applyTheme(getStoredTheme());
 
 const welcomeView = document.getElementById('welcome-view');
-const projectView = document.getElementById('project-view');
 const restoreView = document.getElementById('restore-view');
 const restoreNote = document.getElementById('restore-note');
 const restoreProgress = document.getElementById('restore-progress');
@@ -47,16 +46,9 @@ const restoreProgressFill = document.getElementById('restore-progress-fill');
 const restoreList = document.getElementById('restore-list');
 const restoreDismiss = document.getElementById('restore-dismiss');
 const openFolderLink = document.getElementById('open-folder');
-const backLink = document.getElementById('back-to-welcome');
 const recentSection = document.getElementById('recent-section');
 const recentList = document.getElementById('recent-list');
 const recentClear = document.getElementById('recent-clear');
-const projectFolderName = document.getElementById('project-folder-name');
-const projectFolderPath = document.getElementById('project-folder-path');
-const environmentSelect = document.getElementById('environment-select');
-const environmentDetail = document.getElementById('environment-detail');
-const chooseInterpreterButton = document.getElementById('choose-interpreter');
-const launchFolderButton = document.getElementById('launch-folder');
 const statusElement = document.getElementById('status');
 const updateSpinner = document.getElementById('update-spinner');
 const updateMessage = document.getElementById('update-message');
@@ -65,22 +57,13 @@ const updateCheck = document.getElementById('update-check');
 const appVersion = document.getElementById('app-version');
 
 let homeDir = '';
-let preparedFolder = null;
 let isBusy = false;
 let updateState = null;
 let restoreViewActive = false;
 let restoreRows = [];
 
 function updateActionAvailability() {
-  const option = selectedEnvironment();
   openFolderLink.disabled = isBusy;
-  chooseInterpreterButton.disabled = isBusy || preparedFolder === null;
-  launchFolderButton.disabled =
-    isBusy ||
-    preparedFolder === null ||
-    option === null ||
-    (option.kind !== 'managed' && !option.hasIpykernel);
-  backLink.disabled = isBusy;
   recentClear.disabled = isBusy;
   updateAction.disabled = isBusy;
   for (const button of recentList.querySelectorAll('button')) {
@@ -235,7 +218,6 @@ function renderRestoreState(state) {
 
   restoreViewActive = true;
   welcomeView.classList.add('is-inactive');
-  projectView.classList.add('is-inactive');
   restoreView.classList.remove('is-inactive');
 
   syncRestoreRows(projects);
@@ -291,18 +273,9 @@ function setError(message) {
 }
 
 function showWelcome() {
-  preparedFolder = null;
-  projectView.classList.add('is-inactive');
   restoreView.classList.add('is-inactive');
   welcomeView.classList.remove('is-inactive');
   setReady();
-  updateActionAvailability();
-}
-
-function showProject() {
-  welcomeView.classList.add('is-inactive');
-  restoreView.classList.add('is-inactive');
-  projectView.classList.remove('is-inactive');
   updateActionAvailability();
 }
 
@@ -344,68 +317,6 @@ function recentDetailFor(folderPath) {
   return abbreviateHome(parent);
 }
 
-function environmentValue(option) {
-  return option.pythonPath || '';
-}
-
-function selectedEnvironment() {
-  if (preparedFolder === null) {
-    return null;
-  }
-  return (
-    preparedFolder.environments.find(
-      option => environmentValue(option) === environmentSelect.value
-    ) || null
-  );
-}
-
-function renderEnvironmentDetail() {
-  const option = selectedEnvironment();
-  if (option === null) {
-    environmentDetail.textContent = '';
-    updateActionAvailability();
-    return;
-  }
-
-  const details = [option.detail];
-  if (option.hasIpykernel) {
-    details.push('Python 3 kernel will use this environment');
-  } else if (option.kind !== 'managed') {
-    details.push('Install ipykernel to use this environment');
-  }
-  environmentDetail.textContent = details.join(' · ');
-  updateActionAvailability();
-}
-
-function renderPreparedFolder(result) {
-  if (!result.ok) {
-    setError(result.error || 'Unable to inspect folder');
-    return;
-  }
-
-  preparedFolder = {
-    folderPath: result.folderPath,
-    environments: result.environments || [],
-    selectedPythonPath: result.selectedPythonPath ?? null
-  };
-
-  projectFolderName.textContent = folderName(preparedFolder.folderPath);
-  projectFolderPath.textContent = preparedFolder.folderPath;
-  environmentSelect.replaceChildren();
-
-  for (const option of preparedFolder.environments) {
-    const element = document.createElement('option');
-    element.value = environmentValue(option);
-    element.textContent = option.label;
-    environmentSelect.append(element);
-  }
-
-  environmentSelect.value = preparedFolder.selectedPythonPath || '';
-  showProject();
-  setReady();
-  renderEnvironmentDetail();
-}
-
 function createIcon(symbolId) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('aria-hidden', 'true');
@@ -433,11 +344,7 @@ function createRecentRow(folderPath) {
   detail.textContent = recentDetailFor(folderPath);
 
   row.append(name, detail);
-  row.addEventListener('click', async () => {
-    setBusy(true, `Inspecting ${folderName(folderPath)}...`);
-    const result = await window.xtralab.openRecentFolder(folderPath);
-    renderPreparedFolder(result);
-  });
+  row.addEventListener('click', () => openFolder(folderPath));
 
   const remove = document.createElement('button');
   remove.className = 'recent-remove';
@@ -469,24 +376,28 @@ async function renderRecentFolders(folders) {
   }
 }
 
+async function openFolder(folderPath) {
+  setBusy(true, `Opening ${folderName(folderPath)}...`);
+  const result = await window.xtralab.openFolder(folderPath);
+  if (!result.ok) {
+    setError(result.error || 'Unable to open folder');
+    await renderRecentFolders();
+  }
+}
+
 openFolderLink.addEventListener('click', async () => {
   setBusy(true, 'Selecting folder...');
-  const result = await window.xtralab.openFolderDialog();
-  if (!result.ok && !result.error) {
+  const folderPath = await window.xtralab.openFolderDialog();
+  if (folderPath === null) {
     setReady();
     return;
   }
-  renderPreparedFolder(result);
-  await renderRecentFolders();
+  await openFolder(folderPath);
 });
 
 recentClear.addEventListener('click', async () => {
   const folders = await window.xtralab.clearRecentFolders();
   renderRecentFolders(folders);
-});
-
-backLink.addEventListener('click', () => {
-  showWelcome();
 });
 
 restoreDismiss.addEventListener('click', async () => {
@@ -499,10 +410,6 @@ restoreDismiss.addEventListener('click', async () => {
   showWelcome();
 });
 
-environmentSelect.addEventListener('change', () => {
-  renderEnvironmentDetail();
-});
-
 updateAction.addEventListener('click', () => {
   if (updateState === null) {
     return;
@@ -513,33 +420,6 @@ updateAction.addEventListener('click', () => {
     void window.xtralab.restartToUpdate();
   } else {
     void window.xtralab.checkForUpdates();
-  }
-});
-
-chooseInterpreterButton.addEventListener('click', async () => {
-  if (preparedFolder === null) {
-    return;
-  }
-  setBusy(true, 'Selecting interpreter...');
-  const result = await window.xtralab.selectPythonInterpreter(
-    preparedFolder.folderPath
-  );
-  renderPreparedFolder(result);
-});
-
-launchFolderButton.addEventListener('click', async () => {
-  const option = selectedEnvironment();
-  if (preparedFolder === null || option === null) {
-    return;
-  }
-  setBusy(true, `Opening ${folderName(preparedFolder.folderPath)}...`);
-  const result = await window.xtralab.openFolder(
-    preparedFolder.folderPath,
-    option.pythonPath
-  );
-  if (!result.ok) {
-    setError(result.error || 'Unable to open folder');
-    await renderRecentFolders();
   }
 });
 

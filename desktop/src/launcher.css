@@ -13,7 +13,6 @@
   --error: #a43f16;
   --accent: #f37726;
   --accent-hover: #df681f;
-  --accent-on-accent: #fff;
   --focus-ring: rgba(243, 119, 38, 0.45);
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif,
@@ -207,11 +206,8 @@ svg.symbol {
 .recent-row:focus-visible,
 .recent-clear:focus-visible,
 .recent-remove:focus-visible,
-.environment-select:focus-visible,
-.primary-action:focus-visible,
 .secondary-action:focus-visible,
-.update-action:focus-visible,
-.back-link:focus-visible {
+.update-action:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
   border-radius: 4px;
@@ -351,116 +347,6 @@ svg.symbol {
   opacity: 0;
 }
 
-.project-view {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  width: max-content;
-  margin-bottom: 4px;
-  padding: 4px 0;
-  border: 0;
-  background: transparent;
-  color: var(--link);
-  font: inherit;
-  font-size: 13px;
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.back-link:hover {
-  color: var(--link-hover);
-}
-
-.back-link:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
-
-.back-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-}
-
-.back-icon svg {
-  width: 14px;
-  height: 14px;
-  fill: currentColor;
-}
-
-.project-header {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.project-folder-name {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.15;
-  color: var(--text);
-}
-
-.project-folder-path {
-  margin: 0;
-  overflow: hidden;
-  color: var(--text-subtle);
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.project-form {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.field-label {
-  margin-top: 4px;
-  color: var(--link);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.environment-select {
-  width: 100%;
-  min-height: 38px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-}
-
-.environment-detail {
-  min-height: 16px;
-  margin: 2px 0 0;
-  overflow-wrap: anywhere;
-  color: var(--text-subtle);
-  font-size: 12px;
-  white-space: normal;
-}
-
-.project-actions {
-  display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.primary-action,
 .secondary-action {
   min-height: 38px;
   padding: 0 16px;
@@ -468,24 +354,6 @@ svg.symbol {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-}
-
-.primary-action {
-  border: 0;
-  background: var(--accent);
-  color: var(--accent-on-accent);
-}
-
-.primary-action:hover {
-  background: var(--accent-hover);
-}
-
-.primary-action:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
-.secondary-action {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
