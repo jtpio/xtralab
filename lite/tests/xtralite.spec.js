@@ -19,18 +19,23 @@ test('xtralite loads the xtralab launcher with the lite agents', async ({
 });
 
 /**
- * Expose `window.jupyterapp`, as Galata does.
+ * Click an item of the main menu, for example `Run` then `Run All Cells`.
  */
-async function exposeApp(page) {
-  await page.route('**/jupyter-lite.json', async route => {
-    const response = await route.fetch();
-    const json = await response.json();
-    json['jupyter-config-data'] = {
-      ...(json['jupyter-config-data'] ?? {}),
-      exposeAppInBrowser: true
-    };
-    await route.fulfill({ response, json });
-  });
+async function clickMenuItem(page, ...labels) {
+  await page.getByRole('button', { name: 'Menu' }).click();
+  for (const label of labels) {
+    await page.locator('.lm-Menu').getByText(label, { exact: true }).click();
+  }
+}
+
+/**
+ * Open a file with `File > Open from Path…`.
+ */
+async function openFile(page, path) {
+  await clickMenuItem(page, 'File', 'Open from Path…');
+  const input = page.getByLabel('Path', { exact: true });
+  await input.fill(path);
+  await input.press('Enter');
 }
 
 /**
@@ -49,11 +54,7 @@ async function closeProviderDialog(page) {
  * Select the first two lines of a file and open the ask-agent prompt box.
  */
 async function askAboutSelection(page) {
-  await page.evaluate(async () => {
-    await window.jupyterapp.commands.execute('docmanager:open', {
-      path: 'src/acme/metrics.py'
-    });
-  });
+  await openFile(page, 'src/acme/metrics.py');
   const editor = page.locator('.jp-FileEditor .cm-content').first();
   await editor.click();
   await page.keyboard.press('Control+Home');
@@ -64,7 +65,16 @@ async function askAboutSelection(page) {
 }
 
 test('the ask-agent prompt box sends to open chats', async ({ page }) => {
-  await exposeApp(page);
+  // Expose `window.jupyterapp`, as Galata does.
+  await page.route('**/jupyter-lite.json', async route => {
+    const response = await route.fetch();
+    const json = await response.json();
+    json['jupyter-config-data'] = {
+      ...(json['jupyter-config-data'] ?? {}),
+      exposeAppInBrowser: true
+    };
+    await route.fulfill({ response, json });
+  });
   await page.goto('lab/index.html');
   const launcher = page.locator('.jp-xtralab-Launcher');
   await expect(launcher).toBeVisible({ timeout: 60_000 });
@@ -109,29 +119,23 @@ test('the ask-agent prompt box sends to open chats', async ({ page }) => {
 });
 
 test('the example notebook runs', async ({ page }) => {
-  await exposeApp(page);
   await page.goto('lab/index.html');
   await expect(page.locator('.jp-xtralab-Launcher')).toBeVisible({
     timeout: 60_000
   });
 
-  await page.evaluate(async () => {
-    await window.jupyterapp.commands.execute('docmanager:open', {
-      path: 'notebooks/exploration.ipynb'
-    });
+  await openFile(page, 'notebooks/exploration.ipynb');
+  await expect(page.getByText('Python (Pyodide) | Idle')).toBeVisible({
+    timeout: 60_000
   });
-  const notebook = page.locator('.jp-NotebookPanel');
-  await expect(notebook.locator('.jp-KernelName')).toHaveText(
-    'Python (Pyodide)'
-  );
 
   // The notebook has saved outputs: remove them to see only those of this run.
-  await page.evaluate(async () => {
-    const { commands } = window.jupyterapp;
-    await commands.execute('notebook:clear-all-cell-outputs');
-    void commands.execute('notebook:run-all-cells');
+  const outputs = page.locator('.jp-Notebook .jp-OutputArea-output');
+  await clickMenuItem(page, 'Edit', 'Clear Outputs of All Cells');
+  await expect(outputs).toHaveCount(0);
+
+  await clickMenuItem(page, 'Run', 'Run All Cells');
+  await expect(outputs).toHaveText(['8', /'East': 44900\.0/, "'East'"], {
+    timeout: 30_000
   });
-  await expect(
-    notebook.locator('.jp-CodeCell .jp-OutputArea-output')
-  ).toHaveText(['8', /'East': 44900\.0/, "'East'"], { timeout: 90_000 });
 });
