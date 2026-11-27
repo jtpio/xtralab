@@ -7,6 +7,7 @@ from __future__ import annotations
 import glob
 import os
 import shutil
+import sys
 
 from jupyter_client.kernelspec import KernelSpec, KernelSpecManager
 from traitlets import Bool, Unicode
@@ -29,7 +30,8 @@ class ProjectKernelSpecManager(KernelSpecManager):
         config=True,
         help="""
         Add the kernels of the environments of the server folder. They replace
-        the kernels of the same name from the other locations.
+        the kernels of the same name from the other locations. This does
+        nothing when the server runs from one of these environments.
         """,
     )
 
@@ -46,7 +48,13 @@ class ProjectKernelSpecManager(KernelSpecManager):
             return []
         roots = [os.path.join(self.root_dir, name) for name in ENVIRONMENTS]
         pixi = os.path.join(glob.escape(self.root_dir), PIXI_ENVIRONMENTS)
-        return roots + sorted(glob.glob(pixi))
+        roots += sorted(glob.glob(pixi))
+        # xtralab is installed in an environment of the folder: that
+        # environment has all the kernels, as with JupyterLab.
+        prefix = os.path.realpath(sys.prefix)
+        if any(os.path.realpath(root) == prefix for root in roots):
+            return []
+        return roots
 
     def _kernel_dirs_default(self) -> list[str]:
         dirs = [

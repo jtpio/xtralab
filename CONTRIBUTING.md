@@ -87,7 +87,9 @@ and pixi environments), for the desktop app and for the `xtralab` command.
 each environment to the kernel search path, so their kernels of all languages
 are available, with no file on disk. The JupyterLab server continues to run
 from the isolated xtralab environment. The desktop app only points the `ty`
-language server at the environment of the Python 3 kernel.
+language server at the environment of the Python 3 kernel. When xtralab is
+installed in an environment of the folder, this logic is off, and the kernel
+list is the one of JupyterLab.
 
 The companion `xtralab-desktop` package (under `desktop/`, not published to
 PyPI) exposes `xtralab serve` as the small server helper used by Electron. It
