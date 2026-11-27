@@ -19,6 +19,21 @@ test('xtralite loads the xtralab launcher with the lite agents', async ({
 });
 
 /**
+ * Expose `window.jupyterapp`, as Galata does.
+ */
+async function exposeApp(page) {
+  await page.route('**/jupyter-lite.json', async route => {
+    const response = await route.fetch();
+    const json = await response.json();
+    json['jupyter-config-data'] = {
+      ...(json['jupyter-config-data'] ?? {}),
+      exposeAppInBrowser: true
+    };
+    await route.fulfill({ response, json });
+  });
+}
+
+/**
  * Close the dialog in which pi asks for a model provider: the test site has
  * none, so a message to pi opens it.
  */
@@ -49,16 +64,7 @@ async function askAboutSelection(page) {
 }
 
 test('the ask-agent prompt box sends to open chats', async ({ page }) => {
-  // Expose `window.jupyterapp`, as Galata does.
-  await page.route('**/jupyter-lite.json', async route => {
-    const response = await route.fetch();
-    const json = await response.json();
-    json['jupyter-config-data'] = {
-      ...(json['jupyter-config-data'] ?? {}),
-      exposeAppInBrowser: true
-    };
-    await route.fulfill({ response, json });
-  });
+  await exposeApp(page);
   await page.goto('lab/index.html');
   const launcher = page.locator('.jp-xtralab-Launcher');
   await expect(launcher).toBeVisible({ timeout: 60_000 });
@@ -100,4 +106,32 @@ test('the ask-agent prompt box sends to open chats', async ({ page }) => {
   );
   expect(sent).toBe(true);
   await closeProviderDialog(page);
+});
+
+test('the example notebook runs', async ({ page }) => {
+  await exposeApp(page);
+  await page.goto('lab/index.html');
+  await expect(page.locator('.jp-xtralab-Launcher')).toBeVisible({
+    timeout: 60_000
+  });
+
+  await page.evaluate(async () => {
+    await window.jupyterapp.commands.execute('docmanager:open', {
+      path: 'notebooks/exploration.ipynb'
+    });
+  });
+  const notebook = page.locator('.jp-NotebookPanel');
+  await expect(notebook.locator('.jp-KernelName')).toHaveText(
+    'Python (Pyodide)'
+  );
+
+  // The notebook has saved outputs: remove them to see only those of this run.
+  await page.evaluate(async () => {
+    const { commands } = window.jupyterapp;
+    await commands.execute('notebook:clear-all-cell-outputs');
+    void commands.execute('notebook:run-all-cells');
+  });
+  await expect(
+    notebook.locator('.jp-CodeCell .jp-OutputArea-output')
+  ).toHaveText(['8', /'East': 44900\.0/, "'East'"], { timeout: 90_000 });
 });
