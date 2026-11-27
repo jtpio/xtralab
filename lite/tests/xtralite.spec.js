@@ -19,6 +19,26 @@ test('xtralite loads the xtralab launcher with the lite agents', async ({
 });
 
 /**
+ * Click an item of the main menu, for example `Run` then `Run All Cells`.
+ */
+async function clickMenuItem(page, ...labels) {
+  await page.getByRole('button', { name: 'Menu' }).click();
+  for (const label of labels) {
+    await page.locator('.lm-Menu').getByText(label, { exact: true }).click();
+  }
+}
+
+/**
+ * Open a file with `File > Open from Path…`.
+ */
+async function openFile(page, path) {
+  await clickMenuItem(page, 'File', 'Open from Path…');
+  const input = page.getByLabel('Path', { exact: true });
+  await input.fill(path);
+  await input.press('Enter');
+}
+
+/**
  * Close the dialog in which pi asks for a model provider: the test site has
  * none, so a message to pi opens it.
  */
@@ -34,11 +54,7 @@ async function closeProviderDialog(page) {
  * Select the first two lines of a file and open the ask-agent prompt box.
  */
 async function askAboutSelection(page) {
-  await page.evaluate(async () => {
-    await window.jupyterapp.commands.execute('docmanager:open', {
-      path: 'src/acme/metrics.py'
-    });
-  });
+  await openFile(page, 'src/acme/metrics.py');
   const editor = page.locator('.jp-FileEditor .cm-content').first();
   await editor.click();
   await page.keyboard.press('Control+Home');
@@ -100,4 +116,26 @@ test('the ask-agent prompt box sends to open chats', async ({ page }) => {
   );
   expect(sent).toBe(true);
   await closeProviderDialog(page);
+});
+
+test('the example notebook runs', async ({ page }) => {
+  await page.goto('lab/index.html');
+  await expect(page.locator('.jp-xtralab-Launcher')).toBeVisible({
+    timeout: 60_000
+  });
+
+  await openFile(page, 'notebooks/exploration.ipynb');
+  await expect(page.getByText('Python (Pyodide) | Idle')).toBeVisible({
+    timeout: 60_000
+  });
+
+  // The notebook has saved outputs: remove them to see only those of this run.
+  const outputs = page.locator('.jp-Notebook .jp-OutputArea-output');
+  await clickMenuItem(page, 'Edit', 'Clear Outputs of All Cells');
+  await expect(outputs).toHaveCount(0);
+
+  await clickMenuItem(page, 'Run', 'Run All Cells');
+  await expect(outputs).toHaveText(['8', /'East': 44900\.0/, "'East'"], {
+    timeout: 30_000
+  });
 });
