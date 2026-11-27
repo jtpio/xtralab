@@ -1,8 +1,8 @@
 diff --git a/dist/highlighter/shiki-editor.js b/dist/highlighter/shiki-editor.js
-index c68b3c518ca88a589802b2d354ecb990577a1648..c0019b758f292ed2d3e278a4bc2742c4c26bea8f 100644
+index b86658e995815f76ddc99a5438f5f9d7bfc7fdef..7d6a002a3ed3af2385a6b252ed78a5ca867a4cb8 100644
 --- a/dist/highlighter/shiki-editor.js
 +++ b/dist/highlighter/shiki-editor.js
-@@ -90,8 +90,9 @@ var ShikiEditorTokenizer = class {
+@@ -299,8 +299,9 @@ var ShikiEditorTokenizer = class {
  	#ensureActiveTheme() {
  		if (this.#themeName === "") return;
  		this.backend?.getTheme(this.#themeName);
@@ -12,5 +12,5 @@ index c68b3c518ca88a589802b2d354ecb990577a1648..c0019b758f292ed2d3e278a4bc2742c4
 +		// Resolve Shiki's synthetic colors before rendering CSS-variable themes.
 +		this.#colorMap = colorMap.map(color => theme.colorReplacements?.[color?.toLowerCase()] ?? color);
  	}
- 	dispose() {
- 		this.#isCleanedUp = true;
+ 	#ensureGrammar() {
+ 		if (this.#grammar == null && !isGrammarlessLanguage(this.#textDocument.languageId) && this.#highlighter.getLoadedLanguages().includes(this.#textDocument.languageId)) this.#grammar = this.#highlighter.getLanguage(this.#textDocument.languageId);

@@ -5,9 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  '@pierre/diffs@1.6.4':
-    hash: fd3729399bc2dc05fd444736080cf9e4450dcfe6083c5babe29552a915ebcc6f
-    path: patches/@pierre__diffs@1.6.4.patch
+  '@pierre/diffs@1.7.2':
+    hash: b2fd583773f8770dbf92a4c972a48a91eb54308c63f8832435eeb8d2db13c901
+    path: patches/@pierre__diffs@1.7.2.patch
 
 importers:
 
@@ -152,8 +152,8 @@ importers:
         specifier: ^2.8.0
         version: 2.8.0
       '@pierre/diffs':
-        specifier: 1.6.4
-        version: 1.6.4(patch_hash=fd3729399bc2dc05fd444736080cf9e4450dcfe6083c5babe29552a915ebcc6f)(@shikijs/themes@3.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 1.7.2
+        version: 1.7.2(patch_hash=b2fd583773f8770dbf92a4c972a48a91eb54308c63f8832435eeb8d2db13c901)(@shikijs/themes@3.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@pierre/icons':
         specifier: ^0.9.0
         version: 0.9.0(react@18.3.1)
@@ -1022,8 +1022,8 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@pierre/diffs@1.6.4':
-    resolution: {integrity: sha512-RsKoruCOp50qaDM3a7BQan5K77xMkGWT1NF01fiYP1PfT3v4CvIjwytNk5WjZG0BesBkMOP2UbrBIDigB1k0ug==}
+  '@pierre/diffs@1.7.2':
+    resolution: {integrity: sha512-zMYTBWK4srIYKoKMTSwCVWxbgpJT8UXJ2v5ONTXBbzDSDYpOCpgqfoyQexDWo6FH9RDicZvkeZwIbiTrBBSJ2Q==}
     peerDependencies:
       react: ^18.3.1 || ^19.0.0
       react-dom: ^18.3.1 || ^19.0.0
@@ -1033,16 +1033,19 @@ packages:
       react-dom:
         optional: true
 
-  '@pierre/highlights@0.4.0':
-    resolution: {integrity: sha512-2a38H7ep3KweGi1fGQpJk+Krod2OMpDIXagKPlqBd1Y9P460T7zQmc66Wm2JAH1SpIG93wCyyhZVrkc5dnAJVQ==}
+  '@pierre/highlights@0.6.0':
+    resolution: {integrity: sha512-5RhenEkZxlcsw2hrDaYlGyT6ERfQgHSvZxRg/ByZ11SVkoWuAwDMozL7HxUfUnOVyShD5WKMxqiakg8S/8Fi7A==}
 
   '@pierre/icons@0.9.0':
     resolution: {integrity: sha512-lsvXfhb0ynOaQ+eFM54h8n3jS39Glh6Mng8VNFnxdwJTh0Mo8OGmU27mA3u8Ayha7bZNsAqhNw3jaflnPQEH/Q==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
 
-  '@pierre/theme@2.0.0':
-    resolution: {integrity: sha512-yNDd9GYLQl1mEUJR8AneJ5e4ohLIHQd/wZLWr4fagt78vS2RwwZNW530vVgHqXFAyFVcFlRmGUD5ramXH46OXw==}
+  '@pierre/patches@0.0.1':
+    resolution: {integrity: sha512-NycJQVQNuqmBdr7u1LsUcmkiIz1fRm9xhWZyRbm21oJYd0MVVCa45t9Lsuj5IKrTMBonxOuh4LMv+R3BpL4bmQ==}
+
+  '@pierre/theme@2.1.0':
+    resolution: {integrity: sha512-GIE3AD8eqUlZN2sFrMmp9gt+rNZsT+EhrdwB0KmLcwkqunrp2jU2j14SeAb64Ol/srWo4rHyNaWf20+bPzFbvg==}
     engines: {vscode: ^1.0.0}
 
   '@pierre/theming@1.0.2':
@@ -5273,11 +5276,12 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
 
-  '@pierre/diffs@1.6.4(patch_hash=fd3729399bc2dc05fd444736080cf9e4450dcfe6083c5babe29552a915ebcc6f)(@shikijs/themes@3.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@pierre/diffs@1.7.2(patch_hash=b2fd583773f8770dbf92a4c972a48a91eb54308c63f8832435eeb8d2db13c901)(@shikijs/themes@3.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@pierre/highlights': 0.4.0
-      '@pierre/theme': 2.0.0
-      '@pierre/theming': 1.0.2(@pierre/theme@2.0.0)(@shikijs/themes@3.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(shiki@3.23.0)
+      '@pierre/highlights': 0.6.0
+      '@pierre/patches': 0.0.1
+      '@pierre/theme': 2.1.0
+      '@pierre/theming': 1.0.2(@pierre/theme@2.1.0)(@shikijs/themes@3.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(shiki@3.23.0)
       diff: 9.0.0
       hast-util-to-html: 9.0.5
       lru_map: 0.4.1
@@ -5288,17 +5292,19 @@ snapshots:
     transitivePeerDependencies:
       - '@shikijs/themes'
 
-  '@pierre/highlights@0.4.0': {}
+  '@pierre/highlights@0.6.0': {}
 
   '@pierre/icons@0.9.0(react@18.3.1)':
     dependencies:
       react: 18.3.1
 
-  '@pierre/theme@2.0.0': {}
+  '@pierre/patches@0.0.1': {}
 
-  '@pierre/theming@1.0.2(@pierre/theme@2.0.0)(@shikijs/themes@3.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(shiki@3.23.0)':
+  '@pierre/theme@2.1.0': {}
+
+  '@pierre/theming@1.0.2(@pierre/theme@2.1.0)(@shikijs/themes@3.23.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(shiki@3.23.0)':
     optionalDependencies:
-      '@pierre/theme': 2.0.0
+      '@pierre/theme': 2.1.0
       '@shikijs/themes': 3.23.0
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)

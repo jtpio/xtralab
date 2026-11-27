@@ -17,6 +17,7 @@ import {
 import { IconDiffSplit, IconDiffUnified, IconWordWrap } from '@pierre/icons';
 import {
   diffAcceptRejectHunk,
+  normalizeLineBreaks,
   parseDiffFromFile,
   type DiffLineAnnotation,
   type FileContents,
@@ -204,57 +205,59 @@ export function reportEditError(id: string | null, message: string): string {
 
 /**
  * Smallest single edit turning the document into `after` (null when equal),
- * with boundaries that preserve surrogate pairs and complete line endings.
+ * with boundaries that preserve surrogate pairs.
  */
 function minimalTextEdit(
   document: TextDocument<'file-diff', IHunkActionAnnotation>,
   after: string
 ): TextEdit | null {
-  const before = document.getText();
-  if (before === after) {
+  // The document stores `\n` line breaks and adds the file's line ending only
+  // on output, so offsets must come from the normalized text.
+  const before = document.normalizeEol(document.getText());
+  const target = document.normalizeEol(after);
+  if (before === target) {
     return null;
   }
   let start = 0;
-  const max = Math.min(before.length, after.length);
-  while (start < max && before[start] === after[start]) {
+  const max = Math.min(before.length, target.length);
+  while (start < max && before[start] === target[start]) {
     start++;
   }
+  // Pierre widens a range that splits a surrogate pair. Include both halves
+  // in the replacement.
   const splitsPair = (text: string, offset: number): boolean => {
     const previous = text.charCodeAt(offset - 1);
     const next = text.charCodeAt(offset);
     return (
-      (previous === 13 && next === 10) ||
-      (previous >= 0xd800 &&
-        previous <= 0xdbff &&
-        next >= 0xdc00 &&
-        next <= 0xdfff)
+      previous >= 0xd800 &&
+      previous <= 0xdbff &&
+      next >= 0xdc00 &&
+      next <= 0xdfff
     );
   };
-  // Pierre normalizes edit ranges to complete code points and excludes line
-  // endings from character offsets. Include both halves in the replacement.
-  while (splitsPair(before, start) || splitsPair(after, start)) {
+  while (splitsPair(before, start) || splitsPair(target, start)) {
     start--;
   }
   let beforeEnd = before.length;
-  let afterEnd = after.length;
+  let targetEnd = target.length;
   while (
     beforeEnd > start &&
-    afterEnd > start &&
-    before[beforeEnd - 1] === after[afterEnd - 1]
+    targetEnd > start &&
+    before[beforeEnd - 1] === target[targetEnd - 1]
   ) {
     beforeEnd--;
-    afterEnd--;
+    targetEnd--;
   }
-  while (splitsPair(before, beforeEnd) || splitsPair(after, afterEnd)) {
+  while (splitsPair(before, beforeEnd) || splitsPair(target, targetEnd)) {
     beforeEnd++;
-    afterEnd++;
+    targetEnd++;
   }
   return {
     range: {
       start: document.positionAt(start),
       end: document.positionAt(beforeEnd)
     },
-    newText: after.slice(start, afterEnd)
+    newText: target.slice(start, targetEnd)
   };
 }
 
@@ -722,6 +725,9 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
       theme: resolveDiffTheme(dark, pierreTheme),
       themeType: dark ? 'dark' : 'light',
       unsafeCSS: DIFF_SURFACE_CSS,
+      // The edit session reuses the highlighted DOM instead of rendering the
+      // file again.
+      useTokenTransformer: editActive,
       onPostRender: handlePostRender,
       ...(onLineAsk !== undefined
         ? {
@@ -736,6 +742,7 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
       lineWrap,
       dark,
       pierreTheme,
+      editActive,
       handlePostRender,
       onLineAsk,
       handleGutterUtilityClick
@@ -851,12 +858,21 @@ function DiffSurfaceContent(props: IDiffSurfaceProps): React.ReactElement {
   );
 }
 
+/**
+ * Discard actions for the change blocks of the editable diff. A block that
+ * changes only line endings gets none: the editor keeps one line ending for
+ * the whole file, so it cannot revert that block.
+ */
 function editAnnotations(
   diff: FileDiffMetadata
 ): DiffLineAnnotation<IHunkActionAnnotation>[] {
+  const text = (lines: string[], start: number, count: number): string =>
+    normalizeLineBreaks(lines.slice(start, start + count).join(''));
   return diff.hunks.flatMap((hunk, hunkIndex) =>
     hunk.hunkContent.flatMap(content =>
-      content.type === 'change'
+      content.type === 'change' &&
+      text(diff.deletionLines, content.deletionLineIndex, content.deletions) !==
+        text(diff.additionLines, content.additionLineIndex, content.additions)
         ? [
             {
               // A deletion at EOF has no following additions line to anchor to.

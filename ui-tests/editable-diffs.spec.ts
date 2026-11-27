@@ -660,7 +660,7 @@ for (const [name, scenario] of scenarios) {
 
 for (const [name, reference, working] of [
   ['unicode-crlf', 'message = "😄"\r\n', 'message = "😀"\r\n'],
-  ['crlf-only', 'a\n', 'a\r\n'],
+  ['crlf-later-line', 'a\r\nb\r\nc\r\n', 'a\r\nb\r\nx\r\n'],
   ['cr-only', 'a\rc\r', 'a\rb\r']
 ]) {
   test(`discard-and-undo-${name}`, async ({ page }) => {
@@ -676,3 +676,18 @@ for (const [name, reference, working] of [
     await diskEquals(working);
   });
 }
+
+test('line-ending-only-change-has-no-discard', async ({ page }) => {
+  indexedFixture('a\nb\r\nc\r\n', 'a\r\nb\r\nx\r\n');
+  await open(page);
+  const discard = page.getByRole('button', {
+    name: 'Discard change',
+    exact: true
+  });
+  await expect(discard).toHaveCount(1);
+  await discard.click();
+  await diskEquals('a\r\nb\r\nc\r\n');
+  await editor(page).focus();
+  await page.keyboard.press('ControlOrMeta+z');
+  await diskEquals('a\r\nb\r\nx\r\n');
+});
