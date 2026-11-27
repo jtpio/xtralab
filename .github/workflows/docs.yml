@@ -51,27 +51,15 @@ jobs:
         run: pnpm build
 
       # The xtralite demo, served under /lite next to the docs.
-      - name: Install Python
-        uses: actions/setup-python@v6
+      - name: Install pixi
+        uses: prefix-dev/setup-pixi@v0.11.3
         with:
-          python-version: '3.13'
-
-      # jupyterlite-terminal fetches the wasm shell commands with micromamba.
-      - name: Install micromamba
-        uses: mamba-org/setup-micromamba@v3
-        with:
-          init-shell: none
-
-      - name: Install xtralab and xtralite
-        run: |
-          set -eux
-          python -m pip install "jupyter-builder>=1.0.2,<2.0.0a0"
-          pnpm install --frozen-lockfile
-          python -m pip install ./python/xtralab ./python/xtralite
+          pixi-version: v0.85.0
+          working-directory: lite
 
       - name: Build the JupyterLite site
         working-directory: lite
-        run: jupyter lite build
+        run: pixi run build
 
       - name: Test the JupyterLite site
         working-directory: lite

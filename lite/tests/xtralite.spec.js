@@ -125,7 +125,7 @@ test('the example notebook runs', async ({ page }) => {
   });
 
   await openFile(page, 'notebooks/exploration.ipynb');
-  await expect(page.getByText('Python (Pyodide) | Idle')).toBeVisible({
+  await expect(page.getByText(/\(XPython\) \| Idle$/)).toBeVisible({
     timeout: 60_000
   });
 
