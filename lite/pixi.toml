@@ -1,0 +1,33 @@
+[workspace]
+name = "xtralite-demo"
+description = "The xtralite JupyterLite demo site"
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
+
+[tasks]
+build = { cmd = "jupyter lite build", depends-on = ["extensions"] }
+serve = "python -m http.server --directory dist"
+
+# Build the labextensions of xtralab and xtralite, and link them in the environment.
+[tasks.extensions]
+cmd = "pnpm install && pnpm build:prod && jupyter-builder develop --overwrite python/xtralab python/xtralite"
+cwd = ".."
+
+# pixi installs xtralab and xtralite at the same time, and each install would
+# start the same pnpm build. The `extensions` task does the build instead.
+[activation.env]
+SKIP_JUPYTER_BUILDER = "1"
+
+[dependencies]
+python = "3.13.*"
+# micromamba makes the WebAssembly environments of the kernel and of the terminal.
+micromamba = "2.*"
+# pip installs the demo project in the environment of the kernel.
+pip = "*"
+nodejs = "22.*"
+pnpm = "10.*"
+
+[pypi-dependencies]
+jupyterlite-xeus = ">=6.0.0,<7"
+xtralab = { path = "../python/xtralab", editable = true }
+xtralite = { path = "../python/xtralite", editable = true }

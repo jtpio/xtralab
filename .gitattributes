@@ -1,2 +1,4 @@
 # Patch context preserves the dependency's indentation after a diff prefix.
 patches/*.patch -whitespace
+# The lock is generated: show it as YAML and do not merge it line by line.
+lite/pixi.lock merge=binary linguist-language=YAML linguist-generated=true

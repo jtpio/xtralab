@@ -1,15 +1,6 @@
 {
   "jupyter-lite-schema-version": 0,
   "jupyter-config-data": {
-    "notebookStartsKernel": true,
-    "litePluginSettings": {
-      "@jupyterlite/pyodide-kernel-extension:kernel": {
-        "loadPyodideOptions": {
-          "env": {
-            "PYTHONPATH": "/drive/src"
-          }
-        }
-      }
-    }
+    "notebookStartsKernel": true
   }
 }

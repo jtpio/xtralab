@@ -4,7 +4,8 @@
 Updates the root ``package.json``, the npm packages under ``packages/`` and
 their dependencies on each other, the ``_version.py`` file of the Python
 packages under ``python/``, and the exact pins between them (``xtralite``
-pins ``xtralab``), so that all the packages are released together.
+pins ``xtralab``, also in ``lite/pixi.lock``), so that all the packages are
+released together.
 
 Usage::
 
@@ -98,6 +99,14 @@ def bump_python(version: str) -> None:
         for name in local:
             text = re.sub(rf'"{re.escape(name)}==[^"]+"', f'"{name}=={version}"', text)
         pyproject.write_text(text)
+
+    # The lock of the demo site records the requirements of the local packages.
+    lock = ROOT / "lite" / "pixi.lock"
+    text = lock.read_text()
+    for name in local:
+        pin = rf"^(  - {re.escape(name)}==).+$"
+        text = re.sub(pin, rf"\g<1>{version}", text, flags=re.MULTILINE)
+    lock.write_text(text)
 
 
 @click.command()

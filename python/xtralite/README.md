@@ -19,4 +19,7 @@ jupyter lite build
 `jupyter lite build` applies the xtralab defaults and disables the
 extensions that need a server (git, language servers, search and replace).
 
+xtralite does not install a kernel: add one to run notebooks, for example
+[xeus-python](https://jupyterlite-xeus.readthedocs.io/en/stable/).
+
 See the [documentation](https://jtpio.github.io/xtralab/jupyterlite/).

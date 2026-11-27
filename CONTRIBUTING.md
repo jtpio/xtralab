@@ -40,22 +40,26 @@ Then start JupyterLab the usual way to pick up the dev build.
 
 ### JupyterLite
 
-To build and serve the demo site with the dev build of the extensions:
+[pixi](https://pixi.sh) manages the dependencies of the demo site, in
+`lite/pixi.toml`. To build and serve the site:
 
 ```bash
 cd lite
-jupyter lite build
-python -m http.server --directory dist
+pixi run build
+pixi run serve
 ```
 
-The JupyterLite terminal needs
-[micromamba](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html)
-on the `PATH` during the build. `npx playwright test` in `lite` runs the smoke
-test of the site.
+`pixi run build` builds the labextensions, then the site. `npx playwright test`
+in `lite` runs the smoke test of the site.
 
-`lite/jupyter-lite.json` makes the example notebook run immediately: a kernel
-starts when a notebook opens, and the `src` folder of the demo project is on
-the Python path of the kernel, as with an editable install.
+The notebooks run with the
+[xeus-python](https://github.com/jupyter-xeus/xeus-python) kernel.
+`lite/environment.yml` lists the packages of the kernel. It also installs the
+demo project, so that the example notebook can import it.
+`lite/jupyter-lite.json` starts a kernel when a notebook opens.
+
+Run `pixi lock` in `lite` after a change to the dependencies of `xtralab` or
+`xtralite`: the lock records them.
 
 Without a server, the labextension must not call the xtralab or git server
 endpoints: check `hasServerExtension()` and `hasGit()` (in

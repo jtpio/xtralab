@@ -50,6 +50,40 @@ during the build. Install micromamba before you build the site.
 `jupyter lite build` applies the xtralab defaults (the layout, the settings,
 and the disabled extensions), then the changes of xtralite for the browser.
 
+## Add a kernel
+
+xtralite does not install a kernel. To run notebooks, add a
+[JupyterLite kernel](https://jupyterlite.readthedocs.io/en/stable/howto/configure/kernels.html)
+to the Python environment before you build the site.
+
+For example, the demo site uses
+[xeus-python](https://jupyterlite-xeus.readthedocs.io/en/stable/):
+
+<Steps>
+
+1. Install `jupyterlite-xeus`:
+
+   ```bash
+   pip install jupyterlite-xeus
+   ```
+
+2. Add an `environment.yml` file to the folder of the site, with the packages
+   of the kernel:
+
+   ```yaml
+   name: xeus-python-kernel
+   channels:
+     - https://prefix.dev/emscripten-forge-4x
+     - https://prefix.dev/conda-forge
+   dependencies:
+     - xeus-python
+   ```
+
+</Steps>
+
+`jupyterlite-xeus` also makes the environment of the kernel with micromamba
+during the build.
+
 ## Features in the browser
 
 | Feature                                               | JupyterLite                                                     |
