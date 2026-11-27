@@ -4,7 +4,7 @@ import { IThemeManager } from '@jupyterlab/apputils';
 import { PathExt } from '@jupyterlab/coreutils';
 import { Git } from '@jupyterlab/git';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
-import { Contents } from '@jupyterlab/services';
+import { Contents, ServerConnection } from '@jupyterlab/services';
 import type { TranslationBundle } from '@jupyterlab/translation';
 import { ReactWidget } from '@jupyterlab/ui-components';
 import { PromiseDelegate } from '@lumino/coreutils';
@@ -24,10 +24,14 @@ import {
   DIFF_WIDGET_CSS_CLASS,
   DiffStyleControl,
   DiffSurface,
+  EditSaveStatus,
   LineWrapControl,
   NotebookViewModeControl,
   isDarkTheme,
-  isPierreTheme
+  isPierreTheme,
+  reportEditError,
+  type EditSaveState,
+  type IDiffEdit
 } from './diffSurface';
 import { imageDataType } from './imageDiff';
 
@@ -141,8 +145,8 @@ export class XtralabDiffWidget
    * Re-pull both sides of the model and re-render.
    */
   async refresh(): Promise<void> {
-    // Settle any refresh still awaiting so a rapid second call cannot orphan
-    // the earlier caller's promise.
+    // The fetch effect only settles the latest delegate, so release any
+    // in-flight waiter now that a newer reload supersedes it.
     this.settleRefresh();
     const done = new PromiseDelegate<void>();
     this._pendingRefresh = done;
@@ -199,6 +203,31 @@ export class XtralabDiffWidget
    */
   get fileDiffActiveChanged(): ISignal<this, boolean> {
     return this._fileDiffActiveChanged;
+  }
+
+  /**
+   * The save state of the editable diff, `'idle'` when nothing is in edit.
+   */
+  get saveState(): EditSaveState {
+    return this._saveState;
+  }
+
+  /**
+   * Set the save state of the editable diff.
+   */
+  setSaveState(value: EditSaveState): void {
+    if (value === this._saveState) {
+      return;
+    }
+    this._saveState = value;
+    this._saveStateChanged.emit(value);
+  }
+
+  /**
+   * A signal emitted when {@link saveState} changes.
+   */
+  get saveStateChanged(): ISignal<this, EditSaveState> {
+    return this._saveStateChanged;
   }
 
   /**
@@ -263,6 +292,8 @@ export class XtralabDiffWidget
   private _hasNotebookViewChanged = new Signal<this, boolean>(this);
   private _fileDiffActive = false;
   private _fileDiffActiveChanged = new Signal<this, boolean>(this);
+  private _saveState: EditSaveState = 'idle';
+  private _saveStateChanged = new Signal<this, EditSaveState>(this);
   private _emptied = new Signal<this, void>(this);
 }
 
@@ -286,6 +317,19 @@ interface IModelDiffState {
    * The fetch error message, or `null` if none.
    */
   error: string | null;
+  /**
+   * Whether the working-tree file of the challenger side does not exist.
+   */
+  workingMissing: boolean;
+}
+
+/**
+ * Whether a contents API error is "not found".
+ */
+function isNotFound(err: unknown): boolean {
+  return (
+    err instanceof ServerConnection.ResponseError && err.response.status === 404
+  );
 }
 
 function ModelDiffView(props: {
@@ -308,8 +352,14 @@ function ModelDiffView(props: {
     loading: true,
     oldText: '',
     newText: '',
-    error: null
+    error: null,
+    workingMissing: false
   });
+
+  const serverPath = React.useMemo(
+    () => PathExt.join(model.repositoryPath ?? '', model.filename),
+    [model.repositoryPath, model.filename]
+  );
 
   const handleNotebookAvailabilityChange = React.useCallback(
     (available: boolean) => {
@@ -380,42 +430,85 @@ function ModelDiffView(props: {
     []
   );
 
+  // A `refresh()` of the same model reloads in place; a model swap shows the
+  // loading placeholder.
+  const loadedModelRef = React.useRef<IXtralabDiffModel | null>(null);
+  const saveRevisionRef = React.useRef(0);
+
   React.useEffect(() => {
     let cancelled = false;
     if (isBinary) {
-      setState({ loading: false, oldText: '', newText: '', error: null });
+      loadedModelRef.current = model;
+      setState({
+        loading: false,
+        oldText: '',
+        newText: '',
+        error: null,
+        workingMissing: false
+      });
       // An in-flight `refresh()` still has to resolve.
       widget.settleRefresh();
       return () => {
         cancelled = true;
       };
     }
-    setState({ loading: true, oldText: '', newText: '', error: null });
+    if (loadedModelRef.current !== model) {
+      setState({
+        loading: true,
+        oldText: '',
+        newText: '',
+        error: null,
+        workingMissing: false
+      });
+    }
+    const saveRevision = saveRevisionRef.current;
+    // A deleted file reads as '' on the working side, the same as an empty
+    // file; only the contents API tells the two apart.
+    const workingFileMissing = async (): Promise<boolean> => {
+      if (model.challenger.source !== Git.Diff.SpecialRef.WORKING) {
+        return false;
+      }
+      try {
+        await contentsManager.get(serverPath, { content: false });
+        return false;
+      } catch (err) {
+        return isNotFound(err);
+      }
+    };
     void (async () => {
       try {
-        const [oldText, newText] = await Promise.all([
+        const [oldText, newText, workingMissing] = await Promise.all([
           model.reference.content(),
-          model.challenger.content()
+          model.challenger.content(),
+          workingFileMissing()
         ]);
         if (cancelled) {
           return;
         }
-        setState({
+        loadedModelRef.current = model;
+        setState(prev => ({
           loading: false,
           oldText: oldText ?? '',
-          newText: newText ?? '',
-          error: null
-        });
+          // A save acknowledged after this fetch began owns the newer text.
+          newText:
+            saveRevision === saveRevisionRef.current
+              ? (newText ?? '')
+              : prev.newText,
+          error: null,
+          workingMissing
+        }));
       } catch (err) {
         if (cancelled) {
           return;
         }
-        setState({
+        loadedModelRef.current = model;
+        setState(prev => ({
           loading: false,
           oldText: '',
-          newText: '',
-          error: err instanceof Error ? err.message : String(err)
-        });
+          newText: saveRevision === saveRevisionRef.current ? '' : prev.newText,
+          error: err instanceof Error ? err.message : String(err),
+          workingMissing: false
+        }));
       } finally {
         if (!cancelled) {
           widget.settleRefresh();
@@ -425,47 +518,86 @@ function ModelDiffView(props: {
     return () => {
       cancelled = true;
     };
-  }, [widget, model, nonce, isBinary]);
+  }, [widget, model, nonce, isBinary, contentsManager, serverPath]);
 
-  // Only close after a reload, not for a file that opens already empty.
+  // Editing writes the working-tree file, so it only applies when the new side
+  // is an existing working copy and the diff is plain text.
+  const canEdit =
+    model.challenger.source === Git.Diff.SpecialRef.WORKING &&
+    model.hasConflict !== true &&
+    !state.workingMissing &&
+    !isImage &&
+    !isBinary &&
+    !model.filename.toLowerCase().endsWith('.ipynb');
+
+  // Only close after a reload, not for a file that opens already empty, and
+  // never for an editable diff: the tab must not close under the user.
   React.useEffect(() => {
     if (
       !state.loading &&
       state.error === null &&
       !isBinary &&
+      !canEdit &&
       hunkCount === 0 &&
       nonce > 0
     ) {
       widget.notifyEmptied();
     }
-  }, [state.loading, state.error, isBinary, hunkCount, nonce, widget]);
+  }, [state.loading, state.error, isBinary, canEdit, hunkCount, nonce, widget]);
 
   const canDiscardHunk =
     model.canDiscard ??
     (model.challenger.source === Git.Diff.SpecialRef.WORKING &&
       model.hasConflict !== true);
 
-  const serverPath = React.useMemo(
-    () => PathExt.join(model.repositoryPath ?? '', model.filename),
-    [model.repositoryPath, model.filename]
+  // Both hunk discard and direct editing persist by rewriting the whole
+  // working-tree file through the contents API.
+  const saveWorkingFile = React.useCallback(
+    async (text: string) => {
+      await contentsManager.save(serverPath, {
+        type: 'file',
+        format: 'text',
+        content: text
+      });
+    },
+    [contentsManager, serverPath]
   );
+
+  // Pre-write staleness check. `type: 'file'` reads the bytes as the git API
+  // does, so an unchanged file is equal to the diff text; missing reads as ''.
+  const readDiskText = React.useCallback(async (): Promise<string> => {
+    try {
+      const current = await contentsManager.get(serverPath, {
+        type: 'file',
+        format: 'text',
+        content: true
+      });
+      return typeof current.content === 'string' ? current.content : '';
+    } catch (err) {
+      if (isNotFound(err)) {
+        return '';
+      }
+      throw err;
+    }
+  }, [contentsManager, serverPath]);
 
   const hunkDiscard = React.useMemo(
     () => ({
       enabled: canDiscardHunk,
-      save: async (text: string) => {
-        await contentsManager.save(serverPath, {
-          type: 'file',
-          format: 'text',
-          content: text
-        });
-      },
+      save: saveWorkingFile,
       onAfterSave: () => {
         void widget.refresh();
-      }
+      },
+      readDiskText
     }),
-    [canDiscardHunk, contentsManager, serverPath, widget]
+    [canDiscardHunk, saveWorkingFile, readDiskText, widget]
   );
+
+  const draftTextRef = React.useRef<string | null>(null);
+  const saveErrorRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    draftTextRef.current = null;
+  }, [model]);
 
   const handleLineAsk = React.useMemo(() => {
     if (askAgent === null) {
@@ -476,7 +608,7 @@ function ModelDiffView(props: {
         buildDiffAskRequest({
           model,
           oldText: state.oldText,
-          newText: state.newText,
+          newText: draftTextRef.current ?? state.newText,
           range,
           anchor,
           trans
@@ -485,9 +617,61 @@ function ModelDiffView(props: {
     };
   }, [askAgent, model, state.oldText, state.newText, trans]);
 
+  const edit = React.useMemo<IDiffEdit>(
+    () => ({
+      canEdit,
+      filePath: serverPath,
+      onDraftChange: text => {
+        if (widget.model === model) {
+          draftTextRef.current = text;
+        }
+      },
+      save: async (text: string) => {
+        // Persist without re-pulling: the editor owns the live view during a
+        // session, and a reload would discard the cursor and in-flight edit.
+        try {
+          await saveWorkingFile(text);
+        } catch (err) {
+          // Surface failures even for tail saves after the session ended;
+          // rethrow so an in-session save still shows "Save failed".
+          saveErrorRef.current = reportEditError(
+            saveErrorRef.current,
+            trans.__(
+              'Failed to save edits to %1: %2',
+              model.filename,
+              err instanceof Error ? err.message : String(err)
+            )
+          );
+          throw err;
+        }
+      },
+      onSaved: (text: string) => {
+        // Adopt confirmed-saved text as the baseline. Ignore a late save from
+        // a previous file: the launcher reuses one widget across files.
+        if (widget.isDisposed || widget.model !== model) {
+          return;
+        }
+        saveRevisionRef.current += 1;
+        setState(prev =>
+          prev.newText === text ? prev : { ...prev, newText: text }
+        );
+      },
+      readDiskText,
+      onSaveStateChange: state => widget.setSaveState(state),
+      onConflictDiscard: async () => {
+        // A closed preview must not refresh the next file in the reused tab.
+        if (widget.isDisposed || widget.model !== model) {
+          return;
+        }
+        await widget.refresh();
+      }
+    }),
+    [canEdit, serverPath, saveWorkingFile, readDiskText, widget, model, trans]
+  );
+
   return (
     <DiffSurface
-      loading={state.loading}
+      loading={state.loading || loadedModelRef.current !== model}
       error={state.error}
       isBinary={isBinary}
       oldText={state.oldText}
@@ -509,6 +693,7 @@ function ModelDiffView(props: {
       onMetadataChange={handleMetadataChange}
       hunkDiscard={hunkDiscard}
       onLineAsk={handleLineAsk}
+      edit={edit}
       trans={trans}
     />
   );
@@ -640,6 +825,46 @@ function LineWrapToolbarControl(props: {
 }
 
 /**
+ * Save-state indicator mounted into a host-owned toolbar.
+ */
+class SaveStatusToolbarItem extends ReactWidget {
+  constructor(widget: XtralabDiffWidget) {
+    super();
+    this._widget = widget;
+    this.addClass('jp-xtralab-DiffWidget-saveStatusToolbarItem');
+  }
+
+  /**
+   * Render the save-state indicator.
+   */
+  protected render(): React.ReactElement {
+    return <SaveStatusToolbarControl widget={this._widget} />;
+  }
+
+  private _widget: XtralabDiffWidget;
+}
+
+function SaveStatusToolbarControl(props: {
+  widget: XtralabDiffWidget;
+}): React.ReactElement {
+  const { widget } = props;
+  const [state, setState] = React.useState<EditSaveState>(
+    () => widget.saveState
+  );
+  React.useEffect(() => {
+    const onState = (sender: XtralabDiffWidget, next: EditSaveState): void => {
+      setState(next);
+    };
+    widget.saveStateChanged.connect(onState);
+    setState(widget.saveState);
+    return () => {
+      widget.saveStateChanged.disconnect(onState);
+    };
+  }, [widget]);
+  return <EditSaveStatus state={state} trans={widget.context.trans} />;
+}
+
+/**
  * Track {@link XtralabDiffWidget.fileDiffActive} for the split/unified and
  * line-wrap controls.
  */
@@ -677,10 +902,16 @@ export function addDiffToolbarItems(
   toolbar: IDiffToolbar,
   widget: XtralabDiffWidget
 ): void {
+  // On a narrow tab the rightmost custom item collapses into the overflow
+  // popup first (jupyterlab-git appends a spacer + its buttons after ours).
   toolbar.addItem(
     'xtralab-notebook-view-mode',
     new NotebookViewModeToolbarItem(widget)
   );
   toolbar.addItem('xtralab-diff-style', new DiffStyleToolbarItem(widget));
   toolbar.addItem('xtralab-diff-line-wrap', new LineWrapToolbarItem(widget));
+  toolbar.addItem(
+    'xtralab-diff-save-status',
+    new SaveStatusToolbarItem(widget)
+  );
 }
