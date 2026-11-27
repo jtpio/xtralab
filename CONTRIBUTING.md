@@ -53,8 +53,9 @@ The JupyterLite terminal needs
 on the `PATH` during the build. `npx playwright test` in `lite` runs the smoke
 test of the site.
 
-The demo site starts a kernel when a notebook opens (`lite/jupyter-lite.json`),
-so that a visitor can run the example notebook immediately.
+`lite/jupyter-lite.json` makes the example notebook run immediately: a kernel
+starts when a notebook opens, and the `src` folder of the demo project is on
+the Python path of the kernel, as with an editable install.
 
 Without a server, the labextension must not call the xtralab or git server
 endpoints: check `hasServerExtension()` and `hasGit()` (in
